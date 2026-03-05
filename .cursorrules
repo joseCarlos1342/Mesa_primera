@@ -1,0 +1,268 @@
+# Reglas del Proyecto: Mesa Primera
+
+## 1. Reglas de Commits (Conventional Commits)
+
+Todos los commits deben seguir estrictamente el estándar de Conventional Commits.
+Formato: `<tipo>(<alcance>): <descripción corta en imperativo>`
+
+Tipos permitidos:
+- `feat`: Nueva funcionalidad
+- `fix`: Corrección de un error o bug
+- `docs`: Cambios exclusivos de documentación
+- `style`: Cambios de formato (espacios, comas, etc.) que no afectan lógica
+- `refactor`: Cambios en código que no corrigen errores ni añaden funcionalidades
+- `perf`: Cambios que mejoran el rendimiento
+- `test`: Añadir o corregir pruebas
+- `chore`: Tareas de mantenimiento, actualización de dependencias, etc.
+
+Ejemplo: `feat(auth): implementar login con OTP via SMS`
+
+### Reglas de Mensajes de Commit
+- Descripción en **imperativo** y en **español**: "implementar", "corregir", "agregar"
+- Máximo 72 caracteres en la primera línea
+- Si es necesario, agregar body separado por línea en blanco con contexto adicional
+- Referenciar issues si aplica: `fix(wallet): corregir cálculo de saldo (#42)`
+
+---
+
+## 2. Uso del MCP Context7
+
+Para garantizar el uso de las mejores prácticas y evitar "alucinaciones" (inventar APIs que no existen), **SIEMPRE** debes usar el MCP `context7`:
+- Antes de implementar funciones nuevas que usen Next.js, Supabase, Tailwind, Colyseus o cualquier otra librería del stack.
+- Para buscar documentación actualizada o ejemplos de código de los paquetes.
+- Cuando haya dudas sobre la configuración o instalación de alguna dependencia.
+- **Antes de escribir tests** para verificar la API correcta de la librería de testing.
+- **Antes de crear migraciones SQL** para verificar sintaxis de Supabase/PostgreSQL.
+
+---
+
+## 3. Testing Obligatorio
+
+### Filosofía
+Cada funcionalidad debe tener tests **antes de ser considerada completa**. No se commitea código sin sus tests correspondientes. El testing es parte del Definition of Done de cada tarea.
+
+### Stack de Testing
+- **Unit Tests**: Vitest + React Testing Library (componentes client-side)
+- **Server Actions**: Vitest con mocks de Supabase client
+- **E2E Tests**: Playwright (flujos críticos completos)
+- **SQL/RLS Tests**: Queries de verificación directas contra Supabase
+
+### Estructura de Archivos de Test
+```
+apps/web/
+├── src/
+│   ├── app/
+│   │   ├── (auth)/
+│   │   │   ├── auth-actions.ts
+│   │   │   └── __tests__/
+│   │   │       └── auth-actions.test.ts
+│   │   ├── actions/
+│   │   │   ├── wallet.ts
+│   │   │   └── __tests__/
+│   │   │       └── wallet.test.ts
+│   ├── hooks/
+│   │   ├── useFingerprint.ts
+│   │   └── __tests__/
+│   │       └── useFingerprint.test.ts
+│   └── utils/
+│       └── __tests__/
+├── e2e/
+│   ├── auth.spec.ts
+│   ├── wallet.spec.ts
+│   └── admin.spec.ts
+```
+
+### Reglas de Testing por Tipo
+
+#### Unit Tests (Vitest)
+- Cada **server action** debe tener tests que verifiquen:
+  - Caso exitoso (happy path)
+  - Caso de error (usuario no autenticado, datos inválidos)
+  - Edge cases (saldo insuficiente, transacción duplicada)
+- Cada **hook** debe tener tests de su comportamiento reactivo
+- Cada **componente client** debe verificar renderizado y eventos
+- **Los componentes async (Server Components) NO se testean con unit tests** sino con E2E. Esto es una limitación actual de Vitest/React 19.
+
+#### E2E Tests (Playwright)
+- Un archivo por cada **flujo de usuario crítico**:
+  - `auth.spec.ts`: Login player OTP → verificación código
+  - `admin-auth.spec.ts`: Login admin → MFA TOTP → panel
+  - `wallet.spec.ts`: Ver saldo → cargar fichas → subir comprobante
+  - `deposits.spec.ts`: Admin aprueba/rechaza depósito
+  - `withdrawals.spec.ts`: Solicitar retiro → admin procesa
+- Los E2E se ejecutan contra un entorno staging o preview de Supabase
+
+#### SQL/RLS Tests
+- Para cada migración, crear un archivo `supabase/tests/` que verifique:
+  - Que las tablas se crearon correctamente
+  - Que las RLS policies funcionan (usuario player NO puede ver datos de otro player)
+  - Que el admin NO puede ver datos de juego (admin blindness)
+- Formato: `supabase/tests/<migration_name>.test.sql`
+
+### Cobertura Mínima
+- **Server Actions**: 80% de cobertura
+- **Hooks y Utilidades**: 90% de cobertura
+- **E2E**: Cada flujo de negocio crítico tiene al menos 1 test
+- **RLS**: Cada tabla con RLS tiene tests de acceso positivo y negativo
+
+---
+
+## 4. Documentación Obligatoria
+
+### En el Código (JSDoc/TSDoc)
+
+Todo el código generado debe estar documentado con JSDoc/TSDoc:
+
+```typescript
+/**
+ * Verifica el código TOTP del administrador contra el factor MFA registrado.
+ * Flujo: listFactors → challenge → verify
+ * 
+ * @param formData - FormData con campo 'code' (6 dígitos)
+ * @returns Redirect a /admin si exitoso, o { error: string } si falla
+ * 
+ * @example
+ * const formData = new FormData()
+ * formData.append('code', '123456')
+ * await verifyAdminTotp(formData)
+ */
+export async function verifyAdminTotp(formData: FormData) {
+  // ...
+}
+```
+
+#### Qué documentar:
+- **Server Actions**: Parámetros, retorno, flujo interno, errores posibles
+- **Hooks**: Parámetros, estado que devuelve, efectos secundarios
+- **Componentes**: Props, comportamiento, dependencias
+- **Utilidades**: Input/output, edge cases
+- **Decisiones complejas**: Comentarios inline explicando el "POR QUÉ", no el "QUÉ"
+
+### En el Proyecto (Markdown)
+
+#### CHANGELOG.md (raíz del proyecto)
+Mantener un changelog actualizado para cada sprint:
+```markdown
+# Changelog
+
+## [Sprint 1] - 2026-03-04
+
+### Added
+- Login OTP SMS para jugadores
+- Login email + 2FA TOTP para admin
+- Página Wallet con saldo e historial
+- Flujo de depósito con comprobante
+- Admin: bandeja de depósitos y retiros
+
+### Fixed
+- useFingerprint: bug IntBridge corregido
+- deposits/page.tsx: import processTransaction corregido
+- Middleware: admin role check activado
+```
+
+#### docs/ (directorio de documentación)
+Crear y mantener:
+- `docs/ARCHITECTURE.md`: Diagrama y explicación de la arquitectura
+- `docs/API.md`: Documentación de server actions y endpoints
+- `docs/DATABASE.md`: Esquema de tablas, relaciones, y RLS policies
+- `docs/DEPLOYMENT.md`: Guía de despliegue a producción
+- `docs/TESTING.md`: Guía de cómo ejecutar tests
+
+#### README.md
+Mantener actualizado con:
+- Cómo instalar y ejecutar el proyecto
+- Variables de entorno necesarias (sin valores reales)
+- Comandos útiles (dev, test, build, lint)
+
+---
+
+## 5. Proceso por Sprint
+
+### Fase 1: Planificación (Día 1)
+1. **Revisar tareas del sprint** del plan_primera.md
+2. **Crear implementation_plan.md** con los cambios propuestos
+3. **Consultar Context7** para cada librería/API involucrada
+4. **Obtener aprobación** del plan antes de codear
+
+### Fase 2: Implementación (Días 2-4)
+1. **Crear branch** para el sprint: `feat/sprint-N-descripcion`
+2. **Implementar cada tarea** siguiendo el plan
+3. **Escribir tests** junto con el código (NO después)
+4. **Documentar** con JSDoc/TSDoc en el mismo momento
+5. **Commits atómicos** — un commit por funcionalidad lógica
+
+### Fase 3: Verificación (Día 5)
+1. **Ejecutar toda la suite de tests**: `npm run test` + `npm run test:e2e`
+2. **Verificar TypeScript**: `npx tsc --noEmit`
+3. **Verificar Supabase**: Correr migrations en entorno de staging
+4. **Auditoría de seguridad**: Revisar RLS, inputs, autenticación
+5. **Actualizar documentación**: CHANGELOG, docs/, README si hubo cambios de arquitectura
+
+### Fase 4: Commit y Merge (Día 5-6)
+1. **Verificar que TODOS los tests pasen**
+2. **Crear PR** con descripción detallada
+3. **Merge a main** tras verificación
+4. **Actualizar task.md** y plan_primera.md con el estado actual
+
+### Checklist de Definición de "Done" para cada Tarea
+- [ ] Código implementado y funcional
+- [ ] Tests unitarios escritos y pasando
+- [ ] Tests E2E para flujos críticos
+- [ ] JSDoc/TSDoc en todas las funciones públicas
+- [ ] Sin errores de TypeScript (`tsc --noEmit`)
+- [ ] Sin warnings de seguridad de Supabase
+- [ ] CHANGELOG actualizado
+- [ ] PR con descripción clara
+
+---
+
+## 6. Estructura de Ramas (Git Flow Simplificado)
+
+```
+main                    ← Producción estable
+├── feat/sprint-0       ← Features del sprint
+├── feat/sprint-1       ← Features del sprint
+├── fix/bug-description ← Hotfixes
+└── docs/update-docs    ← Solo documentación
+```
+
+- **main**: Solo código verificado y testeado
+- **feat/**: Branches de feature por sprint o funcionalidad grande
+- **fix/**: Hotfixes que se mergean directo a main
+- **docs/**: Cambios que solo afectan documentación
+
+---
+
+## 7. Seguridad
+
+### Obligatorio en cada Sprint
+- **Nunca commitear secretos** (.env, API keys, tokens)
+- **Verificar RLS** después de cada migración SQL
+- **Validar inputs** en server actions (sanitización, types)
+- **Verificar auth** en cada server action con `supabase.auth.getUser()`
+- **Ejecutar Semgrep** para detectar vulnerabilidades antes de mergear
+- **Revisar admin blindness** si se agregan nuevas tablas de juego
+
+### .env Template
+Mantener `.env.example` actualizado con todas las variables necesarias SIN valores reales:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
+REDIS_URL=redis://localhost:6379
+GAME_SERVER_PORT=2567
+```
+
+---
+
+## 8. Calidad de Código
+
+- **No usar `any`**: Tipar todo en TypeScript. Si no sabes el tipo, investiga con Context7.
+- **No usar `console.log` en producción**: Usar un logger configurable
+- **Componentes máximo 150 líneas**: Si supera, extraer sub-componentes
+- **Server Actions máximo 50 líneas**: Si supera, extraer funciones de utilidad
+- **Naming Conventions**:
+  - Archivos: `kebab-case` (page.tsx, auth-actions.ts)
+  - Funciones: `camelCase` (getWalletData, processTransaction)
+  - Componentes: `PascalCase` (WalletPage, AdminDepositsPage)
+  - Constantes: `SCREAMING_SNAKE_CASE` (MAX_DEPOSIT_AMOUNT)
+  - Tipos/Interfaces: `PascalCase` con prefijo descriptivo (WalletData, TransactionStatus)
