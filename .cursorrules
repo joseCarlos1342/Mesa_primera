@@ -39,7 +39,26 @@ Para garantizar el uso de las mejores prácticas y evitar "alucinaciones" (inven
 
 ---
 
-## 3. Uso de Skills Locales (.agents/skills)
+## 3. Uso de MCPs (Supabase & Twilio)
+
+Para interacciones directas con la infraestructura y servicios externos, utiliza los MCPs disponibles:
+
+### Supabase MCP (`supabase-mcp-server`)
+
+- **Queries Directas**: Usa `execute_sql` para verificar datos en tiempo real o probar queries complejas antes de implementarlas en el código.
+- **Gestión de DB**: Usa `list_tables` y `apply_migration` para auditar y modificar el schema de forma segura.
+- **Seguridad**: Usa `get_advisors` para recibir recomendaciones automáticas sobre seguridad (RLS) y performance.
+- **Depuración**: Usa `get_logs` para investigar errores de autenticación o funciones de PostgreSQL.
+
+### Twilio MCP (`twilio`)
+
+- **Verificación de SMS**: Usa `ListMessage` y `FetchMessage` para confirmar que los OTPs fueron enviados y revisar su estado de entrega.
+- **Configuración**: Usa las herramientas de Twilio para verificar que el API Key y el Secret tienen los permisos necesarios para el proyecto.
+- **Debugging**: Si un usuario reporta que no recibe el código, audita los logs de mensajes directamente desde el MCP.
+
+---
+
+## 4. Uso de Skills Locales (.agents/skills)
 
 Hemos instalado un cojunto de skills específicas para este proyecto que **SIEMPRE** se deben utilizar como referencia principal antes de escribir código:
 
