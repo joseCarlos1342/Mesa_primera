@@ -6,6 +6,7 @@ Todos los commits deben seguir estrictamente el estándar de Conventional Commit
 Formato: `<tipo>(<alcance>): <descripción corta en imperativo>`
 
 Tipos permitidos:
+
 - `feat`: Nueva funcionalidad
 - `fix`: Corrección de un error o bug
 - `docs`: Cambios exclusivos de documentación
@@ -18,6 +19,7 @@ Tipos permitidos:
 Ejemplo: `feat(auth): implementar login con OTP via SMS`
 
 ### Reglas de Mensajes de Commit
+
 - Descripción en **imperativo** y en **español**: "implementar", "corregir", "agregar"
 - Máximo 72 caracteres en la primera línea
 - Si es necesario, agregar body separado por línea en blanco con contexto adicional
@@ -28,6 +30,7 @@ Ejemplo: `feat(auth): implementar login con OTP via SMS`
 ## 2. Uso del MCP Context7
 
 Para garantizar el uso de las mejores prácticas y evitar "alucinaciones" (inventar APIs que no existen), **SIEMPRE** debes usar el MCP `context7`:
+
 - Antes de implementar funciones nuevas que usen Next.js, Supabase, Tailwind, Colyseus o cualquier otra librería del stack.
 - Para buscar documentación actualizada o ejemplos de código de los paquetes.
 - Cuando haya dudas sobre la configuración o instalación de alguna dependencia.
@@ -36,18 +39,35 @@ Para garantizar el uso de las mejores prácticas y evitar "alucinaciones" (inven
 
 ---
 
+## 3. Uso de Skills Locales (.agents/skills)
+
+Hemos instalado un cojunto de skills específicas para este proyecto que **SIEMPRE** se deben utilizar como referencia principal antes de escribir código:
+
+1. **`vercel-react-best-practices`**: Consultar SIEMPRE antes de crear nuevos Server Components, Client Components, o flujos de carga de datos en Next.js.
+2. **`tailwind-design-system`**: Obligatorio para estructurar la UI, asegurar el uso correcto de Tailwind v4, variables CSS y diseño responsive.
+3. **`typescript-advanced-types`**: Referencia obligatoria al definir tipos complejos, genéricos o tipado estricto para la base de datos y estados de la aplicación.
+4. **`javascript-typescript-jest`**: Base para estructurar todos los tests unitarios y de integración.
+5. **`supabase-postgres-best-practices`**: Consultar siempre antes de crear nuevas tablas, migraciones complejas o escribir políticas RLS avanzadas.
+6. **`frontend-design`**: Utilizar para asegurar que los nuevos componentes clave tengan un diseño de alta calidad y profesional.
+7. **`seo-audit`** y **`audit-website`**: Utilizar periódicamente para escanear el proyecto asegurando salud de performance, accesibilidad y SEO técnico.
+
+---
+
 ## 3. Testing Obligatorio
 
 ### Filosofía
+
 Cada funcionalidad debe tener tests **antes de ser considerada completa**. No se commitea código sin sus tests correspondientes. El testing es parte del Definition of Done de cada tarea.
 
 ### Stack de Testing
+
 - **Unit Tests**: Vitest + React Testing Library (componentes client-side)
 - **Server Actions**: Vitest con mocks de Supabase client
 - **E2E Tests**: Playwright (flujos críticos completos)
 - **SQL/RLS Tests**: Queries de verificación directas contra Supabase
 
 ### Estructura de Archivos de Test
+
 ```
 apps/web/
 ├── src/
@@ -75,6 +95,7 @@ apps/web/
 ### Reglas de Testing por Tipo
 
 #### Unit Tests (Vitest)
+
 - Cada **server action** debe tener tests que verifiquen:
   - Caso exitoso (happy path)
   - Caso de error (usuario no autenticado, datos inválidos)
@@ -84,6 +105,7 @@ apps/web/
 - **Los componentes async (Server Components) NO se testean con unit tests** sino con E2E. Esto es una limitación actual de Vitest/React 19.
 
 #### E2E Tests (Playwright)
+
 - Un archivo por cada **flujo de usuario crítico**:
   - `auth.spec.ts`: Login player OTP → verificación código
   - `admin-auth.spec.ts`: Login admin → MFA TOTP → panel
@@ -93,6 +115,7 @@ apps/web/
 - Los E2E se ejecutan contra un entorno staging o preview de Supabase
 
 #### SQL/RLS Tests
+
 - Para cada migración, crear un archivo `supabase/tests/` que verifique:
   - Que las tablas se crearon correctamente
   - Que las RLS policies funcionan (usuario player NO puede ver datos de otro player)
@@ -100,6 +123,7 @@ apps/web/
 - Formato: `supabase/tests/<migration_name>.test.sql`
 
 ### Cobertura Mínima
+
 - **Server Actions**: 80% de cobertura
 - **Hooks y Utilidades**: 90% de cobertura
 - **E2E**: Cada flujo de negocio crítico tiene al menos 1 test
@@ -117,10 +141,10 @@ Todo el código generado debe estar documentado con JSDoc/TSDoc:
 /**
  * Verifica el código TOTP del administrador contra el factor MFA registrado.
  * Flujo: listFactors → challenge → verify
- * 
+ *
  * @param formData - FormData con campo 'code' (6 dígitos)
  * @returns Redirect a /admin si exitoso, o { error: string } si falla
- * 
+ *
  * @example
  * const formData = new FormData()
  * formData.append('code', '123456')
@@ -132,6 +156,7 @@ export async function verifyAdminTotp(formData: FormData) {
 ```
 
 #### Qué documentar:
+
 - **Server Actions**: Parámetros, retorno, flujo interno, errores posibles
 - **Hooks**: Parámetros, estado que devuelve, efectos secundarios
 - **Componentes**: Props, comportamiento, dependencias
@@ -141,13 +166,16 @@ export async function verifyAdminTotp(formData: FormData) {
 ### En el Proyecto (Markdown)
 
 #### CHANGELOG.md (raíz del proyecto)
+
 Mantener un changelog actualizado para cada sprint:
+
 ```markdown
 # Changelog
 
 ## [Sprint 1] - 2026-03-04
 
 ### Added
+
 - Login OTP SMS para jugadores
 - Login email + 2FA TOTP para admin
 - Página Wallet con saldo e historial
@@ -155,13 +183,16 @@ Mantener un changelog actualizado para cada sprint:
 - Admin: bandeja de depósitos y retiros
 
 ### Fixed
+
 - useFingerprint: bug IntBridge corregido
 - deposits/page.tsx: import processTransaction corregido
 - Middleware: admin role check activado
 ```
 
 #### docs/ (directorio de documentación)
+
 Crear y mantener:
+
 - `docs/ARCHITECTURE.md`: Diagrama y explicación de la arquitectura
 - `docs/API.md`: Documentación de server actions y endpoints
 - `docs/DATABASE.md`: Esquema de tablas, relaciones, y RLS policies
@@ -169,7 +200,9 @@ Crear y mantener:
 - `docs/TESTING.md`: Guía de cómo ejecutar tests
 
 #### README.md
+
 Mantener actualizado con:
+
 - Cómo instalar y ejecutar el proyecto
 - Variables de entorno necesarias (sin valores reales)
 - Comandos útiles (dev, test, build, lint)
@@ -179,12 +212,14 @@ Mantener actualizado con:
 ## 5. Proceso por Sprint
 
 ### Fase 1: Planificación (Día 1)
+
 1. **Revisar tareas del sprint** del plan_primera.md
 2. **Crear implementation_plan.md** con los cambios propuestos
 3. **Consultar Context7** para cada librería/API involucrada
 4. **Obtener aprobación** del plan antes de codear
 
 ### Fase 2: Implementación (Días 2-4)
+
 1. **Crear branch** para el sprint: `feat/sprint-N-descripcion`
 2. **Implementar cada tarea** siguiendo el plan
 3. **Escribir tests** junto con el código (NO después)
@@ -192,6 +227,7 @@ Mantener actualizado con:
 5. **Commits atómicos** — un commit por funcionalidad lógica
 
 ### Fase 3: Verificación (Día 5)
+
 1. **Ejecutar toda la suite de tests**: `npm run test` + `npm run test:e2e`
 2. **Verificar TypeScript**: `npx tsc --noEmit`
 3. **Verificar Supabase**: Correr migrations en entorno de staging
@@ -199,12 +235,14 @@ Mantener actualizado con:
 5. **Actualizar documentación**: CHANGELOG, docs/, README si hubo cambios de arquitectura
 
 ### Fase 4: Commit y Merge (Día 5-6)
+
 1. **Verificar que TODOS los tests pasen**
 2. **Crear PR** con descripción detallada
 3. **Merge a main** tras verificación
 4. **Actualizar task.md** y plan_primera.md con el estado actual
 
 ### Checklist de Definición de "Done" para cada Tarea
+
 - [ ] Código implementado y funcional
 - [ ] Tests unitarios escritos y pasando
 - [ ] Tests E2E para flujos críticos
@@ -236,6 +274,7 @@ main                    ← Producción estable
 ## 7. Seguridad
 
 ### Obligatorio en cada Sprint
+
 - **Nunca commitear secretos** (.env, API keys, tokens)
 - **Verificar RLS** después de cada migración SQL
 - **Validar inputs** en server actions (sanitización, types)
@@ -244,7 +283,9 @@ main                    ← Producción estable
 - **Revisar admin blindness** si se agregan nuevas tablas de juego
 
 ### .env Template
+
 Mantener `.env.example` actualizado con todas las variables necesarias SIN valores reales:
+
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
