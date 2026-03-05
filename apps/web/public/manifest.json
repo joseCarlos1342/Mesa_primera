@@ -1,0 +1,25 @@
+{
+  "name": "Mesa Primera",
+  "short_name": "Primera",
+  "description": "Juego de Cartas Multijugador en tiempo real",
+  "dir": "ltr",
+  "lang": "es",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
