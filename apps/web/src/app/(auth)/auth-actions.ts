@@ -3,6 +3,14 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
+/**
+ * Inicia el flujo de autenticación por teléfono (OTP SMS).
+ * Si el usuario no existe, se creará uno nuevo con la metadata proporcionada.
+ *
+ * @param prevState - Estado previo del formulario (useActionState)
+ * @param formData - FormData con campos 'phone', 'fullName', 'nickname' y 'avatarId'
+ * @returns {Promise<{ error: string } | void>} Redirige a verificación o devuelve error
+ */
 export async function loginWithPhone(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
   const phone = formData.get('phone') as string
@@ -29,6 +37,13 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
   redirect(`/login/player/verify?phone=${encodeURIComponent(phone)}`)
 }
 
+/**
+ * Verifica el código OTP enviado por SMS al jugador.
+ *
+ * @param prevState - Estado previo del formulario
+ * @param formData - FormData con campos 'phone' y 'token' (6 dígitos)
+ * @returns {Promise<{ error: string } | void>} Redirige al inicio o devuelve error
+ */
 export async function verifyOtp(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
   const phone = formData.get('phone') as string
