@@ -6,11 +6,19 @@ import { redirect } from 'next/navigation'
 export async function loginWithPhone(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
   const phone = formData.get('phone') as string
+  const fullName = formData.get('fullName') as string
+  const nickname = formData.get('nickname') as string
+  const avatarId = formData.get('avatarId') as string
 
   const { error } = await supabase.auth.signInWithOtp({
     phone,
     options: {
       shouldCreateUser: true,
+      data: {
+        full_name: fullName,
+        nickname: nickname,
+        avatar_url: avatarId,
+      }
     },
   })
 

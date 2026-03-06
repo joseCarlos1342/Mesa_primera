@@ -7,8 +7,58 @@
 
 @layer base {
   :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
+    --background: #020617;
+    --foreground: #f8fafc;
+  }
+}
+
+@theme {
+  --color-brand-gold: oklch(77% 0.15 85);
+  --color-brand-indigo: oklch(45% 0.31 274);
+
+  --font-display: "Playfair Display", serif;
+  --font-sans: "Outfit", sans-serif;
+
+  --animate-pulse-slow: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-pulse-slow-reverse: pulse-slow-reverse 8s
+    cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shake: shake 0.5s ease-in-out;
+
+  @keyframes pulse-slow {
+    0%,
+    100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.1);
+    }
+  }
+
+  @keyframes pulse-slow-reverse {
+    0%,
+    100% {
+      opacity: 0.6;
+      transform: scale(1.1);
+    }
+    50% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    75% {
+      transform: translateX(5px);
+    }
   }
 }
 
