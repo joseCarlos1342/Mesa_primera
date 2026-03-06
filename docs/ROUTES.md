@@ -15,92 +15,40 @@
 
 ## Rutas de Autenticación `(auth)`
 
-| URL                           | Método | Descripción                            | Estado                            |
-| ----------------------------- | ------ | -------------------------------------- | --------------------------------- |
-| `/login/player`               | Phone  | Login jugador — envía OTP por SMS      | ✅ Twilio configurado en Supabase |
-| `/login/player/verify?phone=` | OTP    | Verificar código OTP del jugador       | ✅ UI lista                       |
-| `/login/admin`                | Email  | Login administrador — email + password | ✅ Funcional                      |
-| `/login/admin/mfa`            | TOTP   | Verificar 2FA del admin                | ✅ UI lista                       |
+| URL                           | Método | Descripción                            | Estado                       |
+| ----------------------------- | ------ | -------------------------------------- | ---------------------------- |
+| `/login/player`               | Phone  | Login jugador — envía OTP por SMS      | ✅ UI Premium / Twilio OK    |
+| `/login/player/verify?phone=` | OTP    | Verificar código OTP del jugador       | ✅ UI Premium                |
+| `/login/admin`                | Email  | Login administrador — email + password | ✅ UI Premium Estación Admin |
+| `/login/admin/mfa`            | TOTP   | Verificar 2FA del admin                | ✅ UI funcional              |
 
 ---
 
 ## Rutas del Player `(player)`
 
-| URL                | Protegida | Descripción                          | Estado       |
-| ------------------ | --------- | ------------------------------------ | ------------ |
-| `/`                | ✅ Auth   | Home del jugador — Crear/Unirse mesa | ✅ Funcional |
-| `/wallet`          | ✅ Auth   | Billetera — saldo + historial ledger | ✅ UI lista  |
-| `/wallet/deposit`  | ✅ Auth   | Cargar fichas — subir comprobante    | ✅ UI lista  |
-| `/wallet/withdraw` | ✅ Auth   | Retirar saldo — datos bancarios      | ✅ UI lista  |
+| URL                | Protegida | Descripción                          | Estado                   |
+| ------------------ | --------- | ------------------------------------ | ------------------------ |
+| `/`                | ✅ Auth   | Home del jugador — Lobby VIP         | ✅ UI Premium Lobby Real |
+| `/wallet`          | ✅ Auth   | Billetera — saldo + historial ledger | ✅ UI lista              |
+| `/wallet/deposit`  | ✅ Auth   | Cargar fichas — subir comprobante    | ✅ UI lista              |
+| `/wallet/withdraw` | ✅ Auth   | Retirar saldo — datos bancarios      | ✅ UI lista              |
 
 ---
 
 ## Rutas del Admin `(admin)`
 
-| URL                  | Protegida | Descripción                     | Estado       |
-| -------------------- | --------- | ------------------------------- | ------------ |
-| `/admin`             | ✅ Admin  | Dashboard admin                 | ✅ Funcional |
-| `/admin/deposits`    | ✅ Admin  | Bandeja de depósitos pendientes | ✅ Funcional |
-| `/admin/withdrawals` | ✅ Admin  | Cola de retiros pendientes      | ✅ Funcional |
+| URL                  | Protegida | Descripción                     | Estado                  |
+| -------------------- | --------- | ------------------------------- | ----------------------- |
+| `/admin`             | ✅ Admin  | Dashboard admin — Centro Mando  | ✅ UI Premium Dashboard |
+| `/admin/deposits`    | ✅ Admin  | Bandeja de depósitos pendientes | ✅ Funcional            |
+| `/admin/withdrawals` | ✅ Admin  | Cola de retiros pendientes      | ✅ Funcional            |
 
 ---
 
-## Rutas Legacy (Redirects)
+## Sprint 1 — Estado Actualizado
 
-| URL            | Redirige a           | Notas                        |
-| -------------- | -------------------- | ---------------------------- |
-| `/deposits`    | `/admin/deposits`    | Página movida al panel admin |
-| `/withdrawals` | `/admin/withdrawals` | Página movida al panel admin |
-
----
-
-## Protección de Rutas (Middleware)
-
-```
-Sin sesión + no es auth → redirige a /login/player
-Con sesión + en /login/admin → si es admin redirige a /admin, si no a /
-Con sesión + en /login/* → redirige a /
-Con sesión + en /admin/* → verifica rol admin, si no es admin redirige a /
-MFA (/login/admin/mfa) → siempre accesible si hay sesión
-```
-
----
-
-## Server Actions
-
-| Archivo                   | Funciones                                                                                    |
-| ------------------------- | -------------------------------------------------------------------------------------------- |
-| `auth-actions.ts`         | `loginWithPhone`, `verifyOtp`, `loginAdmin`, `verifyAdminTotp`, `enrollAdminTotp`, `signOut` |
-| `actions/wallet.ts`       | `getWalletData`, `createDepositRequest`                                                      |
-| `actions/withdrawals.ts`  | `requestWithdrawal`, `getPendingWithdrawals`                                                 |
-| `actions/admin-wallet.ts` | `getPendingDeposits`, `processTransaction`                                                   |
-| `actions/anti-fraud.ts`   | Device fingerprinting helpers                                                                |
-
----
-
-## Supabase Config
-
-| Variable                        | Valor                                      |
-| ------------------------------- | ------------------------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`      | `https://bhwchdzfvhhhuxovrqio.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Ver `.env.local`                           |
-| Proyecto ID                     | `bhwchdzfvhhhuxovrqio`                     |
-
----
-
-## Sprint 1 — Estado
-
-| Tarea                             | Frontend | Backend | Notas                                                |
-| --------------------------------- | -------- | ------- | ---------------------------------------------------- |
-| Login OTP SMS (Supabase + Twilio) | ✅       | ✅      | Twilio configurado. ⚠️ Verificar Message Service SID |
-| Login Email + 2FA TOTP admin      | ✅       | ✅      | Funcional (NULL email_change corregido)              |
-| Registro simplificado (phone)     | ✅       | ✅      | shouldCreateUser: true + Twilio                      |
-| Device fingerprinting             | ✅       | ⚠️      | Hook existe, falta probar con conexión DB            |
-| Rate limiting                     | ❌       | ❌      | No implementado                                      |
-| Middleware protección rutas       | ✅       | ✅      | Funcional con RLS + role check                       |
-| Wallet — saldo + historial        | ✅       | ✅      | Conecta a Supabase                                   |
-| Depósito — subir comprobante      | ✅       | ✅      | Storage + DB                                         |
-| Admin — bandeja depósitos         | ✅       | ✅      | Ahora bajo `/admin/deposits`                         |
-| Retiro — solicitud                | ✅       | ✅      | DB transactions                                      |
-| Admin — cola retiros              | ✅       | ✅      | Ahora bajo `/admin/withdrawals`                      |
-| Ledger inmutable                  | ✅       | ✅      | Transactions table = append-only ledger              |
+- [x] **Login OTP SMS**: UI terminada con estética de lujo.
+- [x] **Registro Pro**: Perfiles cuentan con Nombre, Nickname y Avatar SVG.
+- [x] **Seguridad por Roles**: Middleware configurado para evitar cruce de sesiones.
+- [x] **Botón de Salida**: Integrado globalmente con `SignOutButton`.
+- [x] **Lobby & Admin**: Rediseñados con efecto glassmorphism y animaciones.
