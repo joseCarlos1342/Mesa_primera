@@ -10,7 +10,7 @@ export default function PlayerLoginPage() {
   const [selectedAvatar, setSelectedAvatar] = useState('as-oros')
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans overflow-x-hidden selection:bg-indigo-500/30">
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans selection:bg-indigo-500/30">
       {/* Premium Background Image with Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <Image 

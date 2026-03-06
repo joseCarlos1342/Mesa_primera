@@ -11,11 +11,11 @@ function VerifyContent() {
   const [state, formAction, isPending] = useActionState(verifyOtp, null)
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans overflow-hidden">
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans">
       {/* Background Image (Shared with Login) */}
       <div className="absolute inset-0 z-0">
         <Image 
-          src="file:///home/jose/.gemini/antigravity/brain/e8441c26-7342-43c6-98fd-3cf4923d78b0/login_background_texture_1772755861699.png"
+          src="/images/login-bg.png"
           alt="Luxury Background"
           fill
           className="object-cover opacity-30 brightness-50"
