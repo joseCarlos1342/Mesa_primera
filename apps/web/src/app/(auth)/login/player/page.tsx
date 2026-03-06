@@ -1,3 +1,5 @@
+"use client"
+
 import { useActionState, useState } from 'react'
 import { loginWithPhone } from '../../auth-actions'
 import { AvatarSelector } from '@/components/auth/avatar-selector'
@@ -12,7 +14,7 @@ export default function PlayerLoginPage() {
       {/* Premium Background Image with Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <Image 
-          src="file:///home/jose/.gemini/antigravity/brain/e8441c26-7342-43c6-98fd-3cf4923d78b0/login_background_texture_1772755861699.png"
+          src="/images/login-bg.png"
           alt="Luxury Background"
           fill
           className="object-cover opacity-40 scale-105 animate-pulse-slow"
