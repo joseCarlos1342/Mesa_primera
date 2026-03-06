@@ -45,34 +45,34 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // --- Autenticado + intenta entrar a auth ---
-  if (user && isAuthPage && !isMfaPage) {
-    // Si es admin login, verificar si el usuario ya es admin
-    // Si ya es admin, redirigir al panel admin
-    // Si no es admin, dejar pasar (puede querer loguearse con otra cuenta)
-    if (isAdminLogin) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+  // --- Autenticado + intenta entrar a auth o root ---
+  const isRootPage = pathname === '/'
+  
+  if (user && (isAuthPage || isRootPage) && !isMfaPage) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-      if (profile?.role === 'admin') {
-        // Ya es admin → mandarlo al dashboard admin
+    const role = profile?.role || 'player'
+
+    // Redirección basada en rol
+    if (role === 'admin') {
+      // Si es admin y no está en /admin, mandarlo allá (excepto si está en MFA)
+      if (!pathname.startsWith('/admin')) {
         const url = request.nextUrl.clone()
         url.pathname = '/admin'
         return NextResponse.redirect(url)
       }
-      // No es admin → redirigir al home del player
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
+    } else {
+      // Si es player y está en auth page o root, mandarlo al lobby (que es /)
+      if (isAuthPage) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
+      }
     }
-
-    // Resto de páginas auth → redirigir a home
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
   }
 
   // --- Protección rutas Admin ---
