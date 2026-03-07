@@ -1,11 +1,16 @@
-'use client'
+"use client"
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { loginAdmin } from '../../auth-actions'
 import { ShieldCheck, Lock, Mail } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const [state, formAction, isPending] = useActionState(loginAdmin, null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans overflow-hidden selection:bg-red-500/30">
@@ -86,7 +91,7 @@ export default function AdminLoginPage() {
         <div className="text-center">
           <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em] leading-relaxed">
             Authorized Personnel Only — TLS 1.3 Secure <br/>
-            E2E Encryption Enabled • Network: {typeof window !== 'undefined' ? window.location.hostname : 'secure-node'}
+            E2E Encryption Enabled • Network: {mounted ? window.location.hostname : 'secure-node'}
           </p>
         </div>
       </div>

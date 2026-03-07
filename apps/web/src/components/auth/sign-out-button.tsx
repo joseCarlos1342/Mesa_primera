@@ -2,6 +2,7 @@
 
 import { signOut } from "../../app/(auth)/auth-actions"
 import { LogOut } from "lucide-react"
+import { usePathname } from "next/navigation"
 
 interface SignOutButtonProps {
   variant?: 'premium' | 'danger' | 'ghost'
@@ -9,6 +10,7 @@ interface SignOutButtonProps {
 }
 
 export function SignOutButton({ variant = 'premium', className = '' }: SignOutButtonProps) {
+  const pathname = usePathname()
   const baseStyles = "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all duration-300 active:scale-95 group"
   
   const variants = {
@@ -17,9 +19,15 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
     ghost: "text-slate-500 hover:text-slate-300"
   }
 
+  const handleSignOut = () => {
+    // Si estamos en una ruta de admin, redirigir al login de admin
+    const isAdmin = pathname.startsWith('/admin')
+    signOut(isAdmin ? '/login/admin' : '/login/player')
+  }
+
   return (
     <button
-      onClick={() => signOut()}
+      onClick={handleSignOut}
       className={`${baseStyles} ${variants[variant]} ${className}`}
       title="Cerrar Sesión"
     >

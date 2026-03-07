@@ -16,6 +16,10 @@ Tipos permitidos:
 - `test`: Añadir o corregir pruebas
 - `chore`: Tareas de mantenimiento, actualización de dependencias, etc.
 
+## 2. Documentación y Rutas
+
+- **Routes Documentation**: Mantén siempre actualizado el archivo `docs/ROUTES.md` con cualquier cambio en las rutas, su descripción y estado de implementación. Es obligatorio reflejar el progreso de diseño y funcionalidad aquí.
+
 Ejemplo: `feat(auth): implementar login con OTP via SMS`
 
 ### Reglas de Mensajes de Commit
