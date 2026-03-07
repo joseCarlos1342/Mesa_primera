@@ -6,6 +6,8 @@ import { client } from '@/lib/colyseus'
 import { Room } from '@colyseus/sdk'
 import { Loader2, ArrowLeft, Users, Gamepad2 } from 'lucide-react'
 import Link from 'next/link'
+import { useWakeLock } from '../../../../hooks/useWakeLock'
+import { Board } from '../../../components/game/Board'
 
 export default function GameRoomPage() {
   const params = useParams()
@@ -16,7 +18,17 @@ export default function GameRoomPage() {
   const [error, setError] = useState<string>('')
   const [loading, setLoading] = useState(true)
   
+  // Game State
+  const [players, setPlayers] = useState<any[]>([])
+  const [phase, setPhase] = useState<string>('LOBBY')
+  const [pot, setPot] = useState<number>(0)
+  const [dealerId, setDealerId] = useState<string>('')
+  const [countdown, setCountdown] = useState<number>(-1)
+  
   const hasAttemptedJoin = useRef(false)
+  
+  // Mantiene la pantalla encendida en móviles
+  useWakeLock()
 
   useEffect(() => {
     if (!roomId) return;
@@ -26,10 +38,38 @@ export default function GameRoomPage() {
     async function joinRoom() {
       try {
         console.log(`Connecting to room ${roomId}...`);
-        // Ojo: En desarrollo, usamos el displayName, o un auto-ID
-        const joinedRoom = await client.joinById(roomId, {
-          nickname: 'Jugador ' + Math.floor(Math.random() * 1000)
-        })
+        
+        let joinedRoom: Room | undefined;
+        const tokenKey = `reconnectionToken_${roomId}`;
+        const nickKey = `nickname_${roomId}`;
+        
+        const savedToken = sessionStorage.getItem(tokenKey);
+        let nick = sessionStorage.getItem(nickKey);
+        
+        if (savedToken) {
+          try {
+            console.log("Token de reconexión encontrado, intentando reconectar...");
+            joinedRoom = await client.reconnect(savedToken);
+            console.log("Reconectado exitosamente a la silla original!");
+          } catch (e) {
+            console.warn("Fallo al reconectar, intentando entrar como nuevo jugador...", e);
+            sessionStorage.removeItem(tokenKey);
+          }
+        }
+        
+        if (!joinedRoom) {
+          if (!nick) {
+            nick = 'Jugador ' + Math.floor(Math.random() * 1000);
+            sessionStorage.setItem(nickKey, nick);
+          }
+          
+          joinedRoom = await client.joinById(roomId, {
+            nickname: nick
+          })
+          
+          // Guardar el token para permitir reconexiones si se recarga la página (F5)
+          sessionStorage.setItem(tokenKey, joinedRoom.reconnectionToken);
+        }
         
         console.log('Joined room:', joinedRoom)
         setRoom(joinedRoom)
@@ -43,7 +83,24 @@ export default function GameRoomPage() {
 
         joinedRoom.onError((code, message) => {
           console.error(`Colyseus Error [${code}]:`, message)
-          setError(message)
+          setError(message || 'Ocurrió un error inesperado al conectar al servidor.')
+        })
+
+        // State Listeners
+        joinedRoom.onStateChange((state: any) => {
+          setPhase(state.phase)
+          setPot(state.pot)
+          setDealerId(state.dealerId)
+          setCountdown(state.countdown)
+          
+          // Convert MapSchema to Array for React rendering
+          const playersArray: any[] = []
+          state.players.forEach((player: any) => {
+            // Hide disconnected or ghost players while in LOBBY so they don't take up visual seats
+            if (state.phase === 'LOBBY' && !player.connected) return;
+            playersArray.push(player);
+          })
+          setPlayers(playersArray)
         })
 
       } catch (err: any) {
@@ -57,8 +114,11 @@ export default function GameRoomPage() {
     joinRoom()
 
     return () => {
+      // Evitamos llamar a room.leave() directamente para que el strict mode 
+      // o navegaciones accidentales no disparen un consented leave (código 1000),
+      // lo cual arruinaría la oportunidad de reconexión de 5 minutos en el server.
       if (room) {
-        room.leave()
+        room.connection.close(); // Forzamos desconexión no-consentida
       }
     }
   }, [roomId]) // solo lo ejecutamos una vez, por eso hasAttemptedJoin
@@ -114,25 +174,109 @@ export default function GameRoomPage() {
       </header>
       
       {/* MAIN GAME AREA */}
-      <main className="flex-1 flex flex-col items-center justify-center relative z-0">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] max-w-[800px] max-h-[800px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
-        
-        <div className="relative text-center">
-            <Gamepad2 className="w-24 h-24 mx-auto text-emerald-500/50 mb-6" />
-            <h2 className="text-3xl font-bold text-white mb-2">Esperando Jugadores</h2>
-            <p className="text-lg text-[#8b98b8]">La partida comenzará prono...</p>
-        </div>
+      <main className="flex-1 flex flex-col items-center justify-center relative z-0 p-0 m-0 overflow-hidden">
+        {phase === 'LOBBY' ? (
+          <div className="relative text-center w-full h-full flex flex-col items-center justify-center">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] max-w-[800px] max-h-[800px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
+            
+            <Users className="w-24 h-24 mx-auto text-emerald-500/50 mb-6" />
+            <h2 className="text-3xl font-bold text-white mb-2">Sala de Espera</h2>
+            <p className="text-lg text-[#8b98b8] mb-8">
+              Jugadores conectados: <span className="text-white font-bold">{players.length}</span> / 7
+            </p>
+            {players.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-4 max-w-2xl mx-auto z-10 relative">
+                {players.map(p => {
+                  const isMe = room?.sessionId === p.id;
+                  return (
+                    <div key={p.id} className={`border ${p.isReady ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-[#1b253b]/50 border-slate-500/20'} rounded-full px-6 py-3 flex items-center gap-3 transition-colors`}>
+                      <div className={`w-3 h-3 rounded-full ${p.isReady ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-slate-500'} ${isMe ? 'animate-pulse' : ''}`} />
+                      <span className={`${p.isReady ? 'text-white' : 'text-slate-300'} font-medium`}>
+                        {p.nickname} {isMe ? '(Tú)' : ''}
+                      </span>
+                      <span className="text-[#8b98b8] text-sm ml-2 font-mono">${p.chips}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {room && (
+              <div className="mt-12 z-10 relative flex flex-col items-center">
+                <button 
+                  onClick={() => {
+                    const me = players.find(p => p.id === room.sessionId);
+                    if (me) {
+                      room.send('toggleReady', { isReady: !me.isReady });
+                    }
+                  }}
+                  className={`font-black px-10 py-5 rounded-full uppercase tracking-widest transition-all shadow-lg ${
+                    players.find(p => p.id === room?.sessionId)?.isReady 
+                      ? 'bg-red-500/20 text-red-400 border-2 border-red-500/50 hover:bg-red-500/30' 
+                      : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)]'
+                  }`}
+                >
+                  {players.find(p => p.id === room?.sessionId)?.isReady ? 'Anular Listo' : '¡Estoy Listo!'}
+                </button>
+                
+                {players.length < 3 && (
+                  <p className="mt-6 text-emerald-500/50 animate-pulse uppercase tracking-widest text-sm font-bold">
+                    Esperando al menos 3 jugadores...
+                  </p>
+                )}
+                
+                {players.length >= 3 && players.filter(p => p.isReady).length < 3 && (
+                  <p className="mt-6 text-emerald-500/80 uppercase tracking-widest text-sm font-bold">
+                    Esperando que al menos 3 estén listos ({players.filter(p => p.isReady).length}/3)
+                  </p>
+                )}
+                
+                {countdown > 0 && countdown <= 60 && (
+                   <div className="mt-6 flex flex-col items-center gap-2">
+                     <p className="text-emerald-400 font-bold tracking-widest uppercase">
+                       Iniciando en: <span className="text-white text-2xl ml-2 font-black">{countdown}s</span>
+                     </p>
+                     <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden mt-1">
+                        <div 
+                          className="h-full bg-emerald-500 transition-all duration-1000 ease-linear"
+                          style={{ width: `${(countdown / 60) * 100}%` }}
+                        />
+                     </div>
+                   </div>
+                )}
+
+                {players.filter(p => p.isReady).length >= 3 && (
+                  dealerId === room.sessionId ? (
+                    <button 
+                      onClick={() => room.send('startGame')}
+                      className="mt-6 bg-emerald-500 text-slate-950 font-black px-8 py-4 rounded-full uppercase tracking-widest hover:bg-emerald-400 transition-colors shadow-[0_0_30px_rgba(16,185,129,0.3)] z-10 relative"
+                    >
+                      {countdown > 0 ? 'Forzar Inicio Ahora' : 'Iniciar Partida'}
+                    </button>
+                  ) : (
+                    <p className="mt-6 text-emerald-400/70 animate-pulse uppercase tracking-widest text-sm font-bold">
+                      {countdown > 0 ? 'Cargando mesa...' : 'Esperando al anfitrión...'}
+                    </p>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <Board room={room} phase={phase} players={players} pot={pot} />
+        )}
       </main>
 
-      {/* FOOTER */}
-      <footer className="h-16 border-t border-[#1b253b] bg-[#0c1220]/80 flex items-center justify-between px-8 text-sm">
-        <div className="flex items-center gap-2 text-emerald-400">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-          Conectado
-        </div>
-      </footer>
+      {/* FOOTER - Solo visible en LOBBY para maximizar espacio de mesa en móviles */}
+      {phase === 'LOBBY' && (
+        <footer className="h-14 border-t border-[#1b253b] bg-[#0c1220]/80 flex items-center justify-between px-8 text-sm backdrop-blur-md relative z-10 pb-safe">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+            Conectado
+          </div>
+        </footer>
+      )}
     </div>
   )
 }

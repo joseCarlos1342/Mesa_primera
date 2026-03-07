@@ -37,6 +37,17 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
   const nickname = formData.get('nickname') as string
   const avatarId = formData.get('avatarId') as string
 
+  // DEV BYPASS: Saltarse confirmaciones OTP (Twilio) temporalmente a petición del usuario
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`Dev Bypass: Saltando registro y enviando directo al lobby para ${phone}`);
+    const cookieStore = await cookies();
+    cookieStore.set('mesa_dev_bypass', phone, { 
+      maxAge: 60 * 60 * 24, // 1 day
+      path: '/'
+    });
+    redirect('/')
+  }
+
   const { error } = await supabase.auth.signInWithOtp({
     phone,
     options: {
@@ -68,8 +79,8 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
   const rawPhone = formData.get('phone') as string
   const phone = normalizePhone(rawPhone)
 
-  // DEV BYPASS: Test users 'dario' and 'ximena'
-  if (process.env.NODE_ENV === 'development' && (phone === '+570000000000' || phone === '+570000000001')) {
+  // DEV BYPASS: Saltarse confirmaciones OTP (Twilio) temporalmente a petición del usuario
+  if (process.env.NODE_ENV === 'development') {
     console.log(`Dev Bypass: Setting bypass cookie for ${phone}`);
     const cookieStore = await cookies();
     cookieStore.set('mesa_dev_bypass', phone, { 
@@ -226,5 +237,11 @@ export async function enrollAdminTotp() {
 export async function signOut(redirectTo: string = '/login/player') {
   const supabase = await createClient()
   await supabase.auth.signOut()
+
+  if (process.env.NODE_ENV === 'development') {
+    const cookieStore = await cookies();
+    cookieStore.delete('mesa_dev_bypass');
+  }
+
   redirect(redirectTo)
 }
