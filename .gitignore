@@ -68,3 +68,10 @@ workbox-*.js.map
 *.key
 *.secret
 .env*.local
+
+# Local Debug & Test Scripts
+test-*.js
+test-*.ts
+native-test.ts
+simulate-game.ts
+*-debug.*

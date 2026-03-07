@@ -3,11 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL || 'http://127.0.0.1:54321';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-if (!supabaseKey) {
-  console.warn('[SupabaseService] SUPABASE_SERVICE_ROLE_KEY is missing. Database operations will fail.');
-}
+let supabase: any = null;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+if (!supabaseKey) {
+  console.warn('[SupabaseService] SUPABASE_SERVICE_ROLE_KEY is missing. Database operations will silently fail.');
+} else {
+  try {
+    supabase = createClient(supabaseUrl, supabaseKey);
+  } catch (err) {
+    console.error('[SupabaseService] Failed to init Supabase client', err);
+  }
+}
 
 export class SupabaseService {
   /**

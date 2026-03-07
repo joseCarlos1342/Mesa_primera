@@ -3,6 +3,7 @@
 | Ruta                   | Descripción                                     | Estado                     |
 | ---------------------- | ----------------------------------------------- | -------------------------- |
 | `/`                    | Lobby del juego principal (Player)              | En Construcción (Sprint 2) |
+| `/play/[id]`           | Mesa de Juego y Sala de Espera Activa           | ✅ Terminado               |
 | `/login/player`        | Acceso con +57 OTP para Jugadores               | ✅ Terminado               |
 | `/login/player/verify` | Verificación de token SMS (6-dígitos)           | ✅ Terminado               |
 | `/register/player`     | Registro (Nombre + Apodo + Teléfono + Avatar)   | ✅ Terminado               |

@@ -19,16 +19,26 @@ if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis
  * @param window Tiempo en segundos
  */
 export async function checkRateLimit(key: string, limit: number, windowSecs: number) {
-  const current = await redis.incr(key)
-  if (current === 1) {
-    await redis.expire(key, windowSecs)
-  }
-  
-  return {
-    success: current <= limit,
-    limit,
-    remaining: Math.max(0, limit - current),
-    reset: windowSecs
+  try {
+    const current = await redis.incr(key)
+    if (current === 1) {
+      await redis.expire(key, windowSecs)
+    }
+    
+    return {
+      success: current <= limit,
+      limit,
+      remaining: Math.max(0, limit - current),
+      reset: windowSecs
+    }
+  } catch (e: any) {
+    console.warn('[REDIS_BYPASS] Redis error in rate limit:', e.message)
+    return {
+      success: true,
+      limit,
+      remaining: limit,
+      reset: windowSecs
+    }
   }
 }
 
