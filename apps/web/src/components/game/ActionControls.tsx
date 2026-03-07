@@ -13,7 +13,9 @@ interface ActionControlsProps {
   onClearSelection?: () => void;
 }
 
-export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCards = [], onClearSelection }: ActionControlsProps) {
+const EMPTY_CARDS: string[] = [];
+
+export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCards = EMPTY_CARDS, onClearSelection }: ActionControlsProps) {
   const CHIP_VALUES = [1000, 2000, 5000, 10000, 20000, 50000];
   const [selectedChip, setSelectedChip] = useState<number | null>(null);
 
@@ -75,9 +77,9 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
               <AnimatePresence>
                 {selectedChip && (
                   <motion.button 
-                    initial={{ scale: 0, opacity: 0 }}
+                    initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
                     onClick={() => handleExecute(phase === 'PIQUE' ? 'voy' : 'bet')} 
                     className="w-14 h-14 md:w-24 md:h-16 bg-gradient-to-br from-[#2e7d32] to-[#124215] border border-[#4ade80]/40 rounded-xl md:rounded-2xl font-bold text-white text-[10px] md:text-sm shadow-[0_0_15px_rgba(46,125,50,0.6)] hover:-translate-y-1 transition-transform flex flex-col items-center justify-center uppercase tracking-wider flex-shrink-0"
                   >

@@ -12,7 +12,7 @@ export function PlayerBadge({ player, isActive, isMe }: PlayerBadgeProps) {
   // For the realistic casino vibe, we use bronze/gold borders and green glowing text
   return (
     <motion.div 
-      initial={{ scale: 0.8, opacity: 0 }}
+      initial={{ scale: 0.95, opacity: 0 }}
       animate={{ scale: isActive ? 1.05 : 1, opacity: player.isFolded ? 0.4 : 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
       className={`relative flex flex-col items-center ${isMe ? 'w-32 md:w-40' : 'w-24 md:w-32'} group`}
@@ -47,9 +47,9 @@ export function PlayerBadge({ player, isActive, isMe }: PlayerBadgeProps) {
         <AnimatePresence>
           {isActive && (
             <motion.div 
-              initial={{ scale: 0, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               className="absolute -top-2 -left-3 md:-left-4 bg-[#1b253b] border-2 border-[#4ade80] rounded-full p-1.5 shadow-[0_0_15px_rgba(74,222,128,0.6)]"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-6 md:h-6">

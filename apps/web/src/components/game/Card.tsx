@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { useState } from 'react'
 
 interface CardProps {
@@ -34,7 +35,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
 
   return (
     <motion.div
-      initial={{ y: originY, opacity: 0, rotateY: 180, scale: 0.2, zIndex: 10 }}
+      initial={{ y: originY, opacity: 0, rotateY: 180, scale: 0.95, zIndex: 10 }}
       animate={{ y: 0, opacity: 1, rotateY: isHidden ? 180 : 0, scale: 1, zIndex: 50 }}
       transition={{ 
         type: "spring", 
@@ -57,10 +58,12 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
               {value}<br/>{suit.substring(0,3)}
             </span>
           ) : (
-            <img 
+            <Image 
               src={getCardImage()} 
               alt={`${value} de ${suit}`} 
-              className="w-full h-full object-contain filter drop-shadow-md"
+              fill
+              sizes="(max-width: 768px) 15vw, 10vw"
+              className="object-contain filter drop-shadow-md"
               onError={() => setImgError(true)}
             />
           )

@@ -133,9 +133,9 @@ export function Board({ room, phase, pot, players }: BoardProps) {
       <AnimatePresence>
         {phase === 'SORTEO_MANO' && room.state.dealerId && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.8 }}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
             className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center"
           >
             <div className="bg-gradient-to-b from-[#d4af37] to-[#a17822] px-8 py-3 rounded-xl border-2 border-[#fff7d6] shadow-[0_0_40px_rgba(212,175,55,0.6)]">
@@ -153,7 +153,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
       {/* TABLE CENTER (Pots & Deck area) */}
       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
         <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
+          initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
           className="flex gap-4 md:gap-16 items-center pointer-events-auto"
@@ -184,9 +184,9 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                <AnimatePresence>
                  {phase === 'DESCARTE' && room.state.turnPlayerId === myId && (
                    <motion.div 
-                      initial={{ opacity: 0, scale: 0 }}
+                      initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1, y: [-4, 4, -4] }}
-                      exit={{ opacity: 0, scale: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ y: { duration: 1.5, repeat: Infinity, ease: "easeInOut" } }}
                       className="absolute -top-10 text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)] filter"
                    >
@@ -273,7 +273,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
 
                    return (
                      <div 
-                       key={idx}
+                       key={cardStr + '-' + idx}
                        onClick={handleCardClick}
                        style={{ 
                          transform: isFolded ? `translateY(-20vh) scale(0.4) rotate(${(idx * 15) - 30}deg)` : `rotate(${angle}deg) translateY(${finalOffsetY}px)`,

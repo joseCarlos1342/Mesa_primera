@@ -57,7 +57,6 @@ export default function AdminMFAPage() {
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="000000"
             required
-            autoFocus
             className="w-full h-16 text-center text-3xl font-black tracking-[0.8em] bg-black/40 border border-slate-800 rounded-2xl text-white placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all shadow-inner font-mono"
           />
 
