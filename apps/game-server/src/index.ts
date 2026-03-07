@@ -1,15 +1,6 @@
-import { Server } from 'colyseus';
-import express from 'express';
-import { createServer } from 'http';
+import { listen } from "@colyseus/tools";
+import app from "./app.config";
 
-const port = Number(process.env.PORT || 2567);
-const app = express();
-
-app.use(express.json());
-
-const gameServer = new Server({
-  server: createServer(app)
+listen(app, { host: "0.0.0.0" }).then(() => {
+    console.log("⚔️  Listening on http://0.0.0.0:2567");
 });
-
-gameServer.listen(port);
-console.log(`[GameServer] Listening on ws://localhost:${port}`);

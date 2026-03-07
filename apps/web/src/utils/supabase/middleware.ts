@@ -32,23 +32,35 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/auth')
-  const isAdminPage = pathname.startsWith('/admin')
-  const isAdminLogin = pathname.startsWith('/login/admin')
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isAdminPath = pathname.startsWith('/admin')
   const isMfaPage = pathname === '/login/admin/mfa'
 
-  // --- No autenticado ---
+  // DEV BYPASS: Allow access if bypass cookie exists
+  if (process.env.NODE_ENV === 'development' && request.cookies.get('mesa_dev_bypass')) {
+    if (isAuthPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
+  // PREVENT REDIRECT FOR STATIC FILES
+  const isStaticFile = pathname.match(/\.(json|png|jpg|jpeg|gif|webp|svg|ico)$/)
+  if (isStaticFile) {
+    return supabaseResponse
+  }
+
+  // --- Caso 1: No Autenticado ---
   if (!user && !isAuthPage) {
-    // Sin sesión y no es página de auth → redirigir a login player
     const url = request.nextUrl.clone()
     url.pathname = '/login/player'
     return NextResponse.redirect(url)
   }
 
-  // --- Autenticado + intenta entrar a auth o root ---
-  const isRootPage = pathname === '/'
-  
-  if (user && (isAuthPage || isRootPage) && !isMfaPage) {
+  // --- Caso 2: Autenticado ---
+  if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -57,36 +69,33 @@ export async function updateSession(request: NextRequest) {
 
     const role = profile?.role || 'player'
 
-    // Redirección basada en rol
-    if (role === 'admin') {
-      // Si es admin y no está en /admin, mandarlo allá (excepto si está en MFA)
-      if (!pathname.startsWith('/admin')) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/admin'
-        return NextResponse.redirect(url)
-      }
-    } else {
-      // Si es player y está en auth page o root, mandarlo al lobby (que es /)
-      if (isAuthPage) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/'
-        return NextResponse.redirect(url)
-      }
-    }
-  }
-
-  // --- Protección rutas Admin ---
-  if (user && isAdminPage) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    
-    if (profile?.role !== 'admin') {
+    // 1. Protección de rutas administrativas
+    if (isAdminPath && role !== 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
+    }
+
+    // 2. Redirección si está en páginas de Auth (Login/Register) o en la raíz
+    const isRootPage = pathname === '/'
+    
+    if (isAuthPage || isRootPage) {
+      if (role === 'admin') {
+        // Un admin logueado NO debe estar en páginas de auth genéricas o en el lobby del player
+        // Si no está ya en /admin, lo mandamos para allá
+        if (!isAdminPath || isAuthPage) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/admin'
+          return NextResponse.redirect(url)
+        }
+      } else {
+        // Un jugador logueado NO debe estar en páginas de auth
+        if (isAuthPage) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/'
+          return NextResponse.redirect(url)
+        }
+      }
     }
   }
 
