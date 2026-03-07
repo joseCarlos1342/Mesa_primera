@@ -54,7 +54,6 @@ function VerifyContent() {
               maxLength={6}
               placeholder="000 000"
               required
-              autoFocus
               className="w-full h-24 text-center text-5xl font-black tracking-[0.2em] bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] text-white placeholder-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-2xl font-mono"
             />
             {/* Decorative focus glow */}

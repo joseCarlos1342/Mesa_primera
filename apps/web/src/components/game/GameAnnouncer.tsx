@@ -36,9 +36,9 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
         {announcement && (
           <motion.div
             key={announcement.id}
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
             className="bg-[#1b253b]/90 backdrop-blur-md border border-emerald-500/30 text-white px-8 py-3 rounded-full font-playfair font-bold text-xl md:text-2xl shadow-[0_10px_40px_rgba(16,185,129,0.2)]"
           >
             {announcement.text}

@@ -19,11 +19,13 @@ export default function GameRoomPage() {
   const [loading, setLoading] = useState(true)
   
   // Game State
-  const [players, setPlayers] = useState<any[]>([])
-  const [phase, setPhase] = useState<string>('LOBBY')
-  const [pot, setPot] = useState<number>(0)
-  const [dealerId, setDealerId] = useState<string>('')
-  const [countdown, setCountdown] = useState<number>(-1)
+  const [gameState, setGameState] = useState({
+    players: [] as any[],
+    phase: 'LOBBY',
+    pot: 0,
+    dealerId: '',
+    countdown: -1
+  })
   
   const hasAttemptedJoin = useRef(false)
   
@@ -88,11 +90,6 @@ export default function GameRoomPage() {
 
         // State Listeners
         joinedRoom.onStateChange((state: any) => {
-          setPhase(state.phase)
-          setPot(state.pot)
-          setDealerId(state.dealerId)
-          setCountdown(state.countdown)
-          
           // Convert MapSchema to Array for React rendering
           const playersArray: any[] = []
           state.players.forEach((player: any) => {
@@ -100,7 +97,14 @@ export default function GameRoomPage() {
             if (state.phase === 'LOBBY' && !player.connected) return;
             playersArray.push(player);
           })
-          setPlayers(playersArray)
+          
+          setGameState({
+            phase: state.phase,
+            pot: state.pot,
+            dealerId: state.dealerId,
+            countdown: state.countdown,
+            players: playersArray
+          })
         })
 
       } catch (err: any) {
@@ -146,6 +150,8 @@ export default function GameRoomPage() {
       </div>
     )
   }
+
+  const { players, phase, pot, dealerId, countdown } = gameState;
 
   return (
     <div className="flex flex-col h-screen bg-[#070b14] text-[#a8b2d1] font-sans selection:bg-emerald-500/30 relative overflow-hidden">
