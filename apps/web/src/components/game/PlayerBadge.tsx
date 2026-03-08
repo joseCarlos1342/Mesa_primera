@@ -67,7 +67,7 @@ export function PlayerBadge({ player, isActive, isMe, vertical = true }: PlayerB
               </svg>
             </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
       {/* Name and Saldo (Casino Style) */}
