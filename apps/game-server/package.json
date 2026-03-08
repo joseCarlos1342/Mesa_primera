@@ -21,7 +21,8 @@
     "colyseus": "^0.17.8",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "ioredis": "^5.10.0"
+    "ioredis": "^5.10.0",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "@colyseus/sdk": "^0.17.34",
