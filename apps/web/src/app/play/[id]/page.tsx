@@ -4,10 +4,12 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { client } from '@/lib/colyseus'
 import { Room } from '@colyseus/sdk'
-import { Loader2, ArrowLeft, Users, Gamepad2 } from 'lucide-react'
+import { Loader2, ArrowLeft, Users, Gamepad2, BookOpen } from 'lucide-react'
 import Link from 'next/link'
 import { useWakeLock } from '../../../../hooks/useWakeLock'
 import { Board } from '../../../components/game/Board'
+import { RulesModal } from '@/components/game/RulesModal'
+import { ReconnectOverlay } from '@/components/game/ReconnectOverlay'
 
 export default function GameRoomPage() {
   const params = useParams()
@@ -17,6 +19,8 @@ export default function GameRoomPage() {
   const [room, setRoom] = useState<Room | null>(null)
   const [error, setError] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [showRules, setShowRules] = useState(false)
+  const [isReconnecting, setIsReconnecting] = useState(false)
   
   // Game State
   const [gameState, setGameState] = useState({
@@ -65,8 +69,15 @@ export default function GameRoomPage() {
             sessionStorage.setItem(nickKey, nick);
           }
           
+          let deviceId = localStorage.getItem('deviceId');
+          if (!deviceId) {
+            deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('deviceId', deviceId);
+          }
+
           joinedRoom = await client.joinById(roomId, {
-            nickname: nick
+            nickname: nick,
+            deviceId: deviceId
           })
           
           // Guardar el token para permitir reconexiones si se recarga la página (F5)
@@ -79,7 +90,10 @@ export default function GameRoomPage() {
         joinedRoom.onLeave((code) => {
           console.warn('Left room with code', code)
           if (code !== 1000) {
-            setError('Desconectado de la sala')
+            setIsReconnecting(true);
+            setTimeout(() => {
+              window.location.reload();
+            }, 3000);
           }
         })
 
@@ -174,8 +188,14 @@ export default function GameRoomPage() {
           </div>
         </div>
         
-        <div className="flex gap-4">
-           {/* Info del jugador */}
+        <div className="flex gap-4 items-center">
+           <button 
+             onClick={() => setShowRules(true)} 
+             className="p-2 bg-[#1b253b]/50 hover:bg-[#1b253b] text-emerald-400 rounded-xl transition-colors border border-emerald-500/20"
+             title="Reglamento"
+           >
+              <BookOpen className="w-5 h-5 mx-auto" />
+           </button>
         </div>
       </header>
       
@@ -283,6 +303,9 @@ export default function GameRoomPage() {
           </div>
         </footer>
       )}
+
+      <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
+      <ReconnectOverlay isVisible={isReconnecting} />
     </div>
   )
 }

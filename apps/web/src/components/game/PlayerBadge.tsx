@@ -6,23 +6,30 @@ interface PlayerBadgeProps {
   player: any;
   isActive: boolean;
   isMe: boolean;
+  vertical?: boolean;
 }
 
-export function PlayerBadge({ player, isActive, isMe }: PlayerBadgeProps) {
-  // For the realistic casino vibe, we use bronze/gold borders and green glowing text
+export function PlayerBadge({ player, isActive, isMe, vertical = true }: PlayerBadgeProps) {
+  // Check if we render the dark green box style (only for 'isMe' in the new layout)
+  const isBoxStyle = isMe;
+
   return (
     <motion.div 
       initial={{ scale: 0.95, opacity: 0 }}
       animate={{ scale: isActive ? 1.05 : 1, opacity: player.isFolded ? 0.4 : 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className={`relative flex flex-col items-center ${isMe ? 'w-32 md:w-40' : 'w-24 md:w-32'} group`}
+      className={`
+        relative flex flex-col items-center group
+        ${isBoxStyle ? 'bg-[#052e1f] border-[3px] border-[#0b4d35] rounded-xl md:rounded-2xl p-2 md:p-3 shadow-[0_10px_20px_rgba(0,0,0,0.5)]' : ''}
+        ${isMe ? 'w-24 md:w-32' : 'w-20 md:w-28'}
+      `}
     >
-      {/* Avatar Circle with Gold/Bronze Trim */}
+      {/* Avatar Circle */}
       <div className={`
-        relative flex items-center justify-center rounded-full mb-1
-        bg-gradient-to-br from-[#d4af37] via-[#aa7b22] to-[#6b4c13] p-[3px]
-        shadow-2xl
-        ${isMe ? 'w-16 h-16 md:w-20 md:h-20' : 'w-12 h-12 md:w-16 md:h-16'}
+        relative flex items-center justify-center rounded-full mb-1 md:mb-2
+        ${isBoxStyle ? 'bg-gradient-to-br from-green-300 to-green-600' : 'bg-gradient-to-br from-white/20 to-transparent'}
+        p-[2px] md:p-[3px] shadow-lg
+        ${isMe ? 'w-14 h-14 md:w-20 md:h-20' : 'w-12 h-12 md:w-16 md:h-16'}
       `}>
         {/* Inner Avatar Image placeholder / Initial */}
         <div className={`
@@ -38,8 +45,8 @@ export function PlayerBadge({ player, isActive, isMe }: PlayerBadgeProps) {
             />
           )}
 
-          <span className={`${isMe ? 'text-3xl md:text-4xl' : 'text-xl md:text-2xl'} font-playfair font-black text-white/90 drop-shadow-md`}>
-            {player.nickname.charAt(0)}
+          <span className={`${isMe ? 'text-2xl md:text-3xl' : 'text-lg md:text-2xl'} font-playfair font-black text-white/90 drop-shadow-md`}>
+            {player.nickname?.charAt(0) || '?'}
           </span>
         </div>
 
@@ -60,30 +67,16 @@ export function PlayerBadge({ player, isActive, isMe }: PlayerBadgeProps) {
               </svg>
             </motion.div>
           )}
-        </AnimatePresence>
-
-        {/* Microphone Mockup */}
-        <div className="absolute -bottom-1 -right-1 md:-right-2 bg-black/60 rounded-full p-1 shadow-md border border-white/10">
-           <svg viewBox="0 0 24 24" fill="none" stroke="#a8b2d1" strokeWidth="2" className="w-3 h-3 md:w-4 md:h-4">
-             <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-             <line x1="12" x2="12" y1="19" y2="22" />
-             <line x1="8" x2="16" y1="22" y2="22" />
-           </svg>
         </div>
       </div>
 
-      {/* Name and Saldo Box (Casino Style) */}
-      <div className={`
-        flex flex-col items-center justify-center w-[120%] md:w-full px-2 py-1 rounded-sm
-        bg-black/70 border-b-2 border-[#1a3821] shadow-xl mt-1
-      `}>
-        <p className={`text-white text-[10px] md:text-xs font-bold truncate w-full text-center uppercase tracking-wide ${isActive ? 'text-[#4ade80]' : ''}`}>
-          {player.nickname}
+      {/* Name and Saldo (Casino Style) */}
+      <div className={`flex flex-col items-center justify-center w-full mt-1 ${isBoxStyle ? '' : 'drop-shadow-md'}`}>
+        <p className={`text-white text-[10px] md:text-sm font-bold truncate w-full text-center tracking-wide ${isActive ? 'text-[#4ade80]' : ''}`}>
+          {isMe ? 'TÚ' : player.nickname}
         </p>
         <div className="flex flex-col items-center leading-none mt-0.5">
-          <span className="text-[#a8b2d1] text-[7px] md:text-[8px] uppercase tracking-[0.15em]">Saldo Actual:</span>
-          <span className="text-[#4ade80] text-[10px] md:text-xs font-mono font-bold tracking-wider mt-0.5 drop-shadow-[0_0_2px_rgba(74,222,128,0.8)]">
+          <span className={`text-[#4ade80] text-[10px] md:text-xs font-mono font-black tracking-wider drop-shadow-sm ${isBoxStyle ? 'mt-1' : ''}`}>
             ${player.chips?.toLocaleString() || '0'}
           </span>
         </div>

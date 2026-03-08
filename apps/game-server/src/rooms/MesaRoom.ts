@@ -117,17 +117,19 @@ export class MesaRoom extends Room<{ state: GameState }> {
   onJoin(client: Client, options: any) {
     const requestedNickname = options.nickname || `Jugador_${client.sessionId}`;
     
-    // React Strict Mode deduplication:
-    // If we find another player with the SAME exact nickname that just joined, 
-    // it's likely a hot-reload or strict mode double connect.
-    const existingPlayerEntry = Array.from(this.state.players.entries() as IterableIterator<[string, Player]>).find(
-      ([_, p]) => p.nickname === requestedNickname && !p.connected
+    const deviceId = options.deviceId;
+    
+    // React Strict Mode deduplication / Ghost player cleanup:
+    // If we find another player with the SAME exact nickname OR same deviceId that is disconnected,
+    // it's likely a hot-reload or duplicate connection we should clean up.
+    const existingPlayerEntry = Array.from(this.state.players.entries()).find(
+      ([_, p]) => (p.nickname === requestedNickname || (deviceId && p.id === deviceId)) && !p.connected
     );
     
     if (existingPlayerEntry) {
       // Reemplazamos la sesión anterior
-      const [oldSessionId, oldPlayer] = existingPlayerEntry;
-      console.log(`[MesaRoom] Reemplazando sesión fantasma ${oldSessionId} con la nueva ${client.sessionId} para ${requestedNickname}`);
+      const [oldSessionId, _] = existingPlayerEntry;
+      console.log(`[MesaRoom] Reemplazando sesión fantasma ${oldSessionId} con la nueva ${client.sessionId} (Match: ${requestedNickname}/${deviceId})`);
       this.state.players.delete(oldSessionId);
       
       if (this.state.dealerId === oldSessionId) {

@@ -13,3 +13,9 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/utils/supabase/server', () => ({
   createClient: vi.fn(),
 }))
+
+// Mock de window.navigator.vibrate
+Object.defineProperty(window.navigator, 'vibrate', {
+  writable: true,
+  value: vi.fn(),
+})
