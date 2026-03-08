@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "HOST=0.0.0.0 ts-node-dev --respawn --transpile-only src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [],
   "author": "",
@@ -27,8 +29,10 @@
     "@types/express": "^5.0.6",
     "@types/minimatch": "^6.0.0",
     "@types/node": "^25.3.3",
+    "@vitest/coverage-v8": "^4.0.18",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

@@ -55,12 +55,16 @@ export function evaluateHand(cardsStr: string): HandEvaluation {
     return { type: 'SEGUNDA', points };
   }
 
-  // Check Chivo (As, 6, 7 y cualquier otra)
-  const hasAs = cards.some(c => c.value === 1);
-  const has6 = cards.some(c => c.value === 6);
-  const has7 = cards.some(c => c.value === 7);
+  // Check Chivo (As, 6, 7 del mismo palo)
+  const hasChivo = ['Oros', 'Copas', 'Espadas', 'Bastos'].some(suit => {
+    const suitCards = cards.filter(c => c.suit === suit);
+    const hasAs = suitCards.some(c => c.value === 1);
+    const has6 = suitCards.some(c => c.value === 6);
+    const has7 = suitCards.some(c => c.value === 7);
+    return hasAs && has6 && has7;
+  });
   
-  if (hasAs && has6 && has7) {
+  if (hasChivo) {
     return { type: 'CHIVO', points };
   }
 

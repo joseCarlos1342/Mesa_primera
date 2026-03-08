@@ -10,10 +10,11 @@ interface CardProps {
   isHidden?: boolean;
   className?: string;
   delay?: number; // for staggered deal animations
-  originY?: number; // Y-origin for dealing animations relative to deck center
+  originX?: number | string; // X-origin for dealing animations
+  originY?: number | string; // Y-origin for dealing animations relative to deck center
 }
 
-export function Card({ suit, value, isHidden = false, className = '', delay = 0, originY = -200 }: CardProps) {
+export function Card({ suit, value, isHidden = false, className = '', delay = 0, originX = 0, originY = -200 }: CardProps) {
   const [imgError, setImgError] = useState(false);
 
   const getCardImage = () => {
@@ -35,8 +36,8 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
 
   return (
     <motion.div
-      initial={{ y: originY, opacity: 0, rotateY: 180, scale: 0.95, zIndex: 10 }}
-      animate={{ y: 0, opacity: 1, rotateY: isHidden ? 180 : 0, scale: 1, zIndex: 50 }}
+      initial={{ x: originX, y: originY, opacity: 0, rotateY: 180, scale: 0.95, zIndex: 10 }}
+      animate={{ x: 0, y: 0, opacity: 1, rotateY: isHidden ? 180 : 0, scale: 1, zIndex: 50 }}
       transition={{ 
         type: "spring", 
         stiffness: 120, 

@@ -20,7 +20,24 @@ export function Board({ room, phase, pot, players }: BoardProps) {
   
   if (!room) return null;
 
-  const myId = room.sessionId;
+  const myId = room.sessionId; // Reverted to original as the provided change was syntactically incorrect and likely unintended.
+  
+  const hasChivo = (cardsStr: string) => {
+    if (!cardsStr) return false;
+    const cards = cardsStr.split(',').filter(Boolean);
+    if (cards.length < 3) return false;
+    
+    const suits = ['oros', 'copas', 'espadas', 'bastos'];
+    for (const suit of suits) {
+      if (
+        cards.includes(`01-${suit}`) &&
+        cards.includes(`06-${suit}`) &&
+        cards.includes(`07-${suit}`)
+      ) return true;
+    }
+    return false;
+  }; // Corrected syntax: removed trailing `= players.find(...)`
+  
   const me = players.find(p => p.id === myId);
   const opponents = players.filter(p => p.id !== myId);
   const getPlayerIndex = (id: string) => players.findIndex(p => p.id === id);
@@ -51,14 +68,14 @@ export function Board({ room, phase, pot, players }: BoardProps) {
   const renderOpponent = (p: any, position: 'top' | 'left' | 'right') => {
     const hideOpponentCards = phase !== 'SORTEO_MANO' && phase !== 'SHOWDOWN';
     return (
-      <div key={p.id} className={`flex flex-col items-center gap-4 relative ${position === 'left' ? 'md:ml-4' : position === 'right' ? 'md:mr-4' : ''}`}>
+      <div key={p.id} className={`flex flex-col items-center gap-1 md:gap-4 relative ${position === 'left' ? 'md:ml-4' : position === 'right' ? 'md:mr-4' : ''}`}>
         <PlayerBadge 
           player={p} 
           isActive={room.state.turnPlayerId === p.id} 
           isMe={false} 
         />
         {/* Opponent's Cards */}
-        <div className="flex justify-center -mt-6 md:-mt-8 z-0">
+        <div className="flex justify-center -mt-8 md:-mt-10 z-0 scale-[0.6] md:scale-100 origin-top">
           {p.cards && p.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
              const [val, suit] = cardStr.split('-');
              const middle = (arr.length - 1) / 2;
@@ -95,37 +112,30 @@ export function Board({ room, phase, pot, players }: BoardProps) {
   }
 
   return (
-    <div className="relative w-full h-full p-2 md:p-6 bg-[#0a0f18] flex items-center justify-center">
-      
-      {/* THE CASINO TABLE (Exact Match to User Reference) */}
-      <div className="relative w-full h-full max-h-[95vh] bg-black rounded-[3rem] md:rounded-[4rem] border-[12px] md:border-[16px] border-[#5a3a22] shadow-2xl overflow-hidden">
-      
-        {/* Inner Gold border and subtle glow */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-2 border-[3px] border-[#a17822]/40 rounded-[2.5rem] md:rounded-[3.5rem]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
-        </div>
+    <div className="relative w-full h-full bg-[#08412b] flex items-center justify-center overflow-hidden shadow-inner">
+      {/* Felt texture overlay */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/felt.png')]" />
 
       <GameAnnouncer phase={phase} />
 
-      {/* OPPONENTS AREA (Circular Absolute Layout) */}
+      {/* OPPONENTS AREA (Pushed to Edges) */}
       {/* TOP */}
       {topOpponents.length > 0 && (
-        <div className="absolute top-4 md:top-10 left-1/2 transform -translate-x-1/2 flex justify-center gap-12 md:gap-32 z-10 w-full px-4">
+        <div className="absolute top-4 md:top-6 left-1/2 transform -translate-x-1/2 flex justify-center gap-12 md:gap-48 z-10 w-full px-4">
           {topOpponents.map(p => renderOpponent(p, 'top'))}
         </div>
       )}
       
       {/* LEFT */}
       {leftOpponents.length > 0 && (
-        <div className="absolute left-2 md:left-8 top-1/2 transform -translate-y-1/2 flex flex-col justify-between gap-16 md:gap-24 z-10">
+        <div className="absolute left-2 md:left-6 top-1/4 md:top-1/3 transform -translate-y-1/2 flex flex-col justify-between gap-16 md:gap-32 z-10">
           {leftOpponents.map(p => renderOpponent(p, 'left'))}
         </div>
       )}
 
       {/* RIGHT */}
       {rightOpponents.length > 0 && (
-        <div className="absolute right-2 md:right-8 top-1/2 transform -translate-y-1/2 flex flex-col justify-between gap-16 md:gap-24 z-10">
+        <div className="absolute right-2 md:right-6 top-1/4 md:top-1/3 transform -translate-y-1/2 flex flex-col justify-between gap-16 md:gap-32 z-10">
           {rightOpponents.map(p => renderOpponent(p, 'right'))}
         </div>
       )}
@@ -152,24 +162,56 @@ export function Board({ room, phase, pot, players }: BoardProps) {
 
       {/* TABLE CENTER (Pots & Deck area) */}
       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-        <motion.div 
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          className="flex gap-4 md:gap-16 items-center pointer-events-auto"
-        >
-          {/* Deck & Dealing Hands Area */}
-          <div className="relative flex items-center justify-center pointer-events-auto">
-             {/* Removed animated SVG hands as requested */}
+        
+        {/* Pot Indicators Block */}
+        <div className="bg-[#052e1f] rounded-xl md:rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-[#0b4d35] p-4 md:p-6 min-w-[200px] md:min-w-[280px] pointer-events-auto">
+          <div className="flex justify-between items-center gap-6">
+            
+            {/* Main Pot */}
+            <div className="flex flex-col items-center">
+              <span className="text-white/60 tracking-[0.1em] text-[8px] md:text-[10px] font-black uppercase mb-2">Pote Principal</span>
+              <div className="flex items-center justify-center relative w-16 h-12 mb-2">
+                {/* Visual representation of mixed chips */}
+                <div className="absolute left-0 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#d4af37] shadow-lg z-10" />
+                <div className="absolute left-4 w-8 h-8 rounded-full border border-dashed border-white/30 bg-black shadow-lg z-20" />
+                <div className="absolute left-8 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#1d4ed8] shadow-lg z-30" />
+              </div>
+              <h2 className="text-lg md:text-2xl font-black text-[#d4af37] tracking-wider drop-shadow-md">
+                ${pot.toLocaleString()}
+              </h2>
+            </div>
 
-             {/* Deck Representation */}
+            {/* Pique Pot (Fixed representation for now) */}
+            <div className="flex flex-col items-center">
+              <span className="text-white/60 tracking-[0.1em] text-[8px] md:text-[10px] font-black uppercase mb-2">Pote del Pique</span>
+              <div className="flex items-center justify-center relative w-12 h-12 mb-2">
+                 {/* Visual representation of Pique chips */}
+                <div className="absolute left-0 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#1d4ed8] shadow-lg z-10" />
+                <div className="absolute left-4 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#16a34a] shadow-lg z-20" />
+              </div>
+              <h2 className="text-lg md:text-2xl font-black text-white tracking-wider drop-shadow-md">
+                $15.000
+              </h2>
+            </div>
+
+          </div>
+
+          <div className="mt-4 flex justify-center">
+              <span className="text-[#a17822] text-[9px] md:text-[10px] font-bold uppercase tracking-widest bg-black/30 px-3 py-1 rounded-full">
+                {phase.replace('_', ' ')}
+              </span>
+          </div>
+        </div>
+
+        {/* Deck area (Below pots) */}
+        <div className="mt-8 relative flex items-center justify-center pointer-events-auto">
              <motion.div 
                animate={
                  (phase === 'SORTEO_MANO' || phase === 'PIQUE') 
-                   ? { y: [0, -12, 0], rotate: [-5, -5, -5] } 
-                   : { y: 0, rotate: -5 }
+                   ? { y: [0, -4, 0], rotate: [-2, -2, -2] } 
+                   : { y: 0, rotate: 0 }
                }
-               transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+               transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
                onClick={() => {
                   if (phase === 'DESCARTE' && room.state.turnPlayerId === myId) {
                      if (navigator.vibrate) navigator.vibrate(50);
@@ -177,9 +219,12 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                      setSelectedCards([]);
                   }
                }}
-               className={`w-14 h-20 md:w-16 md:h-24 bg-[#e0d6c0] border border-stone-400 rounded-md shadow-lg flex items-center justify-center relative transition-all z-20 ${phase === 'DESCARTE' && room.state.turnPlayerId === myId ? 'cursor-pointer hover:scale-110 shadow-[0_0_20px_rgba(74,222,128,0.6)]' : ''}`}
+               className={`w-14 h-20 md:w-20 md:h-28 bg-[#991b1b] border-2 border-[#b91c1c] rounded-md md:rounded-lg shadow-[0_10px_20px_rgba(0,0,0,0.6)] flex items-center justify-center relative transition-all z-20 ${phase === 'DESCARTE' && room.state.turnPlayerId === myId ? 'cursor-pointer hover:-translate-y-2 shadow-[0_0_20px_rgba(74,222,128,0.6)]' : ''}`}
              >
-               <div className="absolute inset-1 border border-[#a17822] rounded flex flex-col items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-80" />
+               <div className="absolute inset-1 md:inset-1.5 border border-[#ef4444]/40 rounded-sm flex items-center justify-center">
+                  <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+                  <span className="text-[#fca5a5] font-playfair font-black text-xl md:text-3xl opacity-60">P</span>
+               </div>
                
                <AnimatePresence>
                  {phase === 'DESCARTE' && room.state.turnPlayerId === myId && (
@@ -188,7 +233,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                       animate={{ opacity: 1, scale: 1, y: [-4, 4, -4] }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ y: { duration: 1.5, repeat: Infinity, ease: "easeInOut" } }}
-                      className="absolute -top-10 text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)] filter"
+                      className="absolute -top-12 text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.8)] filter"
                    >
                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 md:w-10 md:h-10 fill-current/20">
                        <path d="M18 11V6a2 2 0 0 0-4 0v4" />
@@ -200,108 +245,138 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                  )}
                </AnimatePresence>
              </motion.div>
-          </div>
-
-          <div className="flex flex-col items-center">
-            <span className="text-[#a17822] uppercase tracking-[0.2em] text-[10px] md:text-sm font-black pb-1 mb-2">
-              Main Pot
-            </span>
-            <div className="bg-transparent border border-[#a17822]/40 rounded-lg px-6 py-2 md:px-10 md:py-4 shadow-inner">
-               <h2 className="text-2xl md:text-4xl font-mono font-bold text-white tabular-nums drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)]">
-                 ${pot.toLocaleString()}
-               </h2>
-            </div>
-            
-            <div className="mt-4 px-4 py-1 bg-[#a17822]/10 text-[#f2d06b] text-[9px] md:text-xs font-bold uppercase tracking-widest rounded-full border border-[#a17822]/40">
-              Fase: {phase.replace('_', ' ')}
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* PLAYER AREA (Bottom center) */}
-      <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 z-30 w-full flex justify-center px-4">
-        <div className="relative flex flex-col items-center justify-end w-full max-w-lg">
-          
-          {/* Action Controls Overlay (Absolute bottom right) */}
-          <ActionControls 
-            room={room} 
-            phase={phase} 
-            isMyTurn={room.state.turnPlayerId === myId} 
-            playerChips={me?.chips || 0}
-            selectedCards={selectedCards}
-            onClearSelection={() => setSelectedCards([])}
-          />
-
-          {/* My Cards & Badge (Centered) */}
-          {me && (
-            <div className="relative flex items-end gap-0 md:gap-12">
-              
-              <div className="z-20 transform translate-y-4 md:translate-y-6">
-                <PlayerBadge 
-                  player={me} 
-                  isActive={room.state.turnPlayerId === me.id} 
-                  isMe={true} 
-                />
-              </div>
-
-              {/* Spread cards */}
-              <div className="relative z-10 flex ml-[-20px] md:ml-[0px]">
-                {me.cards && me.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
-                   const [val, suit] = cardStr.split('-');
-                   // Fan out calculation
-                   const middle = (arr.length - 1) / 2;
-                   const angle = (idx - middle) * 8; // 8 degrees per card
-                   
-                   const isSelected = selectedCards.includes(cardStr);
-                   const baseOffsetY = Math.abs(idx - middle) * 4;
-                   // If selected, pop the card up by 40px
-                   const finalOffsetY = isSelected ? baseOffsetY - 40 : baseOffsetY;
-                   
-                   const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
-                   const handleCardClick = () => {
-                     if (!isDescarteTurn) return;
-                     setSelectedCards(prev => 
-                       prev.includes(cardStr) ? prev.filter(c => c !== cardStr) : [...prev, cardStr]
-                     );
-                   };
-
-                   const playerIdx = getPlayerIndex(myId);
-                   const dealDelay = phase === 'SORTEO_MANO' ? (playerIdx * 0.4) + (idx * 2) : (playerIdx * 0.4) + (idx * 0.2);
-
-                   const isFolded = me.isFolded;
-
-                   return (
-                     <div 
-                       key={cardStr + '-' + idx}
-                       onClick={handleCardClick}
-                       style={{ 
-                         transform: isFolded ? `translateY(-20vh) scale(0.4) rotate(${(idx * 15) - 30}deg)` : `rotate(${angle}deg) translateY(${finalOffsetY}px)`,
-                         transformOrigin: 'bottom center',
-                         marginRight: idx !== arr.length - 1 ? '-40px' : '0px',
-                         zIndex: idx,
-                         transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.8s'
-                       }}
-                       className={isFolded ? 'opacity-20 pointer-events-none' : `transition-transform duration-300 ${isDescarteTurn ? 'cursor-pointer hover:-translate-y-8' : 'hover:-translate-y-4'}`}
-                     >
-                       <Card 
-                         suit={suit as any} 
-                         value={parseInt(val)} 
-                         delay={dealDelay}
-                         className="" // removing the old -ml classes from Card component usage since we do it here
-                         originY={-200}
-                       />
-                     </div>
-                   )
-                })}
-              </div>
-              
-            </div>
-          )}
-
         </div>
       </div>
+      {/* PLAYER AREA (Bottom left aligned with horizontal cards) */}
+      <div className="absolute bottom-4 md:bottom-12 left-2 md:left-12 z-30 flex items-end gap-4 md:gap-8">
+        
+        {me && (
+          <>
+            {/* My Badge */}
+            <div className="z-20 flex flex-col items-center relative pb-2 md:pb-4">
+              {hasChivo(me.cards) && phase !== 'RESOLUCION' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  className="absolute -top-10 md:-top-14 bg-gradient-to-r from-amber-600/90 to-amber-500/90 border-2 border-amber-300/50 text-white font-black px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs whitespace-nowrap shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse z-50 flex items-center gap-1.5"
+                >
+                  <span>🐐</span> ¡Chivo!
+                </motion.div>
+              )}
+              <PlayerBadge 
+                player={me} 
+                isActive={room.state.turnPlayerId === me.id} 
+                isMe={true} 
+                vertical={false}
+              />
+            </div>
+
+            {/* Horizontal Cards */}
+            <div className="relative z-10 hidden md:flex items-end gap-2 md:gap-3 lg:gap-4 ml-2">
+              {me.cards && me.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
+                 const [val, suit] = cardStr.split('-');
+                 
+                 const isSelected = selectedCards.includes(cardStr);
+                 // Translate Y up if selected
+                 const finalOffsetY = isSelected ? -30 : 0;
+                 // Little to no rotation for horizontal straight placement
+                 const angle = (Math.random() * 2 - 1) * 3; 
+                 
+                 const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
+                 const handleCardClick = () => {
+                   if (!isDescarteTurn) return;
+                   setSelectedCards(prev => 
+                     prev.includes(cardStr) ? prev.filter(c => c !== cardStr) : [...prev, cardStr]
+                   );
+                 };
+
+                 const playerIdx = getPlayerIndex(myId);
+                 const dealDelay = phase === 'SORTEO_MANO' ? (playerIdx * 0.4) + (idx * 2) : (playerIdx * 0.4) + (idx * 0.2);
+
+                 const isFolded = me.isFolded;
+
+                 return (
+                   <div 
+                     key={cardStr + '-' + idx}
+                     onClick={handleCardClick}
+                     style={{ 
+                       transform: isFolded ? `translateY(40px) scale(0.6) rotate(${angle}deg)` : `rotate(${angle}deg) translateY(${finalOffsetY}px)`,
+                       transformOrigin: 'bottom center',
+                       zIndex: idx,
+                       transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                     }}
+                     className={`relative ${isFolded ? 'opacity-20 pointer-events-none' : `transition-transform duration-300 ${isDescarteTurn ? 'cursor-pointer hover:-translate-y-4' : ''}`}`}
+                   >
+                     <Card 
+                       suit={suit as any} 
+                       value={parseInt(val)} 
+                       delay={dealDelay}
+                       className="shadow-[0_15px_30px_rgba(0,0,0,0.6)]"
+                       originY={-200}
+                     />
+                   </div>
+                 )
+              })}
+            </div>
+
+            {/* Points Indicator (Blue bubble) */}
+            <div className="hidden md:flex ml-4 mb-4 items-center justify-center bg-[#2563eb] text-white border-4 border-[#1d4ed8] shadow-[0_10px_20px_rgba(37,99,235,0.4)] rounded-full w-20 h-20 lg:w-24 lg:h-24 font-black flex-col">
+              <span className="text-[10px] lg:text-xs">PUNTOS:</span>
+              <span className="text-xl lg:text-2xl mt-0.5">55</span>
+            </div>
+            
+            {/* Mobile horizontal cards fallback (smaller, overlapped) */}
+            <div className="flex md:hidden relative z-10 w-[140px] h-[100px] ml-1">
+               {me.cards && me.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
+                 const [val, suit] = cardStr.split('-');
+                 const isSelected = selectedCards.includes(cardStr);
+                 const finalOffsetY = isSelected ? -15 : 0;
+                 const angle = (idx - (arr.length-1)/2) * 5;
+                 
+                 const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
+                 const handleCardClick = () => {
+                   if (!isDescarteTurn) return;
+                   setSelectedCards(prev => 
+                     prev.includes(cardStr) ? prev.filter(c => c !== cardStr) : [...prev, cardStr]
+                   );
+                 };
+
+                 const isFolded = me.isFolded;
+
+                 return (
+                   <div 
+                     key={cardStr + '-' + idx}
+                     onClick={handleCardClick}
+                     style={{ 
+                       position: 'absolute',
+                       left: `${idx * 25}px`,
+                       transform: isFolded ? `translateY(20px) scale(0.6)` : `rotate(${angle}deg) translateY(${finalOffsetY}px) scale(0.65)`,
+                       transformOrigin: 'bottom left',
+                       zIndex: idx,
+                       transition: 'transform 0.4s'
+                     }}
+                     className={`${isFolded ? 'opacity-20 pointer-events-none' : ''}`}
+                   >
+                     <Card suit={suit as any} value={parseInt(val)} originY={-200} />
+                   </div>
+                 )
+              })}
+            </div>
+
+          </>
+        )}
+      </div>
+
+      {/* Action Controls Overlay (Absolute bottom right) */}
+      <ActionControls 
+        room={room} 
+        phase={phase} 
+        isMyTurn={room.state.turnPlayerId === myId} 
+        playerChips={me?.chips || 0}
+        selectedCards={selectedCards}
+        onClearSelection={() => setSelectedCards([])}
+      />
+
     </div>
-  </div>
   )
 }
