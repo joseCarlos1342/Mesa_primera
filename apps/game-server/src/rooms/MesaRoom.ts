@@ -7,6 +7,8 @@ import { evaluateHand, compareHands } from "./combinations";
 export class MesaRoom extends Room<{ state: GameState }> {
   maxClients = 6;
   private countdownTimer?: any;
+  private currentGameId: string = crypto.randomUUID();
+  private currentTimeline: any[] = [];
 
   onCreate(options: any) {
     this.setState(new GameState());
@@ -56,6 +58,8 @@ export class MesaRoom extends Room<{ state: GameState }> {
         const { action } = message; // "voy" o "paso"
         player.hasActed = true; // IMPORTANT
 
+        this.currentTimeline.push({ event: 'action', phase: 'PIQUE', player: client.sessionId, action, time: Date.now() });
+
         if (action === "paso") {
           player.isFolded = true;
         } else if (action === "voy") {
@@ -67,6 +71,8 @@ export class MesaRoom extends Room<{ state: GameState }> {
       } else if (this.state.phase === "DESCARTE") {
         const { action, droppedCards } = message; // "discard" action with array of cards (e.g., ["1-O", "7-E"])
         player.hasActed = true; // IMPORTANT
+
+        this.currentTimeline.push({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, time: Date.now() });
 
         if (action === "discard" && droppedCards && Array.isArray(droppedCards)) {
           let currentHand = player.cards ? player.cards.split(',') : [];
@@ -99,6 +105,8 @@ export class MesaRoom extends Room<{ state: GameState }> {
       } else if (this.state.phase === "GUERRA") {
         const { action, amount } = message; // "bet", "call", "fold"
         player.hasActed = true; // IMPORTANT
+
+        this.currentTimeline.push({ event: 'action', phase: 'GUERRA', player: client.sessionId, action, amount, time: Date.now() });
 
         if (action === "fold") {
           player.isFolded = true;
@@ -178,11 +186,13 @@ export class MesaRoom extends Room<{ state: GameState }> {
 
     this.checkStartCountdown();
 
+    if (consented) {
+      console.log(`[MesaRoom] Desconexión explícita o limpia para ${player.nickname}. Retirando de la mesa.`);
+      this.removePlayer(client.sessionId);
+      return;
+    }
+
     try {
-      if (consented) {
-        throw new Error("consented leave");
-      }
-      
       console.log(`[MesaRoom] Otorgando 5 minutos de reconexión para ${player.nickname}...`);
       // 300 segundos = 5 minutos de gracia
       await this.allowReconnection(client, 300);
@@ -192,13 +202,24 @@ export class MesaRoom extends Room<{ state: GameState }> {
       
     } catch (e) {
       console.log(`[MesaRoom] Tiempo de reconexión expirado o abandono definitivo para ${player.nickname}`);
-      this.state.players.delete(client.sessionId);
-      
-      // Si era el dealer y quedan jugadores, asignar otro dealer
-      if (this.state.dealerId === client.sessionId && this.state.players.size > 0) {
-        this.state.dealerId = Array.from(this.state.players.keys())[0];
-      }
-      this.checkStartCountdown();
+      this.removePlayer(client.sessionId);
+    }
+  }
+
+  private removePlayer(sessionId: string) {
+    this.state.players.delete(sessionId);
+    
+    // Si era el dealer y quedan jugadores, asignar otro dealer
+    if (this.state.dealerId === sessionId && this.state.players.size > 0) {
+      this.state.dealerId = Array.from(this.state.players.keys())[0];
+    }
+    this.checkStartCountdown();
+
+    // Si nadie queda en la mesa, limpiar por si acaso
+    if (this.state.players.size === 0) {
+      this.state.phase = "LOBBY";
+      this.state.countdown = -1;
+      this.stopCountdown();
     }
   }
 
@@ -266,6 +287,10 @@ export class MesaRoom extends Room<{ state: GameState }> {
     console.log(`[MesaRoom] Iniciando partida con seed: ${seed}`);
     this.state.lastSeed = seed;
     
+    this.currentGameId = crypto.randomUUID();
+    this.currentTimeline = [];
+    this.currentTimeline.push({ event: 'start', seed, time: Date.now() });
+
     this.state.tableCards.clear();
     this.createDeck();
     this.shuffleDeck();
@@ -617,8 +642,38 @@ export class MesaRoom extends Room<{ state: GameState }> {
     winner.chips += payout;
     console.log(`[MesaRoom] Ganador: ${winner.id} ganó ${payout} (Rake: ${rake})`);
     
+    this.currentTimeline.push({ event: 'end', winner: winnerId, pot: this.state.pot, payout, rake, time: Date.now() });
+
+    const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
+      userId: p.id,
+      nickname: p.nickname,
+      cards: p.cards,
+      chips: p.chips
+    }));
+    
     // Llamar al Ledger en Supabase para persistir en DB y actualizar stats
     SupabaseService.awardPot(winner.id, payout, rake).catch(console.error);
+    SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, this.currentTimeline, playersSnapshot).catch(console.error);
+
+    // Update stats for all participating players
+    Array.from(this.state.players.values()).forEach(p => {
+      // Assuming initial chips deduced was 10. For a real implementation, track total bet per player
+      const initialBet = 10; 
+      const isWinner = p.id === winner.id;
+      const playerPayout = isWinner ? payout : -initialBet;
+      const playerRake = isWinner ? rake : 0;
+      
+      let specialPlay: string | null = null;
+      if (p.cards) {
+         const pHand = evaluateHand(p.cards);
+         const typeLower = pHand.type.toLowerCase();
+         if (['primera', 'chivo', 'segunda'].includes(typeLower)) {
+            specialPlay = typeLower;
+         }
+      }
+      
+      SupabaseService.updatePlayerStats(p.id, isWinner, playerPayout, playerRake, specialPlay).catch(console.error);
+    });
 
     Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => p.isReady = false);
     this.state.pot = 0;

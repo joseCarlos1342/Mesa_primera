@@ -97,7 +97,7 @@ export function Lobby() {
             Mesa<br />
             <span className="bg-gradient-to-r from-white via-slate-400 to-slate-600 bg-clip-text text-transparent">Privada</span>
           </h1>
-          <p className="text-slate-500 font-medium tracking-wide">
+          <p className="text-slate-400 font-medium tracking-wide text-lg md:text-xl">
             Únete a una mesa existente o crea tu propio salón de juego.
           </p>
         </div>
@@ -106,21 +106,21 @@ export function Lobby() {
           <button 
             onClick={createTable}
             disabled={creating}
-            className="group relative h-20 px-10 bg-white text-slate-950 rounded-3xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-4 transition-all hover:bg-emerald-500 hover:text-white hover:scale-[1.02] active:scale-95 disabled:opacity-50 shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+            className="group relative h-24 px-12 bg-white text-slate-950 rounded-[2rem] font-black uppercase tracking-widest text-lg md:text-xl flex items-center justify-center gap-4 transition-all hover:bg-emerald-500 hover:text-white hover:scale-[1.02] active:scale-95 disabled:opacity-50 shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
           >
             {creating ? (
-              <RefreshCcw className="w-5 h-5 animate-spin" />
+              <RefreshCcw className="w-8 h-8 animate-spin" />
             ) : (
-              <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
+              <Plus className="w-8 h-8 transition-transform group-hover:rotate-90" />
             )}
             {creating ? "Iniciando..." : "Nueva Mesa"}
           </button>
           
           <button 
             onClick={connectToLobby}
-            className="h-14 px-6 bg-slate-900 border border-white/5 text-slate-400 rounded-2xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
+            className="h-16 px-8 bg-slate-900 border border-white/5 text-slate-400 rounded-2xl font-bold uppercase tracking-widest text-sm md:text-base flex items-center justify-center gap-3 hover:bg-slate-800 transition-all"
           >
-            <RefreshCcw className="w-3 h-3" />
+            <RefreshCcw className="w-5 h-5" />
             Reconectar
           </button>
         </div>
@@ -144,8 +144,8 @@ export function Lobby() {
           <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-6 opacity-40">
             <Zap className="w-16 h-16 text-slate-700" />
             <div className="text-center space-y-2">
-              <p className="text-xl font-black uppercase tracking-widest text-slate-500">Bóveda Vacía</p>
-              <p className="text-sm text-slate-600">No hay mesas activas en esta frecuencia.</p>
+              <p className="text-3xl font-black uppercase tracking-widest text-slate-500">Bóveda Vacía</p>
+              <p className="text-xl text-slate-500">No hay mesas activas en este momento.</p>
             </div>
           </div>
         ) : (
@@ -181,9 +181,9 @@ export function Lobby() {
 
               <button 
                 onClick={() => joinTable(room.roomId)}
-                className="relative mt-10 w-full h-16 bg-white/5 border border-white/10 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all hover:bg-white hover:text-slate-950 active:scale-95 overflow-hidden"
+                className="relative mt-8 w-full h-20 bg-emerald-600 border border-emerald-400 text-white font-black uppercase tracking-[0.2em] text-lg rounded-[1.5rem] transition-all hover:bg-emerald-500 hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center"
               >
-                Acceder a la Mesa
+                ENTRAR
               </button>
             </div>
           ))

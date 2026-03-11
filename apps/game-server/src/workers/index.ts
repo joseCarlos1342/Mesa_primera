@@ -3,6 +3,7 @@ import { Queue, Worker, QueueEvents } from "bullmq";
 const redisOptions = {
   host: process.env.REDIS_HOST || "localhost",
   port: Number(process.env.REDIS_PORT) || 6379,
+  password: process.env.REDIS_PASSWORD || undefined,
 };
 
 // Cola genérica para procesamientos del ledger (ej. reconciliación asíncrona)

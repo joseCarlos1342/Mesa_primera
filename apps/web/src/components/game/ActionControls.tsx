@@ -40,17 +40,17 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
 
         {/* FASE: DESCARTE */}
         {phase === 'DESCARTE' && (
-          <div className="flex flex-col items-center gap-2 bg-black/90 backdrop-blur-xl p-3 md:p-4 rounded-3xl border border-[#a17822]/40 shadow-2xl w-full md:w-auto">
-            <span className="text-[#f2d06b] text-[10px] md:text-xs font-bold uppercase tracking-widest text-center">
+          <div className="flex flex-col items-center gap-2 bg-black/90 backdrop-blur-xl p-4 md:p-6 rounded-3xl border border-[#e2b044]/40 shadow-2xl w-full md:w-auto">
+            <span className="text-[#e2b044] text-sm md:text-base font-bold uppercase tracking-widest text-center">
               {selectedCards.length > 0 ? 'Fichas a botar' : 'Toca cartas para descartar'}
             </span>
             <button 
               onClick={() => handleExecute('discard', selectedCards)}
               className={`
-                w-[90%] md:w-64 h-12 rounded-full font-black text-white text-sm shadow-lg hover:-translate-y-1 active:translate-y-2 transition-transform
+                w-full md:w-72 h-16 rounded-full font-black text-white text-lg shadow-lg hover:-translate-y-1 active:translate-y-2 transition-transform
                 ${selectedCards.length > 0 
-                  ? 'bg-gradient-to-br from-[#c62828] to-[#6c1414] border border-[#ff5252]/40' 
-                  : 'bg-gradient-to-br from-[#1976d2] to-[#0d47a1] border border-[#4fc3f7]/40'}
+                  ? 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] border border-[#ff5252]/40' 
+                  : 'bg-gradient-to-br from-[#2980b9] to-[#1c5980] border border-[#3498db]/40'}
               `}
             >
               {selectedCards.length > 0 ? `Botar ${selectedCards.length} y Pedir` : 'Mantener Juego (0)'}
@@ -87,17 +87,17 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                       disabled={!canAfford}
                       onClick={() => setSelectedChip(isSelected ? null : val)}
                       className={`
-                        flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center snap-center relative
-                        font-black tracking-tighter shadow-xl transition-all border-[4px] border-dashed
+                        flex-shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center snap-center relative
+                        font-black tracking-tighter shadow-xl transition-all border-[6px] border-dashed
                         ${colorClass}
                         ${canAfford 
-                            ? `${isSelected ? `ring-[6px] ${ringColor} scale-110 -translate-y-3 shadow-[0_15px_30px_rgba(0,0,0,0.6)]` : 'hover:-translate-y-2'}` 
+                            ? `${isSelected ? `ring-[8px] ${ringColor} scale-110 -translate-y-3 shadow-[0_20px_40px_rgba(0,0,0,0.6)]` : 'hover:-translate-y-2'}` 
                             : 'opacity-30 cursor-not-allowed'}
                       `}
                     >
                       {/* Inner solid border to make the dashed border look like a casino chip ring */}
-                      <div className="absolute inset-0 border-2 border-black/10 rounded-full pointer-events-none" />
-                      <span className="relative z-10 text-[10px] md:text-sm drop-shadow-sm pb-px">
+                      <div className="absolute inset-0 border-4 border-black/10 rounded-full pointer-events-none" />
+                      <span className="relative z-10 text-sm md:text-xl drop-shadow-sm pb-px">
                         ${val >= 1000 ? `${val/1000}k` : val}
                       </span>
                     </button>
@@ -112,7 +112,7 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
               {/* Botón PASO (Rojo Grueso) */}
               <button 
                 onClick={() => handleExecute(phase === 'PIQUE' ? 'paso' : 'fold')} 
-                className="w-24 h-12 md:w-32 md:h-14 bg-[#d32f2f] hover:bg-[#b71c1c] text-white rounded-lg md:rounded-xl font-black text-xs md:text-lg shadow-[0_5px_15px_rgba(211,47,47,0.4)] hover:-translate-y-1 transition-transform uppercase tracking-widest border-b-4 border-[#8e0000]"
+                className="w-32 h-16 md:w-40 md:h-20 bg-[#e74c3c] hover:bg-[#c0392b] text-white rounded-xl md:rounded-2xl font-black text-base md:text-2xl shadow-[0_8px_20px_rgba(231,76,60,0.4)] hover:-translate-y-1 transition-transform uppercase tracking-widest border-b-[6px] border-[#922b21]"
               >
                 Paso
               </button>
@@ -126,11 +126,11 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}
                     onClick={() => handleExecute(phase === 'PIQUE' ? 'voy' : 'bet')} 
-                    className="w-36 h-12 md:w-48 md:h-14 bg-[#fbc02d] hover:bg-[#f57f17] text-[#3e2723] rounded-lg md:rounded-xl font-black text-xs md:text-[15px] shadow-[0_5px_15px_rgba(251,192,45,0.4)] hover:-translate-y-1 transition-transform uppercase tracking-widest border-b-4 border-[#f57f17] flex items-center justify-center gap-1"
+                    className="w-48 h-16 md:w-64 md:h-20 bg-[#e2b044] hover:bg-[#d49a36] text-[#1a1a2e] rounded-xl md:rounded-2xl font-black text-base md:text-xl shadow-[0_8px_20px_rgba(226,176,68,0.4)] hover:-translate-y-1 transition-transform uppercase tracking-widest border-b-[6px] border-[#b8860b] flex items-center justify-center gap-2"
                   >
-                    ¡Cantar Jugada!
+                    ¡VOY!
                     {selectedChip && phase !== 'GUERRA' && (
-                      <span className="text-[10px] md:text-xs opacity-80 bg-black/10 px-1 py-0.5 rounded ml-1">
+                      <span className="text-sm md:text-base opacity-90 bg-black/10 px-2 py-1 rounded ml-1 font-bold">
                         +${selectedChip >= 1000 ? selectedChip/1000 + 'k' : selectedChip}
                       </span>
                     )}

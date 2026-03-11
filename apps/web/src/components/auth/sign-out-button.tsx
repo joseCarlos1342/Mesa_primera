@@ -11,7 +11,7 @@ interface SignOutButtonProps {
 
 export function SignOutButton({ variant = 'premium', className = '' }: SignOutButtonProps) {
   const pathname = usePathname()
-  const baseStyles = "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all duration-300 active:scale-95 group"
+  const baseStyles = "flex items-center gap-3 px-6 py-4 rounded-2xl font-black transition-all duration-300 active:scale-95 group"
   
   const variants = {
     premium: "bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white backdrop-blur-md shadow-lg",
@@ -31,8 +31,8 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
       className={`${baseStyles} ${variants[variant]} ${className}`}
       title="Cerrar Sesión"
     >
-      <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-      <span className="text-sm tracking-widest uppercase">Salir</span>
+      <LogOut className="w-6 h-6 transition-transform group-hover:-translate-x-1" />
+      <span className="text-xl tracking-widest uppercase">Salir</span>
     </button>
   )
 }

@@ -75,11 +75,11 @@ export function AvatarSelector({ onSelect, selectedId }: AvatarSelectorProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-bold uppercase tracking-widest text-slate-400 ml-1">
+        <label className="text-lg md:text-xl font-black uppercase tracking-widest text-slate-300 ml-1">
           Identidad en la Mesa
         </label>
-        <span className="text-[10px] font-mono text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded-full border border-indigo-400/20">
-          REQUIRED
+        <span className="text-xs md:text-sm font-mono text-indigo-400 bg-indigo-400/10 px-3 py-1 rounded-full border border-indigo-400/20 font-bold">
+          R E Q U E R I D O
         </span>
       </div>
       
@@ -92,27 +92,27 @@ export function AvatarSelector({ onSelect, selectedId }: AvatarSelectorProps) {
             onMouseEnter={() => setHovered(avatar.id)}
             onMouseLeave={() => setHovered(null)}
             style={{ animationDelay: `${index * 100}ms` }}
-            className={`group relative flex flex-col items-center p-4 rounded-3xl transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 ${
+            className={`group relative flex flex-col items-center p-6 rounded-[2rem] transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 ${
               selectedId === avatar.id
-                ? 'bg-gradient-to-b from-indigo-500/20 to-purple-500/20 border-2 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.3)] ring-1 ring-white/20'
-                : 'bg-slate-900/40 border border-slate-800 hover:border-slate-600 hover:bg-slate-800/40'
+                ? 'bg-gradient-to-b from-indigo-500/20 to-purple-500/20 border-4 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.5)] ring-2 ring-white/30 scale-105'
+                : 'bg-slate-900/40 border-[3px] border-slate-700 hover:border-slate-500 hover:bg-slate-800/60'
             }`}
           >
-            <div className="w-20 h-20 mb-3 transition-transform duration-500 group-hover:scale-110 group-active:scale-95">
+            <div className="w-28 h-28 md:w-32 md:h-32 mb-4 transition-transform duration-500 group-hover:scale-110 group-active:scale-95">
               {avatar.svg}
             </div>
-            <span className={`text-[10px] font-black uppercase tracking-tighter ${
-              selectedId === avatar.id ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'
+            <span className={`text-sm md:text-lg font-black uppercase tracking-tighter text-center leading-5 ${
+              selectedId === avatar.id ? 'text-indigo-300 drop-shadow-md' : 'text-slate-400 group-hover:text-slate-200'
             }`}>
               {avatar.name}
             </span>
             
             {/* Hover Tooltip - Discrete but informative */}
-            <div className={`absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-800 text-white text-[10px] rounded-lg whitespace-nowrap shadow-xl border border-slate-700 pointer-events-none transition-all duration-300 ${
+            <div className={`absolute -top-16 md:-top-20 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-800 text-white text-sm md:text-base font-bold rounded-xl whitespace-nowrap shadow-2xl border-2 border-slate-600 pointer-events-none transition-all duration-300 z-50 ${
               hovered === avatar.id ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
             }`}>
               {avatar.description}
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 border-r border-b border-slate-700 rotate-45" />
+              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-800 border-r-2 border-b-2 border-slate-600 rotate-45" />
             </div>
           </button>
         ))}

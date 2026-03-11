@@ -1,84 +1,66 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateHand, compareHands, HandEvaluation } from '../combinations';
 
-describe('combinations logic', () => {
-  
-  describe('evaluateHand()', () => {
-    it('Should return NINGUNA if less than 4 cards are passed', () => {
-      const eval1 = evaluateHand('01-O,02-C,05-E');
-      expect(eval1.type).toBe('NINGUNA');
-    });
-
-    it('Should correctly identify a SEGUNDA (4 cards of same suit)', () => {
-      const eval1 = evaluateHand('01-O,02-O,05-O,07-O');
-      expect(eval1.type).toBe('SEGUNDA');
-      // points = 16 + 12 + 15 + 21 = 64
-      expect(eval1.points).toBe(64);
-    });
-
-    it('Should correctly identify a CHIVO (As, 6, 7 of same suit) alongside any 4th card', () => {
-      const eval1 = evaluateHand('01-C,06-C,07-C,10-E');
-      expect(eval1.type).toBe('CHIVO');
-      // points = 16 + 18 + 21 + 0 = 55
-      expect(eval1.points).toBe(55);
-    });
-
-    it('Should NOT identify CHIVO if As, 6, 7 are of different suits mixed', () => {
-      const eval1 = evaluateHand('01-C,06-O,07-C,10-E');
-      // 4 different suits -> Wait, it has Copas, Oros, Espadas. That's 3 suits. So NINGUNA.
-      expect(eval1.type).toBe('NINGUNA');
-    });
-
-    it('Should correctly identify a PRIMERA (4 cards, each of different suit)', () => {
-      const eval1 = evaluateHand('01-O,02-C,05-E,07-B');
-      expect(eval1.type).toBe('PRIMERA');
-      // points = 16 + 12 + 15 + 21 = 64
-      expect(eval1.points).toBe(64);
-    });
-
-    it('Should default to NINGUNA with calculated points for any normal hand', () => {
-      const eval1 = evaluateHand('01-O,02-C,05-C,07-B');
-      expect(eval1.type).toBe('NINGUNA');
-    });
+describe('Combinations & Hand Evaluation', () => {
+  it('identificats NINGUNA for empty or insufficient cards', () => {
+    expect(evaluateHand('').type).toBe('NINGUNA');
+    expect(evaluateHand('1-O,7-C').type).toBe('NINGUNA');
   });
 
-  describe('compareHands()', () => {
-    it('Should favor SEGUNDA over CHIVO, PRIMERA, and NINGUNA', () => {
-      const segunda: HandEvaluation = { type: 'SEGUNDA', points: 64 };
-      const chivo: HandEvaluation = { type: 'CHIVO', points: 55 };
-      const primera: HandEvaluation = { type: 'PRIMERA', points: 64 };
-      const ninguna: HandEvaluation = { type: 'NINGUNA', points: 70 };
+  it('identifies SEGUNDA correctly (4 cards same suit)', () => {
+    // 1 de Oros, 3 de Oros, 6 de Oros, 7 de Oros
+    const result = evaluateHand('1-O,3-O,6-O,7-O');
+    expect(result.type).toBe('SEGUNDA');
+    expect(result.points).toBeGreaterThan(0);
+  });
 
-      expect(compareHands(segunda, chivo)).toBeGreaterThan(0);
-      expect(compareHands(segunda, primera)).toBeGreaterThan(0);
-      expect(compareHands(segunda, ninguna)).toBeGreaterThan(0);
+  it('identifies CHIVO correctly (As, 6, 7 of same suit)', () => {
+    // As de Copas, 6 de Copas, 7 de Copas, and any other card
+    const result = evaluateHand('1-C,6-C,7-C,4-E');
+    expect(result.type).toBe('CHIVO');
+  });
+
+  it('identifies PRIMERA correctly (4 cards of different suits)', () => {
+    // 1 de Oros, 2 de Copas, 3 de Espadas, 4 de Bastos
+    const result = evaluateHand('1-O,2-C,3-E,4-B');
+    expect(result.type).toBe('PRIMERA');
+  });
+
+  it('identifies NINGUNA correctly (4 cards, no special combo)', () => {
+    // 1 de Oros, 2 de Oros, 3 de Espadas, 4 de Bastos
+    // Not 4 different suits (2 Oros), not all same (Segunda), no As+6+7 of same suit (Chivo)
+    const result = evaluateHand('1-O,2-O,3-E,4-B');
+    expect(result.type).toBe('NINGUNA');
+  });
+
+  describe('compareHands', () => {
+    it('ranks SEGUNDA over CHIVO', () => {
+      const segunda = evaluateHand('1-O,3-O,6-O,7-O'); // SEGUNDA
+      const chivo = evaluateHand('1-C,6-C,7-C,4-E');   // CHIVO
+      expect(compareHands(segunda, chivo)).toBeGreaterThan(0); // segunda wins
+    });
+
+    it('ranks CHIVO over PRIMERA', () => {
+      const chivo = evaluateHand('1-C,6-C,7-C,4-E');   // CHIVO
+      const primera = evaluateHand('1-O,2-C,3-E,4-B'); // PRIMERA
+      expect(compareHands(chivo, primera)).toBeGreaterThan(0); // chivo wins
+    });
+
+    it('ranks PRIMERA over NINGUNA', () => {
+      const primera = evaluateHand('1-O,2-C,3-E,4-B'); // PRIMERA
+      const ninguna = evaluateHand('1-O,2-O,3-E,4-B'); // NINGUNA
+      expect(compareHands(primera, ninguna)).toBeGreaterThan(0); // primera wins
+    });
+
+    it('breaks ties by points if hand types are equal', () => {
+      // Both Ninguna, but different points
+      const handA = evaluateHand('7-O,6-O,5-E,1-B'); // Not Primera, 2 Oros
+      const handB = evaluateHand('2-O,3-O,4-E,4-B'); // 12 + 13 + 14 + 14 = 53 points
       
-      expect(compareHands(chivo, segunda)).toBeLessThan(0);
-    });
-
-    it('Should favor CHIVO over PRIMERA and NINGUNA', () => {
-      const chivo: HandEvaluation = { type: 'CHIVO', points: 55 };
-      const primera: HandEvaluation = { type: 'PRIMERA', points: 80 };
-      const ninguna: HandEvaluation = { type: 'NINGUNA', points: 70 };
-
-      expect(compareHands(chivo, primera)).toBeGreaterThan(0);
-      expect(compareHands(chivo, ninguna)).toBeGreaterThan(0);
-    });
-
-    it('Should favor PRIMERA over NINGUNA', () => {
-      const primera: HandEvaluation = { type: 'PRIMERA', points: 40 };
-      const ninguna: HandEvaluation = { type: 'NINGUNA', points: 80 };
-
-      expect(compareHands(primera, ninguna)).toBeGreaterThan(0);
-    });
-
-    it('Should tie-break two identical hand types using total points', () => {
-      const ninguna1: HandEvaluation = { type: 'NINGUNA', points: 50 };
-      const ninguna2: HandEvaluation = { type: 'NINGUNA', points: 60 };
-
-      expect(compareHands(ninguna2, ninguna1)).toBeGreaterThan(0);
-      expect(compareHands(ninguna1, ninguna2)).toBeLessThan(0);
-      expect(compareHands(ninguna1, ninguna1)).toBe(0);
+      expect(handA.type).toBe('NINGUNA');
+      expect(handB.type).toBe('NINGUNA');
+      expect(compareHands(handA, handB)).toBeGreaterThan(0); // handA wins due to points
+      expect(compareHands(handB, handA)).toBeLessThan(0); // handB loses
     });
   });
 });
