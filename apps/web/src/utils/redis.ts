@@ -11,7 +11,11 @@ export const redis =
   })
 
 // Silenciar errores de conexión/auth para evitar ruidos en los logs
+let lastRedisError = '';
 redis.on('error', (err) => {
+  if (err.message === lastRedisError) return;
+  lastRedisError = err.message;
+  
   if (process.env.NODE_ENV === 'development') {
     // Solo loguear resumido para no ensuciar
     console.warn('[REDIS_SILENCED_ERROR]:', err.message)
