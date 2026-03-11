@@ -28,12 +28,12 @@ export function PlayerDashboard() {
         className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-8 rounded-[2rem] shadow-2xl border border-white/20"
       >
         <div className="relative z-10 flex flex-col items-center text-center space-y-2">
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200 opacity-80">Saldo Disponible</span>
+          <span className="text-xs font-black uppercase tracking-[0.3em] text-indigo-200 opacity-90 mb-2">Saldo Disponible</span>
           <div className="flex items-baseline gap-2">
             <span className="text-6xl md:text-8xl font-black italic text-white drop-shadow-xl">
               ${(balance / 100).toLocaleString()}
             </span>
-            <span className="text-xl font-bold text-indigo-300 uppercase">Bits</span>
+            <span className="text-2xl font-bold text-indigo-300 uppercase">Bits</span>
           </div>
           <div className="flex gap-4 mt-6 w-full max-w-sm">
             <Link href="/wallet" className="flex-1">
