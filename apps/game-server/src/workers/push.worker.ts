@@ -52,6 +52,10 @@ pushWorker.on('completed', job => {
   console.log(`[PushWorker] Job ${job.id} completed for userId: ${job.data?.userId}`);
 });
 
+pushWorker.on('error', (err) => {
+  console.warn('[Redis Silenced - PushWorker]:', err.message);
+});
+
 pushWorker.on('failed', (job, err) => {
   console.error(`[PushWorker] Job ${job?.id} failed:`, err);
 });

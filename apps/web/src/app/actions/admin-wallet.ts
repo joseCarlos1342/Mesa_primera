@@ -3,41 +3,77 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function processTransaction(transactionId: string, status: 'completed' | 'failed') {
+export async function processTransaction(requestId: string, status: 'completed' | 'failed') {
   const supabase = await createClient()
 
-  // 1. Get Transaction
-  const { data: tx, error: txError } = await supabase
-    .from('transactions')
-    .select('*, wallets(balance, id)')
-    .eq('id', transactionId)
-    .single()
+  // 1. Determine if it's a deposit or withdrawal
+  let type: 'deposit' | 'withdrawal' | null = null;
+  let request: any = null;
 
-  if (txError || !tx) return { error: 'Transacción no encontrada' }
-  if (tx.status !== 'pending') return { error: 'La transacción ya fue procesada' }
+  // Try deposit first
+  const { data: dep } = await supabase.from('deposit_requests').select('*, profiles(id)').eq('id', requestId).single();
+  if (dep) {
+    type = 'deposit';
+    request = dep;
+  } else {
+    // Try withdrawal
+    const { data: wit } = await supabase.from('withdrawal_requests').select('*, profiles(id)').eq('id', requestId).single();
+    if (wit) {
+      type = 'withdrawal';
+      request = wit;
+    }
+  }
+
+  if (!request) return { error: 'Solicitud no encontrada' }
+  if (request.status !== 'pending') return { error: 'La solicitud ya fue procesada' }
+
+  const userId = request.user_id;
 
   if (status === 'completed') {
-    // 2. Update Balance if it's a withdrawal or deposit
-    // El balance se actualiza sumando el 'amount' (que es negativo para retiros y positivo para depósitos)
-    const newBalance = Number(tx.wallets.balance) + Number(tx.amount)
+    // 2. Get Wallet
+    const { data: wallet, error: walletError } = await supabase
+      .from('wallets')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
 
-    if (newBalance < 0 && tx.amount < 0) {
-      return { error: 'Saldo insuficiente tras la operación' }
+    if (walletError || !wallet) return { error: 'Wallet no encontrada' }
+
+    const amount = Number(request.amount_cents || 0);
+    let newBalance = Number(wallet.balance);
+
+    if (type === 'deposit') {
+      newBalance += amount;
+    } else {
+      if (newBalance < amount) return { error: 'Saldo insuficiente' }
+      newBalance -= amount;
     }
 
+    // 3. Update Balance
     const { error: updateError } = await supabase
       .from('wallets')
       .update({ balance: newBalance })
-      .eq('id', tx.wallet_id)
+      .eq('id', wallet.id)
 
     if (updateError) return { error: updateError.message }
+
+    // 4. Create Ledger Entry
+    await supabase.from('ledger').insert({
+      user_id: userId,
+      amount_cents: amount,
+      type: type,
+      direction: type === 'deposit' ? 'credit' : 'debit',
+      balance_after_cents: newBalance,
+      reference_id: requestId
+    });
   }
 
-  // 3. Mark transaction as processed
+  // 5. Update Request Status
+  const tableName = type === 'deposit' ? 'deposit_requests' : 'withdrawal_requests';
   const { error: statusError } = await supabase
-    .from('transactions')
-    .update({ status })
-    .eq('id', transactionId)
+    .from(tableName)
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', requestId)
 
   if (statusError) return { error: statusError.message }
 
@@ -52,12 +88,20 @@ export async function getPendingDeposits() {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('transactions')
-    .select('*, wallets(profiles(username))')
-    .eq('type', 'deposit')
+    .from('deposit_requests')
+    .select('*, profiles(username)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
   if (error) return { error: error.message }
-  return { deposits: data }
+  
+  // Adapt to old UI expectations if necessary (wallets.profiles -> profiles)
+  // The UI expects dep.wallets.profiles.username
+  const adaptedData = data?.map(d => ({
+     ...d,
+     amount: d.amount_cents / 1, // keeping it as bits
+     wallets: { profiles: d.profiles }
+  }));
+
+  return { deposits: adaptedData }
 }

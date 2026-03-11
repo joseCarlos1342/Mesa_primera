@@ -35,9 +35,9 @@ export async function getLedgerEntries(limit = 100): Promise<AdminLedgerEntry[]>
 
   // Fetch ledger entries
   const { data: entries, error } = await supabase
-    .from("transactions")
+    .from("ledger")
     .select(`
-      id, user_id, amount, type, status, reference_id, created_at,
+      id, user_id, amount_cents, type, direction, balance_after_cents, reference_id, created_at,
       user:profiles(full_name, username)
     `)
     .order("created_at", { ascending: false })
@@ -49,10 +49,7 @@ export async function getLedgerEntries(limit = 100): Promise<AdminLedgerEntry[]>
     const pInfo = en.user ? (Array.isArray(en.user) ? en.user[0] : en.user) : null;
     return {
       ...en,
-      game_id: en.reference_id || null, // Assuming game transactions use reference_id as game_id
-      direction: ['deposit', 'win', 'refund'].includes(en.type) ? 'credit' : 'debit',
-      amount_cents: Number(en.amount),
-      balance_after_cents: 0, // Not tracked on transaction level right now
+      game_id: en.reference_id || null, 
       user: pInfo ? { display_name: pInfo.full_name || pInfo.username || 'Desconocido' } : null
     };
   }) as AdminLedgerEntry[];

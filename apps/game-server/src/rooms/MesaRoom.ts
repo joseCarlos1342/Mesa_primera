@@ -128,10 +128,12 @@ export class MesaRoom extends Room<{ state: GameState }> {
     const deviceId = options.deviceId;
     
     // React Strict Mode deduplication / Ghost player cleanup:
-    // If we find another player with the SAME exact nickname OR same deviceId that is disconnected,
+    // If we find another player with the SAME exact deviceId that is disconnected,
     // it's likely a hot-reload or duplicate connection we should clean up.
+    // Also fallback to nickname + disconnected if deviceId missing (rare).
     const existingPlayerEntry = Array.from(this.state.players.entries()).find(
-      ([_, p]) => (p.nickname === requestedNickname || (deviceId && p.id === deviceId)) && !p.connected
+      ([_, p]) => !p.connected && 
+                 ((deviceId && p.deviceId === deviceId) || (p.nickname === requestedNickname))
     );
     
     if (existingPlayerEntry) {
@@ -153,6 +155,7 @@ export class MesaRoom extends Room<{ state: GameState }> {
     newPlayer.avatarUrl = options.avatarUrl || "default";
     newPlayer.chips = options.chips || 1000;
     newPlayer.connected = true;
+    newPlayer.deviceId = deviceId;
       
     this.state.players.set(client.sessionId, newPlayer);
 
@@ -290,6 +293,8 @@ export class MesaRoom extends Room<{ state: GameState }> {
     this.currentGameId = crypto.randomUUID();
     this.currentTimeline = [];
     this.currentTimeline.push({ event: 'start', seed, time: Date.now() });
+
+    SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP");
 
     this.state.tableCards.clear();
     this.createDeck();

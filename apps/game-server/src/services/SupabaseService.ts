@@ -158,4 +158,25 @@ export class SupabaseService {
       console.error('[SupabaseService] Error saving replay:', e);
     }
   }
+
+  /**
+   * Initializes a game session with 'in_progress' status in the database.
+   */
+  static async createGameSession(gameId: string, tableName: string) {
+    if (!supabaseKey) return;
+    try {
+      let { data: table } = await supabase.from('tables').select('id').limit(1).single();
+      if (!table) {
+        const { data: newTable, error: tableErr } = await supabase.from('tables').insert({ name: tableName, game_type: 'Mesa' }).select().single();
+        if (tableErr || !newTable) throw new Error('Could not create default table for game session');
+        table = newTable;
+      }
+
+      const { error: gameErr } = await supabase.from('games').upsert({ id: gameId, table_id: table.id, status: 'in_progress' });
+      if (gameErr) throw gameErr;
+    } catch (e) {
+      console.error('[SupabaseService] Error creating game session:', e);
+    }
+  }
 }
+

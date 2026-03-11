@@ -13,6 +13,9 @@ export class Player extends Schema {
   
   // TODO: Colyseus @view has bugs in 0.17 with MapSchema. Removed temporarily for logic testing.
   @type("string") cards: string = "";
+
+  // Server-only properties (not synced to clients)
+  deviceId?: string;
 }
 
 export class GameState extends Schema {

@@ -117,9 +117,13 @@ export default async function AdminUsersPage(props: PageProps) {
                            </div>
                         </td>
                         <td className="px-6 py-4 text-right">
-                           <div className="flex justify-end gap-2">
+                           <div className="flex justify-end gap-4 items-center">
                               {user.role !== 'admin' && (
-                                 <UserBanControl userId={user.id} isBanned={user.is_banned} userName={user.display_name} />
+                                 <>
+                                    <UserBalanceControl userId={user.id} userName={user.display_name} currentBalance={user.balance_cents} />
+                                    <div className="w-px h-4 bg-white/10" />
+                                    <UserBanControl userId={user.id} isBanned={user.is_banned} userName={user.display_name} />
+                                 </>
                               )}
                            </div>
                         </td>

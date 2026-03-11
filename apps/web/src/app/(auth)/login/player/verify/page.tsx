@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams } from 'next/navigation'
-import { useActionState, Suspense } from 'react'
+import { useActionState, Suspense, useEffect, useRef } from 'react'
 import { verifyOtp } from '../../../auth-actions'
 import Image from 'next/image'
 
@@ -9,6 +9,33 @@ function VerifyContent() {
   const searchParams = useSearchParams()
   const phone = searchParams.get('phone') || ''
   const [state, formAction, isPending] = useActionState(verifyOtp, null)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  const TEST_PHONES = [
+    '+573001112233',
+    '+573104445566',
+    '+573207778899',
+    '+573150001122'
+  ]
+
+  const isTestPhone = TEST_PHONES.includes(phone)
+  const isDev = process.env.NODE_ENV === 'development'
+
+  // Auto-submit in DEV for test users
+  useEffect(() => {
+    if (isDev && isTestPhone && formRef.current) {
+      const timer = setTimeout(() => {
+        const tokenInput = formRef.current?.querySelector('input[name="token"]') as HTMLInputElement
+        const submitBtn = formRef.current?.querySelector('button[type="submit"]') as HTMLButtonElement
+        if (tokenInput && submitBtn) {
+          tokenInput.value = '123456'
+          // We trigger the action by clicking the button to ensure useActionState sees it
+          submitBtn.click()
+        }
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [isDev, isTestPhone])
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans">
@@ -44,7 +71,7 @@ function VerifyContent() {
           </div>
         )}
 
-        <form action={formAction} className="space-y-8">
+        <form action={formAction} ref={formRef} className="space-y-8">
           <input type="hidden" name="phone" value={phone} />
           
           <div className="group relative">

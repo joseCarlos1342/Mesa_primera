@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export type AdminUserView = {
   id: string;
@@ -29,7 +30,7 @@ async function ensureAdmin(supabase: any) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) throw new Error("No autenticado");
 
-  const { data: userRecord, error: profileError } = await supabase
+  const { data: userRecord } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", userData.user.id)
@@ -43,7 +44,6 @@ export async function getUsersList(): Promise<AdminUserView[]> {
   const supabase = await createClient();
   await ensureAdmin(supabase);
 
-  // Fetch profiles with their devices, wallets and basic stats
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(`
@@ -55,23 +55,54 @@ export async function getUsersList(): Promise<AdminUserView[]> {
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  
-  if (profiles && profiles.length > 0) {
-     console.log("==> DB RETURN ADMIN USERS:", JSON.stringify(profiles.slice(0, 1), null, 2));
-  }
 
   return (profiles || []).map(p => ({
     ...p,
     username: p.username || '',
     display_name: p.full_name || p.username || 'Desconocido',
-    phone: p.phone || p.id.split('-')[0], // Muestra el telefono real desde profiles si existe
+    phone: p.phone || p.id.split('-')[0],
     balance_cents: p.wallets ? (Array.isArray(p.wallets) ? (p.wallets.length > 0 ? Number(p.wallets[0].balance) : 0) : Number((p.wallets as any).balance || 0)) : 0,
-    last_login: p.created_at, // Fallback since auth.users isn't directly exposed here
+    last_login: p.created_at,
     stats: p.stats ? {
-      games_played: Array.isArray(p.stats) ? p.stats[0]?.total_games || 0 : p.stats.total_games || 0,
-      games_won: Array.isArray(p.stats) ? p.stats[0]?.wins || 0 : p.stats.wins || 0
+      games_played: Array.isArray(p.stats) ? (p.stats[0] as any)?.total_games || 0 : (p.stats as any).total_games || 0,
+      games_won: Array.isArray(p.stats) ? (p.stats[0] as any)?.wins || 0 : (p.stats as any).wins || 0
     } : { games_played: 0, games_won: 0 }
   })) as AdminUserView[];
+}
+
+export async function adjustUserBalance(userId: string, deltaCents: number, reason: string) {
+  const supabase = await createClient();
+  const adminId = await ensureAdmin(supabase);
+
+  const { data: wallet, error: walletError } = await supabase
+    .from('wallets')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (walletError || !wallet) throw new Error("Wallet no encontrada");
+
+  const newBalance = Number(wallet.balance) + deltaCents;
+  if (newBalance < 0) throw new Error("Saldo resultante no puede ser negativo");
+
+  const { error: updateError } = await supabase
+    .from('wallets')
+    .update({ balance: newBalance })
+    .eq('id', wallet.id)
+
+  if (updateError) throw updateError;
+
+  await supabase.from('ledger').insert({
+    user_id: userId,
+    amount_cents: Math.abs(deltaCents),
+    type: 'admin_adjustment',
+    direction: deltaCents >= 0 ? 'credit' : 'debit',
+    balance_after_cents: newBalance,
+    metadata: { reason, admin_id: adminId }
+  });
+
+  revalidatePath('/admin/users');
+  return { success: true };
 }
 
 export async function toggleBanStatus(userId: string, is_banned: boolean, ban_reason?: string) {
@@ -97,8 +128,6 @@ export async function toggleBanStatus(userId: string, is_banned: boolean, ban_re
 
   if (error) throw error;
   
-  // NOTE: In a full architecture, we should immediately force disconnect the user via Supabase Auth admin API 
-  // or notify Colyseus if they are in a room. We'll leave the DB update for this phase.
-  
+  revalidatePath('/admin/users');
   return { success: true };
 }

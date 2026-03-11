@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { client } from '@/lib/colyseus'
+import { createClient } from '@/utils/supabase/client'
 import { Room } from '@colyseus/sdk'
 import { Loader2, ArrowLeft, Users, Gamepad2, BookOpen } from 'lucide-react'
 import Link from 'next/link'
@@ -65,6 +66,21 @@ export default function GameRoomPage() {
         }
         
         if (!joinedRoom) {
+          // Sync with Supabase session first
+          let avatarUrl = sessionStorage.getItem(`avatarUrl_${roomId}`)
+          if (!nick) {
+            const supabase = createClient()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user?.user_metadata?.username) {
+              nick = user.user_metadata.username
+              sessionStorage.setItem(nickKey, nick!)
+              if (user.user_metadata.avatar_url) {
+                avatarUrl = user.user_metadata.avatar_url
+                sessionStorage.setItem(`avatarUrl_${roomId}`, avatarUrl)
+              }
+            }
+          }
+
           if (!nick) {
             nick = 'Jugador ' + Math.floor(Math.random() * 1000);
             sessionStorage.setItem(nickKey, nick);
@@ -78,7 +94,8 @@ export default function GameRoomPage() {
 
           joinedRoom = await client.joinById(roomId, {
             nickname: nick,
-            deviceId: deviceId
+            deviceId: deviceId,
+            avatarUrl: avatarUrl
           })
           
           // Guardar el token para permitir reconexiones si se recarga la página (F5)
@@ -125,6 +142,12 @@ export default function GameRoomPage() {
       } catch (err: any) {
         console.error('Join Error:', err)
         setError(err.message || 'Error al conectar con la sala')
+        // Si la sala no existe, redirigir al lobby después de unos segundos
+        if (err.message?.includes('not found')) {
+          setTimeout(() => {
+            window.location.href = '/'
+          }, 3000)
+        }
       } finally {
         setLoading(false)
       }

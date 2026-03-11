@@ -17,6 +17,7 @@
     "dev": "turbo dev",
     "dev:web": "npm run dev --workspace=@mesa-primera/web",
     "dev:game": "npm run dev --workspace=game-server",
+    "test": "echo \"Testing placeholder...\"",
     "prepare": "husky"
   }
 }
