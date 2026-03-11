@@ -1,8 +1,16 @@
 import { getWalletData } from '@/app/actions/wallet'
 import Link from 'next/link'
+import { ShoppingCart, ArrowUpWideNarrow, Landmark } from 'lucide-react'
 
 export default async function WalletPage() {
   const { wallet, transactions, error } = await getWalletData()
+
+  const CHIP_PACKS = [
+    { amount: 50000, label: '50.000 Bits', price: '$50.000', popular: false },
+    { amount: 100000, label: '100.000 Bits', price: '$100.000', popular: true },
+    { amount: 200000, label: '200.000 Bits', price: '$200.000', popular: false },
+    { amount: 500000, label: '500.000 Bits', price: '$500.000', popular: false },
+  ]
 
   if (error) {
     return (
@@ -15,81 +23,95 @@ export default async function WalletPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans p-6">
-      <div className="max-w-md mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-4xl md:text-5xl font-black">Mi Billetera</h1>
-          <Link href="/" className="text-slate-400 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 md:h-12 md:w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <div className="min-h-screen bg-slate-950 text-white font-sans p-6 pb-32">
+      <div className="max-w-md mx-auto space-y-10">
+        
+        {/* Balance Card */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 p-8 rounded-[2rem] shadow-2xl border border-white/10">
+          <div className="relative z-10 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Saldo en Cartera</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-6xl font-black italic text-white leading-tight">
+                ${((wallet?.balance_cents || 0) / 100).toLocaleString()}
+              </span>
+              <span className="text-xl font-bold text-indigo-300">BT</span>
+            </div>
+            <div className="flex gap-4 mt-8">
+               <Link href="/wallet/withdraw" className="flex-1 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center gap-2 border border-white/20 font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all">
+                <ArrowUpWideNarrow className="w-4 h-4" />
+                Retirar
+               </Link>
+            </div>
+          </div>
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+        </div>
+
+        {/* SHOP SECTION (EL CARRO) */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-500/20 rounded-xl">
+              <ShoppingCart className="w-5 h-5 text-indigo-400" />
+            </div>
+            <h3 className="text-xl font-black uppercase tracking-tighter">Cargar Fichas (Carro)</h3>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {CHIP_PACKS.map((pack) => (
+              <Link 
+                key={pack.amount}
+                href={`/wallet/deposit?amount=${pack.amount}`}
+                className={`relative p-6 rounded-3xl border-2 transition-all flex flex-col items-center text-center gap-2 group active:scale-95 ${
+                  pack.popular ? 'bg-indigo-600/10 border-indigo-500/40 shadow-lg shadow-indigo-500/5' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {pack.popular && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-[8px] font-black uppercase py-1 px-3 rounded-full tracking-widest">Recomendado</span>
+                )}
+                <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-indigo-500/20 transition-colors">
+                  <ShoppingCart className={`w-6 h-6 ${pack.popular ? 'text-indigo-400' : 'text-slate-500'}`} />
+                </div>
+                <span className="text-sm font-black text-white">{pack.label}</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Pagas {pack.price}</span>
+              </Link>
+            ))}
+          </div>
+          
+          <Link href="/wallet/deposit" className="block text-center p-6 bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-slate-300 transition-colors">
+            O ingresar otro monto manualmente
           </Link>
         </div>
 
-        {/* Balance Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 p-8 md:p-12 rounded-[2rem] shadow-2xl shadow-indigo-600/20">
-          <div className="absolute top-[-20%] right-[-10%] w-48 h-48 bg-white/10 blur-3xl rounded-full" />
-          <div className="relative space-y-2">
-            <p className="text-indigo-100/80 text-lg md:text-xl font-bold uppercase tracking-widest">Saldo Disponible</p>
-            <h2 className="text-6xl md:text-7xl font-black tabular-nums tracking-tighter">
-              ${wallet?.balance.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-            </h2>
-          </div>
-          
-          <div className="mt-10 flex flex-col md:flex-row gap-4">
-            <Link 
-              href="/wallet/deposit"
-              className="flex-1 bg-white text-indigo-700 h-16 flex items-center justify-center rounded-2xl font-black text-lg md:text-xl active:scale-[0.98] transition-all shadow-lg hover:bg-slate-100"
-            >
-              Cargar Fichas
-            </Link>
-            <Link 
-              href="/wallet/withdraw"
-              className="flex-1 bg-white/10 backdrop-blur-md text-white h-16 flex items-center justify-center rounded-2xl font-black text-lg md:text-xl active:scale-[0.98] transition-all border-2 border-white/20 hover:bg-white/20"
-            >
-              Retirar
-            </Link>
-          </div>
-        </div>
-
-        {/* Ledger / History */}
+        {/* HISTORIAL */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="font-black text-2xl text-slate-200">Historial (Ledger)</h3>
-            <button className="text-sm md:text-base text-indigo-400 font-bold uppercase tracking-widest hover:text-indigo-300 transition-colors">Ver Todo</button>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xl font-black uppercase tracking-tighter">Actividad</h3>
+            <button className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Ver Todo</button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {transactions?.length === 0 ? (
-              <div className="text-center py-16 text-slate-500 italic text-xl">
-                No hay movimientos registrados
+              <div className="text-center py-10 bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl">
+                <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">Sin movimientos</p>
               </div>
             ) : (
               transactions?.map((tx: any) => (
-                <div key={tx.id} className="bg-slate-900/50 border-2 border-slate-800/50 p-6 rounded-3xl flex items-center justify-between group hover:border-slate-600 transition-all">
-                  <div className="flex items-center gap-5 md:gap-6">
-                    <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-3xl md:text-4xl shadow-md ${
-                      tx.amount > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
-                    }`}>
-                      {tx.type === 'deposit' ? '↓' : tx.type === 'win' ? '★' : '↑'}
+                <div key={tx.id} className="bg-slate-900/50 border border-slate-800/80 p-5 rounded-3xl flex items-center justify-between transition-all hover:bg-slate-900">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-2xl ${tx.type === 'deposit' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                      <ShoppingCart className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-black text-lg md:text-xl capitalize text-slate-200">{tx.type} <span className="text-slate-500 font-bold text-base">#{tx.id.slice(0,4)}</span></p>
-                      <p className="text-sm md:text-base font-medium text-slate-400 uppercase tracking-wide mt-1">
-                        {new Date(tx.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      <p className="font-black text-sm uppercase tracking-tight text-slate-200">{tx.type}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        {new Date(tx.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-black text-2xl md:text-3xl tracking-tighter ${tx.amount > 0 ? 'text-emerald-400' : 'text-white'}`}>
-                      {tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(2)}
+                    <p className={`font-mono font-black text-lg ${tx.type === 'deposit' ? 'text-emerald-400' : 'text-white'}`}>
+                      {tx.type === 'deposit' ? '+' : '-'}${Math.abs(tx.amount || 0).toLocaleString()}
                     </p>
-                    <p className={`text-xs md:text-sm font-bold uppercase tracking-[0.2em] px-2 py-1 rounded bg-black/20 mt-1 inline-block ${
-                      tx.status === 'completed' ? 'text-emerald-500' : tx.status === 'pending' ? 'text-amber-500' : 'text-slate-500'
-                    }`}>
-                      {tx.status}
-                    </p>
+                    <span className="text-[8px] font-black uppercase bg-black/40 px-2 py-0.5 rounded text-slate-500">{tx.status}</span>
                   </div>
                 </div>
               ))

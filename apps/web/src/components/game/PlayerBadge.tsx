@@ -1,15 +1,17 @@
 "use client"
 
 import { motion, AnimatePresence } from 'framer-motion'
+import { Mic } from 'lucide-react'
 
 interface PlayerBadgeProps {
   player: any;
   isActive: boolean;
   isMe: boolean;
+  isDealer?: boolean;
   vertical?: boolean;
 }
 
-export function PlayerBadge({ player, isActive, isMe, vertical = true }: PlayerBadgeProps) {
+export function PlayerBadge({ player, isActive, isMe, isDealer = false, vertical = true }: PlayerBadgeProps) {
   // Check if we render the dark green box style (only for 'isMe' in the new layout)
   const isBoxStyle = isMe;
 
@@ -31,56 +33,57 @@ export function PlayerBadge({ player, isActive, isMe, vertical = true }: PlayerB
         p-[2px] md:p-[3px] shadow-lg
         ${isMe ? 'w-14 h-14 md:w-20 md:h-20' : 'w-12 h-12 md:w-16 md:h-16'}
       `}>
-        {/* Inner Avatar Image placeholder / Initial */}
         <div className={`
           w-full h-full rounded-full flex items-center justify-center
-          bg-[#1b253b] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]
-          border-2 border-black/50 shadow-inner
+          bg-[#1b253b] bg-gradient-to-b from-[#2a3b5c] to-[#121929]
+          border-[3px] shadow-[inset_0_4px_10px_rgba(0,0,0,0.6)]
+          ${isActive ? 'border-[#e2b044]' : 'border-gray-500/50'}
         `}>
           {isActive && (
             <motion.div 
-              className="absolute inset-[0px] rounded-full border-[3px] border-[#4ade80]"
-              animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.05, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
+              className="absolute inset-[0px] rounded-full border-[3px] border-[#fde047] shadow-[0_0_20px_rgba(253,224,71,0.5)]"
+              animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.02, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
             />
           )}
 
-          <span className={`${isMe ? 'text-2xl md:text-3xl' : 'text-lg md:text-2xl'} font-playfair font-black text-white/90 drop-shadow-md`}>
+          <span className={`${isMe ? 'text-2xl md:text-3xl' : 'text-lg md:text-2xl'} font-playfair font-bold text-white/90 drop-shadow-md`}>
             {player.nickname?.charAt(0) || '?'}
           </span>
         </div>
 
-        {/* Action Hand Icon for Active Player */}
+        {/* Action Hand Icon for Active Player - Replacing with Microphone as in screenshot */}
         <AnimatePresence>
           {isActive && (
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="absolute -top-2 -left-3 md:-left-4 bg-[#1b253b] border-2 border-[#4ade80] rounded-full p-1.5 shadow-[0_0_15px_rgba(74,222,128,0.6)]"
+              className="absolute bottom-0 -right-2 md:-right-3 bg-black/60 border border-[#e2b044] rounded-full p-1 shadow-md"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-6 md:h-6">
-                <path d="M18 11V6a2 2 0 0 0-4 0v4" />
-                <path d="M14 10V4a2 2 0 0 0-4 0v6" />
-                <path d="M10 10.5V3a2 2 0 0 0-4 0v9" />
-                <path d="M6 12v-1a2 2 0 0 0-4 0v6c0 4.4 3.6 8 8 8h3c4 0 7-3.6 7-8v-2a2 2 0 0 0-4 0v2" />
-              </svg>
+              <Mic className="w-4 h-4 md:w-5 md:h-5 text-gray-300" />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Name and Saldo (Casino Style) */}
-      <div className={`flex flex-col items-center justify-center w-full mt-1 ${isBoxStyle ? '' : 'drop-shadow-md'}`}>
-        <p className={`text-white text-[10px] md:text-sm font-bold truncate w-full text-center tracking-wide ${isActive ? 'text-[#4ade80]' : ''}`}>
+      <div className={`flex flex-col items-center justify-center w-full mt-1 ${isBoxStyle ? '' : 'drop-shadow-md'} relative z-10 bg-black/50 px-2 py-0.5 rounded-full border border-white/10`}>
+        <p className={`text-white text-[10px] md:text-[13px] font-medium truncate w-full text-center tracking-wide uppercase`}>
           {isMe ? 'TÚ' : player.nickname}
         </p>
         <div className="flex flex-col items-center leading-none mt-0.5">
-          <span className={`text-[#4ade80] text-[10px] md:text-xs font-mono font-black tracking-wider drop-shadow-sm ${isBoxStyle ? 'mt-1' : ''}`}>
+          <span className={`text-gray-300 text-[9px] md:text-[11px] font-mono font-bold tracking-wider drop-shadow-sm`}>
             ${player.chips?.toLocaleString() || '0'}
           </span>
         </div>
       </div>
+
+      {/* LA MANO Ribbon */}
+      {isDealer && !isMe && (
+         <div className="mt-1 bg-gradient-to-r from-[#d4af37] to-[#a17822] text-black text-[8px] md:text-[9px] font-bold px-3 py-0.5 rounded-sm shadow-md border border-[#fff7d6]/50 uppercase tracking-widest relative">
+           La Mano
+         </div>
+      )}
 
       {/* Disconnected Overlay */}
       {!player.connected && (

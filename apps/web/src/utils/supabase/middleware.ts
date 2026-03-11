@@ -37,12 +37,14 @@ export async function updateSession(request: NextRequest) {
   const isMfaPage = pathname === '/login/admin/mfa'
 
   // DEV BYPASS: Allow access if bypass cookie exists
-  if (process.env.NODE_ENV === 'development' && request.cookies.get('mesa_dev_bypass')) {
+  const devBypassCookie = request.cookies.get('mesa_dev_bypass')
+  if (process.env.NODE_ENV === 'development' && devBypassCookie) {
     if (isAuthPage) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
     }
+    // In dev bypass mode, we let them pass to protected routes
     return supabaseResponse
   }
 

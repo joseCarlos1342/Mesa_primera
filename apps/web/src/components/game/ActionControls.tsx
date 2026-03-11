@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Room } from '@colyseus/sdk'
 import { useState } from 'react'
+import { Mic, Headphones } from 'lucide-react'
 
 interface ActionControlsProps {
   room: Room;
@@ -31,11 +32,11 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
   return (
     <AnimatePresence>
       <motion.div 
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 50, opacity: 0 }}
+        initial={{ x: 50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 50, opacity: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="absolute bottom-[22vh] md:bottom-8 left-0 right-0 md:left-auto flex flex-col items-center md:items-end gap-2 md:gap-4 z-[60] py-2 pointer-events-auto px-1 md:px-2"
+        className="absolute bottom-4 right-4 md:bottom-12 md:right-12 flex flex-col items-end gap-3 z-[60] pointer-events-auto"
       >
 
         {/* FASE: DESCARTE */}
@@ -60,26 +61,24 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
 
         {/* FASE: PIQUE o GUERRA */}
         {/* FASE: PIQUE o GUERRA */}
+        {/* FASE: PIQUE o GUERRA */}
         {(phase === 'PIQUE' || phase === 'GUERRA') && (
-          <div className="flex flex-col md:flex-row items-center md:items-end gap-4 p-2 w-full md:w-auto">
+          <div className="flex flex-col items-end gap-3 p-2 w-full md:w-auto">
             
-            {/* Chips Area (Horizontal Row) */}
-            <div className="flex flex-col items-center w-full md:w-auto">
-              {/* Note: The user reference doesn't have a label above chips, keeping it clean */}
-              
-              <div className="flex overflow-x-auto w-full md:w-auto items-center justify-center gap-2 md:gap-4 pb-2 md:pb-0 px-1 snap-x no-scrollbar">
+            {/* Chips Area (Horizontal Row floating above) */}
+            <div className="flex flex-col items-end w-full md:w-auto mb-2">
+              <div className="flex overflow-x-auto w-full md:w-auto items-center justify-end gap-2 pb-2 px-1 snap-x no-scrollbar">
                 {CHIP_VALUES.map(val => {
                   const canAfford = playerChips >= val;
                   const isSelected = selectedChip === val;
                   
-                  // Match colors from reference image
-                  let colorClass = "bg-white text-black border-gray-300"; // 1k White
+                  let colorClass = "bg-white text-black border-gray-300"; // 1k
                   let ringColor = "ring-white/50";
-                  if (val === 2000) { colorClass = "bg-[#e53935] text-white border-red-800"; ringColor = "ring-red-500/50"; } // 2k Red
-                  if (val === 5000) { colorClass = "bg-[#43a047] text-white border-green-800"; ringColor = "ring-green-500/50"; } // 5k Green
-                  if (val === 10000) { colorClass = "bg-[#1e88e5] text-white border-blue-800"; ringColor = "ring-blue-500/50"; } // 10k Blue
-                  if (val === 20000) { colorClass = "bg-[#212121] text-white border-black"; ringColor = "ring-black/50"; } // 20k Black
-                  if (val === 50000) { colorClass = "bg-[#fbc02d] text-black border-yellow-700"; ringColor = "ring-yellow-500/50"; } // 50k Yellow
+                  if (val === 2000) { colorClass = "bg-[#e53935] text-white border-red-800"; ringColor = "ring-red-500/50"; } // 2k
+                  if (val === 5000) { colorClass = "bg-[#43a047] text-white border-green-800"; ringColor = "ring-green-500/50"; } // 5k
+                  if (val === 10000) { colorClass = "bg-[#1e88e5] text-white border-blue-800"; ringColor = "ring-blue-500/50"; } // 10k
+                  if (val === 20000) { colorClass = "bg-[#212121] text-white border-black"; ringColor = "ring-black/50"; } // 20k
+                  if (val === 50000) { colorClass = "bg-[#fbc02d] text-black border-yellow-700"; ringColor = "ring-yellow-500/50"; } // 50k
 
                   return (
                     <button
@@ -87,17 +86,16 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                       disabled={!canAfford}
                       onClick={() => setSelectedChip(isSelected ? null : val)}
                       className={`
-                        flex-shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center snap-center relative
-                        font-black tracking-tighter shadow-xl transition-all border-[6px] border-dashed
+                        flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center snap-center relative
+                        font-black tracking-tighter shadow-xl transition-all border-[4px] border-dashed
                         ${colorClass}
                         ${canAfford 
-                            ? `${isSelected ? `ring-[8px] ${ringColor} scale-110 -translate-y-3 shadow-[0_20px_40px_rgba(0,0,0,0.6)]` : 'hover:-translate-y-2'}` 
+                            ? `${isSelected ? `ring-[4px] ${ringColor} scale-110 -translate-y-2 shadow-[0_10px_20px_rgba(0,0,0,0.6)]` : 'hover:-translate-y-1'}` 
                             : 'opacity-30 cursor-not-allowed'}
                       `}
                     >
-                      {/* Inner solid border to make the dashed border look like a casino chip ring */}
-                      <div className="absolute inset-0 border-4 border-black/10 rounded-full pointer-events-none" />
-                      <span className="relative z-10 text-sm md:text-xl drop-shadow-sm pb-px">
+                      <div className="absolute inset-0 border-[3px] border-black/10 rounded-full pointer-events-none" />
+                      <span className="relative z-10 text-xs md:text-sm drop-shadow-sm pb-px">
                         ${val >= 1000 ? `${val/1000}k` : val}
                       </span>
                     </button>
@@ -106,39 +104,65 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-row md:flex-row gap-3 md:gap-6 items-center w-full md:w-auto justify-center mt-2 md:mt-0">
-              
-              {/* Botón PASO (Rojo Grueso) */}
-              <button 
-                onClick={() => handleExecute(phase === 'PIQUE' ? 'paso' : 'fold')} 
-                className="w-32 h-16 md:w-40 md:h-20 bg-[#e74c3c] hover:bg-[#c0392b] text-white rounded-xl md:rounded-2xl font-black text-base md:text-2xl shadow-[0_8px_20px_rgba(231,76,60,0.4)] hover:-translate-y-1 transition-transform uppercase tracking-widest border-b-[6px] border-[#922b21]"
-              >
-                Paso
-              </button>
-
-              {/* Botón VOY / CANTAR JUGADA (Amarillo/Dorado Grueso) */}
-              <AnimatePresence>
-                {/* En Pique normal, este botón sale cuando seleccionas una ficha */}
-                {(selectedChip || phase === 'GUERRA') && (
+            {/* Main Action Buttons Grid */}
+            <div className="flex flex-col gap-3 w-64 md:w-80">
+              {/* CANTAR JUGADA Button (Huge Gold) */}
+              <AnimatePresence mode="wait">
+                {(selectedChip || phase === 'GUERRA') ? (
                   <motion.button 
-                    initial={{ scale: 0.8, opacity: 0 }}
+                    initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
                     onClick={() => handleExecute(phase === 'PIQUE' ? 'voy' : 'bet')} 
-                    className="w-48 h-16 md:w-64 md:h-20 bg-[#e2b044] hover:bg-[#d49a36] text-[#1a1a2e] rounded-xl md:rounded-2xl font-black text-base md:text-xl shadow-[0_8px_20px_rgba(226,176,68,0.4)] hover:-translate-y-1 transition-transform uppercase tracking-widest border-b-[6px] border-[#b8860b] flex items-center justify-center gap-2"
+                    className="w-full h-14 md:h-16 bg-gradient-to-b from-[#fde047] to-[#eab308] hover:from-[#fef08a] hover:to-[#ca8a04] text-[#451a03] rounded-xl font-black text-lg md:text-xl shadow-[0_10px_20px_rgba(234,179,8,0.3)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#fef08a]/50 border-b-[6px] border-b-[#a16207] flex items-center justify-center gap-2"
                   >
-                    ¡VOY!
+                    <Mic className="w-5 h-5 md:w-6 md:h-6" />
+                    ¡CANTAR JUGADA!
                     {selectedChip && phase !== 'GUERRA' && (
-                      <span className="text-sm md:text-base opacity-90 bg-black/10 px-2 py-1 rounded ml-1 font-bold">
+                      <span className="text-sm border-l border-black/20 pl-2 ml-1">
                         +${selectedChip >= 1000 ? selectedChip/1000 + 'k' : selectedChip}
                       </span>
                     )}
                   </motion.button>
+                ) : (
+                  <button 
+                    disabled
+                    className="w-full h-14 md:h-16 bg-gradient-to-b from-[#fde047]/30 to-[#eab308]/30 text-[#451a03]/50 rounded-xl font-black text-lg md:text-xl border border-white/10 flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
+                  >
+                     <Mic className="w-5 h-5 md:w-6 md:h-6" />
+                     CANTAR JUGADA
+                  </button>
                 )}
               </AnimatePresence>
-            </div>
 
+              {/* VOY / PASO split */}
+              <div className="grid grid-cols-2 gap-3 w-full">
+                {/* VOY Button (Green) */}
+                <button 
+                  onClick={() => handleExecute(phase === 'PIQUE' ? 'voy' : 'bet')} 
+                  className="h-12 md:h-14 bg-gradient-to-b from-[#22c55e] to-[#16a34a] hover:from-[#4ade80] hover:to-[#15803d] text-white rounded-xl font-black text-base md:text-lg shadow-[0_8px_15px_rgba(22,163,74,0.3)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#86efac]/30 border-b-[5px] border-b-[#14532d]"
+                >
+                  Voy
+                </button>
+                
+                {/* PASO Button (Red) */}
+                <button 
+                  onClick={() => handleExecute(phase === 'PIQUE' ? 'paso' : 'fold')} 
+                  className="h-12 md:h-14 bg-gradient-to-b from-[#ef4444] to-[#dc2626] hover:from-[#f87171] hover:to-[#b91c1c] text-white rounded-xl font-black text-base md:text-lg shadow-[0_8px_15px_rgba(220,38,38,0.3)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#fca5a5]/30 border-b-[5px] border-b-[#7f1d1d]"
+                >
+                  Paso
+                </button>
+              </div>
+              
+              {/* Soporte Button (Beige) */}
+              <button 
+                className="w-full h-10 md:h-12 mt-1 bg-gradient-to-b from-[#fef3c7] to-[#fde68a] hover:from-[#fffbeb] hover:to-[#fcd34d] text-[#78350f] rounded-xl font-bold text-sm shadow-[0_4px_10px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border border-[#fef3c7] border-b-[4px] border-b-[#d97706]"
+              >
+                 <Headphones className="w-4 h-4" />
+                 Chat de Soporte (Voz)
+              </button>
+
+            </div>
           </div>
         )}      </motion.div>
     </AnimatePresence>

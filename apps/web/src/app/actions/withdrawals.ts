@@ -1,8 +1,3 @@
-'use server'
-
-import { createClient } from '@/utils/supabase/server'
-import { revalidatePath } from 'next/cache'
-
 export async function requestWithdrawal(amount: number, bankDetails: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -17,19 +12,14 @@ export async function requestWithdrawal(amount: number, bankDetails: string) {
   if (!wallet) return { error: 'Wallet not found' }
   if (Number(wallet.balance) < amount) return { error: 'Saldo insuficiente' }
 
-  // 1. Create PENDING withdrawal transaction
-  // IMPORTANTE: En un retiro, el saldo se "congela" o se debita al aprobar.
-  // Aquí lo debitaremos al aprobar para evitar discrepancias si se rechaza.
-  
+  // 1. Create PENDING withdrawal request
   const { error } = await supabase
-    .from('transactions')
+    .from('withdrawal_requests')
     .insert({
-      wallet_id: wallet.id,
-      amount: -amount, // Negativo porque es un egreso
-      type: 'withdrawal',
-      status: 'pending',
-      // Guardamos info del banco en una columna de metadata si existiera, 
-      // por ahora lo manejaremos como referencia o descripción
+      user_id: user.id,
+      amount_cents: amount,
+      bank_info: bankDetails,
+      status: 'pending'
     })
 
   if (error) return { error: error.message }
@@ -42,12 +32,19 @@ export async function getPendingWithdrawals() {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('transactions')
-    .select('*, wallets(profiles(username))')
-    .eq('type', 'withdrawal')
+    .from('withdrawal_requests')
+    .select('*, profiles(username)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
   if (error) return { error: error.message }
-  return { withdrawals: data }
+  
+  // Adapt to UI expectation: wit.wallets.profiles.username
+  const adaptedData = data?.map(w => ({
+    ...w,
+    amount: w.amount_cents,
+    wallets: { profiles: w.profiles }
+  }));
+
+  return { withdrawals: adaptedData }
 }

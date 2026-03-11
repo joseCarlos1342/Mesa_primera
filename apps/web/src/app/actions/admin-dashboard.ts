@@ -13,6 +13,7 @@ export type AdminDashboardStats = {
   ledgerIntegrityStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO";
   ledgerIntegrityDiff: number;
   volume24h: number;
+  pendingSupport: number;
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
@@ -46,19 +47,15 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     .select("*", { count: "exact", head: true })
     .eq("status", "pending");
 
-  // Fetch active users (just total for now, or users logged in last 24h)
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const { count: activeUsersCount } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .gte("last_sign_in_at", yesterday.toISOString());
+  // Fetch active users (via RPC from auth.users)
+  const { data: activeUsersCount, error: activeUsersError } = await supabase
+    .rpc("get_active_users_count");
 
   // Fetch active games
   const { count: activeGamesCount } = await supabase
     .from("games")
     .select("*", { count: "exact", head: true })
-    .eq("status", "playing");
+    .eq("status", "in_progress");
 
   // Financial Integrity Check
   // 1. Sum of all user balances
@@ -105,13 +102,16 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   }
 
   // Volume 24h (total bits moved in deposits + bets)
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const { data: recentLedger } = await supabase
-    .from("ledger")
-    .select("amount_cents")
-    .eq("status", "completed")
-    .gte("created_at", yesterday.toISOString());
-    
   const volume24h = recentLedger?.reduce((acc, entry) => acc + (entry.amount_cents || 0), 0) || 0;
+
+  // Pending Support Messages
+  const { count: pendingSupportCount } = await supabase
+    .from("support_messages")
+    .select("*", { count: "exact", head: true })
+    .eq("from_admin", false)
+    .is("read_at", null);
 
   return {
     activeUsers: activeUsersCount || 0,
@@ -122,6 +122,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     activeGames: activeGamesCount || 0,
     ledgerIntegrityStatus,
     ledgerIntegrityDiff,
-    volume24h
+    volume24h,
+    pendingSupport: pendingSupportCount || 0
   };
 }

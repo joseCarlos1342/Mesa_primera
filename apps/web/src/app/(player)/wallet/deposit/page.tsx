@@ -1,16 +1,22 @@
-'use client'
-
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { createDepositRequest } from '@/app/actions/wallet'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft, Upload, DollarSign } from 'lucide-react'
+import Link from 'next/link'
 
 export default function DepositPage() {
-  const [amount, setAmount] = useState('')
+  const searchParams = useSearchParams()
+  const initialAmount = searchParams.get('amount') || ''
+  const [amount, setAmount] = useState(initialAmount)
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    if (initialAmount) setAmount(initialAmount)
+  }, [initialAmount])
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,37 +46,46 @@ export default function DepositPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6 flex flex-col items-center">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-black italic text-indigo-400">CARGAR FICHAS</h1>
-          <p className="text-slate-500 text-sm">Sube tu comprobante de transferencia</p>
+    <div className="min-h-screen bg-slate-950 text-white p-6 pb-32">
+      <div className="max-w-md mx-auto space-y-8">
+        <div className="flex items-center gap-4">
+          <Link href="/wallet" className="p-3 bg-slate-900 border border-slate-800 rounded-2xl text-slate-400 hover:text-white transition-all">
+            <ArrowLeft className="w-6 h-6" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-black italic text-indigo-400 uppercase tracking-tighter">Cargar Fichas</h1>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Paso Final: Sube tu comprobante</p>
+          </div>
         </div>
 
-        <form onSubmit={handleUpload} className="space-y-6 bg-slate-900/50 p-6 rounded-3xl border border-slate-800">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Monto a Acreditar</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              required
-              className="w-full h-14 px-4 bg-black/40 border border-slate-700 rounded-2xl text-2xl font-black text-white focus:outline-none focus:border-indigo-500 transition-all font-mono"
-            />
+        <form onSubmit={handleUpload} className="space-y-6 bg-slate-900/40 p-8 rounded-[2rem] border border-slate-800 shadow-xl">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Monto a confirmar</label>
+            <div className="relative">
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500" />
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                required
+                className="w-full h-16 pl-12 pr-4 bg-black/40 border border-slate-700 rounded-2xl text-3xl font-black text-white focus:outline-none focus:border-indigo-500 transition-all font-mono"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Comprobante (Imagen)</label>
-            <div className="relative group h-32 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center hover:border-indigo-500/50 transition-all cursor-pointer overflow-hidden">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Tu comprobante (Imagen)</label>
+            <div className="relative h-48 border-2 border-dashed border-slate-700 rounded-[2rem] flex flex-col items-center justify-center hover:border-indigo-500/50 transition-all cursor-pointer overflow-hidden bg-black/20 group">
               {file ? (
-                <p className="text-indigo-400 font-bold">{file.name}</p>
+                <div className="text-center p-4">
+                  <p className="text-indigo-400 font-black text-xs break-all">{file.name}</p>
+                  <p className="text-slate-600 text-[8px] uppercase tracking-widest mt-1">Archivo seleccionado</p>
+                </div>
               ) : (
                 <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-slate-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-slate-600 text-xs font-medium">Click para seleccionar archivo</p>
+                  <Upload className="h-10 w-10 text-slate-600 mb-2 group-hover:scale-110 transition-transform" />
+                  <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.2em]">Seleccionar Foto</p>
                 </>
               )}
               <input
@@ -86,21 +101,31 @@ export default function DepositPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-black rounded-2xl transition-all shadow-lg shadow-indigo-600/20 uppercase tracking-widest text-sm"
+            className="w-full h-16 bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 disabled:opacity-50 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-600/20 uppercase tracking-[0.3em] text-sm flex items-center justify-center gap-3 border-b-4 border-indigo-900"
           >
-            {loading ? 'Subiendo...' : 'Enviar Solicitud'}
+            {loading ? 'Procesando...' : (
+              <>
+                <Upload className="w-5 h-5" />
+                Confirmar Pago
+              </>
+            )}
           </button>
         </form>
 
-        <div className="p-4 bg-indigo-600/5 rounded-2xl border border-indigo-500/10 space-y-2">
-          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Información de Pago</p>
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-500">ALIAS:</span>
-            <span className="font-bold text-slate-300">mesa.primera.v2</span>
+        <div className="p-6 bg-indigo-600/10 rounded-[2rem] border border-indigo-500/20 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Landmark className="w-4 h-4 text-indigo-400" />
+            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Información de Transferencia</p>
           </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-500">BANCO:</span>
-            <span className="font-bold text-slate-300">Mercado Pago</span>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-500 font-bold">ALIAS:</span>
+              <span className="font-black text-indigo-200 uppercase">mesa.primera.v2</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-500 font-bold">BANCO:</span>
+              <span className="font-black text-indigo-200 uppercase">Mercado Pago</span>
+            </div>
           </div>
         </div>
       </div>

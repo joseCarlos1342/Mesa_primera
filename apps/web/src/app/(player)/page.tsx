@@ -1,11 +1,9 @@
-import { Lobby } from "@/components/game/Lobby";
+import { PlayerDashboard } from "@/components/dashboard/PlayerDashboard";
 
 export default function PlayerPage() {
   return (
-    <div className="min-h-full py-20 px-4">
-      <div className="max-w-5xl mx-auto space-y-12">
-        <Lobby />
-      </div>
+    <div className="min-h-full py-12 px-6 max-w-lg mx-auto">
+      <PlayerDashboard />
     </div>
   );
 }

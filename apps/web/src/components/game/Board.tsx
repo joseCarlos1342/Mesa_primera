@@ -6,7 +6,9 @@ import { PlayerBadge } from './PlayerBadge'
 import { ActionControls } from './ActionControls'
 import { GameAnnouncer } from './GameAnnouncer'
 import { Card } from './Card'
-import { useState } from 'react'
+import { RechargeButton } from './RechargeButton'
+import { useState, useEffect } from 'react'
+import { RotateCcw } from 'lucide-react'
 
 interface BoardProps {
   room: Room | null;
@@ -73,6 +75,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
           player={p} 
           isActive={room.state.turnPlayerId === p.id} 
           isMe={false} 
+          isDealer={room.state.dealerId === p.id}
         />
         {/* Opponent's Cards */}
         <div className="flex justify-center -mt-8 md:-mt-10 z-0 scale-[0.6] md:scale-100 origin-top">
@@ -112,9 +115,29 @@ export function Board({ room, phase, pot, players }: BoardProps) {
   }
 
   return (
-    <div className="relative w-full h-full bg-[#08412b] flex items-center justify-center overflow-hidden shadow-inner">
-      {/* Felt texture overlay */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/felt.png')]" />
+    <div className="relative w-full h-full bg-[#042f1f] flex items-center justify-center overflow-hidden shadow-inner font-sans">
+      {/* ORIENTATION WARNING: Only visible on mobile in portrait */}
+      <div className="fixed inset-0 z-[1000] bg-[#070b14] flex flex-col items-center justify-center p-8 text-center md:hidden portrait:flex landscape:hidden">
+        <motion.div
+          animate={{ rotate: 90 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="mb-8 p-6 bg-emerald-500/10 rounded-3xl border border-emerald-500/20"
+        >
+          <RotateCcw className="w-16 h-16 text-emerald-500" />
+        </motion.div>
+        <h2 className="text-3xl font-black text-white mb-4 italic italic">GIRA TU DISPOSITIVO</h2>
+        <p className="text-[#a8b2d1] text-lg leading-relaxed max-w-xs">
+          Para jugar en <span className="text-emerald-400 font-bold uppercase tracking-wider">Mesa Primera</span>, necesitas usar tu pantalla en horizontal.
+        </p>
+      </div>
+
+      {/* RECHARGE BUTTON: (Floating Top-Right for quick access) */}
+      <div className="absolute top-4 right-4 z-50 md:top-6 md:right-32">
+        <RechargeButton />
+      </div>
+
+      {/* Casino Spotight Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#0a5236] via-[#042f1f] to-[#021810]" />
 
       <GameAnnouncer phase={phase} />
 
@@ -163,48 +186,45 @@ export function Board({ room, phase, pot, players }: BoardProps) {
       {/* TABLE CENTER (Pots & Deck area) */}
       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
         
-        {/* Pot Indicators Block */}
-        <div className="bg-[#052e1f] rounded-xl md:rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-[#0b4d35] p-4 md:p-6 min-w-[200px] md:min-w-[280px] pointer-events-auto">
-          <div className="flex justify-between items-center gap-6">
-            
-            {/* Main Pot */}
-            <div className="flex flex-col items-center">
-              <span className="text-white/60 tracking-[0.1em] text-[8px] md:text-[10px] font-black uppercase mb-2">Pote Principal</span>
-              <div className="flex items-center justify-center relative w-16 h-12 mb-2">
-                {/* Visual representation of mixed chips */}
-                <div className="absolute left-0 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#d4af37] shadow-lg z-10" />
-                <div className="absolute left-4 w-8 h-8 rounded-full border border-dashed border-white/30 bg-black shadow-lg z-20" />
-                <div className="absolute left-8 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#1d4ed8] shadow-lg z-30" />
-              </div>
-              <h2 className="text-2xl md:text-4xl font-black text-[#e2b044] tracking-wider drop-shadow-md">
-                ${pot.toLocaleString()}
-              </h2>
+        {/* Pot Indicators Block (Match design specs) */}
+        <div className="flex flex-row items-center justify-center gap-12 md:gap-32 pointer-events-auto">
+          
+          {/* Pique Pot (Left) */}
+          <div className="flex flex-col items-center">
+            <span className="text-[#4ade80] tracking-widest text-[9px] md:text-[11px] font-bold uppercase mb-1 drop-shadow-sm">Pote del Pique</span>
+            <div className="flex items-center justify-center relative w-12 h-10 mb-1 z-10 scale-90 md:scale-100">
+               {/* Chips */}
+              <div className="absolute left-0 w-7 h-7 rounded-full border-[3px] border-dashed border-white/50 bg-[#1d4ed8] shadow-[0_4px_8px_rgba(0,0,0,0.5)] z-10" />
+              <div className="absolute left-4 w-7 h-7 rounded-full border-[3px] border-dashed border-white/50 bg-[#16a34a] shadow-[0_4px_8px_rgba(0,0,0,0.5)] z-20" />
             </div>
-
-            {/* Pique Pot (Fixed representation for now) */}
-            <div className="flex flex-col items-center">
-              <span className="text-white/60 tracking-[0.1em] text-[8px] md:text-[10px] font-black uppercase mb-2">Pote del Pique</span>
-              <div className="flex items-center justify-center relative w-12 h-12 mb-2">
-                 {/* Visual representation of Pique chips */}
-                <div className="absolute left-0 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#1d4ed8] shadow-lg z-10" />
-                <div className="absolute left-4 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#16a34a] shadow-lg z-20" />
-              </div>
-              <h2 className="text-2xl md:text-4xl font-black text-white tracking-wider drop-shadow-md">
+            <div className="bg-black/60 border border-white/10 px-4 py-1 rounded shadow-md">
+              <h2 className="text-sm md:text-xl font-bold text-white tracking-widest drop-shadow-md">
                 $15.000
               </h2>
             </div>
-
           </div>
 
-          <div className="mt-4 flex justify-center">
-              <span className="text-[#a17822] text-[9px] md:text-[10px] font-bold uppercase tracking-widest bg-black/30 px-3 py-1 rounded-full">
-                {phase.replace('_', ' ')}
-              </span>
+          {/* Main Pot (Right) */}
+          <div className="flex flex-col items-center">
+            <span className="text-[#4ade80] tracking-widest text-[9px] md:text-[11px] font-bold uppercase mb-1 drop-shadow-sm">Main Pot</span>
+            <div className="bg-black/60 border border-white/10 px-4 py-1 rounded shadow-md relative z-10">
+              <h2 className="text-sm md:text-xl font-bold text-white tracking-widest drop-shadow-md">
+                ${pot.toLocaleString()}
+              </h2>
+            </div>
           </div>
+
         </div>
 
-        {/* Deck area (Below pots) */}
-        <div className="mt-8 relative flex items-center justify-center pointer-events-auto">
+        {/* Phase Indicator */}
+        <div className="mt-2 flex justify-center pointer-events-none">
+            <span className="text-white/60 text-[8px] md:text-[9px] font-bold uppercase tracking-widest bg-black/40 px-2 py-0.5 rounded-sm">
+              {phase.replace('_', ' ')}
+            </span>
+        </div>
+
+         {/* Deck area and label (Below pots) */}
+         <div className="mt-8 relative flex flex-col items-center justify-center pointer-events-auto">
              <motion.div 
                animate={
                  (phase === 'SORTEO_MANO' || phase === 'PIQUE') 
@@ -219,7 +239,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                      setSelectedCards([]);
                   }
                }}
-               className={`w-14 h-20 md:w-20 md:h-28 bg-[#991b1b] border-2 border-[#b91c1c] rounded-md md:rounded-lg shadow-[0_10px_20px_rgba(0,0,0,0.6)] flex items-center justify-center relative transition-all z-20 ${phase === 'DESCARTE' && room.state.turnPlayerId === myId ? 'cursor-pointer hover:-translate-y-2 shadow-[0_0_20px_rgba(74,222,128,0.6)]' : ''}`}
+               className={`w-14 h-20 md:w-20 md:h-28 bg-[#991b1b] border-2 border-[#b91c1c] rounded-md md:rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.7)] flex items-center justify-center relative transition-all z-20 ${phase === 'DESCARTE' && room.state.turnPlayerId === myId ? 'cursor-pointer hover:-translate-y-2 shadow-[0_0_20px_rgba(74,222,128,0.6)]' : ''}`}
              >
                <div className="absolute inset-1 md:inset-1.5 border border-[#ef4444]/40 rounded-sm flex items-center justify-center">
                   <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
@@ -245,15 +265,18 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                  )}
                </AnimatePresence>
              </motion.div>
-        </div>
+             <span className="text-white/50 text-[8px] md:text-[10px] font-bold uppercase tracking-widest mt-2 px-4 py-1 bg-black/40 rounded-sm">
+                Mazo 28 Cartas <br /> (Solo AS-7, Depletado)
+             </span>
+         </div>
       </div>
-      {/* PLAYER AREA (Bottom left aligned with horizontal cards) */}
-      <div className="absolute bottom-4 md:bottom-12 left-2 md:left-12 z-30 flex items-end gap-4 md:gap-8">
+      {/* PLAYER AREA (Bottom center-ish) */}
+      <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 md:translate-x-0 md:left-24 lg:left-32 z-30 flex items-end gap-4 md:gap-8 w-full md:w-auto px-2 justify-center md:justify-start">
         
         {me && (
           <>
             {/* My Badge */}
-            <div className="z-20 flex flex-col items-center relative pb-2 md:pb-4">
+            <div className="z-20 flex flex-col items-center relative mb-4 md:mb-8">
               {hasChivo(me.cards) && phase !== 'RESOLUCION' && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10, scale: 0.9 }}
@@ -266,63 +289,63 @@ export function Board({ room, phase, pot, players }: BoardProps) {
               <PlayerBadge 
                 player={me} 
                 isActive={room.state.turnPlayerId === me.id} 
-                isMe={true} 
+                isMe={true}
+                isDealer={room.state.dealerId === myId}
                 vertical={false}
               />
             </div>
 
-            {/* Horizontal Cards */}
-            <div className="relative z-10 hidden md:flex items-end gap-2 md:gap-3 lg:gap-4 ml-2">
-              {me.cards && me.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
-                 const [val, suit] = cardStr.split('-');
-                 
-                 const isSelected = selectedCards.includes(cardStr);
-                 // Translate Y up if selected
-                 const finalOffsetY = isSelected ? -30 : 0;
-                 // Little to no rotation for horizontal straight placement
-                 const angle = (Math.random() * 2 - 1) * 3; 
-                 
-                 const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
-                 const handleCardClick = () => {
-                   if (!isDescarteTurn) return;
-                   setSelectedCards(prev => 
-                     prev.includes(cardStr) ? prev.filter(c => c !== cardStr) : [...prev, cardStr]
-                   );
-                 };
+            {/* Desktop Horizontal Cards */}
+            <div className="relative z-10 hidden md:flex flex-col items-stretch ml-4 mb-2 lg:mb-4">
+              {/* HUD Labels */}
+              <div className="flex justify-between w-full mb-2 bg-black/40 px-3 py-1 rounded-sm border border-white/10 blur-0">
+                 <span className="text-white/60 font-bold text-xs uppercase tracking-wider">HUD Points:</span>
+                 <span className="text-white/60 font-bold text-xs uppercase tracking-wider">Puntos Automat: 70</span>
+              </div>
+              <div className="flex items-end gap-2 md:gap-3 lg:gap-4 justify-center">
+                {me.cards && me.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
+                   const [val, suit] = cardStr.split('-');
+                   
+                   const isSelected = selectedCards.includes(cardStr);
+                   const finalOffsetY = isSelected ? -30 : 0;
+                   const angle = (Math.random() * 2 - 1) * 2; 
+                   
+                   const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
+                   const handleCardClick = () => {
+                     if (!isDescarteTurn) return;
+                     setSelectedCards(prev => 
+                       prev.includes(cardStr) ? prev.filter(c => c !== cardStr) : [...prev, cardStr]
+                     );
+                   };
 
-                 const playerIdx = getPlayerIndex(myId);
-                 const dealDelay = phase === 'SORTEO_MANO' ? (playerIdx * 0.4) + (idx * 2) : (playerIdx * 0.4) + (idx * 0.2);
+                   const playerIdx = getPlayerIndex(myId);
+                   const dealDelay = phase === 'SORTEO_MANO' ? (playerIdx * 0.4) + (idx * 2) : (playerIdx * 0.4) + (idx * 0.2);
 
-                 const isFolded = me.isFolded;
+                   const isFolded = me.isFolded;
 
-                 return (
-                   <div 
-                     key={cardStr + '-' + idx}
-                     onClick={handleCardClick}
-                     style={{ 
-                       transform: isFolded ? `translateY(40px) scale(0.6) rotate(${angle}deg)` : `rotate(${angle}deg) translateY(${finalOffsetY}px)`,
-                       transformOrigin: 'bottom center',
-                       zIndex: idx,
-                       transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                     }}
-                     className={`relative ${isFolded ? 'opacity-20 pointer-events-none' : `transition-transform duration-300 ${isDescarteTurn ? 'cursor-pointer hover:-translate-y-4' : ''}`}`}
-                   >
-                     <Card 
-                       suit={suit as any} 
-                       value={parseInt(val)} 
-                       delay={dealDelay}
-                       className="shadow-[0_15px_30px_rgba(0,0,0,0.6)]"
-                       originY={-200}
-                     />
-                   </div>
-                 )
-              })}
-            </div>
-
-            {/* Points Indicator (Blue bubble) */}
-            <div className="hidden md:flex ml-4 mb-8 items-center justify-center bg-[#2563eb] text-white border-[6px] border-[#1d4ed8] shadow-[0_10px_20px_rgba(37,99,235,0.4)] rounded-full w-24 h-24 lg:w-32 lg:h-32 font-black flex-col z-20">
-              <span className="text-xs lg:text-sm tracking-widest">PUNTOS</span>
-              <span className="text-3xl lg:text-4xl mt-1">55</span>
+                   return (
+                     <div 
+                       key={cardStr + '-' + idx}
+                       onClick={handleCardClick}
+                       style={{ 
+                         transform: isFolded ? `translateY(40px) scale(0.6) rotate(${angle}deg)` : `rotate(${angle}deg) translateY(${finalOffsetY}px)`,
+                         transformOrigin: 'bottom center',
+                         zIndex: idx,
+                         transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                       }}
+                       className={`relative ${isFolded ? 'opacity-20 pointer-events-none' : `transition-transform duration-300 ${isDescarteTurn ? 'cursor-pointer hover:-translate-y-4' : ''}`}`}
+                     >
+                       <Card 
+                         suit={suit as any} 
+                         value={parseInt(val)} 
+                         delay={dealDelay}
+                         className="shadow-[0_15px_30px_rgba(0,0,0,0.6)]"
+                         originY={-200}
+                       />
+                     </div>
+                   )
+                })}
+              </div>
             </div>
             
             {/* Mobile horizontal cards fallback (smaller, overlapped) */}

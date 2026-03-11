@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { client } from '@/lib/colyseus'
+import { createClient } from '@/utils/supabase/client'
 import { RoomAvailable, Room } from '@colyseus/sdk'
 import { useRouter } from 'next/navigation'
 import { Plus, Users, Zap, Trophy, Shield, RefreshCcw, AlertCircle } from 'lucide-react'
@@ -55,6 +56,20 @@ export function Lobby() {
   }, [])
 
   useEffect(() => {
+    // Sync nickname with Supabase session if available
+    const syncUserNickname = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.user_metadata?.username) {
+        console.log("Syncing nickname from Supabase:", user.user_metadata.username)
+        localStorage.setItem('nickname', user.user_metadata.username)
+        if (user.user_metadata.avatar_url) {
+          localStorage.setItem('avatarUrl', user.user_metadata.avatar_url)
+        }
+      }
+    }
+
+    syncUserNickname()
     connectToLobby()
     return () => {
       if (lobbyRoomRef.current) {
@@ -68,10 +83,36 @@ export function Lobby() {
     setCreating(true)
     setError(null)
     try {
+      let nick = localStorage.getItem('nickname');
+      if (!nick) {
+        nick = 'Jugador ' + Math.floor(Math.random() * 1000);
+        localStorage.setItem('nickname', nick);
+      }
+      
+      let deviceId = localStorage.getItem('deviceId');
+      if (!deviceId) {
+        deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('deviceId', deviceId);
+      }
+
       const room = await client.create("mesa", { 
         tableName: `Mesa Real #${Math.floor(Math.random() * 999)}`,
-        maxPlayers: 7
+        maxPlayers: 7,
+        nickname: nick,
+        deviceId: deviceId
       })
+      
+      // Prevent Ghost Player: Hand over the connection to the play page
+      sessionStorage.setItem(`reconnectionToken_${room.roomId}`, room.reconnectionToken);
+      sessionStorage.setItem(`nickname_${room.roomId}`, nick);
+      
+      // Close strictly to allow reconnection handover
+      if (room.connection?.transport?.close) {
+         room.connection.transport.close();
+      } else {
+         try { (room.connection as any).close(); } catch(e){}
+      }
+
       router.push(`/play/${room.roomId}`)
     } catch (e: any) {
       console.error("Room Creation Error:", e)

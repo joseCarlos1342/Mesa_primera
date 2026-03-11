@@ -7,7 +7,7 @@ import {
   useLocalParticipant,
   useParticipants,
   useIsSpeaking,
-  AudioVisualizer,
+  BarVisualizer,
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { Mic, MicOff } from 'lucide-react';
@@ -106,11 +106,11 @@ function CustomMicToggle() {
       {/* Visualizador de Onda del Micrófono Local */}
       {isMicrophoneEnabled && localParticipant && (
         <div className="hidden sm:block h-10 w-24 bg-slate-950/50 rounded-full overflow-hidden relative border border-emerald-500/20">
-           <AudioVisualizer 
+           <BarVisualizer 
               trackRef={{ participant: localParticipant, source: Track.Source.Microphone }} 
-              className="absolute inset-0 w-full h-full text-emerald-400"
-              barWidth={4}
-              gap={2}
+              className="absolute inset-0 w-full h-full flex items-center justify-center gap-1"
+              barCount={5}
+              style={{ '--lk-fg': 'rgb(52, 211, 153)' } as React.CSSProperties}
            />
         </div>
       )}

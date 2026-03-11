@@ -10,6 +10,14 @@ export const redis =
     maxRetriesPerRequest: 3,
   })
 
+// Silenciar errores de conexión/auth para evitar ruidos en los logs
+redis.on('error', (err) => {
+  if (process.env.NODE_ENV === 'development') {
+    // Solo loguear resumido para no ensuciar
+    console.warn('[REDIS_SILENCED_ERROR]:', err.message)
+  }
+})
+
 if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis
 
 /**
