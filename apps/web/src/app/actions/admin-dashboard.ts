@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 
 export type AdminDashboardStats = {
   activeUsers: number;
@@ -20,7 +21,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   // Validate admin role
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) {
-    throw new Error("No autenticado");
+    redirect("/login");
   }
 
   const { data: userRecord } = await supabase
@@ -30,7 +31,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     .single();
 
   if (userRecord?.role !== "admin") {
-    throw new Error("Acceso denegado");
+    redirect("/dashboard");
   }
 
   // Fetch pending deposits count

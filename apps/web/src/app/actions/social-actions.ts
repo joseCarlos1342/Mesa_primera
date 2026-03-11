@@ -1,0 +1,167 @@
+"use server";
+
+import { createClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
+
+/**
+ * Fetch Leaderboard Data
+ */
+export async function getLeaderboard(period: string, category: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("get_leaderboard", {
+    p_period: period,
+    p_category: category,
+  });
+
+  if (error) {
+    console.error("Error fetching leaderboard", error);
+    return [];
+  }
+  return data;
+}
+
+/**
+ * Search users to add as friends
+ */
+export async function searchUsers(query: string) {
+  if (!query || query.length < 3) return [];
+  
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Search by username ILIKE and exclude self
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, level")
+    .ilike("username", `%${query}%`)
+    .neq("id", user.id)
+    .limit(10);
+
+  if (error) {
+    console.error("Error searching users", error);
+    return [];
+  }
+  return data;
+}
+
+/**
+ * Fetch all friendships (includes pending requests received/sent and accepted friends)
+ */
+export async function getFriendships() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { friends: [], pendingIncoming: [], pendingOutgoing: [] };
+
+  // Note: Friendship records are in friendships table. We must check both user_id = me OR friend_id = me.
+  const { data, error } = await supabase
+    .from("friendships")
+    .select(`
+      id,
+      status,
+      user_id,
+      friend_id,
+      user:profiles!user_id(id, username, avatar_url, level),
+      friend:profiles!friend_id(id, username, avatar_url, level)
+    `)
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+  if (error) {
+    console.error("Error fetching friendships", error);
+    return { friends: [], pendingIncoming: [], pendingOutgoing: [] };
+  }
+
+  const friends: any[] = [];
+  const pendingIncoming: any[] = [];
+  const pendingOutgoing: any[] = [];
+
+  data.forEach((f) => {
+    const isInitiator = f.user_id === user.id;
+    const profile = isInitiator ? f.friend : f.user;
+
+    if (f.status === "accepted") {
+      friends.push({ friendshipId: f.id, profile });
+    } else if (f.status === "pending") {
+      if (isInitiator) {
+        pendingOutgoing.push({ friendshipId: f.id, profile });
+      } else {
+        pendingIncoming.push({ friendshipId: f.id, profile });
+      }
+    }
+  });
+
+  return { friends, pendingIncoming, pendingOutgoing };
+}
+
+/**
+ * Send a friend request
+ */
+export async function sendFriendRequest(friendId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+  if (user.id === friendId) return { error: "No puedes amigarte a ti mismo" };
+
+  // Insert friendship. If there's a unique constraint error, they might be already friends.
+  const { error } = await supabase.from("friendships").insert({
+    user_id: user.id,
+    friend_id: friendId,
+    status: "pending",
+  });
+
+  if (error) {
+    console.error("Error sending friend request", error);
+    return { error: "Hubo un problema enviando la solicitud." };
+  }
+
+  revalidatePath("/friends");
+  return { success: true };
+}
+
+/**
+ * Accept a friend request
+ */
+export async function acceptFriendRequest(friendshipId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // Only the receiver (friend_id) can accept
+  const { error } = await supabase
+    .from("friendships")
+    .update({ status: "accepted" })
+    .eq("id", friendshipId)
+    .eq("friend_id", user.id);
+
+  if (error) {
+    console.error("Error accepting friend request", error);
+    return { error: "Error al aceptar." };
+  }
+
+  revalidatePath("/friends");
+  return { success: true };
+}
+
+/**
+ * Decline/Cancel a friend request, or remove friend
+ */
+export async function removeFriendship(friendshipId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // User must be either user_id or friend_id part of this friendship
+  const { error } = await supabase
+    .from("friendships")
+    .delete()
+    .eq("id", friendshipId)
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+  if (error) {
+    console.error("Error removing friendship", error);
+    return { error: "Error al eliminar." };
+  }
+
+  revalidatePath("/friends");
+  return { success: true };
+}

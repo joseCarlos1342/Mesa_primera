@@ -10,6 +10,7 @@ import { useWakeLock } from '../../../../hooks/useWakeLock'
 import { Board } from '../../../components/game/Board'
 import { RulesModal } from '@/components/game/RulesModal'
 import { ReconnectOverlay } from '@/components/game/ReconnectOverlay'
+import { VoiceChat } from '@/components/VoiceChat'
 
 export default function GameRoomPage() {
   const params = useParams()
@@ -132,11 +133,12 @@ export default function GameRoomPage() {
     joinRoom()
 
     return () => {
-      // Evitamos llamar a room.leave() directamente para que el strict mode 
-      // o navegaciones accidentales no disparen un consented leave (código 1000),
-      // lo cual arruinaría la oportunidad de reconexión de 5 minutos en el server.
+      // Si el componente se desmonta porque el usuario navegó a otra página (Lobby),
+      // queremos hacer un "Consented Leave" para que se libere el espacio inmediatamente en Colyseus
+      // y la sala no se bloquee o se llene de fantasmas.
       if (room) {
-        room.connection.close(); // Forzamos desconexión no-consentida
+        // En Colyseus, leave(true) es consented, lo que remueve al jugador enseguida.
+        room.leave(true);
       }
     }
   }, [roomId]) // solo lo ejecutamos una vez, por eso hasAttemptedJoin
@@ -291,6 +293,16 @@ export default function GameRoomPage() {
           </div>
         ) : (
           <Board room={room} phase={phase} players={players} pot={pot} />
+        )}
+        
+        {/* Voice Chat Component */}
+        {room && (
+          <div className="absolute bottom-6 left-6 z-50">
+             <VoiceChat 
+                roomName={roomId} 
+                username={players.find(p => p.id === room?.sessionId)?.nickname || 'Jugador'} 
+             />
+          </div>
         )}
       </main>
 

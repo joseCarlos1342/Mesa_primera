@@ -17,7 +17,7 @@ CREATE POLICY "Anyone can read settings"
 CREATE POLICY "Admins can update settings"
   ON site_settings FOR ALL
   USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+    EXISTS (SELECT 1 FROM auth.users WHERE id = auth.uid() AND raw_user_meta_data->>'role' = 'admin')
   );
 
 -- Pre-populate default rulebook
@@ -28,7 +28,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Table for Audit Logs
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_id UUID REFERENCES users(id) NOT NULL,
+  admin_id UUID REFERENCES auth.users(id) NOT NULL,
   action TEXT NOT NULL,
   target_id TEXT, -- e.g. game_id, user_id
   details JSONB,
@@ -41,12 +41,12 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admins can see audit logs"
   ON audit_logs FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+    EXISTS (SELECT 1 FROM auth.users WHERE id = auth.uid() AND raw_user_meta_data->>'role' = 'admin')
   );
   
 -- Admins can insert audit logs (via backend typically)
 CREATE POLICY "Admins can insert audit logs"
   ON audit_logs FOR INSERT
   WITH CHECK (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+    EXISTS (SELECT 1 FROM auth.users WHERE id = auth.uid() AND raw_user_meta_data->>'role' = 'admin')
   );

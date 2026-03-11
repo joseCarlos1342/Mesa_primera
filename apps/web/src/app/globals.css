@@ -7,16 +7,32 @@
 
 @layer base {
   :root {
-    --background: #020617;
-    --foreground: #f8fafc;
+    --background: #1a1a2e; /* --bg-primary */
+    --foreground: #f5f5f5; /* --text-primary */
+  }
+
+  html {
+    /* Scale base font size for seniors */
+    font-size: 18px;
+  }
+
+  body {
+    /* Soft animations by default */
+    transition:
+      background-color 300ms ease-in-out,
+      color 300ms ease-in-out;
   }
 }
 
 @theme {
-  --color-brand-gold: oklch(77% 0.15 85);
-  --color-brand-indigo: oklch(45% 0.31 274);
+  --color-brand-gold: #e2b044; /* --accent-gold */
+  --color-brand-green: #2ecc71; /* --accent-green */
+  --color-brand-red: #e74c3c; /* --accent-red */
+  --color-bg-card: #16213e; /* --bg-card */
+  --color-text-secondary: #a0a0b0; /* --text-secondary */
 
   --font-display: "Playfair Display", serif;
+  /* Use Inter or Outfit. We keep Outfit for modern look but large size provides readability */
   --font-sans: "Outfit", sans-serif;
 
   --animate-pulse-slow: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;

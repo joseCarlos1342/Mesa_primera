@@ -176,7 +176,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                 <div className="absolute left-4 w-8 h-8 rounded-full border border-dashed border-white/30 bg-black shadow-lg z-20" />
                 <div className="absolute left-8 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#1d4ed8] shadow-lg z-30" />
               </div>
-              <h2 className="text-lg md:text-2xl font-black text-[#d4af37] tracking-wider drop-shadow-md">
+              <h2 className="text-2xl md:text-4xl font-black text-[#e2b044] tracking-wider drop-shadow-md">
                 ${pot.toLocaleString()}
               </h2>
             </div>
@@ -189,7 +189,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                 <div className="absolute left-0 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#1d4ed8] shadow-lg z-10" />
                 <div className="absolute left-4 w-8 h-8 rounded-full border border-dashed border-black/40 bg-[#16a34a] shadow-lg z-20" />
               </div>
-              <h2 className="text-lg md:text-2xl font-black text-white tracking-wider drop-shadow-md">
+              <h2 className="text-2xl md:text-4xl font-black text-white tracking-wider drop-shadow-md">
                 $15.000
               </h2>
             </div>
@@ -223,7 +223,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
              >
                <div className="absolute inset-1 md:inset-1.5 border border-[#ef4444]/40 rounded-sm flex items-center justify-center">
                   <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
-                  <span className="text-[#fca5a5] font-playfair font-black text-xl md:text-3xl opacity-60">P</span>
+                  <span className="text-[#fca5a5] font-playfair font-black text-3xl md:text-5xl opacity-60">P</span>
                </div>
                
                <AnimatePresence>
@@ -258,9 +258,9 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                 <motion.div 
                   initial={{ opacity: 0, y: 10, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className="absolute -top-10 md:-top-14 bg-gradient-to-r from-amber-600/90 to-amber-500/90 border-2 border-amber-300/50 text-white font-black px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs whitespace-nowrap shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse z-50 flex items-center gap-1.5"
+                  className="absolute -top-10 md:-top-16 bg-gradient-to-r from-amber-600/90 to-amber-500/90 border-[3px] border-amber-300/50 text-white font-black px-4 py-2 md:py-3 rounded-full text-xs md:text-lg whitespace-nowrap shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse z-50 flex items-center gap-2"
                 >
-                  <span>🐐</span> ¡Chivo!
+                  <span className="text-lg md:text-2xl">🐐</span> ¡CHIVO!
                 </motion.div>
               )}
               <PlayerBadge 
@@ -320,9 +320,9 @@ export function Board({ room, phase, pot, players }: BoardProps) {
             </div>
 
             {/* Points Indicator (Blue bubble) */}
-            <div className="hidden md:flex ml-4 mb-4 items-center justify-center bg-[#2563eb] text-white border-4 border-[#1d4ed8] shadow-[0_10px_20px_rgba(37,99,235,0.4)] rounded-full w-20 h-20 lg:w-24 lg:h-24 font-black flex-col">
-              <span className="text-[10px] lg:text-xs">PUNTOS:</span>
-              <span className="text-xl lg:text-2xl mt-0.5">55</span>
+            <div className="hidden md:flex ml-4 mb-8 items-center justify-center bg-[#2563eb] text-white border-[6px] border-[#1d4ed8] shadow-[0_10px_20px_rgba(37,99,235,0.4)] rounded-full w-24 h-24 lg:w-32 lg:h-32 font-black flex-col z-20">
+              <span className="text-xs lg:text-sm tracking-widest">PUNTOS</span>
+              <span className="text-3xl lg:text-4xl mt-1">55</span>
             </div>
             
             {/* Mobile horizontal cards fallback (smaller, overlapped) */}
