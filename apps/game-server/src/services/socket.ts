@@ -5,7 +5,14 @@ export function initializeSocketIOServer() {
     const httpServer = createServer();
     const io = new SocketIOServer(httpServer, {
         cors: {
-            origin: "*", 
+            origin: (origin, callback) => {
+                // Allow empty origin (like non-browser clients) or any localhost/127.0.0.1 for dev
+                if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || process.env.NODE_ENV !== 'production') {
+                    callback(null, true);
+                } else {
+                    callback(null, false);
+                }
+            },
             credentials: true
         }
     });
