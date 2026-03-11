@@ -52,8 +52,16 @@ pushWorker.on('completed', job => {
   console.log(`[PushWorker] Job ${job.id} completed for userId: ${job.data?.userId}`);
 });
 
+let lastRedisError = '';
 pushWorker.on('error', (err) => {
-  console.warn('[Redis Silenced - PushWorker]:', err.message);
+  if (err.message === lastRedisError) return;
+  lastRedisError = err.message;
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('[Redis Silenced - PushWorker]:', err.message);
+  } else {
+    console.error('[PushWorker] Redis Error:', err);
+  }
 });
 
 pushWorker.on('failed', (job, err) => {
