@@ -62,7 +62,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     <div className="relative z-[60]">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 md:w-16 md:h-16 bg-[var(--bg-card)] rounded-full flex items-center justify-center text-3xl md:text-4xl border-[3px] border-[var(--border-glow)] hover:bg-[#2a2a4a] transition-all relative shadow-xl"
+        className="w-16 h-16 bg-[var(--bg-card)] rounded-full flex items-center justify-center text-3xl md:text-4xl border-[3px] border-[var(--border-glow)] hover:bg-[#2a2a4a] transition-all relative shadow-xl"
       >
         🔔
         {unreadCount > 0 && (
