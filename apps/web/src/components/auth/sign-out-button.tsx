@@ -19,9 +19,9 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
     ghost: "text-slate-500 hover:text-slate-300"
   }
 
-  const handleSignOut = () => {
-    // Si estamos en una ruta de admin, redirigir al login de admin
-    const isAdmin = pathname.startsWith('/admin')
+  const handleSignOut = async () => {
+    // Si estamos en una ruta de admin o el pathname contiene admin, redirigir al login de admin
+    const isAdmin = pathname?.includes('/admin')
     signOut(isAdmin ? '/login/admin' : '/login/player')
   }
 
@@ -32,7 +32,7 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
       title="Cerrar Sesión"
     >
       <LogOut className="w-6 h-6 transition-transform group-hover:-translate-x-1" />
-      <span className="text-xl tracking-widest uppercase">Salir</span>
+      <span className="text-sm md:text-xl tracking-widest uppercase hidden sm:inline">Salir</span>
     </button>
   )
 }

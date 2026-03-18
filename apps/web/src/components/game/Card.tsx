@@ -46,12 +46,11 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
         rotateY: { duration: 0.6, ease: "easeInOut", delay: delay + 0.2 },
         zIndex: { delay: delay + 0.3 }
       }}
-      className={`relative w-20 h-[8rem] md:w-32 md:h-[13rem] rounded-xl md:rounded-2xl shadow-2xl transform-style-3d cursor-pointer ${className}`}
+      className={`relative w-20 h-[8rem] md:w-32 md:h-[13rem] landscape:h-[6.5rem] landscape:w-12 md:landscape:h-[13rem] md:landscape:w-32 rounded-xl md:rounded-2xl shadow-2xl transform-style-3d cursor-pointer ${className}`}
       style={{ perspective: 1000 }}
     >
-      {/* Front of Card */}
       <div 
-        className="absolute inset-0 w-full h-full bg-slate-50 border-[3px] border-slate-300 rounded-xl md:rounded-2xl backface-hidden flex flex-col items-center justify-center p-2 md:p-3 overflow-hidden"
+        className="absolute inset-0 w-full h-full bg-slate-50 border-2 border-slate-200 rounded-xl md:rounded-2xl backface-hidden flex flex-col items-center justify-center overflow-hidden"
       >
         {!isHidden && suit && value && (
           imgError ? (

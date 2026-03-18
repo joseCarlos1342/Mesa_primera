@@ -7,6 +7,8 @@ export type AdminDashboardStats = {
   activeUsers: number;
   totalLedgerBalance: number;
   totalUsersBalance: number;
+  totalRake: number;
+  fraudAccountsCount: number;
   pendingDeposits: number;
   pendingWithdrawals: number;
   activeGames: number;
@@ -67,8 +69,8 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       totalUsersBalance = usersData;
   } else {
      // fallback if RPC doesn't exist yet
-     const { data: allWallets } = await supabase.from("wallets").select("balance");
-     totalUsersBalance = allWallets?.reduce((acc, w) => acc + (Number(w.balance) || 0), 0) || 0;
+     const { data: allWallets } = await supabase.from("wallets").select("balance_cents");
+     totalUsersBalance = allWallets?.reduce((acc, w) => acc + (Number(w.balance_cents) || 0), 0) || 0;
   }
 
   // 2. Sum of all ledger credits minus debits (or just relying on users total for now until we build the full ledger sync)
@@ -104,19 +106,54 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   // Volume 24h (total bits moved in deposits + bets)
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const { data: recentLedger } = await supabase
+    .from("ledger")
+    .select("amount_cents")
+    .gte("created_at", yesterday.toISOString());
   const volume24h = recentLedger?.reduce((acc, entry) => acc + (entry.amount_cents || 0), 0) || 0;
 
-  // Pending Support Messages
-  const { count: pendingSupportCount } = await supabase
+  // Pending Support Messages (Unique users with unresolved messages)
+  const { data: supportData } = await supabase
     .from("support_messages")
-    .select("*", { count: "exact", head: true })
-    .eq("from_admin", false)
-    .is("read_at", null);
+    .select("user_id")
+    .eq("is_resolved", false);
+
+  const pendingSupportCount = new Set(supportData?.map(m => m.user_id)).size;
+
+  // Total Rake (House earnings)
+  const { data: rakeData } = await supabase
+    .from("ledger")
+    .select("amount_cents")
+    .eq("type", "rake")
+    .eq("status", "completed");
+  
+  const totalRake = rakeData?.reduce((acc, entry) => acc + (entry.amount_cents || 0), 0) || 0;
+
+  // Fraud Detection Count (Users sharing fingerprints)
+  const { data: allDevices } = await supabase
+    .from("user_devices")
+    .select("fingerprint, user_id");
+  
+  const fingerprintMap = new Map<string, Set<string>>();
+  allDevices?.forEach(d => {
+    if (d.fingerprint) {
+      if (!fingerprintMap.has(d.fingerprint)) fingerprintMap.set(d.fingerprint, new Set());
+      fingerprintMap.get(d.fingerprint)!.add(d.user_id);
+    }
+  });
+
+  const fraudUserIds = new Set<string>();
+  fingerprintMap.forEach(users => {
+    if (users.size > 1) {
+      users.forEach(uid => fraudUserIds.add(uid));
+    }
+  });
 
   return {
     activeUsers: activeUsersCount || 0,
     totalLedgerBalance,
     totalUsersBalance,
+    totalRake,
+    fraudAccountsCount: fraudUserIds.size,
     pendingDeposits: pendingDepositsCount || 0,
     pendingWithdrawals: pendingWithdrawalsCount || 0,
     activeGames: activeGamesCount || 0,

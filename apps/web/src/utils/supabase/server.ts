@@ -26,41 +26,6 @@ export async function createClient() {
       },
     }
   )
-
-  // DEV BYPASS: If cookie exists, mock the auth user
-  if (process.env.NODE_ENV === 'development') {
-    const devPhone = cookieStore.get('mesa_dev_bypass')?.value
-    if (devPhone) {
-      const originalAuth = supabase.auth
-      supabase.auth = {
-        ...originalAuth,
-        getUser: async () => {
-          // Attempt to find the real profile in DB to make it realistic
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, role')
-            .eq('phone', devPhone)
-            .single()
-
-          if (profile) {
-            return {
-              data: {
-                user: {
-                  id: profile.id,
-                  phone: devPhone,
-                  role: 'authenticated',
-                  app_metadata: {},
-                  user_metadata: {}
-                }
-              },
-              error: null
-            }
-          }
-          return { data: { user: null }, error: new Error('Dev bypass profile not found') }
-        }
-      } as any
-    }
-  }
-
+ 
   return supabase
 }

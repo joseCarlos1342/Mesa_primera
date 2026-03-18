@@ -36,18 +36,6 @@ export async function updateSession(request: NextRequest) {
   const isAdminPath = pathname.startsWith('/admin')
   const isMfaPage = pathname === '/login/admin/mfa'
 
-  // DEV BYPASS: Allow access if bypass cookie exists
-  const devBypassCookie = request.cookies.get('mesa_dev_bypass')
-  if (process.env.NODE_ENV === 'development' && devBypassCookie) {
-    if (isAuthPage) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
-    }
-    // In dev bypass mode, we let them pass to protected routes
-    return supabaseResponse
-  }
-
   // PREVENT REDIRECT FOR STATIC FILES
   const isStaticFile = pathname.match(/\.(json|png|jpg|jpeg|gif|webp|svg|ico)$/)
   if (isStaticFile) {

@@ -62,7 +62,10 @@ export default function RulesPage() {
             Nuestro soporte técnico está disponible 24/7 para resolver cualquier duda.
           </p>
         </div>
-        <button className="w-full h-14 bg-indigo-600 rounded-2xl font-black text-xs uppercase tracking-[0.2em] text-white">
+        <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
+          className="w-full h-14 bg-indigo-600 rounded-2xl font-black text-xs uppercase tracking-[0.2em] text-white"
+        >
           Contactar Soporte
         </button>
       </section>

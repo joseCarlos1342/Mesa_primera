@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
  * Fetch Leaderboard Data
  */
 export async function getLeaderboard(period: string, category: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_leaderboard", {
     p_period: period,
     p_category: category,
@@ -26,7 +26,7 @@ export async function getLeaderboard(period: string, category: string) {
 export async function searchUsers(query: string) {
   if (!query || query.length < 3) return [];
   
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
@@ -49,7 +49,7 @@ export async function searchUsers(query: string) {
  * Fetch all friendships (includes pending requests received/sent and accepted friends)
  */
 export async function getFriendships() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { friends: [], pendingIncoming: [], pendingOutgoing: [] };
 
@@ -97,7 +97,7 @@ export async function getFriendships() {
  * Send a friend request
  */
 export async function sendFriendRequest(friendId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
   if (user.id === friendId) return { error: "No puedes amigarte a ti mismo" };
@@ -122,7 +122,7 @@ export async function sendFriendRequest(friendId: string) {
  * Accept a friend request
  */
 export async function acceptFriendRequest(friendshipId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
@@ -146,7 +146,7 @@ export async function acceptFriendRequest(friendshipId: string) {
  * Decline/Cancel a friend request, or remove friend
  */
 export async function removeFriendship(friendshipId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 

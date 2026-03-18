@@ -86,7 +86,7 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                       disabled={!canAfford}
                       onClick={() => setSelectedChip(isSelected ? null : val)}
                       className={`
-                        flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center snap-center relative
+                        flex-shrink-0 w-12 h-12 md:w-16 md:h-16 landscape:w-10 landscape:h-10 md:landscape:w-16 md:landscape:h-16 rounded-full flex items-center justify-center snap-center relative
                         font-black tracking-tighter shadow-xl transition-all border-[4px] border-dashed
                         ${colorClass}
                         ${canAfford 
@@ -105,7 +105,7 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
             </div>
 
             {/* Main Action Buttons Grid */}
-            <div className="flex flex-col gap-3 w-64 md:w-80">
+            <div className="flex flex-col gap-4 w-64 md:w-80 p-4 bg-black/40 backdrop-blur-md rounded-2xl border border-white/5 shadow-[0_15px_30px_rgba(0,0,0,0.8)] landscape:w-56 landscape:p-2 landscape:gap-2">
               {/* CANTAR JUGADA Button (Huge Gold) */}
               <AnimatePresence mode="wait">
                 {(selectedChip || phase === 'GUERRA') ? (
@@ -114,12 +114,13 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
                     onClick={() => handleExecute(phase === 'PIQUE' ? 'voy' : 'bet')} 
-                    className="w-full h-14 md:h-16 bg-gradient-to-b from-[#fde047] to-[#eab308] hover:from-[#fef08a] hover:to-[#ca8a04] text-[#451a03] rounded-xl font-black text-lg md:text-xl shadow-[0_10px_20px_rgba(234,179,8,0.3)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#fef08a]/50 border-b-[6px] border-b-[#a16207] flex items-center justify-center gap-2"
+                    className="w-full h-16 md:h-20 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] hover:from-[#fff7d6] hover:via-[#e2c161] hover:to-[#a17822] text-[#2a1b04] rounded-xl font-serif font-black text-xl md:text-2xl shadow-[0_10px_20px_rgba(0,0,0,0.8),inset_0_2px_5px_rgba(255,255,255,0.8)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#fff7d6]/80 border-b-[8px] border-b-[#5c4613] flex items-center justify-center gap-2"
+                    style={{ textShadow: '0 1px 1px rgba(255,255,255,0.5)' }}
                   >
-                    <Mic className="w-5 h-5 md:w-6 md:h-6" />
-                    ¡CANTAR JUGADA!
+                    <Mic className="w-6 h-6 md:w-7 md:h-7 drop-shadow-md" />
+                    CANTAR JUGADA!
                     {selectedChip && phase !== 'GUERRA' && (
-                      <span className="text-sm border-l border-black/20 pl-2 ml-1">
+                      <span className="text-sm border-l border-[#2a1b04]/50 pl-2 ml-1 opacity-80 font-mono">
                         +${selectedChip >= 1000 ? selectedChip/1000 + 'k' : selectedChip}
                       </span>
                     )}
@@ -127,20 +128,21 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                 ) : (
                   <button 
                     disabled
-                    className="w-full h-14 md:h-16 bg-gradient-to-b from-[#fde047]/30 to-[#eab308]/30 text-[#451a03]/50 rounded-xl font-black text-lg md:text-xl border border-white/10 flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
+                    className="w-full h-16 md:h-20 bg-gradient-to-b from-[#8a6d1c]/40 via-[#5c4613]/40 to-[#2a1b04]/40 text-[#fdf0a6]/30 rounded-xl font-serif font-black text-xl md:text-2xl border border-white/10 flex items-center justify-center gap-2 cursor-not-allowed opacity-60 uppercase tracking-widest border-b-[6px] border-b-[#1a1103]"
                   >
-                     <Mic className="w-5 h-5 md:w-6 md:h-6" />
-                     CANTAR JUGADA
+                     <Mic className="w-6 h-6 md:w-7 md:h-7 opacity-50" />
+                     CANTAR JUGADA!
                   </button>
                 )}
               </AnimatePresence>
 
               {/* VOY / PASO split */}
-              <div className="grid grid-cols-2 gap-3 w-full">
+              <div className="grid grid-cols-2 gap-4 w-full">
                 {/* VOY Button (Green) */}
                 <button 
                   onClick={() => handleExecute(phase === 'PIQUE' ? 'voy' : 'bet')} 
-                  className="h-12 md:h-14 bg-gradient-to-b from-[#22c55e] to-[#16a34a] hover:from-[#4ade80] hover:to-[#15803d] text-white rounded-xl font-black text-base md:text-lg shadow-[0_8px_15px_rgba(22,163,74,0.3)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#86efac]/30 border-b-[5px] border-b-[#14532d]"
+                  className="h-14 md:h-16 bg-gradient-to-b from-[#4ade80] to-[#16a34a] hover:from-[#86efac] hover:to-[#15803d] text-white rounded-xl font-black text-lg md:text-xl shadow-[0_8px_15px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.4)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#86efac]/50 border-b-[6px] border-b-[#064e3b]"
+                  style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
                 >
                   Voy
                 </button>
@@ -148,7 +150,8 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                 {/* PASO Button (Red) */}
                 <button 
                   onClick={() => handleExecute(phase === 'PIQUE' ? 'paso' : 'fold')} 
-                  className="h-12 md:h-14 bg-gradient-to-b from-[#ef4444] to-[#dc2626] hover:from-[#f87171] hover:to-[#b91c1c] text-white rounded-xl font-black text-base md:text-lg shadow-[0_8px_15px_rgba(220,38,38,0.3)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#fca5a5]/30 border-b-[5px] border-b-[#7f1d1d]"
+                  className="h-14 md:h-16 bg-gradient-to-b from-[#f87171] to-[#dc2626] hover:from-[#fca5a5] hover:to-[#b91c1c] text-white rounded-xl font-black text-lg md:text-xl shadow-[0_8px_15px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.4)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#fca5a5]/50 border-b-[6px] border-b-[#7f1d1d]"
+                  style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
                 >
                   Paso
                 </button>
@@ -156,10 +159,11 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
               
               {/* Soporte Button (Beige) */}
               <button 
-                className="w-full h-10 md:h-12 mt-1 bg-gradient-to-b from-[#fef3c7] to-[#fde68a] hover:from-[#fffbeb] hover:to-[#fcd34d] text-[#78350f] rounded-xl font-bold text-sm shadow-[0_4px_10px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border border-[#fef3c7] border-b-[4px] border-b-[#d97706]"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
+                className="w-full h-12 md:h-14 mt-2 bg-gradient-to-b from-[#fef3c7] to-[#fcd34d] hover:from-[#fffbeb] hover:to-[#fde68a] text-[#78350f] rounded-xl font-bold text-sm md:text-base shadow-[0_4px_10px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.8)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border border-[#fef3c7] border-b-[5px] border-b-[#b45309]"
               >
-                 <Headphones className="w-4 h-4" />
-                 Chat de Soporte (Voz)
+                 <Headphones className="w-4 h-4 md:w-5 md:h-5" />
+                 Soporte
               </button>
 
             </div>

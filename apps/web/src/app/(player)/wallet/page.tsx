@@ -6,10 +6,10 @@ export default async function WalletPage() {
   const { wallet, transactions, error } = await getWalletData()
 
   const CHIP_PACKS = [
-    { amount: 50000, label: '50.000 Bits', price: '$50.000', popular: false },
-    { amount: 100000, label: '100.000 Bits', price: '$100.000', popular: true },
-    { amount: 200000, label: '200.000 Bits', price: '$200.000', popular: false },
-    { amount: 500000, label: '500.000 Bits', price: '$500.000', popular: false },
+    { amount: 50000, label: '50.000 Pesos', price: '$50.000', popular: false },
+    { amount: 100000, label: '100.000 Pesos', price: '$100.000', popular: true },
+    { amount: 200000, label: '200.000 Pesos', price: '$200.000', popular: false },
+    { amount: 500000, label: '500.000 Pesos', price: '$500.000', popular: false },
   ]
 
   if (error) {
@@ -23,7 +23,7 @@ export default async function WalletPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans p-6 pb-32">
+    <div className="min-h-screen bg-[#020617] text-white font-sans p-6 pb-32">
       <div className="max-w-md mx-auto space-y-10">
         
         {/* Balance Card */}
@@ -31,10 +31,10 @@ export default async function WalletPage() {
           <div className="relative z-10 space-y-1">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Saldo en Cartera</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-6xl font-black italic text-white leading-tight">
+              <span className="text-4xl sm:text-6xl font-black italic text-white leading-tight">
                 ${((wallet?.balance_cents || 0) / 100).toLocaleString()}
               </span>
-              <span className="text-xl font-bold text-indigo-300">BT</span>
+              <span className="text-xl font-bold text-indigo-300">COP</span>
             </div>
             <div className="flex gap-4 mt-8">
                <Link href="/wallet/withdraw" className="flex-1 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center gap-2 border border-white/20 font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all">
@@ -95,23 +95,29 @@ export default async function WalletPage() {
               </div>
             ) : (
               transactions?.map((tx: any) => (
-                <div key={tx.id} className="bg-slate-900/50 border border-slate-800/80 p-5 rounded-3xl flex items-center justify-between transition-all hover:bg-slate-900">
+                <div key={tx.id} className="bg-white/5 border border-white/5 p-5 rounded-3xl flex items-center justify-between transition-all hover:bg-white/10 group">
                   <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl ${tx.type === 'deposit' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                    <div className={`p-3 rounded-2xl transition-colors ${tx.type === 'deposit' ? 'bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-400 group-hover:bg-rose-500/20'}`}>
                       <ShoppingCart className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-black text-sm uppercase tracking-tight text-slate-200">{tx.type}</p>
+                      <p className="font-black text-sm uppercase tracking-tight text-slate-100">{tx.type === 'deposit' ? 'Depósito' : 'Retiro'}</p>
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                        {new Date(tx.created_at).toLocaleDateString()}
+                        {new Date(tx.created_at).toLocaleString()}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-mono font-black text-lg ${tx.type === 'deposit' ? 'text-emerald-400' : 'text-white'}`}>
-                      {tx.type === 'deposit' ? '+' : '-'}${Math.abs(tx.amount || 0).toLocaleString()}
+                    <p className={`font-mono font-black text-lg ${tx.type === 'deposit' ? 'text-emerald-400' : 'text-slate-100'}`}>
+                      {tx.type === 'deposit' ? '+' : '-'}${Math.abs((tx.amount_cents || 0) / 100).toLocaleString()}
                     </p>
-                    <span className="text-[8px] font-black uppercase bg-black/40 px-2 py-0.5 rounded text-slate-500">{tx.status}</span>
+                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                      tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                      tx.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                      'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                    }`}>
+                      {tx.status === 'completed' ? 'Completado' : tx.status === 'pending' ? 'Pendiente' : 'Rechazado'}
+                    </span>
                   </div>
                 </div>
               ))
