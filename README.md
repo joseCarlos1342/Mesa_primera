@@ -1,159 +1,64 @@
-# Turborepo starter
+# Mesa de Primera - Plataforma de Juego Online
 
-This Turborepo starter is maintained by the Turborepo core team.
+Plataforma premium para el juego de cartas "Primera", construida con una arquitectura escalable de microservicios y una interfaz de usuario de alto impacto.
 
-## Using this example
+## 🚀 Tecnologías Core
 
-Run the following command:
+- **Frontend**: Next.js 16 (React 19) + Tailwind CSS + Framer Motion.
+- **Backend de Juego**: Colyseus (Node.js) para lógica de cartas en tiempo real.
+- **Base de Datos & Auth**: Supabase (Postgres).
+- **Comunicación**: LiveKit (Voz en tiempo real) + Socket.io.
+- **Infraestructura**: Redis + BullMQ para colas de transacciones.
 
-```sh
-npx create-turbo@latest
+## 🛠 Estructura del Monorepo
+
+```bash
+├── apps
+│   ├── web          # Aplicación principal Next.js (Lobby, Tablero, Perfil)
+│   └── game-server  # Servidor de salas Colyseus (Lógica de Primera)
+├── packages
+│   ├── ui           # Componentes compartidos de diseño
+│   ├── eslint-config # Reglas de linting corporativas
+│   └── typescript-config # Configuraciones de TS base
+└── supabase         # Migraciones y políticas RLS
 ```
 
-## What's inside?
+## 📋 Funcionalidades Recientes (Sprint Actual)
 
-This Turborepo includes the following packages/apps:
+### Panel Administrativo Avanzado
+- **Métricas Financieras**: Control total de fichas en plataforma y cálculo automático de Rake (ganancias de la casa).
+- **Gestión de Mesas**: Interfaz para crear, configurar y eliminar mesas de juego dinámicamente.
+- **Broadcast System**: Envío de notificaciones masivas a todos los usuarios en tiempo real.
+- **Seguridad & Fraude**: Detección automática de usuarios compartiendo dispositivos (`fingerprinting`).
 
-### Apps and Packages
+### Soporte & Monitoreo
+- **Chat de Soporte**: Sistema de tickets agrupados por `ticket_id` para gestión de dudas de jugadores.
+- **Ceguera Admin**: Los administradores pueden ver el estado del juego pero nunca las cartas de los jugadores.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## ⚙️ Desarrollo Local
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+### Requisitos
+- Node.js 22+
+- Docker (para Supabase/Redis local)
 
-### Utilities
+### Comandos
+1. **Instalar dependencias**:
+   ```sh
+   npm install
+   ```
+2. **Levantar entorno de desarrollo**:
+   ```sh
+   npm run dev
+   ```
+   *Esto iniciará tanto la Web (port 3000) como el Game Server.*
 
-This Turborepo has some additional tools already setup for you:
+3. **Construir para producción**:
+   ```sh
+   npx turbo build
+   ```
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## 🔒 Seguridad
+La plataforma implementa **Row Level Security (RLS)** estricto en Postgres para asegurar que los saldos y las cartas solo sean accesibles por sus propietarios legales.
 
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
-
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+---
+*© 2026 Mesa de Primera. Todos los derechos reservados.*
