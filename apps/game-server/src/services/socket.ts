@@ -19,17 +19,27 @@ export function initializeSocketIOServer() {
 
     // --- Support Chat Namespace ---
     const supportNamespace = io.of("/support");
+    
+    // Supabase client is no longer needed here as persistence moved to client side
+    let supabase: any = null;
+
+
     supportNamespace.on("connection", (socket) => {
         console.log(`[Socket.IO] New connection in /support: ${socket.id}`);
         
-        socket.on("support:message", (data) => {
+        socket.on("support:message", async (data) => {
             // Broadcasts the incoming message to admins
             socket.broadcast.emit("support:incoming", data);
         });
         
-        socket.on("support:reply", (data) => {
+        socket.on("support:reply", async (data) => {
             // Broadcasts the reply back to players
             socket.broadcast.emit("support:message", data);
+        });
+
+        socket.on("support:resolve", (data) => {
+            // Broadcasts the resolution event to notify players the chat is closed
+            socket.broadcast.emit("support:resolved", data);
         });
 
         socket.on("disconnect", () => {

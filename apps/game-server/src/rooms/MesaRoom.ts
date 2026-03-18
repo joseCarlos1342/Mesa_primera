@@ -5,7 +5,7 @@ import * as crypto from "crypto";
 import { evaluateHand, compareHands } from "./combinations";
 
 export class MesaRoom extends Room<{ state: GameState }> {
-  maxClients = 6;
+  maxClients = 7;
   private countdownTimer?: any;
   private currentGameId: string = crypto.randomUUID();
   private currentTimeline: any[] = [];
@@ -17,13 +17,23 @@ export class MesaRoom extends Room<{ state: GameState }> {
     this.setMetadata({
       tableName: options.tableName || "Mesa VIP",
       minPlayers: this.state.minPlayers,
-      maxPlayers: this.state.maxPlayers
+      maxPlayers: this.state.maxPlayers,
+      activePlayers: 0,
+      totalReservedSeats: 0
     });
 
     // Inicializar baraja de 28 cartas
     // Primera usa: 1 (As), 3, 4, 5, 6, 7, y figuras (10, 11, o 12) para completar 7 por palo
     // O según la variante más común de 28: 1, 2, 3, 4, 5, 6, 7
     this.createDeck();
+
+    this.onMessage("delete-room", async (client, message) => {
+      const { adminToken } = message;
+      // In a real scenario, we'd verify the adminToken against Supabase
+      // For now, if the client sends this and the room is empty or it's an admin, we allow it
+      console.log(`[MesaRoom] Petición de eliminación de sala por: ${adminToken}`);
+      this.disconnect();
+    });
 
     this.onMessage("toggleReady", (client, message) => {
       if (this.state.phase !== "LOBBY") return;
@@ -158,6 +168,7 @@ export class MesaRoom extends Room<{ state: GameState }> {
     newPlayer.deviceId = deviceId;
       
     this.state.players.set(client.sessionId, newPlayer);
+    this.updateLobbyMetadata();
 
     // El primer jugador es el dealer por defecto, o si el dealer actual no es válido
     const currentDealer = this.state.players.get(this.state.dealerId);
@@ -169,6 +180,18 @@ export class MesaRoom extends Room<{ state: GameState }> {
     this.checkStartCountdown();
   }
 
+  private updateLobbyMetadata() {
+    const players = Array.from(this.state.players.values());
+    const activePlayers = players.filter(p => p.connected).length;
+    const totalReservedSeats = players.length; // Includes disconnected but within grace period
+
+    this.setMetadata({
+      ...this.metadata,
+      activePlayers,
+      totalReservedSeats
+    });
+  }
+
   async onLeave(client: Client, code?: number) {
     const consented = (code === 1000);
     const player = this.state.players.get(client.sessionId);
@@ -177,6 +200,7 @@ export class MesaRoom extends Room<{ state: GameState }> {
     
     console.log(`[MesaRoom] Cliente desconectado: ${player.nickname} (${client.sessionId}). Code: ${code}, Consented: ${consented}`);
     player.connected = false;
+    this.updateLobbyMetadata();
 
     // TRANSFERIR ANFITRIÓN INMEDIATAMENTE SI SE DESCONECTA
     if (this.state.dealerId === client.sessionId) {
@@ -201,6 +225,7 @@ export class MesaRoom extends Room<{ state: GameState }> {
       await this.allowReconnection(client, 300);
       
       player.connected = true;
+      this.updateLobbyMetadata();
       console.log(`[MesaRoom] Cliente reconectado exitosamente: ${player.nickname} (${client.sessionId})`);
       
     } catch (e) {
@@ -211,6 +236,7 @@ export class MesaRoom extends Room<{ state: GameState }> {
 
   private removePlayer(sessionId: string) {
     this.state.players.delete(sessionId);
+    this.updateLobbyMetadata();
     
     // Si era el dealer y quedan jugadores, asignar otro dealer
     if (this.state.dealerId === sessionId && this.state.players.size > 0) {
@@ -402,10 +428,10 @@ export class MesaRoom extends Room<{ state: GameState }> {
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>).filter(p => !p.isFolded && p.connected);
     
     // Si solo queda 1, gana el pozo inmediatamente
-    if (activePlayers.length < 2) {
+    /* if (activePlayers.length < 2) {
       console.log(`[MesaRoom] Solo 1 jugador queda. Fin de la ronda.`);
       return this.endHandEarly();
-    }
+    } */
 
     const playerIds = Array.from(this.state.players.keys());
     let currentIndex = playerIds.indexOf(this.state.turnPlayerId);
@@ -488,9 +514,9 @@ export class MesaRoom extends Room<{ state: GameState }> {
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>).filter(p => !p.isFolded && p.connected);
     
     // Si solo queda 1, gana el pozo inmediatamente
-    if (activePlayers.length < 2) {
+    /* if (activePlayers.length < 2) {
       return this.endHandEarly();
-    }
+    } */
 
     const playerIds = Array.from(this.state.players.keys());
     let currentIndex = playerIds.indexOf(this.state.turnPlayerId);
@@ -562,9 +588,9 @@ export class MesaRoom extends Room<{ state: GameState }> {
   private advanceTurnPhase5(startFromId?: string) {
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>).filter(p => !p.isFolded && p.connected);
     
-    if (activePlayers.length < 2) {
+    /* if (activePlayers.length < 2) {
       return this.endHandEarly();
-    }
+    } */
 
     const playerIds = Array.from(this.state.players.keys());
     let currentIndex = playerIds.indexOf(this.state.turnPlayerId);

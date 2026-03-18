@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export type AdminGameView = {
   id: string;
@@ -38,6 +39,25 @@ async function ensureAdmin(supabase: any) {
 
   if (userRecord?.role !== "admin") throw new Error("Acceso denegado");
   return userData.user.id;
+}
+
+export async function getTablesList() {
+  const supabase = await createClient();
+  await ensureAdmin(supabase);
+
+  const { data: tables, error } = await supabase
+    .from("tables")
+    .select(`
+      id, name, min_bet, max_players, game_type, created_at,
+      games:games(count) 
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (tables || []).map(t => ({
+    ...t,
+    active_games: Array.isArray(t.games) ? (t.games[0] as any)?.count || 0 : (t.games as any)?.count || 0
+  }));
 }
 
 export async function getActiveGames(): Promise<AdminGameView[]> {
@@ -134,5 +154,49 @@ export async function kickPlayer(gameId: string, playerId: string) {
 
   // NOTE: We should also call Colyseus backend to forcefully close the player's socket connection and refund if necessary.
   
+  return { success: true };
+}
+
+export async function createTable(data: { name: string, min_bet: number, max_players: number, game_type?: string }) {
+  const supabase = await createClient();
+  const adminId = await ensureAdmin(supabase);
+
+  const { error } = await supabase
+    .from("tables")
+    .insert({
+      ...data,
+      created_by: adminId,
+      game_type: data.game_type || 'primera_28'
+    });
+
+  if (error) throw error;
+  
+  revalidatePath('/admin/tables');
+  return { success: true };
+}
+
+export async function deleteTable(tableId: string) {
+  const supabase = await createClient();
+  await ensureAdmin(supabase);
+
+  // Check if there are active games for this table
+  const { data: activeGames } = await supabase
+    .from("games")
+    .select("id")
+    .eq("table_id", tableId)
+    .in("status", ["waiting", "playing", "paused"]);
+
+  if (activeGames && activeGames.length > 0) {
+    throw new Error("No se puede eliminar una mesa con juegos activos.");
+  }
+
+  const { error } = await supabase
+    .from("tables")
+    .delete()
+    .eq("id", tableId);
+
+  if (error) throw error;
+
+  revalidatePath('/admin/tables');
   return { success: true };
 }

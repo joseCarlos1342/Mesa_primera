@@ -1,6 +1,7 @@
 import { Users, ShieldAlert, Smartphone, Clock, Ban } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import { UserBanControl } from "@/components/admin/UserBanControl";
+import { UserBalanceControl } from "@/components/admin/UserBalanceControl";
 import { UserSearch } from "@/components/admin/UserSearch";
 import { getUsersList } from "@/app/actions/admin-users";
 
@@ -17,14 +18,6 @@ export default async function AdminUsersPage(props: PageProps) {
 
   let users = await getUsersList();
 
-  if (q) {
-    users = users.filter(u => 
-      u.display_name.toLowerCase().includes(q) || 
-      (u.phone && u.phone.toLowerCase().includes(q)) ||
-      u.id.toLowerCase().includes(q)
-    );
-  }
-  
   // Basic fraud detection: mark users sharing device footprints
   const deviceCounts = new Map<string, number>();
   users.forEach(u => {
@@ -34,6 +27,16 @@ export default async function AdminUsersPage(props: PageProps) {
        }
      });
   });
+
+  if (q === 'fraud') {
+    users = users.filter(u => u.devices?.some(d => (deviceCounts.get(d.fingerprint) || 0) > 1));
+  } else if (q) {
+    users = users.filter(u => 
+      u.display_name.toLowerCase().includes(q) || 
+      (u.phone && u.phone.toLowerCase().includes(q)) ||
+      u.id.toLowerCase().includes(q)
+    );
+  }
 
   return (
     <div className="min-h-full space-y-8 animate-in fade-in duration-700">

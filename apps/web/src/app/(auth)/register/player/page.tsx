@@ -25,7 +25,7 @@ export default function PlayerRegisterPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950" />
       </div>
 
-      <div className="w-full max-w-lg z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className="w-full max-w-xl z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-[10px] font-black tracking-[0.2em] uppercase mb-4">
             <UserPlus className="w-3 h-3" /> Crear Identidad

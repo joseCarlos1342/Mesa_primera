@@ -7,10 +7,34 @@ export default async function AdminPage() {
   const statsData = await getAdminDashboardStats();
 
   const stats = [
-    { label: "Usuarios Activos (24h)", value: statsData.activeUsers.toString(), icon: <Users className="w-5 h-5" />, color: "text-indigo-400" },
-    { label: "Mesas en Curso", value: statsData.activeGames.toString(), icon: <Gamepad2 className="w-5 h-5" />, color: "text-emerald-400" },
-    { label: "Total Ledger", value: formatCurrency(statsData.totalLedgerBalance), icon: <CreditCard className="w-5 h-5" />, color: "text-blue-400" },
-    { label: "Volumen 24h", value: formatCurrency(statsData.volume24h), icon: <BarChart3 className="w-5 h-5" />, color: "text-amber-400" },
+    { 
+      label: "Fichas en Plataforma", 
+      value: formatCurrency(statsData.totalUsersBalance), 
+      icon: <CreditCard className="w-5 h-5" />, 
+      color: "text-indigo-400",
+      href: "/admin/users"
+    },
+    { 
+      label: "Ganancias (Rake)", 
+      value: formatCurrency(statsData.totalRake), 
+      icon: <BarChart3 className="w-5 h-5" />, 
+      color: "text-emerald-400",
+      href: "/admin/ledger?type=rake"
+    },
+    { 
+      label: "Mesas en Curso", 
+      value: statsData.activeGames.toString(), 
+      icon: <Gamepad2 className="w-5 h-5" />, 
+      color: "text-blue-400",
+      href: "/admin/tables"
+    },
+    { 
+      label: "Alertas de Fraude", 
+      value: statsData.fraudAccountsCount.toString(), 
+      icon: <ShieldAlert className="w-5 h-5" />, 
+      color: statsData.fraudAccountsCount > 0 ? "text-red-400" : "text-slate-400",
+      href: "/admin/users?q=fraud"
+    },
   ];
 
   return (
@@ -28,15 +52,14 @@ export default async function AdminPage() {
           <p className="text-slate-500 font-medium mt-1">Gestión administrativa y control de boveda.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
+          <Link href="/admin/broadcast" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-2xl flex items-center gap-2 transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-95">
+            <MessageSquare className="w-5 h-5" />
+            NUEVO BROADCAST
+          </Link>
           <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl">
             <div className="text-right">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Status Bóveda</p>
               <p className="text-emerald-400 font-bold text-sm">OPERATIVO • 100%</p>
-            </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div className="text-right">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Servidor</p>
-              <p className="text-white font-bold text-sm">US-EAST-1</p>
             </div>
           </div>
           
@@ -66,8 +89,9 @@ export default async function AdminPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
-          <div 
+          <Link 
             key={i} 
+            href={stat.href}
             className="group backdrop-blur-lg bg-slate-900/40 border border-white/5 p-6 rounded-[2rem] hover:border-white/20 transition-all hover:bg-slate-900/60 shadow-lg"
           >
             <div className="flex items-start justify-between mb-4">
@@ -78,7 +102,7 @@ export default async function AdminPage() {
             </div>
             <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-1">{stat.label}</p>
             <p className="text-3xl font-black tracking-tight text-white">{stat.value}</p>
-          </div>
+          </Link>
         ))}
       </div>
 

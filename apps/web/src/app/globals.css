@@ -94,6 +94,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+/* Define landscape variant for tailwind */
+@custom-variant landscape (@media (orientation: landscape));
+
 @layer utilities {
   .portrait-only {
     @media (orientation: portrait) {
@@ -102,5 +105,19 @@ body {
     @media (orientation: landscape) {
       display: none;
     }
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.3);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.5);
   }
 }

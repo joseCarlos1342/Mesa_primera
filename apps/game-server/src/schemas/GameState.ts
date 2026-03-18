@@ -25,8 +25,8 @@ export class GameState extends Schema {
   @type("string") dealerId: string = "";
   @type("uint32") pot: number = 0;
   @type("string") turnPlayerId: string = "";
-  @type("uint8") minPlayers: number = 3;
-  @type("uint8") maxPlayers: number = 6;
+  @type("uint8") minPlayers: number = 1;
+  @type("uint8") maxPlayers: number = 7;
   @type("number") countdown: number = -1; // -1 significa inactivo
   @type("string") lastSeed: string = ""; // Seed del RNG para auditoría
 }

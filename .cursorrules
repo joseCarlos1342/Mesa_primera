@@ -31,7 +31,7 @@ Ejemplo: `feat(auth): implementar login con OTP via SMS`
 
 ---
 
-## 2. Uso del MCP Context7
+## 3. Uso del MCP Context7
 
 Para garantizar el uso de las mejores prácticas y evitar "alucinaciones" (inventar APIs que no existen), **SIEMPRE** debes usar el MCP `context7`:
 
@@ -43,26 +43,28 @@ Para garantizar el uso de las mejores prácticas y evitar "alucinaciones" (inven
 
 ---
 
-## 3. Uso de MCPs (Supabase & Twilio)
+## 4. Gestión de Infraestructura (CLI & Twilio)
 
-Para interacciones directas con la infraestructura y servicios externos, utiliza los MCPs disponibles:
+Para interacciones con la base de datos y servicios externos, utiliza las siguientes herramientas nativas:
 
-### Supabase MCP (`supabase-mcp-server`)
+### Supabase CLI (Oficial)
 
-- **Queries Directas**: Usa `execute_sql` para verificar datos en tiempo real o probar queries complejas antes de implementarlas en el código.
-- **Gestión de DB**: Usa `list_tables` y `apply_migration` para auditar y modificar el schema de forma segura.
-- **Seguridad**: Usa `get_advisors` para recibir recomendaciones automáticas sobre seguridad (RLS) y performance.
-- **Depuración**: Usa `get_logs` para investigar errores de autenticación o funciones de PostgreSQL.
+Para evitar el consumo excesivo de recursos de red y garantizar la consistencia, **utiliza el CLI de Supabase** (`npx supabase`) en lugar de herramientas MCP para tareas de base de datos:
+
+- **Migraciones**: Crea nuevas migraciones con `npx supabase migration new <name>` y aplícalas localmente con `npx supabase db reset` o en staging con `npx supabase db push`.
+- **Tipado de Datos**: Genera tipos de TypeScript automáticamente tras cambios en el schema usando:
+  `npx supabase gen types typescript --local > apps/web/src/types/supabase.ts`
+- **Queries y Debugging**: Siempre que necesites auditar el schema, usa los comandos `npx supabase db pull` o `npx supabase inspect db` para obtener información sobre performance sin depender del servidor central.
+- **Funciones Edge**: Gestiona el despliegue de Edge Functions localmente con `npx supabase functions`.
 
 ### Twilio MCP (`twilio`)
 
 - **Verificación de SMS**: Usa `ListMessage` y `FetchMessage` para confirmar que los OTPs fueron enviados y revisar su estado de entrega.
-- **Configuración**: Usa las herramientas de Twilio para verificar que el API Key y el Secret tienen los permisos necesarios para el proyecto.
 - **Debugging**: Si un usuario reporta que no recibe el código, audita los logs de mensajes directamente desde el MCP.
 
 ---
 
-## 4. Uso de Skills Locales (.agents/skills)
+## 5. Uso de Skills Locales (.agents/skills)
 
 Hemos instalado un cojunto de skills específicas para este proyecto que **SIEMPRE** se deben utilizar como referencia principal antes de escribir código:
 
@@ -70,13 +72,13 @@ Hemos instalado un cojunto de skills específicas para este proyecto que **SIEMP
 2. **`tailwind-design-system`**: Obligatorio para estructurar la UI, asegurar el uso correcto de Tailwind v4, variables CSS y diseño responsive.
 3. **`typescript-advanced-types`**: Referencia obligatoria al definir tipos complejos, genéricos o tipado estricto para la base de datos y estados de la aplicación.
 4. **`javascript-typescript-jest`**: Base para estructurar todos los tests unitarios y de integración.
-5. **`supabase-postgres-best-practices`**: Consultar siempre antes de crear nuevas tablas, migraciones complejas o escribir políticas RLS avanzadas.
+5. **`supabase-postgres-best-practices`**: **CONSULTA OBLIGATORIA** antes de usar el CLI para migraciones. Verifica aquí los índices recomendados, optimización de queries y patrones de seguridad RLS antes de generar cualquier cambio en la base de datos.
 6. **`frontend-design`**: Utilizar para asegurar que los nuevos componentes clave tengan un diseño de alta calidad y profesional.
 7. **`seo-audit`** y **`audit-website`**: Utilizar periódicamente para escanear el proyecto asegurando salud de performance, accesibilidad y SEO técnico.
 
 ---
 
-## 3. Testing Obligatorio
+## 6. Testing Obligatorio
 
 ### Filosofía
 
@@ -154,7 +156,7 @@ apps/web/
 
 ---
 
-## 4. Documentación Obligatoria
+## 7. Documentación Obligatoria
 
 ### En el Código (JSDoc/TSDoc)
 
@@ -232,7 +234,7 @@ Mantener actualizado con:
 
 ---
 
-## 5. Proceso por Sprint
+## 8. Proceso por Sprint
 
 ### Fase 1: Planificación (Día 1)
 
@@ -277,7 +279,7 @@ Mantener actualizado con:
 
 ---
 
-## 6. Estructura de Ramas (Git Flow Simplificado)
+## 9. Estructura de Ramas (Git Flow Simplificado)
 
 ```
 main                    ← Producción estable
@@ -294,7 +296,7 @@ main                    ← Producción estable
 
 ---
 
-## 7. Seguridad
+## 10. Seguridad
 
 ### Obligatorio en cada Sprint
 
@@ -318,7 +320,7 @@ GAME_SERVER_PORT=2567
 
 ---
 
-## 8. Calidad de Código
+## 11. Calidad de Código
 
 - **No usar `any`**: Tipar todo en TypeScript. Si no sabes el tipo, investiga con Context7.
 - **No usar `console.log` en producción**: Usar un logger configurable

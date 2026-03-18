@@ -12,6 +12,8 @@ import { Board } from '../../../components/game/Board'
 import { RulesModal } from '@/components/game/RulesModal'
 import { ReconnectOverlay } from '@/components/game/ReconnectOverlay'
 import { VoiceChat } from '@/components/VoiceChat'
+import { GameHeader } from '@/components/game/game-header'
+import { DepositModal } from '@/components/game/DepositModal'
 
 export default function GameRoomPage() {
   const params = useParams()
@@ -22,6 +24,7 @@ export default function GameRoomPage() {
   const [error, setError] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [showRules, setShowRules] = useState(false)
+  const [showDeposit, setShowDeposit] = useState(false)
   const [isReconnecting, setIsReconnecting] = useState(false)
   
   // Game State
@@ -37,6 +40,20 @@ export default function GameRoomPage() {
   
   // Mantiene la pantalla encendida en móviles
   useWakeLock()
+
+  // Listen to open-recharge-modal and open-rules-modal events
+  useEffect(() => {
+    const handleOpenDeposit = () => setShowDeposit(true)
+    const handleOpenRules = () => setShowRules(true)
+    
+    window.addEventListener('open-recharge-modal', handleOpenDeposit)
+    window.addEventListener('open-rules-modal', handleOpenRules)
+    
+    return () => {
+      window.removeEventListener('open-recharge-modal', handleOpenDeposit)
+      window.removeEventListener('open-rules-modal', handleOpenRules)
+    }
+  }, [])
 
   useEffect(() => {
     if (!roomId) return;
@@ -75,7 +92,7 @@ export default function GameRoomPage() {
               nick = user.user_metadata.username
               sessionStorage.setItem(nickKey, nick!)
               if (user.user_metadata.avatar_url) {
-                avatarUrl = user.user_metadata.avatar_url
+                avatarUrl = String(user.user_metadata.avatar_url)
                 sessionStorage.setItem(`avatarUrl_${roomId}`, avatarUrl)
               }
             }
@@ -193,126 +210,139 @@ export default function GameRoomPage() {
   const { players, phase, pot, dealerId, countdown } = gameState;
 
   return (
-    <div className="flex flex-col h-screen bg-[#070b14] text-[#a8b2d1] font-sans selection:bg-emerald-500/30 relative overflow-hidden">
+    <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#0d2e1b] bg-[url('https://www.transparenttextures.com/patterns/woven-light.png')] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.2)] before:to-[rgba(0,0,0,0.85)] before:pointer-events-none">
       {/* HEADER */}
-      <header className="flex h-20 items-center justify-between border-b border-[#1b253b] bg-[#0c1220]/80 px-8 backdrop-blur-md relative z-10">
-        <div className="flex items-center gap-6">
-          <button 
-            onClick={() => router.push('/')}
-            className="group flex h-10 w-10 items-center justify-center rounded-xl bg-[#1b253b]/50 text-[#8b98b8] transition-all hover:bg-[#1b253b] hover:text-white"
-          >
-            <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-3">
-              Mesa Primera
-              <span className="text-xs font-mono bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-md border border-emerald-500/20">
-                {roomId}
-              </span>
-            </h1>
-          </div>
-        </div>
-        
-        <div className="flex gap-4 items-center">
-           <button 
-             onClick={() => setShowRules(true)} 
-             className="p-2 bg-[#1b253b]/50 hover:bg-[#1b253b] text-emerald-400 rounded-xl transition-colors border border-emerald-500/20"
-             title="Reglamento"
-           >
-              <BookOpen className="w-5 h-5 mx-auto" />
-           </button>
-        </div>
-      </header>
+      <GameHeader onMenuClick={() => router.push('/')} />
       
       {/* MAIN GAME AREA */}
-      <main className="flex-1 flex flex-col items-center justify-center relative z-0 p-0 m-0 overflow-hidden">
+      <main className={`flex-1 flex flex-col items-center justify-center relative z-0 p-0 m-0 ${phase === 'LOBBY' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
         {phase === 'LOBBY' ? (
-          <div className="relative text-center w-full h-full flex flex-col items-center justify-center">
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] max-w-[800px] max-h-[800px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
+          <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center landscape:justify-start p-2 landscape:pt-2">
+            {/* Atmospheric Background Effects */}
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none mix-blend-overlay" />
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#d4af37]/5 rounded-full blur-[150px] pointer-events-none" />
             
-            <Users className="w-24 h-24 mx-auto text-emerald-500/50 mb-6" />
-            <h2 className="text-3xl font-bold text-white mb-2">Sala de Espera</h2>
-            <p className="text-lg text-[#8b98b8] mb-8">
-              Jugadores conectados: <span className="text-white font-bold">{players.length}</span> / 7
-            </p>
-            {players.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-4 max-w-2xl mx-auto z-10 relative">
-                {players.map(p => {
-                  const isMe = room?.sessionId === p.id;
-                  return (
-                    <div key={p.id} className={`border ${p.isReady ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-[#1b253b]/50 border-slate-500/20'} rounded-full px-6 py-3 flex items-center gap-3 transition-colors`}>
-                      <div className={`w-3 h-3 rounded-full ${p.isReady ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-slate-500'} ${isMe ? 'animate-pulse' : ''}`} />
-                      <span className={`${p.isReady ? 'text-white' : 'text-slate-300'} font-medium`}>
-                        {p.nickname} {isMe ? '(Tú)' : ''}
-                      </span>
-                      <span className="text-[#8b98b8] text-sm ml-2 font-mono">${p.chips}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            
-            {room && (
-              <div className="mt-12 z-10 relative flex flex-col items-center">
-                <button 
-                  onClick={() => {
-                    const me = players.find(p => p.id === room.sessionId);
-                    if (me) {
-                      room.send('toggleReady', { isReady: !me.isReady });
-                    }
-                  }}
-                  className={`font-black px-10 py-5 rounded-full uppercase tracking-widest transition-all shadow-lg ${
-                    players.find(p => p.id === room?.sessionId)?.isReady 
-                      ? 'bg-red-500/20 text-red-400 border-2 border-red-500/50 hover:bg-red-500/30' 
-                      : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)]'
-                  }`}
-                >
-                  {players.find(p => p.id === room?.sessionId)?.isReady ? 'Anular Listo' : '¡Estoy Listo!'}
-                </button>
-                
-                {players.length < 3 && (
-                  <p className="mt-6 text-emerald-500/50 animate-pulse uppercase tracking-widest text-sm font-bold">
-                    Esperando al menos 3 jugadores...
-                  </p>
-                )}
-                
-                {players.length >= 3 && players.filter(p => p.isReady).length < 3 && (
-                  <p className="mt-6 text-emerald-500/80 uppercase tracking-widest text-sm font-bold">
-                    Esperando que al menos 3 estén listos ({players.filter(p => p.isReady).length}/3)
-                  </p>
-                )}
-                
-                {countdown > 0 && countdown <= 60 && (
-                   <div className="mt-6 flex flex-col items-center gap-2">
-                     <p className="text-emerald-400 font-bold tracking-widest uppercase">
-                       Iniciando en: <span className="text-white text-2xl ml-2 font-black">{countdown}s</span>
-                     </p>
-                     <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden mt-1">
-                        <div 
-                          className="h-full bg-emerald-500 transition-all duration-1000 ease-linear"
-                          style={{ width: `${(countdown / 60) * 100}%` }}
-                        />
-                     </div>
-                   </div>
-                )}
+            {/* Main Luxury Panel */}
+            <div className="relative z-10 w-full max-w-4xl bg-[#0c1220]/80 backdrop-blur-xl border border-[#d4af37]/20 rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(212,175,55,0.1)] flex flex-col items-center mt-4 md:mt-0 landscape:mt-2 landscape:mb-4 landscape:max-h-[85vh] md:landscape:max-h-none landscape:overflow-y-auto md:landscape:overflow-visible landscape:py-4 md:landscape:py-12 custom-scrollbar">
+              
+              <Users className="w-6 h-6 md:w-20 md:h-20 mx-auto text-[#d4af37]/80 drop-shadow-[0_0_15px_rgba(212,175,55,0.3)] mb-1 md:mb-4 landscape:hidden md:landscape:block" />
+              
+              <h2 className="text-lg md:text-5xl font-serif font-black mb-0.5 md:mb-2 uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] drop-shadow-lg filter text-center landscape:text-base md:landscape:text-5xl" style={{ filter: "drop-shadow(0px 4px 6px rgba(0,0,0,0.5))" }}>
+                Sala de Espera
+              </h2>
+              
+              <p className="text-[10px] md:text-xl text-[#a8b2d1] mb-2 md:mb-10 font-bold uppercase tracking-wider landscape:mb-1 md:landscape:mb-10">
+                Jugadores en mesa: <span className="text-[#fdf0a6] font-black">{players.length}</span> <span className="text-[#8a6d1c]">/ 7</span>
+              </p>
 
-                {players.filter(p => p.isReady).length >= 3 && (
-                  dealerId === room.sessionId ? (
+              {/* Player Plates Grid */}
+              {players.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 md:gap-4 w-full justify-items-center mb-4 md:mb-12 landscape:grid-cols-3 landscape:mb-3">
+                  {players.map(p => {
+                    const isMe = room?.sessionId === p.id;
+                    return (
+                      <div 
+                        key={p.id} 
+                        className={`
+                          w-full max-w-[260px] flex items-center gap-3 md:gap-4 px-3 md:px-5 py-2 md:py-4 rounded-xl md:rounded-2xl border-2 transition-all landscape:py-2
+                          ${p.isReady 
+                            ? 'bg-gradient-to-br from-[#1b253b] to-[#0c1220] border-[#4ade80]/40 shadow-[0_10px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)]' 
+                            : 'bg-[#1b253b]/50 border-white/5 shadow-inner opacity-70'}
+                        `}
+                      >
+                        {/* LED Gem */}
+                        <div className={`
+                          w-4 h-4 rounded-full flex-shrink-0 border border-black/50
+                          ${p.isReady 
+                            ? 'bg-gradient-to-br from-[#4ade80] to-[#16a34a] shadow-[0_0_15px_rgba(74,222,128,0.8),inset_0_2px_4px_rgba(255,255,255,0.6)]' 
+                            : 'bg-gradient-to-br from-red-600 to-red-900 shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]'} 
+                          ${isMe ? 'animate-pulse' : ''}
+                        `} />
+                        
+                        <div className="flex flex-col items-start overflow-hidden">
+                          <span className={`${p.isReady ? 'text-white' : 'text-slate-400'} font-bold truncate w-full text-left text-base md:text-lg`}>
+                            {p.nickname} {isMe ? <span className="text-[#d4af37] font-normal text-sm ml-1">(Tú)</span> : ''}
+                          </span>
+                          <span className="text-[#8a6d1c] font-black font-mono text-sm tracking-widest mt-0.5">
+                            ${p.chips >= 1000 ? (p.chips/1000).toFixed(1) + 'k' : p.chips}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {room && (
+                <div className="flex flex-col items-center w-full">
+                  {/* Skeuomorphic READY Button */}
+                  {players.find(p => p.id === room?.sessionId)?.isReady ? (
                     <button 
-                      onClick={() => room.send('startGame')}
-                      className="mt-6 bg-emerald-500 text-slate-950 font-black px-8 py-4 rounded-full uppercase tracking-widest hover:bg-emerald-400 transition-colors shadow-[0_0_30px_rgba(16,185,129,0.3)] z-10 relative"
+                      onClick={() => room.send('toggleReady', { isReady: false })}
+                      className="w-full max-w-sm h-12 md:h-20 bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] hover:from-[#fca5a5] hover:via-[#ef4444] hover:to-[#b91c1c] text-white rounded-xl font-black text-lg md:text-2xl shadow-[0_15px_30px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.4)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-[#fca5a5]/50 border-b-[6px] md:border-b-[8px] border-b-[#7f1d1d] landscape:h-10 landscape:text-base landscape:border-b-4"
+                      style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
                     >
-                      {countdown > 0 ? 'Forzar Inicio Ahora' : 'Iniciar Partida'}
+                      Anular Listo
                     </button>
                   ) : (
-                    <p className="mt-6 text-emerald-400/70 animate-pulse uppercase tracking-widest text-sm font-bold">
-                      {countdown > 0 ? 'Cargando mesa...' : 'Esperando al anfitrión...'}
-                    </p>
-                  )
-                )}
-              </div>
-            )}
+                    <button 
+                      onClick={() => room.send('toggleReady', { isReady: true })}
+                      className="w-full max-w-sm h-12 md:h-20 bg-gradient-to-b from-[#4ade80] via-[#16a34a] to-[#14532d] hover:from-[#86efac] hover:via-[#22c55e] hover:to-[#16a34a] text-white rounded-xl font-black text-lg md:text-2xl shadow-[0_15px_30px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.4)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-[#86efac]/50 border-b-[6px] md:border-b-[8px] border-b-[#064e3b] landscape:h-10 landscape:text-base landscape:border-b-4"
+                      style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+                    >
+                      ¡Estoy Listo!
+                    </button>
+                  )}
+                  
+                  {/* Status Messages Below Button */}
+                  <div className="h-12 md:h-16 mt-2 md:mt-6 flex flex-col justify-center items-center landscape:mt-2">
+                    {players.length < (room?.state.minPlayers || 3) ? (
+                      <p className="text-[#a8b2d1]/50 uppercase tracking-widest text-sm md:text-base font-bold text-center">
+                        Esperando al menos <span className="text-white">{room?.state.minPlayers || 3} jugadores</span>...
+                      </p>
+                    ) : (
+                      <>
+                        {players.filter((p: any) => p.isReady).length < (room?.state.minPlayers || 3) && (
+                          <p className="text-[#d4af37]/80 uppercase tracking-widest text-sm md:text-base font-bold flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Esperando listos ({players.filter((p: any) => p.isReady).length}/{room?.state.minPlayers || 3})
+                          </p>
+                        )}
+                        
+                        {countdown > 0 && countdown <= 60 && (
+                          <div className="flex flex-col items-center gap-3 w-full max-w-xs animate-in fade-in zoom-in duration-300">
+                             <p className="text-[#fdf0a6] font-black tracking-widest uppercase text-xl">
+                               Iniciando: <span className="text-white text-3xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{countdown}</span>
+                             </p>
+                             <div className="w-full h-3 bg-black/50 rounded-full overflow-hidden border border-white/10 shadow-inner">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-[#d4af37] to-[#fdf0a6] transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(212,175,55,0.8)]"
+                                  style={{ width: `${(countdown / 60) * 100}%` }}
+                                />
+                             </div>
+                          </div>
+                        )}
+
+                        {players.filter((p: any) => p.isReady).length >= (room?.state.minPlayers || 3) && countdown < 0 && (
+                          dealerId === room.sessionId ? (
+                            <button 
+                              onClick={() => room.send('startGame')}
+                              className="bg-transparent text-[#d4af37] border border-[#d4af37]/50 hover:bg-[#d4af37]/10 font-bold px-8 py-3 rounded-full uppercase tracking-widest transition-colors mt-2"
+                            >
+                              Forzar Inicio
+                            </button>
+                          ) : (
+                            <p className="text-[#d4af37]/70 animate-pulse uppercase tracking-widest text-sm md:text-base font-bold text-center">
+                              Esperando al anfitrión...
+                            </p>
+                          )
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <Board room={room} phase={phase} players={players} pot={pot} />
@@ -320,7 +350,7 @@ export default function GameRoomPage() {
         
         {/* Voice Chat Component */}
         {room && (
-          <div className="absolute bottom-6 left-6 z-50">
+          <div className="fixed bottom-6 right-6 z-50">
              <VoiceChat 
                 roomName={roomId} 
                 username={players.find(p => p.id === room?.sessionId)?.nickname || 'Jugador'} 
@@ -330,17 +360,11 @@ export default function GameRoomPage() {
       </main>
 
       {/* FOOTER - Solo visible en LOBBY para maximizar espacio de mesa en móviles */}
-      {phase === 'LOBBY' && (
-        <footer className="h-14 border-t border-[#1b253b] bg-[#0c1220]/80 flex items-center justify-between px-8 text-sm backdrop-blur-md relative z-10 pb-safe">
-          <div className="flex items-center gap-2 text-emerald-400">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            Conectado
-          </div>
-        </footer>
-      )}
+
 
       <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
       <ReconnectOverlay isVisible={isReconnecting} />
+      <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
     </div>
   )
 }

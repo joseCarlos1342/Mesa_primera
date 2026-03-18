@@ -48,7 +48,7 @@ export async function getUsersList(): Promise<AdminUserView[]> {
     .from("profiles")
     .select(`
       id, full_name, username, phone, role, is_banned, ban_reason, banned_at, created_at,
-      wallets!left(balance, currency),
+      wallets!left(balance_cents, currency),
       devices:user_devices(id, fingerprint, is_trusted),
       stats:player_stats(total_games, wins)
     `)
@@ -61,7 +61,7 @@ export async function getUsersList(): Promise<AdminUserView[]> {
     username: p.username || '',
     display_name: p.full_name || p.username || 'Desconocido',
     phone: p.phone || p.id.split('-')[0],
-    balance_cents: p.wallets ? (Array.isArray(p.wallets) ? (p.wallets.length > 0 ? Number(p.wallets[0].balance) : 0) : Number((p.wallets as any).balance || 0)) : 0,
+    balance_cents: p.wallets ? (Array.isArray(p.wallets) ? (p.wallets.length > 0 ? Number(p.wallets[0].balance_cents) : 0) : Number((p.wallets as any).balance_cents || 0)) : 0,
     last_login: p.created_at,
     stats: p.stats ? {
       games_played: Array.isArray(p.stats) ? (p.stats[0] as any)?.total_games || 0 : (p.stats as any).total_games || 0,
@@ -82,12 +82,12 @@ export async function adjustUserBalance(userId: string, deltaCents: number, reas
 
   if (walletError || !wallet) throw new Error("Wallet no encontrada");
 
-  const newBalance = Number(wallet.balance) + deltaCents;
+  const newBalance = Number(wallet.balance_cents) + deltaCents;
   if (newBalance < 0) throw new Error("Saldo resultante no puede ser negativo");
 
   const { error: updateError } = await supabase
     .from('wallets')
-    .update({ balance: newBalance })
+    .update({ balance_cents: newBalance })
     .eq('id', wallet.id)
 
   if (updateError) throw updateError;
