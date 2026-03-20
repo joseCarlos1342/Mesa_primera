@@ -46,13 +46,13 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-[#0a0a0a] border-2 border-brand-gold/30 rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+            className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-[#0a0a0a] border-2 border-brand-gold/30 rounded-[2rem] md:rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden"
           >
             {/* Header / Background Glow */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-brand-gold/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
             
             {/* Top Bar */}
-            <div className="relative z-10 p-8 flex items-center justify-between border-b border-brand-gold/10">
+            <div className="relative z-10 p-6 md:p-8 flex items-center justify-between border-b border-brand-gold/10 shrink-0">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-brand-gold/10 rounded-2xl flex items-center justify-center border border-brand-gold/20 shadow-lg">
                   <Banknote className="w-6 h-6 text-brand-gold" />
@@ -71,7 +71,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
             </div>
 
             {/* Content Body */}
-            <div className="relative z-10 p-8 md:p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            <div className="relative z-10 p-6 md:p-10 space-y-8 overflow-y-auto custom-scrollbar flex-1 min-h-0">
               
               {/* Type and Amount */}
               <div className="text-center space-y-2">
@@ -142,7 +142,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
             </div>
 
             {/* Footer Action */}
-            <div className="relative z-10 p-8 pt-0">
+            <div className="relative z-10 p-6 md:p-8 pt-0 shrink-0">
                <button
                 onClick={onClose}
                 className="w-full h-16 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] transition-all border border-brand-gold/10 hover:border-brand-gold/30 active:scale-95 flex items-center justify-center gap-3"
@@ -159,12 +159,12 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
 
 function DetailItem({ icon: Icon, label, value }: any) {
   return (
-    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-1 group hover:border-brand-gold/20 transition-all duration-300">
+    <div className="p-3 md:p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-1 group hover:border-brand-gold/20 transition-all duration-300">
       <div className="flex items-center gap-2">
-        <Icon className="w-3 h-3 text-brand-gold opacity-40 group-hover:opacity-100 transition-opacity" />
-        <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest opacity-40">{label}</span>
+        <Icon className="w-3 h-3 text-brand-gold opacity-60 group-hover:opacity-100 transition-opacity" />
+        <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest opacity-60">{label}</span>
       </div>
-      <p className="text-[11px] font-black text-text-premium truncate group-hover:text-brand-gold transition-colors">{value}</p>
+      <p className="text-[10px] md:text-[11px] font-black text-text-premium truncate group-hover:text-brand-gold transition-colors">{value}</p>
     </div>
   )
 }
