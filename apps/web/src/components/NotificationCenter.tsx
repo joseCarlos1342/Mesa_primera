@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Bell, X, CheckCircle, Info, BellRing, UserPlus, Clock, Gamepad2 } from 'lucide-react';
+import { Bell, X, CheckCircle, Info, BellRing, UserPlus, Clock, Gamepad2, Trash2, ExternalLink } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
+import { deleteNotification, markNotificationAsRead } from '@/app/actions/social-actions';
 
 interface NotificationCenterProps {
   userId: string;
@@ -23,7 +25,9 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     if (!userId) return;
@@ -89,15 +93,61 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     }
   };
 
-  const markAsRead = async (id: string) => {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id);
-
-    if (!error) {
+  const markAsReadLocal = async (id: string) => {
+    const res = await markNotificationAsRead(id);
+    if (res.success) {
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setIsDeleting(id);
+    const res = await deleteNotification(id);
+    if (res.success) {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      setUnreadCount(prev => notifications.find(n => n.id === id && !n.is_read) ? Math.max(0, prev - 1) : prev);
+    }
+    setIsDeleting(null);
+  };
+
+  const handleNavigate = async (n: AppNotification) => {
+    // Always delete after clicking "Ir" as requested by user
+    const res = await deleteNotification(n.id);
+    if (res.success) {
+      setNotifications(prev => prev.filter(item => item.id !== n.id));
+      if (!n.is_read) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    }
+
+    setIsOpen(false);
+
+    // Navigation logic
+    switch (n.type) {
+      case 'game_invite':
+        router.push('/lobby');
+        break;
+      case 'friend_request':
+        router.push('/friends?tab=requests');
+        break;
+      case 'friend_accepted':
+      case 'friend_removed':
+        router.push('/friends');
+        break;
+      case 'direct_message':
+        const friendId = n.data?.senderId || n.data?.chatWith;
+        router.push(friendId ? `/friends?chat=${friendId}` : '/friends');
+        break;
+      case 'deposit_success':
+      case 'withdraw_success':
+      case 'wallet_update':
+        router.push('/wallet');
+        break;
+      default:
+        // Default might be profile or home
+        break;
     }
   };
 
@@ -146,8 +196,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
               notifications.map(n => (
                 <div 
                   key={n.id} 
-                  onClick={() => !n.is_read && markAsRead(n.id)}
-                  className={`group p-6 rounded-[1.5rem] transition-all duration-300 border-2 cursor-pointer ${!n.is_read ? 'bg-brand-gold/10 border-brand-gold/30 shadow-lg' : 'hover:bg-white/5 border-transparent hover:border-white/5'}`}
+                  className={`group relative p-6 rounded-[1.5rem] transition-all duration-300 border-2 ${!n.is_read ? 'bg-brand-gold/10 border-brand-gold/30 shadow-lg' : 'bg-black/20 border-white/5 hover:border-white/10'}`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-3">
@@ -169,7 +218,26 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
                       {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-text-secondary leading-relaxed group-hover:text-text-premium transition-colors">{n.body}</p>
+                  <p className="text-sm font-medium text-text-secondary leading-relaxed group-hover:text-text-premium transition-colors mb-4">{n.body}</p>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                    <button 
+                      onClick={() => handleNavigate(n)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-brand-gold/10 hover:bg-brand-gold text-brand-gold hover:text-black py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Ir
+                    </button>
+                    <button 
+                      onClick={(e) => handleDelete(e, n.id)}
+                      disabled={isDeleting === n.id}
+                      className="flex-1 flex items-center justify-center gap-2 bg-brand-red/10 hover:bg-brand-red text-brand-red hover:text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {isDeleting === n.id ? '...' : 'Borrar'}
+                    </button>
+                  </div>
                 </div>
               ))
             )}

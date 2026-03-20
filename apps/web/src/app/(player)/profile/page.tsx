@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Phone, Tag, Camera, Save, ArrowLeft, Loader2 } from 'lucide-react';
+import { User, Mail, Phone, Tag, Camera, Save, ArrowLeft, Loader2, Trophy, Medal, Star, ShieldCheck, LogOut } from 'lucide-react';
 import { getAvatarSvg } from '@/utils/avatars';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getMyStats, PlayerStats } from '@/app/actions/stats';
+import { Toast, ToastType } from '@/components/ui/Toast';
 
 export default function ProfilePage() {
   const supabase = createClient();
@@ -12,6 +15,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     full_name: '',
@@ -19,8 +24,13 @@ export default function ProfilePage() {
     avatar_url: '',
   });
 
+  const showToast = (message: string, type: ToastType) => {
+    setToast(null);
+    setTimeout(() => setToast({ message, type }), 10);
+  };
+
   useEffect(() => {
-    async function getProfile() {
+    async function loadData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login/player');
@@ -28,25 +38,26 @@ export default function ProfilePage() {
       }
       setUser(user);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      const [profileRes, statsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+        getMyStats()
+      ]);
 
-      if (profile) {
+      if (profileRes.data) {
         setFormData({
-          username: profile.username || '',
-          full_name: profile.full_name || '',
-          phone: profile.phone || '',
-          avatar_url: profile.avatar_url || '',
+          username: profileRes.data.username || '',
+          full_name: profileRes.data.full_name || '',
+          phone: profileRes.data.phone || '',
+          avatar_url: profileRes.data.avatar_url || '',
         });
       }
+      setStats(statsRes);
       setLoading(false);
     }
 
-    getProfile();
+    loadData();
   }, [supabase, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -64,19 +75,10 @@ export default function ProfilePage() {
       .eq('id', user.id);
 
     if (error) {
-      alert('Error al actualizar el perfil: ' + error.message);
+      showToast('Error al actualizar: ' + error.message, 'error');
     } else {
+      showToast('¡Perfil actualizado con éxito!', 'success');
       router.refresh();
-      const btn = document.getElementById('save-button');
-      if (btn) {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '¡Guardado!';
-        btn.classList.add('bg-green-500/20', 'border-green-500/50', 'text-green-400');
-        setTimeout(() => {
-          btn.innerHTML = originalText;
-          btn.classList.remove('bg-green-500/20', 'border-green-500/50', 'text-green-400');
-        }, 2000);
-      }
     }
     setSaving(false);
   };
@@ -86,12 +88,12 @@ export default function ProfilePage() {
     if (!file || !user) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecciona solo archivos de imagen (JPG, PNG, WebP).');
+      showToast('Selecciona solo archivos de imagen', 'error');
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      alert('La imagen es demasiado grande. El límite es de 2MB.');
+      showToast('La imagen supera el límite de 2MB', 'error');
       return;
     }
 
@@ -104,7 +106,7 @@ export default function ProfilePage() {
       .upload(filePath, file, { upsert: true });
 
     if (uploadError) {
-      alert('Error al subir la imagen: ' + uploadError.message);
+      showToast('Error al subir: ' + uploadError.message, 'error');
       setSaving(false);
       return;
     }
@@ -114,62 +116,95 @@ export default function ProfilePage() {
       .getPublicUrl(filePath);
 
     setFormData({ ...formData, avatar_url: publicUrl });
+    showToast('Imagen cargada correctamente', 'success');
     setSaving(false);
+  };
+
+  const handleLogout = async () => {
+    if (confirm("¿Seguro que deseas cerrar sesión?")) {
+      await supabase.auth.signOut();
+      router.push('/login/player');
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-16 h-16 border-4 border-brand-gold/20 border-t-brand-gold rounded-full animate-spin shadow-[0_0_15px_rgba(202,171,114,0.2)]" />
+        <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em] animate-pulse">Abriendo Bóveda...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => router.back()}
-          className="p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors"
-        >
-          <ArrowLeft className="w-6 h-6 text-slate-300" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white">Mi Perfil</h1>
-          <p className="text-slate-400 font-bold uppercase text-xs tracking-[0.2em]">Configuración de tu cuenta</p>
+    <div className="max-w-4xl mx-auto pb-24 pt-6 md:pt-12 px-4 sm:px-6 space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+      {/* Header */}
+      <header className="flex items-center justify-center relative">
+        <div className="absolute left-0">
+          <button 
+            onClick={() => router.back()}
+            className="group p-4 bg-white/5 border border-white/10 rounded-[1.5rem] hover:bg-brand-gold hover:border-brand-gold transition-all duration-500 shadow-xl active:scale-95"
+          >
+            <ArrowLeft className="w-6 h-6 text-slate-300 group-hover:text-black transition-colors" />
+          </button>
         </div>
-      </div>
-
-      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-1000">
-          <User className="w-32 h-32 text-indigo-500" />
+        
+        <div className="text-center space-y-1 px-14 overflow-visible">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black italic text-white uppercase tracking-tighter leading-none pr-2">
+            Mi Perfil
+          </h1>
+          <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em] opacity-60">
+            Sede Central • Elite Member
+          </p>
         </div>
+      </header>
 
-        <form onSubmit={handleSubmit} className="relative space-y-8">
-          {/* Avatar Section */}
-          <div className="flex flex-col items-center gap-4 mb-8">
-            <div className="relative w-32 h-32">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full blur opacity-20 animate-pulse"></div>
-              <div className="relative w-full h-full rounded-full bg-slate-800 border-4 border-white/10 flex items-center justify-center overflow-hidden">
+      <div className="grid lg:grid-cols-12 gap-10">
+        {/* Left Column: Avatar & Loyalty */}
+        <aside className="lg:col-span-5 space-y-8">
+          <div className="relative bg-slate-950/40 backdrop-blur-xl border border-white/5 rounded-[3rem] p-10 flex flex-col items-center text-center shadow-2xl overflow-hidden group">
+            {/* Background Decoration */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-brand-gold/10 transition-colors duration-1000" />
+            
+            <div className="relative w-40 h-40 mb-6">
+              {/* Outer Ring */}
+              <div className="absolute inset-[-12px] border-2 border-brand-gold/20 rounded-full" />
+              <motion.div 
+                initial={{ rotate: 0 }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-[-12px] border-2 border-transparent border-t-brand-gold rounded-full opacity-40 shadow-[0_0_15px_rgba(226,176,68,0.3)]" 
+              />
+              
+              <div className="relative w-full h-full rounded-full bg-slate-900 border-4 border-white/10 flex items-center justify-center overflow-hidden shadow-2xl">
                 {formData.avatar_url ? (
                   getAvatarSvg(formData.avatar_url) ? (
-                    <div className="w-full h-full scale-[1.2]">
+                    <div className="w-full h-full scale-[1.3]">
                       {getAvatarSvg(formData.avatar_url)}
                     </div>
                   ) : (
                     <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   )
                 ) : (
-                  <span className="text-4xl font-black text-white">
+                  <span className="text-5xl font-display font-black text-brand-gold">
                     {formData.username?.[0]?.toUpperCase() || 'P'}
                   </span>
                 )}
-                {saving && (
-                  <div className="absolute inset-0 bg-slate-950/60 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                  </div>
-                )}
+                
+                <AnimatePresence>
+                  {saving && (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-slate-950/70 flex items-center justify-center z-10"
+                    >
+                      <Loader2 className="w-10 h-10 text-brand-gold animate-spin" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
+
               <input
                 type="file"
                 id="avatar-upload"
@@ -180,90 +215,170 @@ export default function ProfilePage() {
               />
               <button 
                 type="button"
-                className="absolute bottom-1 right-1 p-2 bg-indigo-600 rounded-xl border-2 border-slate-900 text-white hover:bg-indigo-500 transition-colors shadow-xl disabled:opacity-50"
+                className="absolute bottom-2 right-2 p-3 bg-brand-gold rounded-2xl border-4 border-slate-950 text-black hover:bg-brand-gold-light transition-all shadow-2xl active:scale-90"
                 onClick={() => document.getElementById('avatar-upload')?.click()}
                 disabled={saving}
               >
-                <Camera className="w-5 h-5" />
+                <Camera className="w-6 h-6" />
               </button>
             </div>
-            <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Toca la cámara para subir imagen</p>
-          </div>
-
-          <div className="grid gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-4">Nombre de Usuario</label>
-              <div className="relative group">
-                <Tag className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  placeholder="Tu nombre de usuario"
-                  className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 pl-14 pr-6 text-xl font-bold text-white focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-700"
-                />
-              </div>
-            </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-4">Nombre Completo</label>
-              <div className="relative group">
-                <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
-                <input
-                  type="text"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  placeholder="Tu nombre real"
-                  className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 pl-14 pr-6 text-xl font-bold text-white focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-700"
-                />
+              <div className="flex items-center justify-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-brand-gold" />
+                <span className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">Nivel {stats?.level || 1}</span>
               </div>
+              <h3 className="text-3xl font-display font-black text-white italic uppercase tracking-tight">
+                {formData.username || 'Jugador'}
+              </h3>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Prestigio Elite • Miembro desde 2024</p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-4">Teléfono</label>
-              <div className="relative group">
-                <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Número de teléfono"
-                  className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 pl-14 pr-6 text-xl font-bold text-white focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-slate-700"
-                />
+            {/* Loyalty Bar Mock */}
+            <div className="w-full mt-8 space-y-2">
+              <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-400 px-1">
+                <span>XP Actual</span>
+                <span>Prox. Nivel</span>
               </div>
-            </div>
-
-            <div className="space-y-2 opacity-50">
-              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-4">Email (No Editable)</label>
-              <div className="relative group grayscale">
-                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                <input
-                  type="email"
-                  value={user.email}
-                  disabled
-                  className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 pl-14 pr-6 text-xl font-bold text-slate-500 cursor-not-allowed"
+              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden p-[1px] border border-white/5">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: '65%' }}
+                  className="h-full bg-gradient-to-r from-brand-gold to-brand-gold-light rounded-full shadow-[0_0_10px_rgba(226,176,68,0.5)]" 
                 />
               </div>
             </div>
           </div>
 
-          <button
-            id="save-button"
-            type="submit"
-            disabled={saving}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 py-4 md:py-6 rounded-2xl md:rounded-3xl font-black text-lg md:text-2xl uppercase tracking-widest text-white shadow-xl shadow-indigo-900/20 active:scale-95 transition-all flex items-center justify-center gap-3 mt-8 md:mt-12 disabled:opacity-50"
-          >
-            {saving ? (
-              <Loader2 className="w-6 h-6 md:w-8 h-8 animate-spin" />
-            ) : (
-              <>
-                <Save className="w-6 h-6 md:w-8 h-8" />
-                Guardar Cambios
-              </>
-            )}
-          </button>
-        </form>
+          {/* Mini Stats Card */}
+          <div className="bg-slate-950/40 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-8 grid grid-cols-3 gap-4 shadow-xl">
+             <div className="text-center space-y-1">
+               <Trophy className="w-5 h-5 text-brand-gold mx-auto opacity-40" />
+               <p className="text-xl font-display font-black text-white">{stats?.games_played || 0}</p>
+               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Partidas</p>
+             </div>
+             <div className="text-center space-y-1 border-x border-white/5">
+               <Medal className="w-5 h-5 text-brand-gold mx-auto opacity-40" />
+               <p className="text-xl font-display font-black text-brand-gold">{stats?.games_won || 0}</p>
+               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Victorias</p>
+             </div>
+             <div className="text-center space-y-1">
+               <Star className="w-5 h-5 text-brand-gold mx-auto opacity-40" />
+               <p className="text-xl font-display font-black text-white">{stats?.primeras_count || 0}</p>
+               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Primeras</p>
+             </div>
+          </div>
+        </aside>
+
+        {/* Right Column: Settings Form */}
+        <main className="lg:col-span-7">
+          <div className="bg-slate-950/40 backdrop-blur-xl border border-white/5 rounded-[3rem] p-8 md:p-12 shadow-2xl relative">
+            <header className="mb-10 flex items-center gap-4">
+               <div className="p-3 bg-brand-gold/10 border border-brand-gold/20 rounded-2xl">
+                 <Tag className="w-6 h-6 text-brand-gold" />
+               </div>
+               <div>
+                  <h4 className="text-xl font-display font-black text-white uppercase italic tracking-tighter">Ajustes de Cuenta</h4>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Personaliza tu identidad en la mesa</p>
+               </div>
+            </header>
+
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="grid sm:grid-cols-2 gap-8">
+                {/* Username */}
+                <div className="space-y-3">
+                  <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Nombre de Usuario</label>
+                  <div className="relative group">
+                    <Tag className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-brand-gold transition-colors" />
+                    <input
+                      type="text"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-lg font-black text-white focus:outline-none focus:border-brand-gold/50 transition-all placeholder:text-slate-700 shadow-inner"
+                      placeholder="Identidad"
+                    />
+                  </div>
+                </div>
+
+                {/* Full Name */}
+                <div className="space-y-3">
+                  <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Nombre Real</label>
+                  <div className="relative group">
+                    <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-brand-gold transition-colors" />
+                    <input
+                      type="text"
+                      value={formData.full_name}
+                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                      className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-lg font-black text-white focus:outline-none focus:border-brand-gold/50 transition-all placeholder:text-slate-700 shadow-inner"
+                      placeholder="Nombre completo"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-3 text-center sm:text-left">
+                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Directorio (Teléfono)</label>
+                <div className="relative group">
+                  <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-brand-gold transition-colors" />
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-lg font-black text-white focus:outline-none focus:border-brand-gold/50 transition-all placeholder:text-slate-700 shadow-inner"
+                    placeholder="+57 3..."
+                  />
+                </div>
+              </div>
+
+              {/* Email (Disabled) */}
+              <div className="space-y-3 border-t border-white/5 pt-8 opacity-40 pointer-events-none">
+                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Enlace de Bóveda (Email)</label>
+                <div className="relative">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <input
+                    type="email"
+                    value={user?.email || ''}
+                    disabled
+                    className="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-lg font-black text-slate-500"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="group relative w-full h-20 bg-brand-gold rounded-[2rem] font-black text-lg uppercase tracking-[0.3em] text-black shadow-[0_20px_40px_rgba(226,176,68,0.15)] hover:shadow-[0_20px_50px_rgba(226,176,68,0.25)] active:scale-95 transition-all overflow-hidden disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+                ) : (
+                  <span className="flex items-center justify-center gap-4">
+                    <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                    Guardar Cambios
+                  </span>
+                )}
+                {/* Decoration */}
+                <motion.div 
+                  initial={{ x: '-100%' }}
+                  whileHover={{ x: '1000%' }}
+                  className="absolute inset-0 bg-white/20 -skew-x-12" 
+                />
+              </button>
+            </form>
+          </div>
+        </main>
       </div>
+
+      <AnimatePresence>
+        {toast && (
+          <Toast 
+            message={toast.message} 
+            type={toast.type} 
+            onClose={() => setToast(null)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

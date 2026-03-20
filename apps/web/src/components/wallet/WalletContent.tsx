@@ -65,7 +65,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
           <div className="w-10 h-10 bg-brand-gold/10 rounded-xl flex items-center justify-center border border-brand-gold/20">
             <ShoppingCart className="w-5 h-5 text-brand-gold" />
           </div>
-          <h3 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic">Cargar Fichas</h3>
+          <h3 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic [word-spacing:0.2em]">Cargar&nbsp; Fichas</h3>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -151,7 +151,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                     {tx.type === 'deposit' ? <ShoppingCart className="w-5 h-5" /> : <ArrowUpWideNarrow className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-display font-black text-sm md:text-base italic uppercase tracking-tight text-text-premium truncate group-hover:text-brand-gold transition-all">
+                    <p className="font-display font-black text-sm md:text-base italic uppercase tracking-tight text-text-premium truncate group-hover:text-brand-gold transition-all [word-spacing:0.2em]">
                       {tx.type === 'deposit' ? 'Depósito' : 'Retiro'}
                     </p>
                     <p className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 truncate">

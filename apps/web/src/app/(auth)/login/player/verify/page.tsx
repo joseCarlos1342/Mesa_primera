@@ -52,8 +52,8 @@ function VerifyContent() {
       <div className="w-full max-w-md z-10 animate-in fade-in zoom-in-95 duration-1000">
         {/* Logo Section */}
         <div className="text-center mb-10">
-          <h1 className="text-5xl md:text-6xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
-            MESA PRIMERA
+          <h1 className="text-5xl md:text-6xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] [word-spacing:0.15em]">
+            MESA&nbsp; PRIMERA
           </h1>
         </div>
 
@@ -87,7 +87,7 @@ function VerifyContent() {
                 maxLength={6}
                 placeholder="000000"
                 required
-                className="w-full h-24 text-center text-5xl font-black tracking-[0.3em] bg-black/50 border-2 border-white/10 rounded-[2rem] text-text-premium placeholder-white/5 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono shadow-inner"
+                className="w-full h-20 md:h-24 text-center text-3xl md:text-5xl font-black tracking-[0.3em] bg-black/50 border-2 border-white/10 rounded-[2rem] text-text-premium placeholder-white/5 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono shadow-inner"
               />
               {/* Decorative focus glow */}
               <div className="absolute inset-0 rounded-[2rem] bg-brand-gold/5 blur-xl -z-10 group-focus-within:opacity-100 opacity-0 transition-opacity" />

@@ -74,109 +74,119 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.05 }}
-          className="group relative bg-slate-900/40 border border-white/5 p-4 rounded-[1.8rem] hover:bg-slate-900 transition-all flex items-center justify-between"
+          className="group relative bg-slate-950/40 backdrop-blur-md border border-white/5 p-6 rounded-[2.5rem] hover:bg-slate-900/60 hover:border-brand-gold/20 transition-all duration-500 shadow-xl overflow-hidden"
         >
-          <div className="flex items-center gap-4 min-w-0 flex-1">
-            <div className="relative shrink-0">
-              <div className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl flex items-center justify-center border border-brand-gold/30 shadow-2xl overflow-hidden relative">
-                {friend.profile.avatar_url && getAvatarSvg(friend.profile.avatar_url) ? (
-                  <div className="w-full h-full scale-[1.2]">
-                    {getAvatarSvg(friend.profile.avatar_url)}
-                  </div>
-                ) : (
-                  <span className="text-xl font-black text-slate-400 italic uppercase">
-                    {friend.profile.username.charAt(0)}
-                  </span>
-                )}
-              </div>
-              <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-4 border-slate-950 rounded-full ${
-                friend.status === 'online' ? 'bg-emerald-500' : 
-                friend.status === 'in-game' ? 'bg-brand-gold shadow-[0_0_8px_rgba(255,200,80,0.5)]' : 
-                'bg-slate-700'
-              }`} />
-            </div>
-            
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                {editingNickname === friend.friendshipId ? (
-                  <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-brand-gold/30">
-                    <input 
-                      autoFocus
-                      type="text"
-                      value={newNickname}
-                      onChange={(e) => setNewNickname(e.target.value)}
-                      className="w-24 bg-transparent text-xs font-black text-brand-gold uppercase tracking-tight focus:outline-none"
-                    />
-                    <button onClick={() => handleUpdateNickname(friend.friendshipId)} className="p-1 hover:text-emerald-500 text-slate-400">
-                      <Check className="w-3 h-3" />
-                    </button>
-                    <button onClick={() => setEditingNickname(null)} className="p-1 hover:text-red-500 text-slate-400">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="font-display font-black italic uppercase text-sm text-text-premium truncate group-hover:text-brand-gold transition-colors">
-                      {friend.nickname || friend.profile.username}
-                    </p>
-                    {friend.nickname && (
-                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest opacity-40">
-                        @{friend.profile.username}
-                      </span>
-                    )}
-                    <button 
-                      onClick={() => {
-                        setEditingNickname(friend.friendshipId);
-                        setNewNickname(friend.nickname || "");
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-brand-gold transition-all"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                    </button>
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <p className={`text-[9px] font-black uppercase tracking-wider ${
-                  friend.status === 'online' ? 'text-emerald-500' : 
-                  friend.status === 'in-game' ? 'text-brand-gold' : 
-                  'text-slate-500'
-                }`}>
-                  {friend.status === 'online' ? 'En Línea' : 
-                   friend.status === 'in-game' ? 'En Partida' : 
-                   'Desconectado'}
-                </p>
-                <span className="w-1 h-1 bg-white/10 rounded-full" />
-                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-tighter">
-                  Nvl {friend.profile.level}
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Decorative Glow */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-brand-gold/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-brand-gold/10 transition-colors" />
 
-          <div className="flex gap-2 shrink-0 ml-2">
-            <button 
-              onClick={() => onChat(friend)}
-              className="p-3 bg-white/5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-              title="Escribir"
-            >
-              <MessageCircle className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => handleInvite(friend.profile.id)}
-              disabled={inviting === friend.profile.id}
-              className={`p-3 bg-brand-gold/10 rounded-xl text-brand-gold hover:bg-brand-gold/20 transition-all ${inviting === friend.profile.id ? 'animate-pulse opacity-50' : ''}`}
-              title="Invitar a jugar"
-            >
-              <Gamepad2 className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => onRemove(friend.friendshipId)}
-              className="p-3 bg-red-500/5 rounded-xl text-red-500/40 hover:text-red-500 hover:bg-red-500/10 transition-all"
-              title="Borrar amigo"
-            >
-              <UserX className="w-4 h-4" />
-            </button>
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center gap-5">
+              <div className="relative shrink-0">
+                <div className="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 rounded-[1.5rem] flex items-center justify-center border-2 border-white/5 group-hover:border-brand-gold/40 shadow-2xl overflow-hidden relative transition-colors duration-500">
+                  {friend.profile.avatar_url && getAvatarSvg(friend.profile.avatar_url) ? (
+                    <div className="w-full h-full scale-[1.3]">
+                      {getAvatarSvg(friend.profile.avatar_url)}
+                    </div>
+                  ) : (
+                    <span className="text-2xl font-display font-black text-brand-gold italic">
+                      {friend.profile.username.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className={`absolute -bottom-1 -right-1 w-5 h-5 border-4 border-slate-950 rounded-full shadow-lg ${
+                  friend.status === 'online' ? 'bg-emerald-500 box-shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 
+                  friend.status === 'in-game' ? 'bg-brand-gold shadow-[0_0_10px_rgba(226,176,68,0.5)]' : 
+                  'bg-slate-700'
+                }`} />
+              </div>
+              
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {editingNickname === friend.friendshipId ? (
+                    <div className="flex items-center gap-1 bg-black/60 p-2 rounded-xl border border-brand-gold/30 shadow-inner">
+                      <input 
+                        autoFocus
+                        type="text"
+                        value={newNickname}
+                        onChange={(e) => setNewNickname(e.target.value)}
+                        className="w-28 bg-transparent text-xs font-black text-brand-gold uppercase tracking-tight focus:outline-none"
+                      />
+                      <button onClick={() => handleUpdateNickname(friend.friendshipId)} className="p-1 hover:text-emerald-500 text-brand-gold/60 transition-colors">
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setEditingNickname(null)} className="p-1 hover:text-red-500 text-slate-500 transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <h4 className="font-display font-black italic uppercase text-lg text-text-premium truncate group-hover:text-brand-gold transition-colors leading-none pt-1">
+                        {friend.nickname || friend.profile.username}
+                      </h4>
+                      {friend.nickname && (
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest opacity-40">
+                          @{friend.profile.username}
+                        </span>
+                      )}
+                      <button 
+                        onClick={() => {
+                          setEditingNickname(friend.friendshipId);
+                          setNewNickname(friend.nickname || "");
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 bg-white/5 rounded-lg text-slate-500 hover:text-brand-gold hover:bg-white/10 transition-all ml-1"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                    friend.status === 'online' ? 'text-emerald-500/80' : 
+                    friend.status === 'in-game' ? 'text-brand-gold/80' : 
+                    'text-slate-600'
+                  }`}>
+                    {friend.status === 'online' ? 'En Línea' : 
+                     friend.status === 'in-game' ? 'En Partida' : 
+                     'Desconectado'}
+                  </p>
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-white/5 border border-white/5 rounded-full">
+                    <ShieldCheck className="w-2.5 h-2.5 text-brand-gold" />
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter pt-0.5">
+                      NVL {friend.profile.level}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <button 
+                onClick={() => onChat(friend)}
+                className="flex flex-col items-center justify-center py-4 bg-white/5 rounded-2xl text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/10 border border-transparent transition-all gap-1 active:scale-95 shadow-lg group/btn"
+                title="Escribir"
+              >
+                <MessageCircle className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                <span className="text-[8px] font-black uppercase tracking-widest opacity-0 group-hover/btn:opacity-60 transition-opacity">Chat</span>
+              </button>
+              <button 
+                onClick={() => handleInvite(friend.profile.id)}
+                disabled={inviting === friend.profile.id}
+                className={`flex flex-col items-center justify-center py-4 bg-brand-gold/10 rounded-2xl text-brand-gold hover:bg-brand-gold hover:text-black border border-brand-gold/20 transition-all gap-1 active:scale-95 shadow-lg group/btn ${inviting === friend.profile.id ? 'animate-pulse opacity-50 shadow-none' : ''}`}
+                title="Invitar a jugar"
+              >
+                <Gamepad2 className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                <span className="text-[8px] font-black uppercase tracking-widest opacity-0 group-hover/btn:opacity-60 transition-opacity">Invitar</span>
+              </button>
+              <button 
+                onClick={() => onRemove(friend.friendshipId)}
+                className="flex flex-col items-center justify-center py-4 bg-red-500/5 rounded-2xl text-red-500/40 hover:text-white hover:bg-red-500 border border-transparent transition-all gap-1 active:scale-95 shadow-lg group/btn"
+                title="Borrar amigo"
+              >
+                <UserX className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                <span className="text-[8px] font-black uppercase tracking-widest opacity-0 group-hover/btn:opacity-60 transition-opacity">Borrar</span>
+              </button>
+            </div>
           </div>
         </motion.div>
       ))}
