@@ -217,53 +217,57 @@ export default function GameRoomPage() {
       {/* MAIN GAME AREA */}
       <main className={`flex-1 flex flex-col items-center justify-center relative z-0 p-0 m-0 ${phase === 'LOBBY' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
         {phase === 'LOBBY' ? (
-          <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center landscape:justify-start p-2 landscape:pt-2">
+          <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center px-2 py-4 md:p-8">
             {/* Atmospheric Background Effects */}
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none mix-blend-overlay" />
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#d4af37]/5 rounded-full blur-[150px] pointer-events-none" />
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#c0a060]/5 rounded-full blur-[150px] pointer-events-none" />
             
             {/* Main Luxury Panel */}
-            <div className="relative z-10 w-full max-w-4xl bg-[#0c1220]/80 backdrop-blur-xl border border-[#d4af37]/20 rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(212,175,55,0.1)] flex flex-col items-center mt-4 md:mt-0 landscape:mt-2 landscape:mb-4 landscape:max-h-[85vh] md:landscape:max-h-none landscape:overflow-y-auto md:landscape:overflow-visible landscape:py-4 md:landscape:py-12 custom-scrollbar">
+            <div className="relative z-10 w-full max-w-5xl bg-gradient-to-br from-black/60 to-black/80 backdrop-blur-2xl border-2 border-[#c0a060]/30 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col items-center max-h-[90vh] overflow-y-auto custom-scrollbar space-y-6 md:space-y-10">
               
-              <Users className="w-6 h-6 md:w-20 md:h-20 mx-auto text-[#d4af37]/80 drop-shadow-[0_0_15px_rgba(212,175,55,0.3)] mb-1 md:mb-4 landscape:hidden md:landscape:block" />
-              
-              <h2 className="text-lg md:text-5xl font-serif font-black mb-0.5 md:mb-2 uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] drop-shadow-lg filter text-center landscape:text-base md:landscape:text-5xl" style={{ filter: "drop-shadow(0px 4px 6px rgba(0,0,0,0.5))" }}>
-                Sala de Espera
-              </h2>
-              
-              <p className="text-[10px] md:text-xl text-[#a8b2d1] mb-2 md:mb-10 font-bold uppercase tracking-wider landscape:mb-1 md:landscape:mb-10">
-                Jugadores en mesa: <span className="text-[#fdf0a6] font-black">{players.length}</span> <span className="text-[#8a6d1c]">/ 7</span>
-              </p>
+              <div className="flex flex-col items-center">
+                <Users className="w-8 h-8 md:w-16 md:h-16 text-[#c0a060] drop-shadow-[0_0_15px_rgba(192,160,96,0.5)] mb-2 md:mb-4" />
+                <h2 className="text-3xl md:text-6xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium text-center">
+                  Sala de Espera
+                </h2>
+                <div className="flex items-center gap-3 mt-4 md:mt-6">
+                  <div className="hidden sm:block h-0.5 w-8 md:w-12 bg-[#c0a060]/30 rounded-full" />
+                  <p className="text-[#f3edd7]/60 text-[10px] md:text-[12px] font-black uppercase tracking-[0.4em]">
+                    Jugadores en mesa: <span className="text-[#c0a060] text-[11px] md:text-[14px]">{players.length}</span> <span className="opacity-40">/ 7</span>
+                  </p>
+                  <div className="hidden sm:block h-0.5 w-8 md:w-12 bg-[#c0a060]/30 rounded-full" />
+                </div>
+              </div>
 
               {/* Player Plates Grid */}
               {players.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 md:gap-4 w-full justify-items-center mb-4 md:mb-12 landscape:grid-cols-3 landscape:mb-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6 w-full justify-items-center w-full mt-2">
                   {players.map(p => {
                     const isMe = room?.sessionId === p.id;
                     return (
                       <div 
                         key={p.id} 
                         className={`
-                          w-full max-w-[260px] flex items-center gap-3 md:gap-4 px-3 md:px-5 py-2 md:py-4 rounded-xl md:rounded-2xl border-2 transition-all landscape:py-2
+                          w-full flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl border transition-all
                           ${p.isReady 
-                            ? 'bg-gradient-to-br from-[#1b253b] to-[#0c1220] border-[#4ade80]/40 shadow-[0_10px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)]' 
-                            : 'bg-[#1b253b]/50 border-white/5 shadow-inner opacity-70'}
+                            ? 'bg-gradient-to-br from-[#1b4d3e]/80 to-[#0e2a22] border-[#c0a060]/40 shadow-[0_10px_20px_rgba(0,0,0,0.5)]' 
+                            : 'bg-black/40 border-white/5 shadow-inner opacity-60'}
                         `}
                       >
                         {/* LED Gem */}
                         <div className={`
-                          w-4 h-4 rounded-full flex-shrink-0 border border-black/50
+                          w-3 h-3 md:w-4 md:h-4 rounded-full flex-shrink-0 border border-black/50
                           ${p.isReady 
-                            ? 'bg-gradient-to-br from-[#4ade80] to-[#16a34a] shadow-[0_0_15px_rgba(74,222,128,0.8),inset_0_2px_4px_rgba(255,255,255,0.6)]' 
+                            ? 'bg-gradient-to-br from-[#4ade80] to-[#16a34a] shadow-[0_0_10px_rgba(74,222,128,0.8)]' 
                             : 'bg-gradient-to-br from-red-600 to-red-900 shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]'} 
                           ${isMe ? 'animate-pulse' : ''}
                         `} />
                         
-                        <div className="flex flex-col items-start overflow-hidden">
-                          <span className={`${p.isReady ? 'text-white' : 'text-slate-400'} font-bold truncate w-full text-left text-base md:text-lg`}>
-                            {p.nickname} {isMe ? <span className="text-[#d4af37] font-normal text-sm ml-1">(Tú)</span> : ''}
+                        <div className="flex flex-col items-start overflow-hidden flex-1">
+                          <span className={`${p.isReady ? 'text-white' : 'text-slate-400'} font-bold truncate w-full text-left text-xs md:text-base`}>
+                            {p.nickname} {isMe ? <span className="text-[#c0a060] font-normal text-[10px] md:text-xs ml-1 tracking-widest uppercase">(Tú)</span> : ''}
                           </span>
-                          <span className="text-[#8a6d1c] font-black font-mono text-sm tracking-widest mt-0.5">
+                          <span className="text-[#c0a060]/80 font-black font-display tracking-tight text-xs md:text-sm mt-0.5">
                             ${p.chips >= 1000 ? (p.chips/1000).toFixed(1) + 'k' : p.chips}
                           </span>
                         </div>
@@ -275,20 +279,17 @@ export default function GameRoomPage() {
               
               {room && (
                 <div className="flex flex-col items-center w-full">
-                  {/* Skeuomorphic READY Button */}
                   {players.find(p => p.id === room?.sessionId)?.isReady ? (
                     <button 
                       onClick={() => room.send('toggleReady', { isReady: false })}
-                      className="w-full max-w-sm h-12 md:h-20 bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] hover:from-[#fca5a5] hover:via-[#ef4444] hover:to-[#b91c1c] text-white rounded-xl font-black text-lg md:text-2xl shadow-[0_15px_30px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.4)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-[#fca5a5]/50 border-b-[6px] md:border-b-[8px] border-b-[#7f1d1d] landscape:h-10 landscape:text-base landscape:border-b-4"
-                      style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+                      className="w-full max-w-sm h-14 md:h-20 bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] hover:from-[#fca5a5] hover:via-[#ef4444] hover:to-[#b91c1c] text-white rounded-2xl font-black text-sm md:text-xl shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-[#fca5a5]/50 border-b-[4px] md:border-b-[6px] border-b-[#7f1d1d]"
                     >
                       Anular Listo
                     </button>
                   ) : (
                     <button 
                       onClick={() => room.send('toggleReady', { isReady: true })}
-                      className="w-full max-w-sm h-12 md:h-20 bg-gradient-to-b from-[#4ade80] via-[#16a34a] to-[#14532d] hover:from-[#86efac] hover:via-[#22c55e] hover:to-[#16a34a] text-white rounded-xl font-black text-lg md:text-2xl shadow-[0_15px_30px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.4)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-[#86efac]/50 border-b-[6px] md:border-b-[8px] border-b-[#064e3b] landscape:h-10 landscape:text-base landscape:border-b-4"
-                      style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+                      className="w-full max-w-sm h-14 md:h-20 bg-gradient-to-b from-[#4ade80] via-[#16a34a] to-[#14532d] hover:from-[#86efac] hover:via-[#22c55e] hover:to-[#16a34a] text-white rounded-2xl font-black text-sm md:text-xl shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-[#86efac]/50 border-b-[4px] md:border-b-[6px] border-b-[#064e3b]"
                     >
                       ¡Estoy Listo!
                     </button>

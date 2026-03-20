@@ -23,7 +23,7 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
   }, [isMenuOpen])
 
   return (
-    <header className="flex h-12 md:h-16 w-full items-center justify-between px-4 md:px-6 bg-[#0c1220]/80 backdrop-blur-md border-b border-[#d4af37]/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative z-50 landscape:h-10">
+    <header className="flex h-14 md:h-16 w-full items-center justify-between px-4 md:px-6 bg-[#0c1220]/80 backdrop-blur-md border-b border-[#c0a060]/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative z-50 landscape:h-12 md:landscape:h-16">
       {/* Top Left: Hamburger Menu */}
       <div className="relative" ref={menuRef}>
         <button 

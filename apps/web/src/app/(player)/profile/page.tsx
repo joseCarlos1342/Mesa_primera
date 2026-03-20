@@ -137,56 +137,56 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-24 pt-6 md:pt-12 px-4 sm:px-6 space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+    <div className="min-h-screen bg-table pb-32 pt-10 md:pt-16 px-4 sm:px-6 space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
       {/* Header */}
-      <header className="flex items-center justify-center relative">
+      <header className="flex items-center justify-center relative max-w-4xl mx-auto">
         <div className="absolute left-0">
           <button 
             onClick={() => router.back()}
-            className="group p-4 bg-white/5 border border-white/10 rounded-[1.5rem] hover:bg-brand-gold hover:border-brand-gold transition-all duration-500 shadow-xl active:scale-95"
+            className="group p-5 bg-slate-900/60 backdrop-blur-xl border-2 border-accent-gold/30 rounded-[1.2rem] hover:bg-accent-gold hover:border-accent-gold transition-all duration-500 shadow-premium active:scale-95"
           >
-            <ArrowLeft className="w-6 h-6 text-slate-300 group-hover:text-black transition-colors" />
+            <ArrowLeft className="w-6 h-6 text-accent-gold group-hover:text-amber-950 transition-colors" />
           </button>
         </div>
         
-        <div className="text-center space-y-1 px-14 overflow-visible">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black italic text-white uppercase tracking-tighter leading-none pr-2">
+        <div className="text-center space-y-2 px-14 overflow-visible">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-black italic text-accent-gold-shimmer bg-clip-text text-transparent uppercase tracking-tighter leading-none pr-2 drop-shadow-premium">
             Mi Perfil
           </h1>
-          <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em] opacity-60">
-            Sede Central • Elite Member
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] opacity-80">
+            Sede Central • Private Member
           </p>
         </div>
       </header>
 
-      <div className="grid lg:grid-cols-12 gap-10">
+      <div className="max-w-4xl mx-auto grid lg:grid-cols-12 gap-12">
         {/* Left Column: Avatar & Loyalty */}
-        <aside className="lg:col-span-5 space-y-8">
-          <div className="relative bg-slate-950/40 backdrop-blur-xl border border-white/5 rounded-[3rem] p-10 flex flex-col items-center text-center shadow-2xl overflow-hidden group">
+        <aside className="lg:col-span-5 space-y-10">
+          <div className="relative bg-bg-poker/30 backdrop-blur-2xl border-brass border-2 rounded-[3.5rem] p-12 flex flex-col items-center text-center shadow-premium overflow-hidden group">
             {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-brand-gold/10 transition-colors duration-1000" />
+            <div className="absolute top-0 right-0 w-48 h-48 bg-accent-gold/5 rounded-full blur-3xl -mr-24 -mt-24 group-hover:bg-accent-gold/10 transition-colors duration-1000" />
             
-            <div className="relative w-40 h-40 mb-6">
+            <div className="relative w-48 h-48 mb-8">
               {/* Outer Ring */}
-              <div className="absolute inset-[-12px] border-2 border-brand-gold/20 rounded-full" />
+              <div className="absolute inset-[-14px] border-2 border-accent-gold/20 rounded-full" />
               <motion.div 
                 initial={{ rotate: 0 }}
                 animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-[-12px] border-2 border-transparent border-t-brand-gold rounded-full opacity-40 shadow-[0_0_15px_rgba(226,176,68,0.3)]" 
+                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-[-14px] border-2 border-transparent border-t-accent-gold rounded-full opacity-60 shadow-[0_0_20px_rgba(197,160,89,0.4)]" 
               />
               
-              <div className="relative w-full h-full rounded-full bg-slate-900 border-4 border-white/10 flex items-center justify-center overflow-hidden shadow-2xl">
+              <div className="relative w-full h-full rounded-full bg-slate-950 border-4 border-white/10 flex items-center justify-center overflow-hidden shadow-premium">
                 {formData.avatar_url ? (
                   getAvatarSvg(formData.avatar_url) ? (
-                    <div className="w-full h-full scale-[1.3]">
+                    <div className="w-full h-full scale-[1.4]">
                       {getAvatarSvg(formData.avatar_url)}
                     </div>
                   ) : (
                     <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   )
                 ) : (
-                  <span className="text-5xl font-display font-black text-brand-gold">
+                  <span className="text-6xl font-display font-black text-accent-gold">
                     {formData.username?.[0]?.toUpperCase() || 'P'}
                   </span>
                 )}
@@ -197,9 +197,9 @@ export default function ProfilePage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-slate-950/70 flex items-center justify-center z-10"
+                      className="absolute inset-0 bg-slate-950/80 flex items-center justify-center z-10"
                     >
-                      <Loader2 className="w-10 h-10 text-brand-gold animate-spin" />
+                      <Loader2 className="w-12 h-12 text-accent-gold animate-spin" />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -215,101 +215,102 @@ export default function ProfilePage() {
               />
               <button 
                 type="button"
-                className="absolute bottom-2 right-2 p-3 bg-brand-gold rounded-2xl border-4 border-slate-950 text-black hover:bg-brand-gold-light transition-all shadow-2xl active:scale-90"
+                className="absolute bottom-2 right-2 p-4 bg-accent-gold-shimmer rounded-2xl border-4 border-slate-950 text-slate-950 hover:scale-110 transition-all shadow-premium active:scale-90"
                 onClick={() => document.getElementById('avatar-upload')?.click()}
                 disabled={saving}
               >
-                <Camera className="w-6 h-6" />
+                <Camera className="w-7 h-7" />
               </button>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-brand-gold" />
-                <span className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">Nivel {stats?.level || 1}</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-accent-gold" />
+                <span className="text-[10px] font-black text-accent-gold uppercase tracking-[0.4em]">Nivel {stats?.level || 1}</span>
               </div>
-              <h3 className="text-3xl font-display font-black text-white italic uppercase tracking-tight">
-                {formData.username || 'Jugador'}
+              <h3 className="text-4xl font-display font-black text-white italic uppercase tracking-tight">
+                {formData.username || 'Miembro'}
               </h3>
-              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Prestigio Elite • Miembro desde 2024</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">Socio Fundador • Elite Club</p>
             </div>
 
-            {/* Loyalty Bar Mock */}
-            <div className="w-full mt-8 space-y-2">
-              <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-400 px-1">
-                <span>XP Actual</span>
-                <span>Prox. Nivel</span>
+            {/* Loyalty Bar */}
+            <div className="w-full mt-10 space-y-3">
+              <div className="flex justify-between text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 px-2">
+                <span>Prestigio</span>
+                <span>Ascenso</span>
               </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden p-[1px] border border-white/5">
+              <div className="h-3 w-full bg-slate-950/60 rounded-full overflow-hidden p-[2px] border-2 border-white/5 shadow-inner">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: '65%' }}
-                  className="h-full bg-gradient-to-r from-brand-gold to-brand-gold-light rounded-full shadow-[0_0_10px_rgba(226,176,68,0.5)]" 
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  className="h-full bg-accent-gold-shimmer rounded-full shadow-[0_0_15px_rgba(197,160,89,0.7)]" 
                 />
               </div>
             </div>
           </div>
 
           {/* Mini Stats Card */}
-          <div className="bg-slate-950/40 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-8 grid grid-cols-3 gap-4 shadow-xl">
-             <div className="text-center space-y-1">
-               <Trophy className="w-5 h-5 text-brand-gold mx-auto opacity-40" />
-               <p className="text-xl font-display font-black text-white">{stats?.games_played || 0}</p>
-               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Partidas</p>
+          <div className="bg-bg-poker/20 backdrop-blur-2xl border-2 border-white/5 rounded-[3rem] p-10 grid grid-cols-3 gap-6 shadow-premium">
+             <div className="text-center space-y-2">
+               <Trophy className="w-6 h-6 text-accent-gold mx-auto opacity-40" />
+               <p className="text-2xl font-display font-black text-white">{stats?.games_played || 0}</p>
+               <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">Mesas</p>
              </div>
-             <div className="text-center space-y-1 border-x border-white/5">
-               <Medal className="w-5 h-5 text-brand-gold mx-auto opacity-40" />
-               <p className="text-xl font-display font-black text-brand-gold">{stats?.games_won || 0}</p>
-               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Victorias</p>
+             <div className="text-center space-y-2 border-x border-white/10">
+               <Medal className="w-6 h-6 text-accent-gold mx-auto opacity-40" />
+               <p className="text-2xl font-display font-black text-accent-gold">{stats?.games_won || 0}</p>
+               <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">Victorias</p>
              </div>
-             <div className="text-center space-y-1">
-               <Star className="w-5 h-5 text-brand-gold mx-auto opacity-40" />
-               <p className="text-xl font-display font-black text-white">{stats?.primeras_count || 0}</p>
-               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Primeras</p>
+             <div className="text-center space-y-2">
+               <Star className="w-6 h-6 text-accent-gold mx-auto opacity-40" />
+               <p className="text-2xl font-display font-black text-white">{stats?.primeras_count || 0}</p>
+               <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">Primeras</p>
              </div>
           </div>
         </aside>
 
         {/* Right Column: Settings Form */}
         <main className="lg:col-span-7">
-          <div className="bg-slate-950/40 backdrop-blur-xl border border-white/5 rounded-[3rem] p-8 md:p-12 shadow-2xl relative">
-            <header className="mb-10 flex items-center gap-4">
-               <div className="p-3 bg-brand-gold/10 border border-brand-gold/20 rounded-2xl">
-                 <Tag className="w-6 h-6 text-brand-gold" />
+          <div className="bg-bg-poker/30 backdrop-blur-2xl border-brass border-2 rounded-[4rem] p-10 md:p-14 shadow-premium relative h-full">
+            <header className="mb-12 flex items-center gap-6">
+               <div className="p-4 bg-accent-gold/10 border border-accent-gold/20 rounded-[1.5rem] shadow-premium">
+                 <Tag className="w-7 h-7 text-accent-gold" />
                </div>
                <div>
-                  <h4 className="text-xl font-display font-black text-white uppercase italic tracking-tighter">Ajustes de Cuenta</h4>
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Personaliza tu identidad en la mesa</p>
+                  <h4 className="text-2xl font-display font-black text-white uppercase italic tracking-tighter">Credenciales de Élite</h4>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">Firma tu identidad en el club</p>
                </div>
             </header>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="grid sm:grid-cols-2 gap-8">
+            <form onSubmit={handleSubmit} className="space-y-10">
+              <div className="grid sm:grid-cols-2 gap-10">
                 {/* Username */}
-                <div className="space-y-3">
-                  <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Nombre de Usuario</label>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-[0.4em] text-accent-gold/60 ml-3">Alias de Jugador</label>
                   <div className="relative group">
-                    <Tag className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-brand-gold transition-colors" />
+                    <Tag className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-600 group-focus-within:text-accent-gold transition-colors" />
                     <input
                       type="text"
                       value={formData.username}
                       onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-lg font-black text-white focus:outline-none focus:border-brand-gold/50 transition-all placeholder:text-slate-700 shadow-inner"
+                      className="w-full bg-slate-950/60 border-2 border-white/5 rounded-[1.8rem] py-6 pl-16 pr-8 text-xl font-bold text-white focus:outline-none focus:border-accent-gold/40 transition-all placeholder:text-slate-800 shadow-inner"
                       placeholder="Identidad"
                     />
                   </div>
                 </div>
 
                 {/* Full Name */}
-                <div className="space-y-3">
-                  <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Nombre Real</label>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-[0.4em] text-accent-gold/60 ml-3">Nombre Real</label>
                   <div className="relative group">
-                    <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-brand-gold transition-colors" />
+                    <User className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-600 group-focus-within:text-accent-gold transition-colors" />
                     <input
                       type="text"
                       value={formData.full_name}
                       onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-lg font-black text-white focus:outline-none focus:border-brand-gold/50 transition-all placeholder:text-slate-700 shadow-inner"
+                      className="w-full bg-slate-950/60 border-2 border-white/5 rounded-[1.8rem] py-6 pl-16 pr-8 text-xl font-bold text-white focus:outline-none focus:border-accent-gold/40 transition-all placeholder:text-slate-800 shadow-inner"
                       placeholder="Nombre completo"
                     />
                   </div>
@@ -317,54 +318,59 @@ export default function ProfilePage() {
               </div>
 
               {/* Phone */}
-              <div className="space-y-3 text-center sm:text-left">
-                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Directorio (Teléfono)</label>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-accent-gold/60 ml-3">Directorio Seguro (Teléfono)</label>
                 <div className="relative group">
-                  <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-brand-gold transition-colors" />
+                  <Phone className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-600 group-focus-within:text-accent-gold transition-colors" />
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-lg font-black text-white focus:outline-none focus:border-brand-gold/50 transition-all placeholder:text-slate-700 shadow-inner"
+                    className="w-full bg-slate-950/60 border-2 border-white/5 rounded-[1.8rem] py-6 pl-16 pr-8 text-xl font-bold text-white focus:outline-none focus:border-accent-gold/40 transition-all placeholder:text-slate-800 shadow-inner"
                     placeholder="+57 3..."
                   />
                 </div>
               </div>
 
               {/* Email (Disabled) */}
-              <div className="space-y-3 border-t border-white/5 pt-8 opacity-40 pointer-events-none">
-                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Enlace de Bóveda (Email)</label>
+              <div className="space-y-4 border-t border-white/5 pt-10 opacity-40 pointer-events-none">
+                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-600 ml-3">Enlace de Bóveda (Email)</label>
                 <div className="relative">
-                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-700" />
                   <input
                     type="email"
                     value={user?.email || ''}
                     disabled
-                    className="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-lg font-black text-slate-500"
+                    className="w-full bg-slate-950/40 border-2 border-white/5 rounded-[1.8rem] py-6 pl-16 pr-8 text-xl font-bold text-slate-700"
                   />
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="group relative w-full h-20 bg-brand-gold rounded-[2rem] font-black text-lg uppercase tracking-[0.3em] text-black shadow-[0_20px_40px_rgba(226,176,68,0.15)] hover:shadow-[0_20px_50px_rgba(226,176,68,0.25)] active:scale-95 transition-all overflow-hidden disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto" />
-                ) : (
-                  <span className="flex items-center justify-center gap-4">
-                    <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                    Guardar Cambios
-                  </span>
-                )}
-                {/* Decoration */}
-                <motion.div 
-                  initial={{ x: '-100%' }}
-                  whileHover={{ x: '1000%' }}
-                  className="absolute inset-0 bg-white/20 -skew-x-12" 
-                />
-              </button>
+              <div className="flex flex-col sm:flex-row gap-6">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="group relative flex-[2] h-24 bg-accent-gold-shimmer rounded-[2rem] font-display font-black text-xl uppercase italic tracking-[0.4em] text-slate-950 shadow-premium transition-all duration-500 disabled:opacity-50 overflow-hidden active:translate-y-1 active:border-b-2 border-t-2 border-white/20 border-b-4 border-black/40 hover:scale-[1.02]"
+                >
+                  {saving ? (
+                    <Loader2 className="w-10 h-10 animate-spin mx-auto" />
+                  ) : (
+                    <span className="flex items-center justify-center gap-5">
+                      <Save className="w-8 h-8 group-hover:rotate-12 transition-transform" />
+                      Guardar Cambios
+                    </span>
+                  )}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex-1 h-24 bg-red-950/20 hover:bg-red-950/40 border-2 border-red-500/20 hover:border-red-500/40 rounded-[2rem] font-display font-black text-red-500 uppercase italic tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-4 group"
+                >
+                  <LogOut className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
+                  Salir
+                </button>
+              </div>
             </form>
           </div>
         </main>

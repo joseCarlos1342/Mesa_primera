@@ -51,7 +51,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
             <Link href="/wallet/withdraw" className="block w-full">
               <button className="group relative w-full h-16 bg-black/60 backdrop-blur-xl text-text-premium border-2 border-brand-gold/40 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-brand-gold hover:text-black transition-all duration-500 flex items-center justify-center gap-3 overflow-hidden active:scale-95">
                 <ArrowUpWideNarrow className="w-5 h-5" />
-                <span>Retirar Fondos</span>
+                <span>Retirar Saldo</span>
                 <div className="absolute inset-0 bg-brand-gold/20 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-500" />
               </button>
             </Link>
@@ -80,35 +80,35 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                 href={`/wallet/deposit?amount=${pack.amount}`}
                 className={`relative p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center text-center gap-2 group active:scale-95 overflow-hidden ${
                   pack.popular 
-                    ? 'bg-brand-gold/10 border-brand-gold/60 shadow-[0_10px_30px_rgba(202,171,114,0.1)]' 
-                    : 'bg-black/40 border-white/5 hover:border-brand-gold/30 hover:bg-black/60 shadow-xl'
+                    ? 'bg-accent-gold/10 border-accent-gold/60 shadow-[0_10px_30px_rgba(202,171,114,0.1)]' 
+                    : 'bg-black/40 border-white/5 hover:border-accent-gold/30 hover:bg-black/60 shadow-xl'
                 }`}
               >
                 {pack.popular && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-brand-gold/5 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent-gold/5 to-transparent pointer-events-none" />
                 )}
                 
                 {pack.popular && (
-                  <span className="absolute top-0 right-0 bg-brand-gold text-black text-[8px] font-black uppercase py-1 px-3 rounded-bl-xl tracking-widest shadow-lg">Popular</span>
+                  <span className="absolute top-0 right-0 bg-accent-gold text-black text-[8px] font-black uppercase py-1 px-3 rounded-bl-xl tracking-widest shadow-lg">Popular</span>
                 )}
 
-                <div className={`p-4 rounded-full transition-transform duration-500 group-hover:scale-110 shadow-inner ${pack.popular ? 'bg-brand-gold/20' : 'bg-white/5'}`}>
-                  <Landmark className={`w-6 h-6 ${pack.popular ? 'text-brand-gold' : 'text-text-secondary'}`} />
+                <div className={`p-4 rounded-full transition-transform duration-500 group-hover:scale-110 shadow-inner ${pack.popular ? 'bg-accent-gold/20' : 'bg-white/5'}`}>
+                  <Landmark className={`w-6 h-6 ${pack.popular ? 'text-accent-gold' : 'text-text-secondary'}`} />
                 </div>
                 
                 <div className="space-y-0.5">
-                  <span className="block text-lg font-display font-black text-text-premium leading-tight">${pack.label}</span>
-                  <span className="block text-[8px] font-black text-brand-gold opacity-60 uppercase tracking-widest leading-none">Pagas {pack.price}</span>
+                  <span className="block text-lg font-display font-black text-white leading-tight">${pack.label}</span>
+                  <span className="block text-[8px] font-black text-accent-gold opacity-60 uppercase tracking-widest leading-none">Pagas {pack.price}</span>
                 </div>
                 
-                <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-brand-gold/10 rounded-full blur-xl group-hover:bg-brand-gold/20 transition-all opacity-0 group-hover:opacity-100" />
+                <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-accent-gold/10 rounded-full blur-xl group-hover:bg-accent-gold/20 transition-all opacity-0 group-hover:opacity-100" />
               </Link>
             </motion.div>
           ))}
         </div>
         
-        <Link href="/wallet/deposit" className="group block text-center p-6 bg-black/30 border-2 border-dashed border-white/10 rounded-[2rem] transition-all hover:border-brand-gold/30 hover:bg-black/50">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary group-hover:text-brand-gold transition-colors">O ingresar otro monto manualmente</span>
+        <Link href="/wallet/deposit" className="group block text-center p-6 bg-black/30 border-2 border-dashed border-white/10 rounded-[2rem] transition-all hover:border-accent-gold/30 hover:bg-black/50">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary group-hover:text-accent-gold transition-colors">O ingresar otro monto manualmente</span>
         </Link>
       </section>
 
@@ -119,9 +119,9 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
             <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
               <ArrowUpWideNarrow className="w-5 h-5 text-text-secondary" />
             </div>
-            <h3 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic">Actividad</h3>
+            <h3 className="text-xl font-display font-black text-white uppercase tracking-tight italic">Actividad</h3>
           </div>
-          <button className="text-[10px] font-black uppercase tracking-widest text-brand-gold hover:underline">Ver Todo</button>
+          <button className="text-[10px] font-black uppercase tracking-widest text-accent-gold hover:underline">Ver Todo</button>
         </div>
 
         <div className="space-y-3">
@@ -140,12 +140,12 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 onClick={() => handleTxClick(tx)}
-                className="group bg-black/40 backdrop-blur-xl border border-white/10 p-5 rounded-[2rem] flex items-center justify-between gap-4 transition-all hover:bg-black/60 hover:border-brand-gold/30 shadow-lg overflow-hidden cursor-pointer active:scale-[0.98]"
+                className="group bg-black/40 backdrop-blur-xl border border-white/10 p-5 rounded-[2rem] flex items-center justify-between gap-4 transition-all hover:bg-black/60 hover:border-accent-gold/30 shadow-lg overflow-hidden cursor-pointer active:scale-[0.98]"
               >
                 <div className="flex items-center gap-4 min-w-0 flex-1">
                   <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-inner ${
                     tx.type === 'deposit' 
-                      ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20' 
+                      ? 'bg-accent-gold/10 text-accent-gold border border-accent-gold/20' 
                       : 'bg-white/5 text-text-secondary border border-white/10'
                   }`}>
                     {tx.type === 'deposit' ? <ShoppingCart className="w-5 h-5" /> : <ArrowUpWideNarrow className="w-5 h-5" />}

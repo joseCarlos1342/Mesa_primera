@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Gamepad2, UserX, Edit2, Check, X, ShieldCheck } from "lucide-react";
+import { MessageCircle, Gamepad2, UserX, Edit2, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { getAvatarSvg } from "@/utils/avatars";
 import { inviteToPlay, updateFriendNickname } from "@/app/actions/social-actions";
@@ -125,7 +125,7 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
                       </h4>
                       {friend.nickname && (
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest opacity-40">
-                          @{friend.profile.username}
+                          {friend.profile.username.startsWith('@') ? '' : '@'}{friend.profile.username}
                         </span>
                       )}
                       <button 
@@ -133,7 +133,7 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
                           setEditingNickname(friend.friendshipId);
                           setNewNickname(friend.nickname || "");
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 bg-white/5 rounded-lg text-slate-500 hover:text-brand-gold hover:bg-white/10 transition-all ml-1"
+                        className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1.5 bg-white/5 rounded-lg text-slate-500 hover:text-brand-gold hover:bg-white/10 transition-all ml-1"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -150,15 +150,9 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
                      friend.status === 'in-game' ? 'En Partida' : 
                      'Desconectado'}
                   </p>
-                  <div className="flex items-center gap-1 px-2 py-0.5 bg-white/5 border border-white/5 rounded-full">
-                    <ShieldCheck className="w-2.5 h-2.5 text-brand-gold" />
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter pt-0.5">
-                      NVL {friend.profile.level}
-                    </span>
                   </div>
                 </div>
               </div>
-            </div>
 
             <div className="grid grid-cols-3 gap-3">
               <button 

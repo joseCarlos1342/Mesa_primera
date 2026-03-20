@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { RoomAvailable, Room } from '@colyseus/sdk'
 import { useRouter } from 'next/navigation'
 import { Plus, Users, Zap, Trophy, Shield, RefreshCcw, AlertCircle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { DepositModal } from '@/components/game/DepositModal'
 
 export function Lobby() {
@@ -194,7 +195,8 @@ export function Lobby() {
   const otherTables = rooms.filter(r => !fixedTableNames.includes((r.metadata as any)?.tableName));
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 md:p-8 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+    <div className="min-h-screen w-full bg-table animate-in fade-in duration-1000">
+      <div className="w-full max-w-7xl mx-auto p-4 md:p-12 space-y-12 pb-24">
       {reconnecting && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500">
            <div className="relative">
@@ -202,97 +204,165 @@ export function Lobby() {
              <RefreshCcw className="relative w-24 h-24 text-emerald-500 animate-spin mb-8" />
            </div>
            <h2 className="text-4xl font-black uppercase tracking-[0.4em] text-white italic animate-pulse">Reconectando</h2>
-           <p className="text-slate-400 font-bold tracking-widest uppercase text-xs mt-4 opacity-50">Restaurando tu sesión en la mesa...</p>
+            <span className={`relative z-10 font-display font-black italic tracking-widest uppercase text-sm md:text-2xl drop-shadow-md text-slate-400 mt-4 opacity-50`}>Restaurando tu sesión en la mesa...</span>
         </div>
       )}
 
-      {/* Ultra Minimal Header - Redesigned for better flow */}
-      <div className="flex flex-row items-center justify-between gap-4 pb-8 border-b border-white/5">
-        <div className="flex items-center gap-4">
-          <div className="h-10 px-4 rounded-xl bg-slate-900/50 border border-white/5 flex items-center gap-2 shadow-inner">
-            <div className={`w-1.5 h-1.5 rounded-full ${lobbyRoomRef.current ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              {lobbyRoomRef.current ? 'Online' : 'Offline'}
-            </span>
-          </div>
+      {/* Premium Header Section */}
+      <header className="flex flex-col items-center justify-center gap-12 pb-20 relative px-4">
+        {/* 1. Server Status & Tables - Larger and Primary */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="inline-flex items-center gap-4 px-8 py-3 bg-accent-gold/5 border-2 border-accent-gold/30 rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(202,171,114,0.1)]"
+        >
+          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+          <span className="text-[11px] md:text-sm font-black text-accent-gold uppercase tracking-[0.4em]">SERVIDOR ACTIVO</span>
+          <div className="w-px h-5 bg-white/20 mx-2" />
+          <span className="text-[11px] md:text-sm font-black text-white uppercase tracking-[0.2em]">
+            {rooms.length} MESAS DISPONIBLES
+          </span>
+        </motion.div>
+
+        {/* 2. Main Title & Subtitle - Impactful Size */}
+        <div className="flex flex-col items-center space-y-4">
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-8xl md:text-9xl lg:text-[10rem] font-display font-black italic text-[#c0a060] uppercase tracking-tighter leading-[0.75] drop-shadow-[0_10px_40px_rgba(0,0,0,0.5)] pr-4"
+          >
+            Lobby
+          </motion.h1>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-4"
+          >
+            <div className="h-px w-8 md:w-16 bg-gradient-to-r from-transparent to-slate-500" />
+            <p className="text-sm md:text-base font-black text-slate-400 uppercase tracking-[0.5em] italic text-center">
+              Selecciona tu mesa de primera
+            </p>
+            <div className="h-px w-8 md:w-16 bg-gradient-to-l from-transparent to-slate-500" />
+          </motion.div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {userProfile && (
-            <div className="flex items-center gap-4 h-14 pl-5 pr-2 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 border border-white/10 shadow-2xl group transition-all hover:border-emerald-500/30">
-              <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-500/50 group-hover:text-emerald-500 transition-colors">Billetera</span>
-                <span className="text-xl font-black text-white tracking-tighter leading-none">
-                  <span className="text-emerald-500 mr-0.5">$</span>
-                  {userProfile.balance?.toLocaleString() || '0'}
-                </span>
-              </div>
-              <button 
-                onClick={() => setShowDeposit(true)}
-                className="w-10 h-10 rounded-xl bg-emerald-600 border border-emerald-400 flex items-center justify-center shadow-lg group-hover:scale-105 transition-all active:scale-95 group-active:rotate-90 hover:bg-emerald-500"
-              >
-                <Plus className="w-5 h-5 text-white" />
-              </button>
+        {/* 3. Balance Section - Prominent and Large */}
+        {userProfile && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col md:flex-row items-center gap-8 pl-10 pr-4 py-4 rounded-[3rem] bg-slate-950/60 backdrop-blur-3xl border-2 border-accent-gold/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group transition-all hover:border-accent-gold/40"
+          >
+            <div className="flex flex-col items-center justify-center text-center">
+              <span className="text-[11px] font-black uppercase tracking-[0.4em] text-accent-gold/50 group-hover:text-accent-gold/70 transition-colors mb-1">Mi Balance</span>
+              <span className="text-5xl md:text-6xl font-black text-white tracking-tighter leading-none flex items-center drop-shadow-premium">
+                <span className="text-accent-gold mr-2 opacity-80">$</span>
+                {userProfile.balance?.toLocaleString() || '0'}
+              </span>
             </div>
-          )}
+            <button 
+              onClick={() => setShowDeposit(true)}
+              className="w-20 h-20 rounded-3xl bg-accent-gold-shimmer flex items-center justify-center shadow-[0_10px_30px_rgba(202,171,114,0.3)] hover:scale-105 hover:shadow-accent-gold/50 transition-all active:scale-95 group/btn relative overflow-hidden"
+              title="Cargar Saldo"
+            >
+              <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+              <Plus className="w-10 h-10 text-slate-950 stroke-[4]" />
+            </button>
+          </motion.div>
+        )}
 
-          {isAdmin && (
+        {/* Floating Admin Actions - Offset to not interfere with main flow */}
+        {isAdmin && (
+          <div className="absolute top-8 right-8">
             <button 
               onClick={createTable}
               disabled={creating}
-              className="group relative h-14 w-14 bg-white text-slate-950 rounded-2xl font-black flex items-center justify-center transition-all hover:bg-emerald-500 hover:text-white hover:scale-105 active:scale-95 disabled:opacity-50 shadow-xl"
+              className="group relative h-20 w-20 bg-white text-slate-950 rounded-[2.5rem] font-black flex items-center justify-center transition-all hover:bg-accent-gold hover:text-white hover:scale-105 active:scale-95 disabled:opacity-50 shadow-premium border-2 border-transparent hover:border-white/20"
               title="Nueva Mesa"
             >
-              <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
+              <Plus className="w-8 h-8 transition-transform group-hover:rotate-90" />
             </button>
+          </div>
+        )}
+      </header>
+
+      {/* Main Content Area - Anchored with Premium Table Container */}
+      <div className="relative p-10 md:p-16 lg:p-20 bg-gradient-to-b from-[#1b4d3e]/40 to-[#0d211a]/60 backdrop-blur-3xl rounded-[5rem] border-2 border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden min-h-[800px]">
+        {/* Decorative Background Elements */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-gold/5 rounded-full blur-[150px] -mr-64 -mt-64 opacity-60" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent-gold/5 rounded-full blur-[150px] -ml-64 -mb-64 opacity-30" />
+        <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('/textures/noise.png')] mix-blend-overlay" />
+
+        <div className="relative z-10 space-y-20">
+          {/* Mesas Principales */}
+          <div className="space-y-12">
+            <div className="flex items-center justify-center gap-4 md:gap-6">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-accent-gold/10 rounded-2xl flex items-center justify-center border-2 border-accent-gold/30 shadow-2xl">
+                <Trophy className="w-6 h-6 md:w-8 md:h-8 text-accent-gold" />
+              </div>
+              <div className="space-y-1 flex flex-col items-center md:items-start">
+                <h2 className="text-3xl md:text-4xl font-display font-black italic uppercase text-white tracking-widest drop-shadow-premium">Mesas</h2>
+                <div className="h-1 w-16 md:w-20 bg-accent-gold/40 rounded-full" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 lg:gap-16">
+              {fixedTablesToShow.map((room) => (
+                <TableCard 
+                  key={room.roomId} 
+                  room={room} 
+                  isAdmin={isAdmin} 
+                  onJoin={joinTable} 
+                  onDelete={deleteTable}
+                  isFixed={true}
+                  creating={creating}
+                  setCreating={setCreating}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Otras Mesas */}
+          {otherTables.length > 0 && (
+            <div className="space-y-12 pt-20 border-t-2 border-white/5">
+              <div className="flex items-center justify-center gap-4 md:gap-6">
+                <div className="w-14 h-14 md:w-16 md:h-16 bg-white/5 rounded-2xl flex items-center justify-center border-2 border-white/10">
+                  <Users className="w-6 h-6 md:w-8 md:h-8 text-slate-500" />
+                </div>
+                <h2 className="text-3xl md:text-4xl font-display font-black italic uppercase text-slate-400 tracking-widest">Mesas</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+                {otherTables.map((room) => (
+                  <TableCard 
+                    key={room.roomId} 
+                    room={room} 
+                    isAdmin={isAdmin} 
+                    onJoin={joinTable} 
+                    onDelete={deleteTable}
+                    isFixed={false}
+                    creating={creating}
+                    setCreating={setCreating}
+                  />
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Mesas Principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {fixedTablesToShow.map((room) => (
-          <TableCard 
-            key={room.roomId} 
-            room={room} 
-            isAdmin={isAdmin} 
-            onJoin={joinTable} 
-            onDelete={deleteTable}
-            isFixed={true}
-            creating={creating}
-            setCreating={setCreating}
-          />
-        ))}
-      </div>
 
-      {/* Otras Mesas */}
-      {otherTables.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-8 border-t border-white/5">
-          {otherTables.map((room) => (
-            <TableCard 
-              key={room.roomId} 
-              room={room} 
-              isAdmin={isAdmin} 
-              onJoin={joinTable} 
-              onDelete={deleteTable}
-              isFixed={false}
-              creating={creating}
-              setCreating={setCreating}
-            />
-          ))}
+      {/* Bottom info - Enhanced for Accessibility */}
+      <div className="flex flex-col md:flex-row items-center justify-center gap-16 opacity-40 pt-24 border-t-2 border-white/5">
+        <div className="flex items-center gap-4 text-sm font-black uppercase tracking-[0.3em] text-white">
+          <Shield className="w-6 h-6 text-accent-gold" /> Seguridad de Élite
         </div>
-      )}
-
-      {/* Bottom info */}
-      <div className="flex flex-col md:flex-row items-center justify-center gap-10 opacity-20 pt-10 border-t border-white/5">
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-          <Shield className="w-3 h-3" /> Encriptación Militar
+        <div className="flex items-center gap-4 text-sm font-black uppercase tracking-[0.3em] text-white">
+          <Shield className="w-6 h-6 text-accent-gold" /> Juego Auditado
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-          <Shield className="w-3 h-3" /> RNG Auditado
-        </div>
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-500">
-          <Shield className="w-3 h-3" /> Conexión Segura
+        <div className="flex items-center gap-4 text-sm font-black uppercase tracking-[0.3em] text-accent-gold">
+          <Shield className="w-6 h-6" /> Conexión Blindada
         </div>
       </div>
 
@@ -301,7 +371,8 @@ export function Lobby() {
         onClose={() => setShowDeposit(false)} 
       />
     </div>
-  )
+  </div>
+)
 }
 
 function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCreating }: { 
@@ -352,49 +423,63 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
   };
 
   return (
-    <div className={`group relative backdrop-blur-3xl bg-slate-900/40 border p-10 rounded-[3.5rem] transition-all hover:bg-slate-900/80 flex flex-col justify-between shadow-2xl overflow-hidden ${
-      isFixed ? 'border-emerald-500/20' : 'border-white/5'
-    } ${!isPlaceholder ? 'hover:border-emerald-500/30 hover:-translate-y-3' : 'opacity-80 hover:opacity-100'}`}>
-      <div className={`absolute -top-24 -right-24 w-48 h-48 blur-[100px] transition-all ${
-        isFixed ? 'bg-emerald-500/10 group-hover:bg-emerald-500/20' : 'bg-slate-500/5 group-hover:bg-slate-500/10'
+    <div className={`group relative bg-slate-950/90 backdrop-blur-3xl p-6 md:p-14 rounded-[2.5rem] md:rounded-[4.5rem] transition-all hover:bg-slate-950 flex flex-col justify-between shadow-[0_30px_70px_rgba(0,0,0,0.6)] overflow-hidden border-2 aspect-square md:aspect-auto md:min-h-[480px] ${
+      isFixed ? 'border-[#c0a060]/40 hover:border-[#c0a060] shadow-[#c0a060]/10' : 'border-white/10 hover:border-white/20 shadow-white/5'
+    } ${!isPlaceholder ? 'hover:-translate-y-4' : 'opacity-95 hover:opacity-100 hover:scale-[1.01]'}`}>
+      
+      {/* Decorative Glow */}
+      <div className={`absolute -top-48 -right-48 w-96 h-96 blur-[150px] transition-opacity duration-1000 opacity-10 group-hover:opacity-20 ${
+        isFixed ? 'bg-accent-gold' : 'bg-white'
       }`} />
 
-      <div className="relative space-y-6">
+      <div className="relative flex flex-col h-full justify-between pb-6 md:pb-8">
         <div className="flex items-center justify-between">
-          <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center ${
-            isFixed ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/5 border-white/10'
+          <div className={`w-16 h-16 md:w-20 md:h-20 rounded-[1.4rem] md:rounded-[1.8rem] border-2 flex items-center justify-center shadow-2xl transition-transform group-hover:rotate-12 ${
+            isFixed ? 'bg-accent-gold/20 border-accent-gold/40' : 'bg-white/10 border-white/20'
           }`}>
-            <Trophy className={`w-7 h-7 ${isFixed ? 'text-emerald-400' : 'text-slate-400'}`} />
+            <Trophy className={`w-8 h-8 md:w-10 md:h-10 ${isFixed ? 'text-accent-gold' : 'text-slate-400'}`} />
           </div>
           
           {!isPlaceholder && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/40 border border-white/10 text-white font-black text-xs">
-              <Users className="w-4 h-4 text-emerald-400" />
-              {(room.metadata as any)?.activePlayers ?? room.clients}<span className="text-slate-600">/</span>{room.maxClients || 7}
+            <div className="flex flex-col items-end gap-1 md:gap-2">
+              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.4em] text-slate-500">Ocupación</span>
+              <div className="flex items-center gap-2 md:gap-3 px-4 md:px-8 py-2 md:py-3.5 rounded-xl md:rounded-[1.2rem] bg-black/60 border-2 border-white/5 text-white font-black text-xs md:text-lg shadow-inner overflow-hidden relative">
+                <Users className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 relative z-10" />
+                <span className="relative z-10">
+                  <span className="text-emerald-400">{(room.metadata as any)?.activePlayers ?? room.clients}</span>
+                  <span className="text-slate-600 mx-1.5 md:mx-2">/</span>
+                  {room.maxClients || 7}
+                </span>
+                <div 
+                  className="absolute inset-y-0 left-0 bg-emerald-500/20 transition-all duration-1000" 
+                  style={{ width: `${(((room.metadata as any)?.activePlayers ?? room.clients) / (room.maxClients || 7)) * 100}%` }}
+                />
+              </div>
             </div>
           )}
 
           {isAdmin && !isPlaceholder && (
             <button 
               onClick={(e) => { e.stopPropagation(); onDelete(room.roomId); }}
-              className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all ml-auto"
+              className="w-16 h-16 rounded-[1.5rem] bg-red-500/10 border-2 border-red-500/30 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all ml-auto active:scale-95 shadow-2xl shadow-red-500/20"
+              title="Cerrar Mesa"
             >
-              <Zap className="w-4 h-4" />
+              <Zap className="w-6 h-6" />
             </button>
           )}
         </div>
         
-        <div>
-          <h3 className={`text-3xl font-black transition-colors uppercase italic tracking-tighter leading-none ${
-            isFixed ? 'text-white group-hover:text-emerald-300' : 'text-slate-200 group-hover:text-white'
+        <div className="mt-auto pt-4 md:pt-0">
+          <h3 className={`text-3xl md:text-6xl font-display font-black transition-colors uppercase italic tracking-tighter leading-[0.9] pr-2 break-words ${
+            isFixed ? 'text-white group-hover:text-accent-gold text-accent-gold-shimmer' : 'text-slate-200 group-hover:text-white'
           }`}>
             {(room.metadata as any)?.tableName || "Mesa VIP"}
           </h3>
           
-          <div className="flex items-center gap-2 mt-3">
-            <span className={`w-2 h-2 rounded-full ${isPlaceholder ? 'bg-slate-700' : 'bg-emerald-500 animate-pulse'}`} />
-            <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">
-              {isPlaceholder ? 'SALA DISPONIBLE' : `ID: ${room.roomId.substring(0, 12)}`}
+          <div className="flex items-center gap-3 md:gap-4 mt-2 md:mt-6">
+            <div className={`w-3.5 h-3.5 rounded-full ${isPlaceholder ? 'bg-slate-700' : 'bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.8)]'}`} />
+            <p className="text-slate-500 text-xs font-black uppercase tracking-[0.5em] pt-0.5 opacity-60">
+              {isPlaceholder ? 'ESTADO: DISPONIBLE' : `REF: ${room.roomId.substring(0, 8)}`}
             </p>
           </div>
         </div>
@@ -403,14 +488,15 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
       <button 
         onClick={handleAction}
         disabled={!isPlaceholder && (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7)}
-        className={`relative mt-8 w-full h-20 font-black uppercase tracking-[0.2em] text-lg rounded-[1.5rem] transition-all flex items-center justify-center shadow-lg ${
+        className={`relative mt-12 md:mt-16 w-full h-20 md:h-28 font-display font-black uppercase italic tracking-[0.15em] md:tracking-[0.25em] text-2xl md:text-3xl rounded-[1.8rem] md:rounded-[2.2rem] transition-all flex items-center justify-center shadow-2xl border-t-2 border-b-[6px] md:border-b-[8px] border-x-2 ${
           !isPlaceholder && (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7)
-            ? "bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed"
+            ? "bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed opacity-50"
             : isFixed 
-              ? "bg-emerald-600 border border-emerald-400 text-white hover:bg-emerald-500 hover:scale-105"
-              : "bg-slate-800 border border-white/5 text-white hover:bg-slate-700 hover:scale-105"
+              ? "bg-accent-gold-shimmer border-t-white/40 border-b-black/70 border-x-white/20 text-slate-950 hover:scale-[1.03] active:translate-y-2 active:border-b-[4px] shadow-[#c0a060]/40 hover:shadow-[#c0a060]/70"
+              : "bg-slate-800 border-t-white/10 border-b-black/80 border-x-white/5 text-white hover:bg-slate-700 hover:scale-[1.03] active:translate-y-2 active:border-b-[4px]"
         }`}
       >
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[200%] group-hover:animate-shimmer pointer-events-none" />
         {isPlaceholder ? "ABRIR MESA" : (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7) ? "MESA LLENA" : "ENTRAR"}
       </button>
     </div>

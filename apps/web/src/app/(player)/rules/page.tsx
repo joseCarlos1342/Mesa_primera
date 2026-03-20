@@ -32,72 +32,72 @@ export default function RulesPage() {
   ]
 
   return (
-    <div className="min-h-full py-12 px-6 max-w-2xl mx-auto space-y-12 animate-in fade-in duration-1000">
+    <div className="min-h-screen bg-table py-16 px-6 max-w-2xl mx-auto space-y-16 animate-in fade-in duration-1000">
       {/* Header Section */}
-      <header className="relative space-y-4 text-center px-4 overflow-visible">
+      <header className="relative space-y-6 text-center px-4 overflow-visible">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full mb-2"
+          className="inline-flex items-center gap-3 px-5 py-2 bg-accent-gold/10 border border-accent-gold/20 rounded-full mb-2"
         >
-          <Sparkles className="w-4 h-4 text-brand-gold" />
-          <span className="text-[10px] font-black text-brand-gold uppercase tracking-[0.2em]">Manual del Jugador</span>
+          <Sparkles className="w-5 h-5 text-accent-gold" />
+          <span className="text-[10px] font-black text-accent-gold uppercase tracking-[0.3em]">Manual de Élite</span>
         </motion.div>
         
-        <div className="space-y-1 overflow-visible">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-black italic text-white uppercase tracking-tighter leading-none pr-2">
+        <div className="space-y-2 overflow-visible">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-black italic text-accent-gold-shimmer bg-clip-text text-transparent uppercase tracking-tighter leading-none pr-2 drop-shadow-premium">
             Reglamento
           </h1>
-          <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em] opacity-60">
-            Mesa Primera • Elite Club
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] opacity-80">
+            Mesa Primera • Private Club
           </p>
         </div>
 
         {/* Decorative Divider */}
-        <div className="flex items-center justify-center gap-4 pt-4">
-          <div className="h-px w-12 bg-gradient-to-r from-transparent to-brand-gold/30" />
-          <div className="w-1.5 h-1.5 rounded-full bg-brand-gold shadow-[0_0_10px_rgba(226,176,68,0.5)]" />
-          <div className="h-px w-12 bg-gradient-to-l from-transparent to-brand-gold/30" />
+        <div className="flex items-center justify-center gap-6 pt-4">
+          <div className="h-px w-16 bg-gradient-to-r from-transparent via-accent-gold/30 to-transparent" />
+          <div className="w-2 h-2 rounded-full bg-accent-gold shadow-[0_0_15px_rgba(197,160,89,0.8)]" />
+          <div className="h-px w-16 bg-gradient-to-l from-transparent via-accent-gold/30 to-transparent" />
         </div>
       </header>
 
-      <div className="space-y-8">
+      <div className="space-y-10">
         {sections.map((section, i) => (
           <motion.div 
             key={section.title}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: i * 0.15, duration: 0.6 }}
+            transition={{ delay: i * 0.15, duration: 0.8 }}
             className="group relative"
           >
             {/* Background Glow */}
-            <div className={`absolute -inset-1 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl ${section.accent}`} />
+            <div className={`absolute -inset-2 rounded-[3.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl ${section.accent}`} />
             
-            <div className="relative bg-slate-950/40 backdrop-blur-xl border border-white/5 p-8 md:p-10 rounded-[2.5rem] space-y-6 hover:border-brand-gold/20 transition-all duration-500 shadow-2xl">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${section.color} opacity-80 mb-2`}>
+            <div className="relative bg-bg-poker/30 backdrop-blur-2xl border-brass border-2 p-10 md:p-12 rounded-[3.5rem] space-y-8 hover:bg-bg-poker/50 transition-all duration-500 shadow-premium">
+              <div className="flex items-start justify-between gap-6">
+                <div className="space-y-2">
+                  <p className={`text-[10px] font-black uppercase tracking-[0.4em] ${section.color} opacity-80 mb-2`}>
                     {section.subtitle}
                   </p>
-                  <h3 className="text-2xl md:text-3xl font-display font-black italic text-text-premium uppercase tracking-tight">
+                  <h3 className="text-3xl md:text-4xl font-display font-black italic text-white uppercase tracking-tight">
                     {section.title}
                   </h3>
                 </div>
-                <div className={`p-4 rounded-2xl bg-white/5 border border-white/5 ${section.color} shadow-inner`}>
-                  <section.icon className="w-8 h-8" />
+                <div className={`p-5 rounded-2xl bg-slate-900/60 border border-white/10 ${section.color} shadow-premium`}>
+                  <section.icon className="w-10 h-10" />
                 </div>
               </div>
               
               <div className="h-px w-full bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
               
-              <p className="text-slate-400 font-medium leading-relaxed text-lg max-w-prose">
+              <p className="text-slate-300 font-bold leading-relaxed text-xl max-w-prose">
                 {section.content}
               </p>
               
               {/* Card Footer Decoration */}
               <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                <Sparkles className={`w-4 h-4 ${section.color} opacity-40`} />
+                <Sparkles className={`w-5 h-5 ${section.color} opacity-40 animate-pulse`} />
               </div>
             </div>
           </motion.div>
@@ -106,36 +106,36 @@ export default function RulesPage() {
 
       {/* Support Section */}
       <motion.section 
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
         viewport={{ once: true }}
-        className="relative p-10 bg-brand-gold/5 rounded-[3rem] border border-brand-gold/20 overflow-hidden flex flex-col items-center text-center gap-6"
+        className="relative p-12 bg-slate-950/40 backdrop-blur-3xl rounded-[4rem] border-2 border-white/5 overflow-hidden flex flex-col items-center text-center gap-8 shadow-premium"
       >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-3xl -mr-16 -mt-16" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-3xl -ml-16 -mb-16" />
+        <div className="absolute top-0 right-0 w-48 h-48 bg-accent-gold/5 rounded-full blur-3xl -mr-24 -mt-24" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent-gold/5 rounded-full blur-3xl -ml-24 -mb-24" />
         
-        <div className="p-5 rounded-full bg-brand-gold/10 border border-brand-gold/20 shadow-xl">
-          <HelpCircle className="w-10 h-10 text-brand-gold" />
+        <div className="p-6 rounded-full bg-accent-gold/10 border border-accent-gold/20 shadow-premium">
+          <HelpCircle className="w-12 h-12 text-accent-gold" />
         </div>
         
-        <div className="space-y-2">
-          <h4 className="text-xl font-display font-black text-white uppercase italic tracking-tighter">¿Dudas en la mesa?</h4>
-          <p className="text-[11px] text-slate-500 font-black uppercase tracking-widest leading-loose max-w-xs mx-auto">
+        <div className="space-y-3">
+          <h4 className="text-2xl font-display font-black text-white uppercase italic tracking-tighter">¿Dudas en la mesa?</h4>
+          <p className="text-[12px] text-slate-500 font-black uppercase tracking-[0.3em] leading-relaxed max-w-sm mx-auto">
             Nuestro equipo de conserjería está disponible 24/7 para asistir a los miembros del club.
           </p>
         </div>
         
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
-          className="w-full max-w-xs h-16 bg-brand-gold hover:bg-brand-gold-light text-black rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-[0_10px_30px_rgba(226,176,68,0.25)] active:scale-95 transition-all"
+          className="w-full max-w-xs h-20 bg-accent-gold-shimmer text-slate-950 rounded-[1.8rem] font-display font-black text-sm uppercase tracking-[0.4em] shadow-premium active:translate-y-1 active:border-b-2 border-t-2 border-white/20 border-b-4 border-black/40 transition-all hover:scale-[1.02] italic"
         >
-          Contactar Soporte
+          Contactar Conserje
         </button>
       </motion.section>
       
       {/* Scroll Tip */}
-      <footer className="text-center pt-8 pb-12 opacity-20">
-        <p className="text-[10px] font-black text-white uppercase tracking-[0.4em]">
+      <footer className="text-center pt-8 pb-16 opacity-30">
+        <p className="text-[10px] font-black text-white uppercase tracking-[0.5em]">
           Estatutos Oficiales • Mesa Primera v2.0
         </p>
       </footer>
