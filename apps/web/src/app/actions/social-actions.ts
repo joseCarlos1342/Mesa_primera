@@ -175,8 +175,7 @@ export async function removeFriendship(friendshipId: string) {
   const { error } = await supabase
     .from("friendships")
     .delete()
-    .eq("id", friendshipId)
-    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+    .eq("id", friendshipId);
 
   if (error) {
     console.error("Error removing friendship", error);

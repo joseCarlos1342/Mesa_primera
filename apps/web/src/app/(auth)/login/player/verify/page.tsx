@@ -87,7 +87,7 @@ function VerifyContent() {
                 maxLength={6}
                 placeholder="000000"
                 required
-                className="w-full h-20 md:h-24 text-center text-3xl md:text-5xl font-black tracking-[0.3em] bg-black/50 border-2 border-white/10 rounded-[2rem] text-text-premium placeholder-white/5 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono shadow-inner"
+                className="w-full h-20 md:h-24 text-center text-2xl md:text-5xl font-black tracking-[0.1em] md:tracking-[0.3em] bg-black/50 border-2 border-white/10 rounded-[2rem] text-text-premium placeholder-white/5 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono shadow-inner"
               />
               {/* Decorative focus glow */}
               <div className="absolute inset-0 rounded-[2rem] bg-brand-gold/5 blur-xl -z-10 group-focus-within:opacity-100 opacity-0 transition-opacity" />

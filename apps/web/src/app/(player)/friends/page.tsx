@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { UserPlus, MessageCircle, ShieldCheck, Loader2 } from "lucide-react";
+import { UserPlus, MessageCircle, ShieldCheck, Loader2, UserX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFriendships, removeFriendship } from "@/app/actions/social-actions";
 import { FriendsList } from "./_components/FriendsList";
@@ -24,6 +24,8 @@ export default function FriendsPage() {
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedChatFriend, setSelectedChatFriend] = useState<any | null>(null);
+  const [friendToRemove, setFriendToRemove] = useState<{ friendshipId: string, name: string } | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const supabase = createClient();
   const searchParams = useSearchParams();
@@ -70,16 +72,19 @@ export default function FriendsPage() {
     }
   }, [loading, data.friends, searchParams]);
 
-  const handleRemoveFriend = async (friendshipId: string) => {
-    if (confirm("¿Seguro que deseas eliminar a este amigo?")) {
-      const res = await removeFriendship(friendshipId);
-      if (res.success) {
-        showToast("Amigo eliminado correctamente", "success");
-        fetchData();
-      } else {
-        showToast("Error al eliminar amigo", "error");
-      }
+  const handleRemoveFriend = async () => {
+    if (!friendToRemove) return;
+    
+    setIsRemoving(true);
+    const res = await removeFriendship(friendToRemove.friendshipId);
+    if (res.success) {
+      showToast("Amigo eliminado correctamente", "success");
+      fetchData();
+    } else {
+      showToast("Error al eliminar amigo", "error");
     }
+    setIsRemoving(false);
+    setFriendToRemove(null);
   };
 
   // Map friends with real-time status
@@ -183,7 +188,15 @@ export default function FriendsPage() {
                 <FriendsList 
                   friends={friendsWithStatus} 
                   onChat={(f) => setSelectedChatFriend(f)}
-                  onRemove={handleRemoveFriend}
+                  onRemove={(id) => {
+                    const friend = data.friends.find(f => f.friendshipId === id);
+                    if (friend) {
+                      setFriendToRemove({ 
+                        friendshipId: id, 
+                        name: friend.nickname || friend.profile.username 
+                      });
+                    }
+                  }}
                   onAction={showToast}
                   onRefresh={fetchData}
                 />
@@ -215,6 +228,62 @@ export default function FriendsPage() {
         onClose={() => setIsAddModalOpen(false)} 
       />
       
+      <AnimatePresence>
+        {friendToRemove && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isRemoving && setFriendToRemove(null)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-slate-900 border border-white/10 p-8 rounded-[3rem] z-[201] shadow-2xl"
+            >
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto border border-red-500/20">
+                  <UserX className="w-10 h-10 text-red-500" />
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-display font-black italic uppercase text-white tracking-tight">
+                    ¿Eliminar Amigo?
+                  </h3>
+                  <p className="text-slate-400 text-sm">
+                    Estás a punto de eliminar a <span className="text-white font-bold">{friendToRemove.name}</span> de tu lista de amigos. Esta acción no se puede deshacer.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 pt-4">
+                  <button 
+                    onClick={handleRemoveFriend}
+                    disabled={isRemoving}
+                    className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+                  >
+                    {isRemoving ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      "Sí, Eliminar"
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => setFriendToRemove(null)}
+                    disabled={isRemoving}
+                    className="w-full py-4 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {selectedChatFriend && (
           <>

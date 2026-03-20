@@ -10,7 +10,14 @@
     --background: #1a1a2e; /* --bg-primary */
     --foreground: #f5f5f5; /* --text-primary */
     --bg-poker: #1b4d3e;   /* Forest Green (poker felt) */
+    --bg-table: radial-gradient(circle, #2a5a4a 0%, #1b4d3e 100%); /* Depth for game tables */
+    
+    --accent-gold: #c5a059; /* Classic brass/gold */
+    --accent-gold-shimmer: linear-gradient(135deg, #f0d78c 0%, #c5a059 50%, #8b6b2e 100%); /* Interactive gold buttons */
+    
     --text-premium: #f3edd7; /* Off-white/Cream */
+    --shadow-premium: 0 10px 30px rgba(0,0,0,0.6);
+    --border-brass: 2px solid #8b6b2e;
   }
 
   html {
@@ -36,6 +43,11 @@
   --color-bg-poker: var(--bg-poker);
   --color-text-premium: var(--text-premium);
   --color-text-secondary: #a0a0b0; /* --text-secondary */
+  
+  --background-image-bg-table: var(--bg-table);
+  --background-image-accent-gold-shimmer: var(--accent-gold-shimmer);
+  --border-width-brass: 2px;
+  --color-border-brass-color: #8b6b2e;
 
   --font-display: "Playfair Display", serif;
   --font-sans: "Outfit", sans-serif;
