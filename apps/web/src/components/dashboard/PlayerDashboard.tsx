@@ -1,13 +1,21 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Wallet, Play, History, Users, ArrowUpRight, TrendingUp } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Wallet, Play, Users, TrendingUp, ShoppingCart, ArrowUpWideNarrow } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getWalletData } from '@/app/actions/wallet'
+import { TransactionModal } from '../wallet/TransactionModal'
 
 export function PlayerDashboard() {
   const [data, setData] = useState<any>(null)
+  const [selectedTx, setSelectedTx] = useState<any | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const handleTxClick = (tx: any) => {
+    setSelectedTx(tx)
+    setIsModalOpen(true)
+  }
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,34 +37,28 @@ export function PlayerDashboard() {
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_transparent_100%)] opacity-40 group-hover:opacity-60 transition-opacity duration-1000" />
         
-        <div className="relative z-10 flex flex-col items-center text-center space-y-6">
-          <div className="flex items-center gap-2 bg-brand-gold/10 backdrop-blur-md px-5 py-2 rounded-full border border-brand-gold/20 shadow-inner">
-            <div className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse"></div>
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-gold">Membresía Elite • Gold</span>
-          </div>
-          
-          <div className="flex flex-col items-center">
-            <span className="text-[11px] font-black uppercase tracking-[0.4em] text-text-secondary mb-2">Saldo Disponible</span>
-            <div className="flex items-baseline gap-2 md:gap-4 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
-              <span className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-black italic bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic tracking-tight">
+        <div className="relative z-10 flex flex-col items-center text-center space-y-4 w-full">
+          <div className="flex flex-col items-center w-full px-2">
+            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-text-secondary mb-1 opacity-60">Saldo Disponible</span>
+            <div className="flex items-baseline justify-center gap-2 md:gap-4 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] w-full">
+              <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black italic bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent tracking-tight whitespace-nowrap pr-4">
                 ${(balance / 100).toLocaleString()}
               </span>
-              <span className="text-lg md:text-2xl font-black text-brand-gold/60 uppercase tracking-widest">COP</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-6 mt-10 w-full max-w-lg">
-            <Link href="/wallet" className="flex-1">
-              <button className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-xs rounded-2xl transition-all duration-300 shadow-[0_10px_0_#8b6b2e,0_20px_30px_rgba(0,0,0,0.5)] hover:translate-y-[2px] hover:shadow-[0_8px_0_#8b6b2e,0_15px_25px_rgba(0,0,0,0.5)] active:translate-y-[8px] active:shadow-none flex items-center justify-center gap-3 overflow-hidden">
-                <Wallet className="w-5 h-5" />
-                <span>Cargar Saldo</span>
+          <div className="flex flex-col sm:flex-row gap-5 mt-4 w-full max-w-lg px-2">
+            <Link href="/wallet" className="flex-1 min-w-0">
+              <button className="group relative w-full h-20 bg-brand-gold text-black font-black uppercase tracking-widest text-[11px] sm:text-xs rounded-2xl transition-all duration-300 shadow-[0_4px_0_rgba(139,107,46,1),0_15px_30px_rgba(0,0,0,0.4)] hover:shadow-[0_2px_0_rgba(139,107,46,1),0_10px_20px_rgba(0,0,0,0.4)] active:scale-95 active:shadow-none flex items-center justify-center gap-3 overflow-hidden">
+                <Wallet className="w-5 h-5 shrink-0" />
+                <span className="truncate">Cargar Saldo</span>
                 <div className="absolute inset-0 bg-white/20 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
               </button>
             </Link>
-            <Link href="/lobby" className="flex-1">
-              <button className="group relative w-full h-20 bg-black/60 backdrop-blur-xl text-text-premium border-2 border-brand-gold/40 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-brand-gold hover:text-black transition-all duration-500 flex items-center justify-center gap-3 overflow-hidden active:scale-95">
-                <Play className="w-5 h-5 fill-current" />
-                <span>Ir al Lobby</span>
+            <Link href="/lobby" className="flex-1 min-w-0">
+              <button className="group relative w-full h-20 bg-black/60 backdrop-blur-xl text-brand-gold border-2 border-brand-gold/40 rounded-2xl font-black text-[11px] sm:text-xs uppercase tracking-[0.2em] shadow-[0_4px_0_rgba(202,171,114,0.1),0_15px_30px_rgba(0,0,0,0.4)] hover:bg-brand-gold/10 transition-all duration-500 flex items-center justify-center gap-3 overflow-hidden active:scale-95">
+                <Play className="w-5 h-5 shrink-0 fill-current" />
+                <span className="truncate">Ir al Lobby</span>
                 <div className="absolute inset-0 bg-brand-gold/20 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-500" />
               </button>
             </Link>
@@ -92,27 +94,42 @@ export function PlayerDashboard() {
             [1, 2, 3].map(i => <div key={i} className="h-24 bg-black/20 rounded-3xl animate-pulse border border-white/5" />)
           ) : data?.transactions?.length > 0 ? (
             data.transactions.slice(0, 3).map((tx: any) => (
-              <div key={tx.id} className="group bg-black/30 border-2 border-white/5 hover:border-brand-gold/20 p-5 rounded-[2rem] flex items-center justify-between transition-all duration-300 hover:bg-black/50">
-                <div className="flex items-center gap-5">
-                  <div className={`p-4 rounded-2xl ${tx.type === 'deposit' ? 'bg-brand-gold/10 text-brand-gold' : 'bg-brand-red/10 text-brand-red'} border-2 border-current/20`}>
-                    <ArrowUpRight className={`w-6 h-6 ${tx.type === 'deposit' ? 'rotate-0' : 'rotate-90'}`} />
+              <div 
+                key={tx.id} 
+                onClick={() => handleTxClick(tx)}
+                className="group bg-black/30 border-2 border-white/5 hover:border-brand-gold/20 p-4 md:p-5 rounded-[2rem] flex items-center justify-between gap-4 transition-all duration-300 hover:bg-black/50 overflow-hidden cursor-pointer active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-inner ${
+                    tx.type === 'deposit' 
+                      ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20' 
+                      : 'bg-white/5 text-text-secondary border border-white/10'
+                  }`}>
+                    {tx.type === 'deposit' ? <ShoppingCart className="w-5 h-5" /> : <ArrowUpWideNarrow className="w-5 h-5" />}
                   </div>
-                  <div>
-                    <p className="text-base font-black uppercase italic tracking-wider text-text-premium group-hover:text-brand-gold transition-colors">{tx.type === 'deposit' ? 'Depósito' : 'Retiro'}</p>
-                    <p className="text-[11px] text-text-secondary uppercase font-bold tracking-widest mt-0.5">{new Date(tx.created_at).toLocaleDateString()}</p>
+                  <div className="min-w-0">
+                    <p className="font-display font-black text-sm md:text-base italic uppercase tracking-tight text-text-premium truncate group-hover:text-brand-gold transition-all">
+                      {tx.type === 'deposit' ? 'Depósito' : 'Retiro'}
+                    </p>
+                    <p className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 truncate">
+                      {new Date(tx.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} • {new Date(tx.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-1.5">
-                  <span className={`text-lg font-mono font-black ${tx.type === 'deposit' ? 'text-brand-gold' : 'text-text-premium'}`}>
+                
+                <div className="shrink-0 text-right space-y-1">
+                  <span className={`block text-lg md:text-xl font-display font-black italic tracking-tighter ${tx.type === 'deposit' ? 'text-brand-gold' : 'text-text-premium'}`}>
                     {tx.type === 'deposit' ? '+' : '-'}${(Math.abs(tx.amount_cents || 0) / 100).toLocaleString()}
                   </span>
-                  {tx.status !== 'completed' && (
-                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border-2 ${
-                      tx.status === 'pending' ? 'bg-brand-gold/5 text-brand-gold border-brand-gold/20' : 'bg-brand-red/5 text-brand-red border-brand-red/20'
+                  <div className="flex justify-end">
+                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${
+                      tx.status === 'completed' ? 'bg-brand-gold/10 text-brand-gold border-brand-gold/30' :
+                      tx.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/30' :
+                      'bg-brand-red/10 text-brand-red border-brand-red/30'
                     }`}>
-                      {tx.status === 'pending' ? 'Procesando' : 'Fallido'}
+                      {tx.status === 'completed' ? 'Éxito' : tx.status === 'pending' ? 'Procesando' : 'Fallido'}
                     </span>
-                  )}
+                  </div>
                 </div>
               </div>
             ))
@@ -123,6 +140,12 @@ export function PlayerDashboard() {
           )}
         </div>
       </section>
+
+      <TransactionModal 
+        transaction={selectedTx}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   )
 }

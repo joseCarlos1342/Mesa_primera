@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { SupportTrigger } from "@/components/SupportTrigger";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -72,7 +73,10 @@ export default async function PlayerLayout({
             {user && <SupportTrigger />}
 
             {user && <NotificationCenter userId={user.id} />}
-            <SignOutButton className="!h-12 !w-12 md:!h-14 md:!w-auto !p-0 sm:!px-6 !rounded-2xl !bg-brand-red/10 hover:!bg-brand-red/20 !border-brand-red/20 !text-brand-red active:scale-90 transition-all flex items-center justify-center sm:!aspect-auto min-w-[3rem] font-black tracking-widest text-xs" />
+            <SignOutButton 
+              variant="danger" 
+              className="h-12 w-12 md:h-16 md:w-auto px-0 sm:px-6 flex items-center justify-center min-w-[3rem]" 
+            />
           </div>
         </div>
       </header>

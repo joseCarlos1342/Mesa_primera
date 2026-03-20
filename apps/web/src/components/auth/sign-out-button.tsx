@@ -14,9 +14,9 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
   const baseStyles = "flex items-center gap-3 px-6 py-4 rounded-2xl font-black transition-all duration-300 active:scale-95 group"
   
   const variants = {
-    premium: "bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white backdrop-blur-md shadow-lg",
-    danger: "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300",
-    ghost: "text-slate-500 hover:text-slate-300"
+    premium: "bg-black/40 border-2 border-brand-gold/20 text-brand-gold hover:border-brand-gold/50 hover:bg-black/60 shadow-[0_10px_30px_rgba(0,0,0,0.5)]",
+    danger: "bg-black/40 border-2 border-brand-red/30 text-brand-red hover:bg-brand-red/10 hover:border-brand-red/60 shadow-[0_10px_30px_rgba(0,0,0,0.3)]",
+    ghost: "text-text-secondary hover:text-text-premium"
   }
 
   const handleSignOut = async () => {
@@ -31,8 +31,8 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
       className={`${baseStyles} ${variants[variant]} ${className}`}
       title="Cerrar Sesión"
     >
-      <LogOut className="w-6 h-6 transition-transform group-hover:-translate-x-1" />
-      <span className="text-sm md:text-xl tracking-widest uppercase hidden sm:inline">Salir</span>
+      <LogOut className="w-6 h-6 md:w-7 md:h-7 shrink-0 transition-transform group-hover:-translate-x-1" />
+      <span className="text-sm md:text-lg tracking-widest uppercase hidden sm:inline font-black">Salir</span>
     </button>
   )
 }
