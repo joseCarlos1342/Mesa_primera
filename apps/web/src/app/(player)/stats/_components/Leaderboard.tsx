@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Trophy, Medal, Target, TrendingUp, User } from "lucide-react";
 import Image from "next/image";
+import { getAvatarSvg } from "@/utils/avatars";
 
 interface LeaderboardProps {
   entries: any[];
@@ -56,19 +57,21 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
                 </div>
 
                 {/* Avatar */}
-                <div className="relative shrink-0 w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/10 shadow-lg">
-                  {entry.avatar_url && (entry.avatar_url.startsWith('http') || entry.avatar_url.startsWith('/')) ? (
+                <div className="relative shrink-0 w-12 h-12 rounded-2xl overflow-hidden border-2 border-brand-gold/20 bg-slate-900 flex items-center justify-center">
+                  {entry.avatar_url && getAvatarSvg(entry.avatar_url) ? (
+                    <div className="w-full h-full scale-[1.2]">
+                      {getAvatarSvg(entry.avatar_url)}
+                    </div>
+                  ) : entry.avatar_url && (entry.avatar_url.startsWith('http') || entry.avatar_url.startsWith('/')) ? (
                     <Image 
                       src={entry.avatar_url} 
                       alt={entry.username || 'User'} 
                       fill 
                       className="object-cover"
-                      unoptimized={true} // In case they are external without domain config
+                      unoptimized={true}
                     />
                   ) : (
-                    <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                      <User className="w-6 h-6 text-text-secondary opacity-40" />
-                    </div>
+                    <User className="w-6 h-6 text-text-secondary opacity-40" />
                   )}
                 </div>
 
