@@ -29,7 +29,6 @@ function VerifyContent() {
         const submitBtn = formRef.current?.querySelector('button[type="submit"]') as HTMLButtonElement
         if (tokenInput && submitBtn) {
           tokenInput.value = '123456'
-          // We trigger the action by clicking the button to ensure useActionState sees it
           submitBtn.click()
         }
       }, 1000)
@@ -38,76 +37,91 @@ function VerifyContent() {
   }, [isDev, isTestPhone])
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans">
-      {/* Background Image (Shared with Login) */}
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-hidden">
+      {/* Premium Casino Background */}
       <div className="absolute inset-0 z-0">
-        <Image 
-          src="/images/login-bg.png"
-          alt="Luxury Background"
-          fill
-          className="object-cover opacity-30 brightness-50"
-          priority
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_#0a2a1f_100%)]" />
+        {/* Subtle Felt Texture Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3%3C/filter%3%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3%3C/svg%3")` }} 
         />
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" />
+        {/* Shadow Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
-      <div className="w-full max-w-md space-y-8 z-10 text-center animate-in fade-in slide-in-from-top-4 duration-1000">
-        <div className="space-y-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/30 mb-2 shadow-[0_0_30px_rgba(99,102,241,0.2)] animate-pulse">
-            <span className="text-3xl">🔐</span>
-          </div>
-          <h1 className="text-4xl font-black tracking-tight text-white">
-            Verifica tu Código
+      <div className="w-full max-w-md z-10 animate-in fade-in zoom-in-95 duration-1000">
+        {/* Logo Section */}
+        <div className="text-center mb-10">
+          <h1 className="text-5xl md:text-6xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
+            MESA PRIMERA
           </h1>
-          <p className="text-slate-400 text-lg">
-            Enviamos la clave maestra a <br/>
-            <span className="text-indigo-400 font-mono font-bold tracking-widest">{phone}</span>
-          </p>
         </div>
 
-        {state?.error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-400 text-sm font-medium animate-in shake-1">
-            {state.error}
-          </div>
-        )}
-
-        <form action={formAction} ref={formRef} className="space-y-8">
-          <input type="hidden" name="phone" value={phone} />
-          
-          <div className="group relative">
-            <input
-              name="token"
-              type="text"
-              maxLength={6}
-              placeholder="000 000"
-              required
-              className="w-full h-24 text-center text-5xl font-black tracking-[0.2em] bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] text-white placeholder-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-2xl font-mono"
-            />
-            {/* Decorative focus glow */}
-            <div className="absolute inset-0 rounded-[2rem] bg-indigo-500/5 blur-xl -z-10 group-focus-within:opacity-100 opacity-0 transition-opacity" />
+        {/* Verification Card */}
+        <div className="relative backdrop-blur-2xl bg-black/40 border-2 border-brand-gold/20 p-8 md:p-10 rounded-[2.5rem] shadow-[0_40px_80px_rgba(0,0,0,0.7)]">
+          <div className="space-y-3 mb-10 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/30 text-brand-gold text-[12px] font-black tracking-widest uppercase mb-2">
+              🔐 ACCESO BÓVEDA
+            </div>
+            <h2 className="text-3xl font-bold text-text-premium">Verifica tu Código</h2>
+            <p className="text-text-secondary text-base">
+              Enviamos la clave maestra a <br/>
+              <span className="text-brand-gold font-mono font-bold tracking-widest">{phone}</span>
+            </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="group relative w-full h-18 bg-white text-slate-950 font-black text-xl rounded-2xl transition-all duration-300 hover:bg-indigo-50 active:scale-[0.98] shadow-[0_10px_30px_rgba(255,255,255,0.1)] disabled:opacity-50 overflow-hidden"
-          >
-            <span className="relative z-10">
-              {isPending ? 'AUTENTICANDO...' : 'CÓDIGO CORRECTO →'}
-            </span>
-            <div className="absolute inset-0 bg-indigo-100 -translate-x-full group-hover:translate-x-0 transition-transform duration-500" />
-          </button>
-        </form>
+          {state?.error && (
+            <div className="mb-8 p-5 bg-brand-red/10 border-2 border-brand-red/30 rounded-2xl text-brand-red text-sm font-bold text-center animate-shake">
+              {state.error}
+            </div>
+          )}
 
-        <p className="text-slate-500 text-sm uppercase tracking-widest font-bold">
-          ¿Problemas con el SMS? <br/>
-          <button type="button" className="text-indigo-400 hover:text-indigo-300 transition-colors mt-2">Reintentar Envío</button>
-        </p>
-      </div>
+          <form action={formAction} ref={formRef} className="space-y-10">
+            <input type="hidden" name="phone" value={phone} />
+            
+            <div className="group relative">
+              <input
+                name="token"
+                type="text"
+                pattern="\d*"
+                maxLength={6}
+                placeholder="000000"
+                required
+                className="w-full h-24 text-center text-5xl font-black tracking-[0.3em] bg-black/50 border-2 border-white/10 rounded-[2rem] text-text-premium placeholder-white/5 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono shadow-inner"
+              />
+              {/* Decorative focus glow */}
+              <div className="absolute inset-0 rounded-[2rem] bg-brand-gold/5 blur-xl -z-10 group-focus-within:opacity-100 opacity-0 transition-opacity" />
+            </div>
 
-      <div className="absolute top-8 left-8 flex items-center gap-2 opacity-40">
-        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
-        <span className="text-[10px] font-black tracking-widest uppercase">Secured Connection</span>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-sm rounded-2xl transition-all duration-300 shadow-[0_10px_0_#8b6b2e,0_20px_30px_rgba(0,0,0,0.5)] hover:translate-y-[2px] hover:shadow-[0_8px_0_#8b6b2e,0_15px_25px_rgba(0,0,0,0.5)] active:translate-y-[8px] active:shadow-none disabled:opacity-50 overflow-hidden"
+            >
+              <span className="relative z-10 flex items-center justify-center gap-3">
+                {isPending ? 'AUTENTICANDO...' : 'CÓDIGO CORRECTO →'}
+              </span>
+              <div className="absolute inset-0 bg-white/20 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
+            </button>
+          </form>
+
+          <footer className="mt-10 pt-10 border-t-2 border-white/5 text-center">
+            <p className="text-sm text-text-secondary uppercase tracking-widest font-bold">
+              ¿Problemas con el SMS? <br/>
+              <button type="button" className="text-brand-gold hover:text-white font-black underline underline-offset-8 decoration-2 decoration-brand-gold/40 hover:decoration-brand-gold transition-all mt-4">
+                Reintentar Envío
+              </button>
+            </p>
+          </footer>
+        </div>
+
+        {/* Security Indicator */}
+        <div className="mt-12 text-center pb-8 opacity-40">
+          <div className="inline-flex items-center gap-2 text-text-secondary text-[10px] font-black tracking-widest uppercase">
+            <div className="w-2 h-2 rounded-full bg-brand-gold animate-ping" />
+            CONEXIÓN SEGURA TLS 1.3
+          </div>
+        </div>
       </div>
     </div>
   )
