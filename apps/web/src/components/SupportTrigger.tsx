@@ -19,16 +19,16 @@ export function SupportTrigger() {
   return (
     <button 
       onClick={handleClick}
-      className={`relative w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-2xl transition-all active:scale-90 shadow-xl ${
+      className={`relative w-12 h-12 md:w-16 md:h-16 flex items-center justify-center rounded-2xl transition-all active:scale-90 shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 backdrop-blur-xl ${
         hasNewMessage 
-          ? 'bg-indigo-600 text-white animate-bounce shadow-indigo-600/40' 
-          : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20'
+          ? 'bg-brand-gold/20 border-brand-gold shadow-brand-gold/20 animate-pulse' 
+          : 'bg-black/40 border-brand-gold/20 text-brand-gold hover:border-brand-gold/50 hover:bg-black/60'
       }`}
-      title="Soporte"
+      title="Soporte con el Host"
     >
-      <MessageSquare className="w-6 h-6 md:w-7 md:h-7" />
+      <MessageSquare className={`w-6 h-6 md:w-8 md:h-8 ${hasNewMessage ? 'text-brand-gold' : 'text-text-secondary group-hover:text-brand-gold'}`} />
       {hasNewMessage && (
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-slate-950 shadow-lg animate-pulse" />
+        <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-brand-gold-light to-brand-gold-dark rounded-full border-2 border-slate-950 shadow-[0_0_10px_rgba(202,171,114,0.6)] animate-bounce" />
       )}
     </button>
   );

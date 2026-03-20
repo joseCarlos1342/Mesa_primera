@@ -66,14 +66,17 @@ export async function getWalletData() {
       type: 'deposit',
       amount_cents: dr.amount_cents,
       status: dr.status,
-      created_at: dr.created_at
+      created_at: dr.created_at,
+      proof_url: dr.proof_url,
+      observations: dr.observations
     })),
     ...(withdrawalRequests || []).filter(wr => wr.status !== 'completed').map(wr => ({
       id: wr.id,
       type: 'withdrawal',
       amount_cents: wr.amount_cents,
       status: wr.status,
-      created_at: wr.created_at
+      created_at: wr.created_at,
+      observations: wr.observations
     }))
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
