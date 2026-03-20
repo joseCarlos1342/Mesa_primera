@@ -1,7 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { Bell, X, CheckCircle, Info, BellRing } from 'lucide-react';
+import { Bell, X, CheckCircle, Info, BellRing, UserPlus, Clock, Gamepad2 } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface NotificationCenterProps {
   userId: string;
@@ -9,54 +11,94 @@ interface NotificationCenterProps {
 
 interface AppNotification {
   id: string;
+  type: string;
   title: string;
   body: string;
-  time: string;
-  read: boolean;
+  created_at: string;
+  is_read: boolean;
+  data?: any;
 }
 
 export function NotificationCenter({ userId }: NotificationCenterProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const supabase = createClient();
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:2568';
-    const s = io(`${socketUrl}/notifications`, {
-      withCredentials: true,
-    });
-    
-    s.on('connect', () => {
-      s.emit('register', userId);
-    });
+    if (!userId) return;
 
-    s.on('notification', (data) => {
-      const newNotif = {
-        id: Math.random().toString(36).substr(2, 9),
-        title: data.title,
-        body: data.body,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        read: false
-      };
-      setNotifications(prev => [newNotif, ...prev]);
-      setUnreadCount(prev => prev + 1);
-      
-      // Attempt to play a sound
-      try {
-        const audio = new Audio('/sounds/notification.mp3');
-        audio.volume = 0.5;
-        audio.play().catch(() => {}); // ignore autoplay errors
-      } catch (e) {}
-    });
+    // 1. Fetch initial notifications
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (data) {
+        setNotifications(data);
+        setUnreadCount(data.filter(n => !n.is_read).length);
+      }
+    };
+
+    fetchNotifications();
+
+    // 2. Subscribe to new notifications
+    const channel = supabase
+      .channel(`user-notifications-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const newNotif = payload.new as AppNotification;
+          setNotifications(prev => [newNotif, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          
+          // Play sound
+          try {
+            const audio = new Audio('/sounds/notification.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(() => {});
+          } catch (e) {}
+        }
+      )
+      .subscribe();
 
     return () => {
-      s.disconnect();
+      supabase.removeChannel(channel);
     };
   }, [userId]);
 
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
+  const markAllRead = async () => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+
+    if (!error) {
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    }
+  };
+
+  const markAsRead = async (id: string) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', id);
+
+    if (!error) {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
   };
 
   return (
@@ -86,7 +128,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
                 onClick={markAllRead} 
                 className="text-[9px] font-black text-brand-gold hover:text-black hover:bg-brand-gold transition-all uppercase tracking-widest border-2 border-brand-gold/30 px-4 py-2 rounded-xl"
               >
-                Limpiar Bóveda
+                Limpiar todo
               </button>
             )}
           </div>
@@ -102,12 +144,30 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
               </div>
             ) : (
               notifications.map(n => (
-                <div key={n.id} className={`group p-6 rounded-[1.5rem] transition-all duration-300 border-2 ${!n.read ? 'bg-brand-gold/10 border-brand-gold/30 shadow-lg' : 'hover:bg-white/5 border-transparent hover:border-white/5'}`}>
+                <div 
+                  key={n.id} 
+                  onClick={() => !n.is_read && markAsRead(n.id)}
+                  className={`group p-6 rounded-[1.5rem] transition-all duration-300 border-2 cursor-pointer ${!n.is_read ? 'bg-brand-gold/10 border-brand-gold/30 shadow-lg' : 'hover:bg-white/5 border-transparent hover:border-white/5'}`}
+                >
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className={`text-base font-black uppercase italic tracking-tight transition-colors ${!n.read ? 'text-brand-gold' : 'text-text-premium group-hover:text-brand-gold'}`}>
-                      {n.title}
-                    </h4>
-                    <span className="text-[9px] font-black text-text-secondary uppercase tracking-[0.2em] whitespace-nowrap ml-4 mt-1 opacity-60">{n.time}</span>
+                    <div className="flex items-center gap-3">
+                      {n.type?.startsWith('friend') ? (
+                        <UserPlus className="w-4 h-4 text-brand-gold" />
+                      ) : n.type === 'game_invite' ? (
+                        <Gamepad2 className="w-4 h-4 text-brand-gold" />
+                      ) : n.type?.startsWith('deposit') ? (
+                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Info className="w-4 h-4 text-brand-gold" />
+                      )}
+                      <h4 className={`text-base font-black uppercase italic tracking-tight transition-colors ${!n.is_read ? 'text-brand-gold' : 'text-text-premium group-hover:text-brand-gold'}`}>
+                        {n.title}
+                      </h4>
+                    </div>
+                    <span className="text-[9px] font-black text-text-secondary uppercase tracking-[0.2em] whitespace-nowrap ml-4 mt-1 opacity-60 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })}
+                    </span>
                   </div>
                   <p className="text-sm font-medium text-text-secondary leading-relaxed group-hover:text-text-premium transition-colors">{n.body}</p>
                 </div>

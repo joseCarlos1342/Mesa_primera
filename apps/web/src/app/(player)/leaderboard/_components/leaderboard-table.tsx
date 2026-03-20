@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { getAvatarSvg } from "@/utils/avatars";
+import { User } from "lucide-react";
 
 interface LeaderboardUser {
   user_id: string;
@@ -66,17 +68,19 @@ export function LeaderboardTable({ data, category }: { data: LeaderboardUser[], 
                 </td>
                 <td className="py-4 px-6">
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full overflow-hidden border-2 ${
+                    <div className={`w-12 h-12 rounded-full overflow-hidden border-2 flex items-center justify-center bg-slate-900 ${
                       index === 0 ? "border-yellow-500" :
                       index === 1 ? "border-slate-300" :
                       index === 2 ? "border-orange-600" :
                       "border-slate-700"
                     }`}>
-                      <img 
-                        src={user.avatar_url || "/default-avatar.png"} 
-                        alt={user.username}
-                        className="w-full h-full object-cover"
-                      />
+                      {user.avatar_url && getAvatarSvg(user.avatar_url) ? (
+                        <div className="w-full h-full scale-[1.2]">
+                          {getAvatarSvg(user.avatar_url)}
+                        </div>
+                      ) : (
+                        <User className="w-6 h-6 text-slate-600" />
+                      )}
                     </div>
                     <span className={`font-bold ${isTop3 ? "text-lg text-white" : "text-slate-300"}`}>
                       {user.username}

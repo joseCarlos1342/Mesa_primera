@@ -5,6 +5,7 @@ import { io } from 'socket.io-client';
 import { Clock, User, MessageCircle, CheckCircle2, History, Inbox, X } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { SupportChat } from '@/components/SupportChat';
+import { getAvatarSvg } from '@/utils/avatars';
 
 interface Conversation {
   userId: string;
@@ -158,10 +159,18 @@ export function SupportConversationList({ initialConversations, adminId }: { ini
             >
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold transition-colors ${
-                       selectedTicketId === conv.ticketId ? 'bg-white text-indigo-600' : 'bg-slate-800 text-white'
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold transition-colors overflow-hidden border border-brand-gold/20 ${
+                       selectedTicketId === conv.ticketId ? 'bg-white text-indigo-600' : 'bg-slate-800'
                   }`}>
-                    {conv.user?.username?.[0].toUpperCase() || 'U'}
+                    {conv.user?.avatar_url && getAvatarSvg(conv.user.avatar_url) ? (
+                      <div className="w-full h-full scale-[1.2]">
+                        {getAvatarSvg(conv.user.avatar_url)}
+                      </div>
+                    ) : (
+                      <span className={selectedTicketId === conv.ticketId ? 'text-indigo-600' : 'text-white'}>
+                        {conv.user?.username?.[0].toUpperCase() || 'U'}
+                      </span>
+                    )}
                   </div>
                   <div className="overflow-hidden">
                     <p className={`text-sm font-black uppercase truncate tracking-tight ${selectedTicketId === conv.ticketId ? 'text-white' : 'text-slate-200'}`}>
@@ -208,8 +217,14 @@ export function SupportConversationList({ initialConversations, adminId }: { ini
             {/* Header: Fixed Height, non-shrinking */}
             <div className="p-5 border-b border-white/5 bg-slate-950/40 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 flex items-center justify-center border border-indigo-600/20 shrink-0">
-                        <User className="w-6 h-6 text-indigo-400" />
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 flex items-center justify-center border border-indigo-600/20 shrink-0 overflow-hidden">
+                        {activeConversation.user?.avatar_url && getAvatarSvg(activeConversation.user.avatar_url) ? (
+                          <div className="w-full h-full scale-[1.2]">
+                            {getAvatarSvg(activeConversation.user.avatar_url)}
+                          </div>
+                        ) : (
+                          <User className="w-6 h-6 text-indigo-400" />
+                        )}
                     </div>
                     <div className="min-w-0">
                         <h3 className="font-black text-white uppercase tracking-tight italic truncate">

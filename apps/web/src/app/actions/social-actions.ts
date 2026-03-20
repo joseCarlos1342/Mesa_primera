@@ -20,21 +20,21 @@ export async function getLeaderboard(period: string, category: string) {
   return data;
 }
 
+
 /**
- * Search users to add as friends
+ * Search users by name, username or phone
  */
 export async function searchUsers(query: string) {
   if (!query || query.length < 3) return [];
-  
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  // Search by username ILIKE and exclude self
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, avatar_url, level")
-    .ilike("username", `%${query}%`)
+    .select("id, username, full_name, avatar_url, level, phone")
+    .or(`username.ilike.%${query}%,full_name.ilike.%${query}%,phone.ilike.%${query}%`)
     .neq("id", user.id)
     .limit(10);
 
@@ -62,7 +62,9 @@ export async function getFriendships() {
       user_id,
       friend_id,
       user:profiles!user_id(id, username, avatar_url, level),
-      friend:profiles!friend_id(id, username, avatar_url, level)
+      friend:profiles!friend_id(id, username, avatar_url, level),
+      nickname_for_friend,
+      nickname_for_user
     `)
     .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
 
@@ -80,7 +82,11 @@ export async function getFriendships() {
     const profile = isInitiator ? f.friend : f.user;
 
     if (f.status === "accepted") {
-      friends.push({ friendshipId: f.id, profile });
+      friends.push({ 
+        friendshipId: f.id, 
+        profile, 
+        nickname: isInitiator ? f.nickname_for_friend : f.nickname_for_user
+      });
     } else if (f.status === "pending") {
       if (isInitiator) {
         pendingOutgoing.push({ friendshipId: f.id, profile });
@@ -108,11 +114,6 @@ export async function sendFriendRequest(friendId: string) {
     friend_id: friendId,
     status: "pending",
   });
-
-  if (error) {
-    console.error("Error sending friend request", error);
-    return { error: "Hubo un problema enviando la solicitud." };
-  }
 
   revalidatePath("/friends");
   return { success: true };
@@ -163,5 +164,145 @@ export async function removeFriendship(friendshipId: string) {
   }
 
   revalidatePath("/friends");
+  return { success: true };
+}
+
+/**
+ * NOTIFICATIONS
+ */
+export async function getNotifications() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) return [];
+  return data;
+}
+
+export async function markNotificationAsRead(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("id", id);
+  
+  revalidatePath("/");
+  return { success: !error };
+}
+
+/**
+ * DIRECT MESSAGING
+ */
+export async function sendDirectMessage(receiverId: string, content: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const { data, error } = await supabase
+    .from("direct_messages")
+    .insert({
+      sender_id: user.id,
+      receiver_id: receiverId,
+      content
+    })
+    .select()
+    .single();
+
+  if (error) return { error: "Error al enviar mensaje" };
+
+  // Notify receiver? Optionally create a notification too
+  // await createNotification(receiverId, 'message', 'Mensaje Nuevo', content, { chatWith: user.id });
+
+  return { success: true, message: data };
+}
+
+export async function getDirectMessages(otherUserId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("direct_messages")
+    .select("*")
+    .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching DMs", error);
+    return [];
+  }
+  return data;
+}
+
+/**
+ * Update friend nickname
+ */
+export async function updateFriendNickname(friendshipId: string, nickname: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // Check if current user is user_id or friend_id in this row
+  const { data: friendship } = await supabase
+    .from("friendships")
+    .select("user_id, friend_id")
+    .eq("id", friendshipId)
+    .single();
+
+  if (!friendship) return { error: "Amistad no encontrada" };
+
+  const isInitiator = friendship.user_id === user.id;
+  const updateData = isInitiator 
+    ? { nickname_for_friend: nickname } 
+    : { nickname_for_user: nickname };
+
+  const { error } = await supabase
+    .from("friendships")
+    .update(updateData)
+    .eq("id", friendshipId)
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`); // Security check
+
+  if (error) return { error: "Error al actualizar apodo" };
+  
+  revalidatePath("/friends");
+  return { success: true };
+}
+
+/**
+ * Invite friend to play
+ */
+export async function inviteToPlay(friendId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // Get current user's profile for the notification
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+
+  const senderName = profile?.username || "Un amigo";
+
+  // Create a notification for the friend
+  const { error } = await supabase
+    .from("notifications")
+    .insert({
+      user_id: friendId,
+      type: "game_invite",
+      title: "🎮 ¡Invitación a Jugar!",
+      body: `${senderName} te ha invitado a una mesa. ¡Únete ahora!`,
+      data: { senderId: user.id }
+    });
+
+  if (error) return { error: "Error al enviar invitación" };
   return { success: true };
 }

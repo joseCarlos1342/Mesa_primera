@@ -1,71 +1,232 @@
-'use client'
+"use client";
 
-import { motion } from 'framer-motion'
-import { Users, UserPlus, MessageCircle, Gamepad2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from "react";
+import { UserPlus, MessageCircle, ShieldCheck, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { getFriendships, removeFriendship } from "@/app/actions/social-actions";
+import { FriendsList } from "./_components/FriendsList";
+import { FriendRequests } from "./_components/FriendRequests";
+import { AddFriendModal } from "./_components/AddFriendModal";
+import { DirectChat } from "./_components/DirectChat";
+import { usePresence, UserStatus } from "@/hooks/usePresence";
+import { createClient } from "@/utils/supabase/client";
+import { Toast, ToastType } from "@/components/ui/Toast";
 
 export default function FriendsPage() {
-  const friends = [
-    { name: 'Carlos Ortiz', status: 'En Partida', online: true },
-    { name: 'Martha Lucia', status: 'En Línea', online: true },
-    { name: 'Jaime Ruiz', status: 'Desconectado', online: false },
-    { name: 'Elena Gomez', status: 'Jugando', online: true },
-  ]
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [data, setData] = useState<{ friends: any[], pendingIncoming: any[], pendingOutgoing: any[] }>({
+    friends: [],
+    pendingIncoming: [],
+    pendingOutgoing: []
+  });
+  const [loading, setLoading] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedChatFriend, setSelectedChatFriend] = useState<any | null>(null);
+
+  const supabase = createClient();
+  const { getStatus } = usePresence(data.friends);
+
+  const fetchData = useCallback(async () => {
+    // setLoading(true); // Don't set loading on re-fetch to avoid flicker
+    const res = await getFriendships();
+    setData(res);
+    setLoading(false);
+  }, []);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast(null);
+    setTimeout(() => setToast({ message, type }), 10);
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    // Subscribe to friendship changes to auto-update lists
+    const channel = supabase
+      .channel('friendships-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchData]);
+
+  const handleRemoveFriend = async (friendshipId: string) => {
+    if (confirm("¿Seguro que deseas eliminar a este amigo?")) {
+      const res = await removeFriendship(friendshipId);
+      if (res.success) {
+        showToast("Amigo eliminado correctamente", "success");
+        fetchData();
+      } else {
+        showToast("Error al eliminar amigo", "error");
+      }
+    }
+  };
+
+  // Map friends with real-time status
+  const friendsWithStatus = data.friends.map(f => ({
+    ...f,
+    status: getStatus(f.profile.id)
+  }));
 
   return (
-    <div className="min-h-full py-12 px-6 max-w-lg mx-auto space-y-8 animate-in fade-in duration-700">
-      <header className="flex justify-between items-end">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-black italic text-white uppercase tracking-tighter">Amigos</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Gestiona tu círculo de juego</p>
+    <div className="min-h-screen pb-24 pt-6 md:pt-12 px-4 sm:px-6 max-w-2xl mx-auto space-y-8">
+      {/* Header */}
+      <header className="flex justify-between items-end relative z-10">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 bg-brand-gold/10 rounded text-[8px] font-black text-brand-gold uppercase tracking-widest border border-brand-gold/20">
+              Social Club
+            </span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-display font-black italic text-white uppercase tracking-tighter leading-none">
+            Amigos
+          </h1>
+          <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em] opacity-60">
+            Mesa Primera • Elite Club
+          </p>
         </div>
-        <button className="p-4 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all text-white">
+        
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="relative group p-4 bg-brand-gold text-black rounded-[1.5rem] shadow-xl shadow-brand-gold/10 hover:scale-105 active:scale-95 transition-all"
+        >
           <UserPlus className="w-6 h-6" />
+          <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center border-4 border-slate-950">
+             <div className="w-1.5 h-1.5 bg-brand-gold rounded-full animate-pulse" />
+          </div>
         </button>
       </header>
 
-      <div className="space-y-4">
-        {friends.map((friend, i) => (
-          <motion.div 
-            key={friend.name}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-slate-900/50 border border-slate-800 p-5 rounded-[2rem] flex items-center justify-between group hover:bg-slate-900 transition-all"
-          >
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl flex items-center justify-center font-black text-slate-400 italic">
-                  {friend.name.charAt(0)}
-                </div>
-                {friend.online && (
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-slate-950 rounded-full" />
-                )}
-              </div>
-              <div>
-                <p className="font-black text-slate-200">{friend.name}</p>
-                <p className={`text-[10px] font-black uppercase tracking-widest ${friend.online ? 'text-emerald-500' : 'text-slate-600'}`}>
-                  {friend.status}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-               <button className="p-3 bg-white/5 rounded-xl text-slate-400 hover:text-white transition-colors">
-                  <MessageCircle className="w-5 h-5" />
-               </button>
-               {friend.online && friend.status !== 'En Partida' && (
-                 <button className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 hover:bg-emerald-500/20 transition-colors">
-                    <Gamepad2 className="w-5 h-5" />
-                 </button>
-               )}
-            </div>
-          </motion.div>
-        ))}
+      {/* Tabs */}
+      <div className="flex p-1.5 bg-white/5 border border-white/5 rounded-[2rem] relative z-10 backdrop-blur-md">
+        <button
+          onClick={() => setActiveTab('friends')}
+          className={`relative flex-1 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+            activeTab === 'friends' ? 'text-black' : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          {activeTab === 'friends' && (
+            <motion.div 
+              layoutId="tab-bg" 
+              className="absolute inset-0 bg-brand-gold rounded-full" 
+            />
+          )}
+          <span className="relative z-10 flex items-center justify-center gap-2">
+            Mis Amigos 
+            {data.friends.length > 0 && (
+              <span className={`px-1.5 rounded-md ${activeTab === 'friends' ? 'bg-black/10' : 'bg-white/5'}`}>
+                {data.friends.length}
+              </span>
+            )}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('requests')}
+          className={`relative flex-1 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+            activeTab === 'requests' ? 'text-black' : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          {activeTab === 'requests' && (
+            <motion.div 
+              layoutId="tab-bg" 
+              className="absolute inset-0 bg-brand-gold rounded-full" 
+            />
+          )}
+          <span className="relative z-10 flex items-center justify-center gap-2">
+            Solicitudes
+            {data.pendingIncoming.length > 0 && (
+              <span className={`px-1.5 rounded-md ${activeTab === 'requests' ? 'bg-black/10' : 'bg-brand-red text-white'}`}>
+                {data.pendingIncoming.length}
+              </span>
+            )}
+          </span>
+        </button>
       </div>
 
-      <button className="w-full h-16 border-2 border-dashed border-slate-800 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-slate-300 transition-colors">
-        Buscar nuevos jugadores
-      </button>
+      {/* Content */}
+      <main className="relative z-10 min-h-[50vh]">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 opacity-20">
+            <Loader2 className="w-10 h-10 animate-spin text-brand-gold mb-4" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-white">Sincronizando círculo...</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: activeTab === 'friends' ? -20 : 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: activeTab === 'friends' ? 20 : -20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            >
+              {activeTab === 'friends' ? (
+                <FriendsList 
+                  friends={friendsWithStatus} 
+                  onChat={(f) => setSelectedChatFriend(f)}
+                  onRemove={handleRemoveFriend}
+                  onAction={showToast}
+                  onRefresh={fetchData}
+                />
+              ) : (
+                <FriendRequests 
+                  requests={data.pendingIncoming} 
+                  onAction={showToast}
+                  onRefresh={fetchData}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </main>
+
+      <AnimatePresence>
+        {toast && (
+          <Toast 
+            message={toast.message} 
+            type={toast.type} 
+            onClose={() => setToast(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modals & Drawers */}
+      <AddFriendModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+      />
+      
+      <AnimatePresence>
+        {selectedChatFriend && (
+          <>
+            {/* Backdrop for mobile mobile */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedChatFriend(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[105]"
+            />
+            <DirectChat 
+              friend={selectedChatFriend} 
+              onClose={() => setSelectedChatFriend(null)} 
+            />
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Footer Info */}
+      {!loading && (
+        <footer className="text-center pt-8 pb-12 opacity-20">
+          <p className="text-[10px] font-black text-white uppercase tracking-[0.4em]">
+            Los datos se actualizan en tiempo real
+          </p>
+        </footer>
+      )}
     </div>
-  )
+  );
 }
