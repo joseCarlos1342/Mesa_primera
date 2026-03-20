@@ -10,54 +10,55 @@ export default function PlayerLoginPage() {
   const [state, formAction, isPending] = useActionState(loginWithPhone, null)
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans selection:bg-indigo-500/30 overflow-hidden">
-      {/* Premium Background */}
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-hidden">
+      {/* Premium Casino Background */}
       <div className="absolute inset-0 z-0">
-        <Image 
-          src="/images/login-bg.png"
-          alt="Luxury Background"
-          fill
-          className="object-cover opacity-30 animate-pulse-slow"
-          priority
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_#0a2a1f_100%)]" />
+        {/* Subtle Felt Texture Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3%3C/filter%3%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3%3C/svg%3")` }} 
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/80 to-slate-950" />
+        {/* Shadow Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
-      <div className="w-full max-w-sm z-10 animate-in fade-in zoom-in-95 duration-700">
-        <div className="text-center mb-10">
-          <h1 className="text-6xl md:text-7xl font-black tracking-tighter bg-gradient-to-br from-white via-indigo-200 to-indigo-500 bg-clip-text text-transparent italic">
+      <div className="w-full max-w-sm z-10 animate-in fade-in zoom-in-95 duration-1000">
+        {/* Logo Section */}
+        <div className="text-center mb-12">
+          <h1 className="text-6xl md:text-7xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
             MESA PRIMERA
           </h1>
-          <p className="text-indigo-300 font-bold uppercase tracking-[0.4em] text-[10px] mt-4">Elite Gaming Society</p>
         </div>
 
-        <div className="relative backdrop-blur-3xl bg-slate-900/50 border border-white/10 p-8 rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
-          <div className="space-y-2 mb-8 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black tracking-widest uppercase mb-2">
-              <LogIn className="w-3 h-3" /> Acceso Directo
+        {/* Login Card */}
+        <div className="relative backdrop-blur-2xl bg-black/40 border-2 border-brand-gold/20 p-8 rounded-[2.5rem] shadow-[0_40px_80px_rgba(0,0,0,0.7)]">
+          <div className="space-y-3 mb-10 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/30 text-brand-gold text-[12px] font-black tracking-widest uppercase mb-2">
+              <LogIn className="w-4 h-4" /> ACCESO SEGURO
             </div>
-            <h2 className="text-2xl font-bold text-white">Bienvenido de nuevo</h2>
+            <h2 className="text-3xl font-bold text-text-premium">Bienvenido</h2>
+            <p className="text-text-secondary text-base">Ingresa para entrar a la mesa</p>
           </div>
 
           {state?.error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-400 text-xs font-bold text-center">
+            <div className="mb-8 p-5 bg-brand-red/10 border-2 border-brand-red/30 rounded-2xl text-brand-red text-sm font-bold text-center animate-shake">
               {state.error}
             </div>
           )}
 
-          <form action={formAction} className="space-y-6">
-            <div className="space-y-2 group">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 group-focus-within:text-indigo-400 transition-colors">
+          <form action={formAction} className="space-y-8">
+            <div className="space-y-3 group">
+              <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors">
                 Tu Número de Celular
               </label>
               <div className="relative">
-                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 font-bold">+57</span>
+                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-brand-gold/80 font-black text-xl">+57</span>
                 <input
                   name="phone"
                   type="tel"
                   required
                   placeholder="320..."
-                  className="w-full h-18 pl-16 pr-6 bg-black/40 border border-white/5 rounded-2xl text-white text-xl placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all font-mono tracking-widest"
+                  className="w-full h-20 pl-20 pr-6 bg-black/50 border-2 border-white/10 rounded-2xl text-text-premium text-2xl placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono tracking-[0.2em]"
                 />
               </div>
             </div>
@@ -65,17 +66,20 @@ export default function PlayerLoginPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full h-18 bg-white text-slate-950 font-black uppercase tracking-widest text-xs rounded-2xl transition-all duration-300 hover:bg-indigo-600 hover:text-white hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] active:scale-95 disabled:opacity-50 overflow-hidden"
+              className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-sm rounded-2xl transition-all duration-300 shadow-[0_10px_0_#8b6b2e,0_20px_30px_rgba(0,0,0,0.5)] hover:translate-y-[2px] hover:shadow-[0_8px_0_#8b6b2e,0_15px_25px_rgba(0,0,0,0.5)] active:translate-y-[8px] active:shadow-none disabled:opacity-50 overflow-hidden"
             >
-              <span className="relative z-10">{isPending ? 'ENVIANDO OTP...' : 'ENTRAR A JUGAR'}</span>
-              <div className="absolute inset-0 bg-indigo-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-500" />
+              <span className="relative z-10 flex items-center justify-center gap-3">
+                {isPending ? 'AUTENTICANDO...' : 'ENTRAR A JUGAR'}
+              </span>
+              {/* Shimmer Effect */}
+              <div className="absolute inset-0 bg-white/20 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
             </button>
           </form>
 
-          <footer className="mt-8 pt-8 border-t border-white/5 text-center">
-            <p className="text-xs text-slate-500">
-              ¿Eres nuevo?{' '}
-              <Link href="/register/player" className="text-indigo-400 font-bold hover:text-indigo-300 underline underline-offset-4">
+          <footer className="mt-10 pt-10 border-t-2 border-white/5 text-center">
+            <p className="text-sm text-text-secondary">
+              ¿Aún no tienes cuenta?{' '}
+              <Link href="/register/player" className="text-brand-gold font-black hover:text-white underline underline-offset-8 decoration-2 decoration-brand-gold/40 hover:decoration-brand-gold transition-all">
                 Regístrate aquí
               </Link>
             </p>

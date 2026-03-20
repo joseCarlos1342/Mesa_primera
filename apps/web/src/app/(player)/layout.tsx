@@ -59,8 +59,8 @@ export default async function PlayerLayout({
 
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Support Trigger Button */}
-            <SupportTrigger />
+            {/* Support Trigger Button only for logged in users */}
+            {user && <SupportTrigger />}
 
             {user && <NotificationCenter userId={user.id} />}
             <SignOutButton className="!h-12 !w-12 md:!h-14 md:!w-auto !p-0 sm:!px-6 !rounded-2xl !bg-red-500/10 hover:!bg-red-500/20 !border-red-500/20 !text-red-400 active:scale-90 transition-all flex items-center justify-center sm:!aspect-auto min-w-[3rem]" />
