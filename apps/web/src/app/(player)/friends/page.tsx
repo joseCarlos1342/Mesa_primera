@@ -11,6 +11,7 @@ import { DirectChat } from "./_components/DirectChat";
 import { usePresence, UserStatus } from "@/hooks/usePresence";
 import { createClient } from "@/utils/supabase/client";
 import { Toast, ToastType } from "@/components/ui/Toast";
+import { useSearchParams } from "next/navigation";
 
 export default function FriendsPage() {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
@@ -25,6 +26,7 @@ export default function FriendsPage() {
   const [selectedChatFriend, setSelectedChatFriend] = useState<any | null>(null);
 
   const supabase = createClient();
+  const searchParams = useSearchParams();
   const { getStatus } = usePresence(data.friends);
 
   const fetchData = useCallback(async () => {
@@ -55,6 +57,19 @@ export default function FriendsPage() {
     };
   }, [fetchData]);
 
+  // Handle auto-opening chat from URL params
+  useEffect(() => {
+    if (!loading && data.friends.length > 0) {
+      const chatId = searchParams.get('chat');
+      if (chatId) {
+        const friend = data.friends.find(f => f.profile.id === chatId);
+        if (friend) {
+          setSelectedChatFriend(friend);
+        }
+      }
+    }
+  }, [loading, data.friends, searchParams]);
+
   const handleRemoveFriend = async (friendshipId: string) => {
     if (confirm("¿Seguro que deseas eliminar a este amigo?")) {
       const res = await removeFriendship(friendshipId);
@@ -76,7 +91,7 @@ export default function FriendsPage() {
   return (
     <div className="min-h-screen pb-24 pt-6 md:pt-12 px-4 sm:px-6 max-w-2xl mx-auto space-y-8">
       {/* Header */}
-      <header className="flex justify-between items-end relative z-10">
+      <header className="flex justify-between items-end relative">
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 bg-brand-gold/10 rounded text-[8px] font-black text-brand-gold uppercase tracking-widest border border-brand-gold/20">
@@ -103,7 +118,7 @@ export default function FriendsPage() {
       </header>
 
       {/* Tabs */}
-      <div className="flex p-1.5 bg-white/5 border border-white/5 rounded-[2rem] relative z-10 backdrop-blur-md">
+      <div className="flex p-1.5 bg-white/5 border border-white/5 rounded-[2rem] relative backdrop-blur-md">
         <button
           onClick={() => setActiveTab('friends')}
           className={`relative flex-1 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
@@ -149,7 +164,7 @@ export default function FriendsPage() {
       </div>
 
       {/* Content */}
-      <main className="relative z-10 min-h-[50vh]">
+      <main className="relative min-h-[50vh]">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-20">
             <Loader2 className="w-10 h-10 animate-spin text-brand-gold mb-4" />

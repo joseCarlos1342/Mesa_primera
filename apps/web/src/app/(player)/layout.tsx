@@ -4,6 +4,7 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { SupportChat } from "@/components/SupportChat";
 import { BottomNav } from "@/components/navigation/BottomNav";
+import { PresenceTracker } from "@/components/PresenceTracker";
 import { createClient } from "@/utils/supabase/server";
 import { getAvatarSvg } from "@/utils/avatars";
 
@@ -81,11 +82,12 @@ export default async function PlayerLayout({
         </div>
       </header>
       
-      <main className="relative z-10 flex-1 p-3 md:p-8 pb-20 md:pb-28 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <main className="relative flex-1 p-3 md:p-8 pb-20 md:pb-28 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
         {children}
       </main>
 
       <BottomNav />
+      {user && <PresenceTracker />}
       {user && <SupportChat userId={user.id} />}
     </div>
   );

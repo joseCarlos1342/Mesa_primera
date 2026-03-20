@@ -58,7 +58,7 @@ export default function PlayerLoginPage() {
                   type="tel"
                   required
                   placeholder="320..."
-                  className="w-full h-20 pl-20 pr-6 bg-black/50 border-2 border-white/10 rounded-2xl text-text-premium text-2xl placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono tracking-[0.2em]"
+                  className="w-full h-20 pl-20 pr-6 bg-black/50 border-2 border-white/10 rounded-2xl text-xl md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono tracking-[0.1em] md:tracking-[0.2em]"
                 />
               </div>
             </div>

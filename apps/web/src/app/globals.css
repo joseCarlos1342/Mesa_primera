@@ -125,4 +125,8 @@ body {
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(212, 175, 55, 0.5);
   }
+
+  .word-spacing-premium {
+    word-spacing: 0.25em;
+  }
 }

@@ -77,7 +77,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
           className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl landscape:max-h-[95vh] landscape:flex landscape:flex-col"
         >
           <div className="p-4 md:p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 landscape:py-3">
-            <h2 className="text-lg md:text-xl font-black italic text-indigo-400">CARGAR PESOS (COP)</h2>
+            <h2 className="text-lg md:text-xl font-black italic text-brand-gold drop-shadow-sm">CARGAR PESOS (COP)</h2>
             <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
               <X className="w-5 h-5 text-slate-400" />
             </button>
@@ -88,14 +88,14 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Monto (COP)</label>
                 <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500" />
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-gold" />
                   <input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
                     required
-                    className="w-full h-12 md:h-14 pl-12 pr-4 bg-black/40 border border-slate-700 rounded-2xl text-xl md:text-2xl font-black text-white focus:outline-none focus:border-indigo-500 transition-all font-mono"
+                    className="w-full h-12 md:h-14 pl-12 pr-4 bg-black/40 border border-white/10 rounded-2xl text-lg md:text-2xl font-black text-white focus:outline-none focus:border-brand-gold/50 transition-all font-mono"
                   />
                 </div>
               </div>
@@ -139,7 +139,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 md:h-14 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white font-black rounded-2xl transition-all shadow-lg shadow-indigo-600/20 uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-2"
+                className="w-full h-12 md:h-14 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark hover:brightness-110 active:scale-[0.98] disabled:opacity-50 text-black font-black rounded-2xl transition-all shadow-lg shadow-brand-gold/20 uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-2"
               >
                 {loading ? 'Subiendo...' : (
                   <>
@@ -150,15 +150,15 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               </button>
             </form>
 
-            <div className="mx-4 md:mx-6 mb-4 md:mb-6 p-3 md:p-4 bg-indigo-600/10 rounded-2xl border border-indigo-500/20 flex items-center justify-between">
+            <div className="mx-4 md:mx-6 mb-4 md:mb-6 p-3 md:p-4 bg-brand-gold/10 rounded-2xl border border-brand-gold/20 flex items-center justify-between">
               <div className="space-y-1">
                 <span className="text-slate-500 text-[8px] md:text-[9px] font-black uppercase tracking-widest block">Transferencia:</span>
-                <span className="font-mono text-lg md:text-xl font-black text-indigo-300 tracking-wider">3125822841</span>
+                <span className="font-mono text-lg md:text-xl font-black text-brand-gold tracking-wider">3125822841</span>
               </div>
               <button 
                 type="button"
                 onClick={copyToClipboard}
-                className={`p-2 md:p-3 rounded-xl transition-all flex items-center gap-2 ${copied ? 'bg-emerald-500 text-white' : 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40'}`}
+                className={`p-2 md:p-3 rounded-xl transition-all flex items-center gap-2 ${copied ? 'bg-emerald-500 text-white' : 'bg-brand-gold/20 text-brand-gold hover:bg-brand-gold/40'}`}
               >
                 {copied ? <Check className="w-4 h-4 md:w-5 md:h-5" /> : <Copy className="w-4 h-4 md:w-5 md:h-5" />}
                 <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">{copied ? 'Copiado' : 'Copiar'}</span>

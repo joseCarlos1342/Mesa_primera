@@ -116,7 +116,14 @@ export async function sendFriendRequest(friendId: string) {
   });
 
   revalidatePath("/friends");
-  return { success: true };
+
+  if (!error) {
+    // Create notification for receiver
+    const senderName = user.user_metadata?.username || user.email?.split('@')[0] || "Alguien";
+    await createNotification(friendId, "friend_request", "Solicitud de Amistad", `${senderName} quiere ser tu amigo.`, { senderId: user.id });
+  }
+
+  return { success: !error };
 }
 
 /**
@@ -140,6 +147,19 @@ export async function acceptFriendRequest(friendshipId: string) {
   }
 
   revalidatePath("/friends");
+
+  // Get original initiator to notify them
+  const { data: friendship } = await supabase
+    .from("friendships")
+    .select("user_id")
+    .eq("id", friendshipId)
+    .single();
+
+  if (friendship) {
+    const myName = user.user_metadata?.username || user.email?.split('@')[0] || "Alguien";
+    await createNotification(friendship.user_id, "friend_accepted", "Solicitud Aceptada", `${myName} ha aceptado tu solicitud de amistad.`, { friendId: user.id });
+  }
+
   return { success: true };
 }
 
@@ -170,6 +190,20 @@ export async function removeFriendship(friendshipId: string) {
 /**
  * NOTIFICATIONS
  */
+async function createNotification(userId: string, type: string, title: string, body: string, data?: any) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("notifications")
+    .insert({
+      user_id: userId,
+      type,
+      title,
+      body,
+      data
+    });
+  if (error) console.error("Error creating notification", error);
+}
+
 export async function getNotifications() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -197,6 +231,17 @@ export async function markNotificationAsRead(id: string) {
   return { success: !error };
 }
 
+export async function deleteNotification(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("id", id);
+
+  revalidatePath("/");
+  return { success: !error };
+}
+
 /**
  * DIRECT MESSAGING
  */
@@ -217,8 +262,9 @@ export async function sendDirectMessage(receiverId: string, content: string) {
 
   if (error) return { error: "Error al enviar mensaje" };
 
-  // Notify receiver? Optionally create a notification too
-  // await createNotification(receiverId, 'message', 'Mensaje Nuevo', content, { chatWith: user.id });
+  // Create notification for receiver
+  const myName = user.user_metadata?.username || user.email?.split('@')[0] || "Alguien";
+  await createNotification(receiverId, 'direct_message', 'Mensaje Nuevo', `${myName}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`, { senderId: user.id });
 
   return { success: true, message: data };
 }

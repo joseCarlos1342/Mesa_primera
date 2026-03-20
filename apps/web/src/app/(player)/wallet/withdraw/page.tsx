@@ -72,7 +72,7 @@ export default function WithdrawPage() {
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
                 required
-                className="w-full h-20 pl-12 pr-6 bg-black/60 border-2 border-brand-gold/10 rounded-[1.5rem] text-4xl font-display font-black text-text-premium placeholder:text-white/10 focus:outline-none focus:border-brand-gold/40 focus:bg-black/80 transition-all italic tracking-tight"
+                className="w-full h-20 pl-12 pr-6 bg-black/60 border-2 border-brand-gold/10 rounded-[1.5rem] text-2xl md:text-4xl font-display font-black text-text-premium placeholder:text-white/10 focus:outline-none focus:border-brand-gold/40 focus:bg-black/80 transition-all italic tracking-tight"
               />
             </div>
           </div>

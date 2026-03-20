@@ -11,7 +11,7 @@ export function usePresence(friends: any[]) {
   const supabase = createClient();
 
   useEffect(() => {
-    if (!friends || friends.length === 0) return;
+    // We want to subscribe even if friends is empty, to broadcast our own status
 
     const channel = supabase.channel('online-users', {
       config: {
