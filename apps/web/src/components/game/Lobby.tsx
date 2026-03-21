@@ -91,6 +91,11 @@ export function Lobby() {
           if (profile.username) {
             localStorage.setItem('nickname', profile.username)
           }
+          if (profile.avatar_url) {
+            localStorage.setItem('avatarUrl', profile.avatar_url)
+          } else if (user.user_metadata?.avatar_url) {
+            localStorage.setItem('avatarUrl', user.user_metadata.avatar_url)
+          }
         }
       }
     }
@@ -138,12 +143,15 @@ export function Lobby() {
         deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
         localStorage.setItem('deviceId', deviceId);
       }
+      
+      const avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
 
       const room = await client.create("mesa", { 
         tableName: `Mesa #${rooms.length + 1}`,
         maxPlayers: 7,
         nickname: nick,
-        deviceId: deviceId
+        deviceId: deviceId,
+        avatarUrl: avatarUrl
       })
       
       sessionStorage.setItem(`reconnectionToken_${room.roomId}`, room.reconnectionToken);
@@ -198,13 +206,37 @@ export function Lobby() {
     <div className="min-h-screen w-full bg-table animate-in fade-in duration-1000">
       <div className="w-full max-w-7xl mx-auto p-4 md:p-12 space-y-12 pb-24">
       {reconnecting && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500">
-           <div className="relative">
-             <div className="absolute inset-0 bg-emerald-500/20 blur-3xl animate-pulse" />
-             <RefreshCcw className="relative w-24 h-24 text-emerald-500 animate-spin mb-8" />
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-br from-black to-[#0d0d14] backdrop-blur-xl animate-in fade-in duration-500">
+          <div className="absolute inset-0 bg-[url('/textures/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#c5a059]/10 blur-[150px] rounded-full pointer-events-none" />
+           
+           <div className="relative z-10 flex flex-col items-center text-center px-4">
+             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border border-[#c5a059]/30 flex items-center justify-center bg-black/50 shadow-[0_0_50px_rgba(197,160,89,0.3)] mb-8">
+               <RefreshCcw className="w-12 h-12 md:w-16 md:h-16 text-[#c5a059] animate-spin" />
+             </div>
+             
+             <h2 className="text-3xl md:text-5xl font-display font-black uppercase tracking-[0.3em] text-white italic drop-shadow-premium mb-4">
+               Reconectando
+             </h2>
+             <span className="font-display font-black italic tracking-widest uppercase text-sm md:text-xl text-[#c5a059]/70 drop-shadow-md max-w-sm mb-12">
+               Restaurando tu sesión en la mesa...
+             </span>
+             
+             <button 
+               onClick={() => {
+                 const keys = Object.keys(sessionStorage);
+                 keys.forEach(k => {
+                   if (k.startsWith('reconnectionToken_')) {
+                     sessionStorage.removeItem(k);
+                   }
+                 });
+                 setReconnecting(false);
+               }}
+               className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-red-900/20 hover:bg-red-900/40 text-red-500 hover:text-red-400 border border-red-500/30 rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50"
+             >
+               Cancelar
+             </button>
            </div>
-           <h2 className="text-4xl font-black uppercase tracking-[0.4em] text-white italic animate-pulse">Reconectando</h2>
-            <span className={`relative z-10 font-display font-black italic tracking-widest uppercase text-sm md:text-2xl drop-shadow-md text-slate-400 mt-4 opacity-50`}>Restaurando tu sesión en la mesa...</span>
         </div>
       )}
 
@@ -393,6 +425,8 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
       try {
         const nick = localStorage.getItem('nickname') || 'Jugador';
         const deviceId = localStorage.getItem('deviceId') || 'dev_' + Math.random();
+        const avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
+        
         localStorage.setItem('nickname', nick);
         localStorage.setItem('deviceId', deviceId);
 
@@ -400,7 +434,8 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
           tableName: room.metadata.tableName,
           maxPlayers: 7,
           nickname: nick,
-          deviceId: deviceId
+          deviceId: deviceId,
+          avatarUrl: avatarUrl
         });
         
         sessionStorage.setItem(`reconnectionToken_${newRoom.roomId}`, newRoom.reconnectionToken);

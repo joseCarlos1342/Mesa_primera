@@ -69,7 +69,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false }: Player
        {/* Avatar Circle Frame (Brushed Gold) */}
        <div className={`
          relative rounded-full mb-2 z-10 flex items-center justify-center
-         ${isMe ? 'w-20 h-20 md:w-32 md:h-32 landscape:w-12 landscape:h-12 md:landscape:w-32 md:landscape:h-32' : 'w-14 h-14 md:w-24 md:h-24 landscape:w-9 landscape:h-9 md:landscape:w-24 md:landscape:h-24'}
+         ${isMe ? 'w-20 h-20 md:w-28 md:h-28 landscape:w-16 landscape:h-16 lg:landscape:w-32 lg:landscape:h-32' : 'w-14 h-14 md:w-20 md:h-20 landscape:w-12 landscape:h-12 lg:landscape:w-24 lg:landscape:h-24'}
          bg-gradient-to-br from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c]
          p-[3px] shadow-[0_8px_16px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)]
        `}>

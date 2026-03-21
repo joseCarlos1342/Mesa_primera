@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 
 export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Cierra el menú si se hace click fuera
@@ -23,6 +24,7 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
   }, [isMenuOpen])
 
   return (
+    <>
     <header className="flex h-14 md:h-16 w-full items-center justify-between px-4 md:px-6 bg-[#0c1220]/80 backdrop-blur-md border-b border-[#c0a060]/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative z-50 landscape:h-12 md:landscape:h-16">
       {/* Top Left: Hamburger Menu */}
       <div className="relative" ref={menuRef}>
@@ -86,12 +88,12 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
               <button 
                 onClick={() => {
                   setIsMenuOpen(false);
-                  if (onMenuClick) onMenuClick();
+                  setShowExitConfirm(true);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-500/10 transition-colors text-red-400 group"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-500/10 transition-colors text-red-500 group"
               >
-                <LogOut className="w-5 h-5 group-hover:text-red-300 transition-colors" />
-                <span className="font-bold tracking-wide group-hover:text-red-300 transition-colors">Salir al Lobby Central</span>
+                <LogOut className="w-5 h-5 group-hover:text-red-400 transition-colors" />
+                <span className="font-bold tracking-wide group-hover:text-red-400 transition-colors uppercase">Abandonar Partida</span>
               </button>
             </motion.div>
           )}
@@ -112,7 +114,54 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
       >
         <ShoppingCart className="w-7 h-7 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] hover:scale-110 transition-transform" />
       </button>
-
     </header>
+
+      {/* Exit Confirmation Modal */}
+      <AnimatePresence>
+        {showExitConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#0c1220] border border-red-500/30 rounded-[2rem] p-6 md:p-8 landscape:p-4 max-w-sm md:max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(239,68,68,0.2)] text-center relative overflow-y-auto max-h-[95vh] landscape:max-h-[90vh]"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-50" />
+              
+              <div className="w-16 h-16 landscape:w-10 landscape:h-10 landscape:mb-2 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                <LogOut className="w-8 h-8 landscape:w-5 landscape:h-5 text-red-500" />
+              </div>
+              
+              <h2 className="text-2xl md:text-3xl landscape:text-xl font-black text-white mb-2 landscape:mb-1 uppercase tracking-widest font-display">
+                ¿Abandonar Mesa?
+              </h2>
+              
+              <p className="text-slate-400 text-sm md:text-base landscape:text-xs mb-6 landscape:mb-4 leading-relaxed px-2">
+                Si abandonas la partida ahora, <strong className="text-red-400">perderás las fichas que ya apostaste</strong>, se quedarán en la mesa.
+              </p>
+              
+              <div className="flex gap-3 landscape:gap-2">
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="flex-1 py-3 px-4 landscape:py-2 min-h-[48px] rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm landscape:text-xs uppercase tracking-widest transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500 tactile-button"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowExitConfirm(false);
+                    if (onMenuClick) onMenuClick();
+                  }}
+                  className="flex-1 py-3 px-4 landscape:py-2 min-h-[48px] rounded-xl bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 border border-red-500/50 text-white font-bold text-sm landscape:text-xs uppercase tracking-widest transition-all shadow-[0_5px_15px_rgba(220,38,38,0.4)] hover:-translate-y-1 active:translate-y-1 hover:shadow-[0_8px_25px_rgba(220,38,38,0.6)] focus:outline-none focus:ring-2 focus:ring-red-400 tactile-button"
+                >
+                  Sí, Salir
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </>
   )
 }

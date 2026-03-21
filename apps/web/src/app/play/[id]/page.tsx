@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { client } from '@/lib/colyseus'
 import { createClient } from '@/utils/supabase/client'
 import { Room } from '@colyseus/sdk'
-import { Loader2, ArrowLeft, Users, Gamepad2, BookOpen } from 'lucide-react'
+import { Loader2, ArrowLeft, Users, Gamepad2, BookOpen, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useWakeLock } from '../../../../hooks/useWakeLock'
 import { Board } from '../../../components/game/Board'
@@ -60,6 +60,8 @@ export default function GameRoomPage() {
     if (hasAttemptedJoin.current) return;
     hasAttemptedJoin.current = true;
 
+    let activeRoom: Room | undefined;
+    
     async function joinRoom() {
       try {
         console.log(`Connecting to room ${roomId}...`);
@@ -84,17 +86,17 @@ export default function GameRoomPage() {
         
         if (!joinedRoom) {
           // Sync with Supabase session first
-          let avatarUrl = sessionStorage.getItem(`avatarUrl_${roomId}`)
+          let avatarUrl = sessionStorage.getItem(`avatarUrl_${roomId}`);
+          if (!avatarUrl) {
+            avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
+          }
+          
           if (!nick) {
             const supabase = createClient()
             const { data: { user } } = await supabase.auth.getUser()
             if (user?.user_metadata?.username) {
               nick = user.user_metadata.username
               sessionStorage.setItem(nickKey, nick!)
-              if (user.user_metadata.avatar_url) {
-                avatarUrl = String(user.user_metadata.avatar_url)
-                sessionStorage.setItem(`avatarUrl_${roomId}`, avatarUrl)
-              }
             }
           }
 
@@ -119,6 +121,7 @@ export default function GameRoomPage() {
           sessionStorage.setItem(tokenKey, joinedRoom.reconnectionToken);
         }
         
+        activeRoom = joinedRoom;
         console.log('Joined room:', joinedRoom)
         setRoom(joinedRoom)
 
@@ -159,12 +162,6 @@ export default function GameRoomPage() {
       } catch (err: any) {
         console.error('Join Error:', err)
         setError(err.message || 'Error al conectar con la sala')
-        // Si la sala no existe, redirigir al lobby después de unos segundos
-        if (err.message?.includes('not found')) {
-          setTimeout(() => {
-            window.location.href = '/'
-          }, 3000)
-        }
       } finally {
         setLoading(false)
       }
@@ -173,12 +170,10 @@ export default function GameRoomPage() {
     joinRoom()
 
     return () => {
-      // Si el componente se desmonta porque el usuario navegó a otra página (Lobby),
-      // queremos hacer un "Consented Leave" para que se libere el espacio inmediatamente en Colyseus
-      // y la sala no se bloquee o se llene de fantasmas.
-      if (room) {
-        // En Colyseus, leave(true) es consented, lo que remueve al jugador enseguida.
-        room.leave(true);
+      // Si el componente se desmonta porque el usuario navegó a otra página (Lobby)
+      if (activeRoom) {
+        sessionStorage.removeItem(`reconnectionToken_${roomId}`);
+        activeRoom.leave(true);
       }
     }
   }, [roomId]) // solo lo ejecutamos una vez, por eso hasAttemptedJoin
@@ -194,14 +189,26 @@ export default function GameRoomPage() {
 
   if (error) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-[#070b14] text-white p-6 text-center">
-        <div className="bg-red-950/30 border border-red-500/50 p-8 rounded-2xl max-w-md w-full">
-          <h2 className="text-2xl font-bold text-red-500 mb-4">Error de Conexión</h2>
-          <p className="text-[#a8b2d1] mb-8">{error}</p>
-          <Link href="/" className="inline-flex items-center gap-2 bg-[#1b253b] hover:bg-[#25324d] px-6 py-3 rounded-xl transition-colors">
-            <ArrowLeft className="h-5 w-5" />
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-black to-[#0a0a0a] text-[#f3edd7] p-6 text-center">
+        {/* Background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/20 blur-[100px] rounded-full pointer-events-none" />
+        
+        <div className="relative z-10 bg-black/60 backdrop-blur-2xl border-2 border-red-900/50 p-10 rounded-3xl max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-900 flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(231,76,60,0.4)] border border-red-400/30">
+             <AlertCircle className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-3xl md:text-4xl font-black font-display text-[#e74c3c] uppercase tracking-widest mb-4 drop-shadow-premium">Error de Conexión</h2>
+          <p className="text-[#a0a0b0] mb-8 text-sm md:text-base leading-relaxed">{error}</p>
+          <button 
+            onClick={() => {
+              sessionStorage.removeItem(`reconnectionToken_${roomId}`);
+              router.push('/');
+            }}
+            className="inline-flex items-center justify-center gap-3 w-full bg-gradient-to-b from-[#1b1b24] to-[#0a0a0f] hover:from-[#2a2a35] hover:to-[#1a1a24] border border-white/10 hover:border-white/20 px-8 py-4 rounded-2xl transition-all shadow-[0_10px_20px_rgba(0,0,0,0.5)] hover:-translate-y-1 active:translate-y-1 active:scale-95 text-white uppercase font-bold tracking-widest text-sm tactile-button"
+          >
+            <ArrowLeft className="h-5 w-5 text-[#c5a059]" />
             Vuelve al Lobby
-          </Link>
+          </button>
         </div>
       </div>
     )
@@ -223,34 +230,36 @@ export default function GameRoomPage() {
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#c0a060]/5 rounded-full blur-[150px] pointer-events-none" />
             
             {/* Main Luxury Panel */}
-            <div className="relative z-10 w-full max-w-5xl bg-gradient-to-br from-black/60 to-black/80 backdrop-blur-2xl border-2 border-[#c0a060]/30 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col items-center max-h-[90vh] overflow-y-auto custom-scrollbar space-y-6 md:space-y-10">
+            <div className="relative z-10 w-full max-w-5xl bg-gradient-to-br from-black/70 to-black/90 backdrop-blur-2xl border-2 border-[#c5a059]/30 rounded-[2rem] md:rounded-[3.5rem] p-4 md:p-12 landscape:p-4 landscape:md:p-8 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-y-auto custom-scrollbar space-y-4 md:space-y-10 landscape:space-y-2">
               
-              <div className="flex flex-col items-center">
-                <Users className="w-8 h-8 md:w-16 md:h-16 text-[#c0a060] drop-shadow-[0_0_15px_rgba(192,160,96,0.5)] mb-2 md:mb-4" />
-                <h2 className="text-3xl md:text-6xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium text-center">
-                  Sala de Espera
-                </h2>
-                <div className="flex items-center gap-3 mt-4 md:mt-6">
-                  <div className="hidden sm:block h-0.5 w-8 md:w-12 bg-[#c0a060]/30 rounded-full" />
-                  <p className="text-[#f3edd7]/60 text-[10px] md:text-[12px] font-black uppercase tracking-[0.4em]">
-                    Jugadores en mesa: <span className="text-[#c0a060] text-[11px] md:text-[14px]">{players.length}</span> <span className="opacity-40">/ 7</span>
-                  </p>
-                  <div className="hidden sm:block h-0.5 w-8 md:w-12 bg-[#c0a060]/30 rounded-full" />
+              <div className="flex flex-col items-center landscape:flex-row landscape:gap-6 landscape:items-center">
+                <Users className="w-8 h-8 md:w-16 md:h-16 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] mb-2 md:mb-4 landscape:mb-0 landscape:w-8 landscape:h-8" />
+                <div className="flex flex-col items-center landscape:items-start">
+                  <h2 className="text-3xl md:text-6xl landscape:text-2xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium text-center landscape:text-left">
+                    Sala de Espera
+                  </h2>
+                  <div className="flex items-center gap-3 mt-2 md:mt-6 landscape:mt-1">
+                    <div className="hidden sm:block h-0.5 w-8 md:w-12 bg-[#c5a059]/30 rounded-full" />
+                    <p className="text-[#f3edd7]/60 text-[10px] md:text-[12px] font-black uppercase tracking-[0.4em]">
+                      Jugadores: <span className="text-[#c5a059] text-[11px] md:text-[14px]">{players.length}</span> <span className="opacity-40">/ 7</span>
+                    </p>
+                    <div className="hidden sm:block h-0.5 w-8 md:w-12 bg-[#c5a059]/30 rounded-full" />
+                  </div>
                 </div>
               </div>
 
               {/* Player Plates Grid */}
               {players.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6 w-full justify-items-center w-full mt-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 landscape:grid-cols-4 gap-3 md:gap-6 landscape:gap-2 w-full justify-items-center mt-2 landscape:mt-1">
                   {players.map(p => {
                     const isMe = room?.sessionId === p.id;
                     return (
                       <div 
                         key={p.id} 
                         className={`
-                          w-full flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl border transition-all
+                          w-full flex items-center gap-3 md:gap-4 landscape:gap-2 px-4 md:px-6 landscape:px-3 py-3 md:py-4 landscape:py-2 rounded-xl md:rounded-2xl border transition-all
                           ${p.isReady 
-                            ? 'bg-gradient-to-br from-[#1b4d3e]/80 to-[#0e2a22] border-[#c0a060]/40 shadow-[0_10px_20px_rgba(0,0,0,0.5)]' 
+                            ? 'bg-gradient-to-br from-[#1b4d3e]/90 to-[#0e2a22] border-[#c5a059]/50 shadow-[0_10px_20px_rgba(0,0,0,0.5)] scale-105 z-10' 
                             : 'bg-black/40 border-white/5 shadow-inner opacity-60'}
                         `}
                       >
@@ -258,16 +267,16 @@ export default function GameRoomPage() {
                         <div className={`
                           w-3 h-3 md:w-4 md:h-4 rounded-full flex-shrink-0 border border-black/50
                           ${p.isReady 
-                            ? 'bg-gradient-to-br from-[#4ade80] to-[#16a34a] shadow-[0_0_10px_rgba(74,222,128,0.8)]' 
-                            : 'bg-gradient-to-br from-red-600 to-red-900 shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]'} 
+                            ? 'bg-gradient-to-br from-[#2ecc71] to-[#27ae60] shadow-[0_0_12px_rgba(46,204,113,0.8)]' 
+                            : 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]'} 
                           ${isMe ? 'animate-pulse' : ''}
                         `} />
                         
                         <div className="flex flex-col items-start overflow-hidden flex-1">
-                          <span className={`${p.isReady ? 'text-white' : 'text-slate-400'} font-bold truncate w-full text-left text-xs md:text-base`}>
-                            {p.nickname} {isMe ? <span className="text-[#c0a060] font-normal text-[10px] md:text-xs ml-1 tracking-widest uppercase">(Tú)</span> : ''}
+                          <span className={`${p.isReady ? 'text-[#f3edd7]' : 'text-slate-400'} font-bold truncate w-full text-left text-xs md:text-base landscape:text-sm`}>
+                            {p.nickname} {isMe ? <span className="text-[#c5a059] font-normal text-[10px] md:text-xs ml-1 tracking-widest uppercase">(Tú)</span> : ''}
                           </span>
-                          <span className="text-[#c0a060]/80 font-black font-display tracking-tight text-xs md:text-sm mt-0.5">
+                          <span className="text-[#c5a059] font-black font-display tracking-tight text-xs md:text-sm landscape:text-xs mt-0.5">
                             ${p.chips >= 1000 ? (p.chips/1000).toFixed(1) + 'k' : p.chips}
                           </span>
                         </div>
@@ -282,24 +291,23 @@ export default function GameRoomPage() {
                   {players.find(p => p.id === room?.sessionId)?.isReady ? (
                     <button 
                       onClick={() => room.send('toggleReady', { isReady: false })}
-                      className="w-full max-w-sm h-14 md:h-20 bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] hover:from-[#fca5a5] hover:via-[#ef4444] hover:to-[#b91c1c] text-white rounded-2xl font-black text-sm md:text-xl shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-[#fca5a5]/50 border-b-[4px] md:border-b-[6px] border-b-[#7f1d1d]"
+                      className="w-full max-w-sm h-16 md:h-20 bg-gradient-to-b from-[#e74c3c] via-[#c0392b] to-[#922b21] hover:from-[#f1948a] hover:via-[#e74c3c] hover:to-[#c0392b] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-12 landscape:text-xs shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#7b241c] tactile-button"
                     >
                       Anular Listo
                     </button>
                   ) : (
                     <button 
                       onClick={() => room.send('toggleReady', { isReady: true })}
-                      className="w-full max-w-sm h-14 md:h-20 bg-gradient-to-b from-[#4ade80] via-[#16a34a] to-[#14532d] hover:from-[#86efac] hover:via-[#22c55e] hover:to-[#16a34a] text-white rounded-2xl font-black text-sm md:text-xl shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-[#86efac]/50 border-b-[4px] md:border-b-[6px] border-b-[#064e3b]"
+                      className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8449] hover:from-[#82e0aa] hover:via-[#2ecc71] hover:to-[#27ae60] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#186a3b] tactile-button"
                     >
                       ¡Estoy Listo!
                     </button>
                   )}
-                  
-                  {/* Status Messages Below Button */}
+                           {/* Status Messages Below Button */}
                   <div className="h-12 md:h-16 mt-2 md:mt-6 flex flex-col justify-center items-center landscape:mt-2">
                     {players.length < (room?.state.minPlayers || 3) ? (
-                      <p className="text-[#a8b2d1]/50 uppercase tracking-widest text-sm md:text-base font-bold text-center">
-                        Esperando al menos <span className="text-white">{room?.state.minPlayers || 3} jugadores</span>...
+                      <p className="text-[#a0a0b0] uppercase tracking-widest text-[10px] md:text-base font-bold text-center">
+                        Esperando al menos <span className="text-[#f3edd7]">{room?.state.minPlayers || 3} jugadores</span>...
                       </p>
                     ) : (
                       <>
@@ -313,7 +321,7 @@ export default function GameRoomPage() {
                         {countdown > 0 && countdown <= 60 && (
                           <div className="flex flex-col items-center gap-3 w-full max-w-xs animate-in fade-in zoom-in duration-300">
                              <p className="text-[#fdf0a6] font-black tracking-widest uppercase text-xl">
-                               Iniciando: <span className="text-white text-3xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{countdown}</span>
+                                Iniciando: <span className="text-white text-3xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{countdown}</span>
                              </p>
                              <div className="w-full h-3 bg-black/50 rounded-full overflow-hidden border border-white/10 shadow-inner">
                                 <div 
@@ -351,7 +359,7 @@ export default function GameRoomPage() {
         
         {/* Voice Chat Component */}
         {room && (
-          <div className="fixed bottom-6 right-6 z-50">
+          <div className="fixed bottom-6 right-6 landscape:bottom-2 landscape:right-2 z-50 landscape:scale-75 origin-bottom-right">
              <VoiceChat 
                 roomName={roomId} 
                 username={players.find(p => p.id === room?.sessionId)?.nickname || 'Jugador'} 
