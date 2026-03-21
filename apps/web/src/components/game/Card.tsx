@@ -46,7 +46,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
         rotateY: { duration: 0.6, ease: "easeInOut", delay: delay + 0.2 },
         zIndex: { delay: delay + 0.3 }
       }}
-      className={`relative w-20 h-[8rem] md:w-32 md:h-[13rem] landscape:h-[6.5rem] landscape:w-12 md:landscape:h-[13rem] md:landscape:w-32 rounded-xl md:rounded-2xl shadow-2xl transform-style-3d cursor-pointer ${className}`}
+      className={`relative w-20 h-[8rem] md:w-28 md:h-[11rem] lg:w-32 lg:h-[13rem] landscape:h-[35vh] landscape:max-h-[140px] landscape:w-[24vh] landscape:max-w-[96px] lg:landscape:h-[13rem] lg:landscape:w-32 rounded-xl md:rounded-2xl shadow-2xl transform-style-3d cursor-pointer ${className}`}
       style={{ perspective: 1000 }}
     >
       <div 

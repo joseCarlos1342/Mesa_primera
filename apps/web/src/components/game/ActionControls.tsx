@@ -86,7 +86,7 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                       disabled={!canAfford}
                       onClick={() => setSelectedChip(isSelected ? null : val)}
                       className={`
-                        flex-shrink-0 w-12 h-12 md:w-16 md:h-16 landscape:w-10 landscape:h-10 md:landscape:w-16 md:landscape:h-16 rounded-full flex items-center justify-center snap-center relative
+                        flex-shrink-0 w-12 h-12 md:w-16 md:h-16 landscape:w-10 landscape:h-10 lg:landscape:w-16 lg:landscape:h-16 rounded-full flex items-center justify-center snap-center relative
                         font-black tracking-tighter shadow-xl transition-all border-[4px] border-dashed
                         ${colorClass}
                         ${canAfford 

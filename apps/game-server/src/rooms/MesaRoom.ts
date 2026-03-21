@@ -137,24 +137,49 @@ export class MesaRoom extends Room<{ state: GameState }> {
     
     const deviceId = options.deviceId;
     
-    // React Strict Mode deduplication / Ghost player cleanup:
-    // If we find another player with the SAME exact deviceId that is disconnected,
-    // it's likely a hot-reload or duplicate connection we should clean up.
-    // Also fallback to nickname + disconnected if deviceId missing (rare).
+    // Ghost player cleanup and state restoration:
+    // Mismo deviceId = Misma persona. Incluso si siguen `connected: true` (ej: cerraron la app de golpe y el socket sigue vivo).
     const existingPlayerEntry = Array.from(this.state.players.entries()).find(
-      ([_, p]) => !p.connected && 
-                 ((deviceId && p.deviceId === deviceId) || (p.nickname === requestedNickname))
+      ([_, p]) => (deviceId && p.deviceId === deviceId)
     );
     
     if (existingPlayerEntry) {
-      // Reemplazamos la sesión anterior
-      const [oldSessionId, _] = existingPlayerEntry;
-      console.log(`[MesaRoom] Reemplazando sesión fantasma ${oldSessionId} con la nueva ${client.sessionId} (Match: ${requestedNickname}/${deviceId})`);
-      this.state.players.delete(oldSessionId);
+      const [oldSessionId, oldPlayer] = existingPlayerEntry;
+      console.log(`[MesaRoom] Restaurando asiento de ${oldSessionId} hacia la nueva conexión ${client.sessionId}...`);
       
+      // Forzar cierre del socket viejo si seguía atascado
+      if (oldPlayer.connected) {
+         try {
+           const oldClient = this.clients.find(c => c.sessionId === oldSessionId);
+           if (oldClient) oldClient.leave(4000, "Replaced by new connection");
+         } catch(e) {}
+      }
+      
+      const newPlayer = new Player();
+      newPlayer.id = client.sessionId;
+      newPlayer.nickname = oldPlayer.nickname;
+      newPlayer.avatarUrl = oldPlayer.avatarUrl;
+      newPlayer.chips = oldPlayer.chips;
+      newPlayer.cards = oldPlayer.cards;
+      newPlayer.isReady = oldPlayer.isReady;
+      newPlayer.hasActed = oldPlayer.hasActed;
+      newPlayer.isFolded = oldPlayer.isFolded;
+      newPlayer.connected = true;
+      newPlayer.deviceId = oldPlayer.deviceId;
+
+      this.state.players.delete(oldSessionId);
+      this.state.players.set(client.sessionId, newPlayer);
+
       if (this.state.dealerId === oldSessionId) {
         this.state.dealerId = client.sessionId;
       }
+      if (this.state.turnPlayerId === oldSessionId) {
+        this.state.turnPlayerId = client.sessionId;
+      }
+      
+      this.updateLobbyMetadata();
+      this.checkStartCountdown();
+      return;
     }
     
     console.log(`[MesaRoom] Cliente unido: ${client.sessionId} -> ${requestedNickname}`);

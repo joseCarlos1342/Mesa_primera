@@ -29,12 +29,12 @@ export function Board({ room, phase, pot, players }: BoardProps) {
 
   // Define 6 fixed elliptical seat positions for opponents (slots for 7 players total)
   const opponentSeats = [
-    "top-[50%] left-[8%] landscape:top-[45%] landscape:left-[10%] md:landscape:top-[50%] md:landscape:left-[6%]",   // Seat 1: Left
-    "top-[28%] left-[18%] landscape:top-[12%] landscape:left-[22%] md:landscape:top-[28%] md:landscape:left-[15%]",  // Seat 2: Top-Left
-    "top-[18%] left-[34%] landscape:top-[8%] landscape:left-[36%] md:landscape:top-[18%] md:landscape:left-[32%]",  // Seat 3: Top-Mid-Left
-    "top-[18%] right-[34%] landscape:top-[8%] landscape:right-[36%] md:landscape:top-[18%] md:landscape:right-[32%]", // Seat 4: Top-Mid-Right
-    "top-[28%] right-[18%] landscape:top-[12%] landscape:right-[22%] md:landscape:top-[28%] md:landscape:right-[15%]", // Seat 5: Top-Right
-    "top-[50%] right-[8%] landscape:top-[45%] landscape:right-[10%] md:landscape:right-[6%]"   // Seat 6: Right
+    "top-[50%] left-[8%] landscape:top-[50%] landscape:left-[4%] lg:landscape:left-[8%]",   // Seat 1: Left
+    "top-[28%] left-[18%] landscape:top-[12%] landscape:left-[15%] lg:landscape:top-[28%] lg:landscape:left-[18%]",  // Seat 2: Top-Left
+    "top-[18%] left-[34%] landscape:top-[4%] landscape:left-[35%] lg:landscape:top-[18%] lg:landscape:left-[34%]",  // Seat 3: Top-Mid-Left
+    "top-[18%] right-[34%] landscape:top-[4%] landscape:right-[35%] lg:landscape:top-[18%] lg:landscape:right-[34%]", // Seat 4: Top-Mid-Right
+    "top-[28%] right-[18%] landscape:top-[12%] landscape:right-[15%] lg:landscape:top-[28%] lg:landscape:right-[18%]", // Seat 5: Top-Right
+    "top-[50%] right-[8%] landscape:top-[50%] landscape:right-[4%] lg:landscape:right-[8%]"   // Seat 6: Right
   ];
 
   // We show 7 slots regardless of player count
@@ -140,7 +140,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none mt-4">
         
         {/* Pot Indicators matching mockup */}
-        <div className="flex flex-col items-center gap-1 md:gap-2 mb-2 md:mb-6 pointer-events-auto landscape:scale-[0.55] md:landscape:scale-100 landscape:-mb-12 md:landscape:mb-0">
+        <div className="flex flex-col items-center gap-1 md:gap-2 mb-2 md:mb-6 pointer-events-auto landscape:scale-[0.65] lg:landscape:scale-100 landscape:mt-8 lg:landscape:mt-0">
           <div className="flex items-center gap-8 md:gap-24 mb-1 md:mb-2">
              <div className="flex flex-col items-center">
                 <span className="text-[#fdf0a6] text-[8px] md:text-xs font-bold uppercase tracking-widest mb-0.5 md:mb-1 drop-shadow-md">POZO PRINCIPAL:</span>
@@ -159,7 +159,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
         </div>
 
          {/* Center Cards area (Deck and Discard) */}
-         <div className="relative flex items-center justify-center gap-4 md:gap-8 landscape:scale-[0.5] md:landscape:scale-100 pointer-events-auto">
+         <div className="relative flex items-center justify-center gap-4 md:gap-8 landscape:scale-[0.65] lg:landscape:scale-100 pointer-events-auto">
             {/* Draw Pile (Back) */}
             <div className="relative group cursor-pointer" onClick={() => {}}>
                <div className="w-12 h-18 md:w-20 md:h-28 bg-[#1a1103] rounded-lg absolute translate-x-1 translate-y-1 shadow-lg" />
@@ -190,7 +190,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
       <div className="absolute bottom-2 md:bottom-6 left-1/2 transform -translate-x-1/2 z-30 flex items-center gap-4 md:gap-12 w-full max-w-5xl px-4 justify-center">
         {me && (
           <>
-            <div className="shrink-0 mb-4 landscape:hidden md:landscape:block">
+            <div className="shrink-0 mb-4 landscape:scale-75 lg:landscape:scale-100 origin-bottom-left">
               <PlayerBadge 
                 player={me} 
                 isActive={room.state.turnPlayerId === me.id} 
@@ -200,13 +200,13 @@ export function Board({ room, phase, pot, players }: BoardProps) {
             </div>
 
             {/* My Cards - Closer to mockup fan */}
-            <div className="relative flex items-end justify-center h-[80px] md:h-[180px] w-full md:w-[500px] landscape:h-[60px] md:landscape:h-[180px] landscape:scale-[0.55] md:landscape:scale-100 mb-1 md:mb-4">
+            <div className="relative flex items-end justify-center h-[80px] md:h-[180px] w-full md:w-[500px] landscape:h-[20vh] lg:landscape:h-[180px] mb-2 md:mb-4 origin-bottom overflow-visible">
               {me.cards && me.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
                  const isSelected = selectedCards.includes(cardStr);
                  const middle = (arr.length - 1) / 2;
                  const angle = (idx - middle) * 8; 
-                 const offsetX = (idx - middle) * (window.innerWidth < 1000 ? 45 : 70); 
-                 const baseOffsetY = Math.abs(idx - middle) * 8;
+                 const offsetX = (idx - middle) * (typeof window !== 'undefined' && window.innerWidth < 1000 ? (window.innerHeight < 500 ? 30 : 40) : 70); 
+                 const baseOffsetY = Math.abs(idx - middle) * (typeof window !== 'undefined' && window.innerHeight < 500 ? 4 : 8);
                  
                  const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
                  const handleCardClick = () => {
