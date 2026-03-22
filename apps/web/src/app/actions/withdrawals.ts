@@ -38,25 +38,44 @@ export async function requestWithdrawal(amount: number, bankDetails: string) {
 export async function getPendingWithdrawals() {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  // 1. Fetch pending requests
+  const { data: requests, error: requestsError } = await supabase
     .from('withdrawal_requests')
-    .select('*, profiles(username), wallets:user_id(balance_cents)')
+    .select('*')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  if (error) return { error: error.message }
-  
-  // Return cleaner data structure
-  const adaptedData = data?.map((w: any) => {
-    const rawUsername = w.profiles?.username || 'Jugador'
-    // Remove any leading @ to avoid double @@ in UI
+  if (requestsError) return { error: requestsError.message }
+  if (!requests || requests.length === 0) return { withdrawals: [] }
+
+  const userIds = requests.map(r => r.user_id).filter(Boolean) as string[]
+
+  // 2. Fetch profiles and wallets separately
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .in('id', userIds)
+
+  const { data: wallets, error: walletsError } = await supabase
+    .from('wallets')
+    .select('user_id, balance_cents')
+    .in('user_id', userIds)
+
+  // 3. Create maps for lookups
+  const profileMap = new Map(profiles?.map(p => [p.id, p]))
+  const walletMap = new Map(wallets?.map(w => [w.user_id, w.balance_cents]))
+
+  const adaptedData = requests.map((w: any) => {
+    const profile = profileMap.get(w.user_id)
+    const rawUsername = profile?.username || 'Jugador'
     const cleanUsername = rawUsername.startsWith('@') ? rawUsername.substring(1) : rawUsername
+    const userBalance = walletMap.get(w.user_id) || 0
 
     return {
       ...w,
       userName: cleanUsername,
       amount: w.amount_cents,
-      userBalance: w.wallets?.balance_cents || 0
+      userBalance: userBalance
     }
   });
 
