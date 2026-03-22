@@ -50,7 +50,7 @@ export async function getUsersList(): Promise<AdminUserView[]> {
       id, full_name, username, phone, role, is_banned, ban_reason, banned_at, created_at,
       wallets!left(balance_cents, currency),
       devices:user_devices(id, fingerprint, is_trusted),
-      stats:player_stats(total_games, wins)
+      stats:player_stats(games_played, games_won)
     `)
     .order("created_at", { ascending: false });
 
@@ -64,8 +64,8 @@ export async function getUsersList(): Promise<AdminUserView[]> {
     balance_cents: p.wallets ? (Array.isArray(p.wallets) ? (p.wallets.length > 0 ? Number(p.wallets[0].balance_cents) : 0) : Number((p.wallets as any).balance_cents || 0)) : 0,
     last_login: p.created_at,
     stats: p.stats ? {
-      games_played: Array.isArray(p.stats) ? (p.stats[0] as any)?.total_games || 0 : (p.stats as any).total_games || 0,
-      games_won: Array.isArray(p.stats) ? (p.stats[0] as any)?.wins || 0 : (p.stats as any).wins || 0
+      games_played: Array.isArray(p.stats) ? (p.stats[0] as any)?.games_played || 0 : (p.stats as any).games_played || 0,
+      games_won: Array.isArray(p.stats) ? (p.stats[0] as any)?.games_won || 0 : (p.stats as any).games_won || 0
     } : { games_played: 0, games_won: 0 }
   })) as AdminUserView[];
 }
