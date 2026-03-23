@@ -55,7 +55,7 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
   })
 
   if (error) {
-    console.error(`[AUTH_ERROR] Error en registro (${phone}):`, error.message, error)
+    console.error('[AUTH_ERROR] Error en registro (%s): %s', phone, error.message, error)
 
     if (error.message.includes('saving new user')) {
       return { error: 'Error al crear el perfil. Es posible que el nombre de usuario (apodo) o el teléfono ya estén registrados por otra persona.' }
@@ -85,7 +85,7 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
   })
 
   if (error) {
-    console.error(`[AUTH_ERROR] Error en login (${phone}):`, error.message)
+    console.error('[AUTH_ERROR] Error en login (%s): %s', phone, error.message)
 
     if (error.message.includes('User not found') || error.message.includes('can only use shouldCreateUser: true')) {
       return { error: 'Usuario no encontrado. Por favor, regístrate primero.' }
