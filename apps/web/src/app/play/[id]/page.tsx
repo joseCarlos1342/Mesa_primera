@@ -8,11 +8,20 @@ import { Room } from '@colyseus/sdk'
 import { Loader2, ArrowLeft, Users, Gamepad2, BookOpen, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useWakeLock } from '../../../../hooks/useWakeLock'
-import { Board } from '../../../components/game/Board'
 import { RulesModal } from '@/components/game/RulesModal'
 import { ReconnectOverlay } from '@/components/game/ReconnectOverlay'
-import { VoiceChat } from '@/components/VoiceChat'
 import { GameHeader } from '@/components/game/game-header'
+import dynamic from 'next/dynamic'
+
+const Board = dynamic(
+  () => import('../../../components/game/Board').then(mod => mod.Board),
+  { ssr: false }
+)
+
+const VoiceChat = dynamic(
+  () => import('@/components/VoiceChat').then(mod => mod.VoiceChat),
+  { ssr: false }
+)
 import { DepositModal } from '@/components/game/DepositModal'
 
 export default function GameRoomPage() {
@@ -249,7 +258,7 @@ export default function GameRoomPage() {
               </div>
 
               {/* Player Plates Grid */}
-              {players.length > 0 && (
+              {players.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 landscape:grid-cols-4 gap-3 md:gap-6 landscape:gap-2 w-full justify-items-center mt-2 landscape:mt-1">
                   {players.map(p => {
                     const isMe = room?.sessionId === p.id;
@@ -284,7 +293,7 @@ export default function GameRoomPage() {
                     );
                   })}
                 </div>
-              )}
+              ) : null}
               
               {room && (
                 <div className="flex flex-col items-center w-full">
@@ -318,7 +327,7 @@ export default function GameRoomPage() {
                           </p>
                         )}
                         
-                        {countdown > 0 && countdown <= 60 && (
+                        {countdown > 0 && countdown <= 60 ? (
                           <div className="flex flex-col items-center gap-3 w-full max-w-xs animate-in fade-in zoom-in duration-300">
                              <p className="text-[#fdf0a6] font-black tracking-widest uppercase text-xl">
                                 Iniciando: <span className="text-white text-3xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{countdown}</span>
@@ -330,9 +339,9 @@ export default function GameRoomPage() {
                                 />
                              </div>
                           </div>
-                        )}
+                        ) : null}
 
-                        {players.filter((p: any) => p.isReady).length >= (room?.state.minPlayers || 3) && countdown < 0 && (
+                        {players.filter((p: any) => p.isReady).length >= (room?.state.minPlayers || 3) && countdown < 0 ? (
                           dealerId === room.sessionId ? (
                             <button 
                               onClick={() => room.send('startGame')}
@@ -345,9 +354,9 @@ export default function GameRoomPage() {
                               Esperando al anfitrión...
                             </p>
                           )
-                        )}
+                        ) : null}
                       </>
-                    )}
+                   )}
                   </div>
                 </div>
               )}
