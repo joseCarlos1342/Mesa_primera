@@ -19,9 +19,66 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mesa Primera",
-  description: "Juego de Cartas Multijugador",
+  metadataBase: new URL("https://mesaprimera.com"),
+  title: {
+    default: "Mesa Primera | Juego de Cartas Multijugador",
+    template: "%s | Mesa Primera",
+  },
+  description:
+    "Disfruta de Mesa Primera, el mejor juego de cartas multijugador online. Juega con amigos, compite en torneos y demuestra tu habilidad.",
+  keywords: [
+    "Mesa Primera",
+    "juego de cartas",
+    "multijugador",
+    "casino online",
+    "cartas online",
+    "amigos",
+    "solitario",
+  ],
+  authors: [{ name: "Mesa Primera Team" }],
+  creator: "Mesa Primera Team",
+  publisher: "Mesa Primera Team",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    url: "https://mesaprimera.com",
+    siteName: "Mesa Primera",
+    title: "Mesa Primera | Juego de Cartas Multijugador",
+    description:
+      "Juega a Mesa Primera con amigos. El juego de cartas más emocionante y social.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Mesa Primera - Mesa de Juego",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mesa Primera | Juego de Cartas Multijugador",
+    description:
+      "Juega a Mesa Primera con amigos. El juego de cartas más emocionante y social.",
+    images: ["/og-image.png"],
+  },
   manifest: "/manifest.json",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({
@@ -29,8 +86,29 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Mesa Primera",
+    "url": "https://mesaprimera.com",
+    "logo": "https://mesaprimera.com/logo.png",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer service",
+      "email": "admin@mesaprimera.com",
+    },
+  };
+
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+      </head>
       <body
         className={`${playfair.variable} ${outfit.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
