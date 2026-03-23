@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff } from 'lucide-react'
 import { getAvatarSvg } from '@/utils/avatars'
 
@@ -47,7 +47,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false }: Player
   }
 
   return (
-    <motion.div 
+    <m.div 
       initial={{ scale: 0.95, opacity: 0 }}
       animate={{ scale: isActive ? 1.05 : 1, opacity: player.connected === false ? 0.4 : 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -56,7 +56,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false }: Player
        {/* Active Glow Ring Behind Avatar */}
        <AnimatePresence>
           {isActive && (
-            <motion.div 
+            <m.div 
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1.25, opacity: [0.5, 0.8, 0.5] }}
               exit={{ scale: 0.8, opacity: 0 }}
@@ -116,6 +116,6 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false }: Player
            <span className="text-red-500 text-[10px] font-bold uppercase tracking-widest bg-black px-2 py-1 border border-red-900">Afk</span>
         </div>
       )}
-    </motion.div>
+    </m.div>
   )
 }

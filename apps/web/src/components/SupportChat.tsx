@@ -12,6 +12,7 @@ interface SupportChatProps {
 }
 
 interface ChatMessage {
+  id: string;
   sender: string;
   text: string;
   time: string;
@@ -105,6 +106,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
         
       if (!error && data) {
         setMessages(data.map(msg => ({
+          id: msg.id || `${msg.created_at}-${msg.message.slice(0,10)}`,
           sender: msg.from_admin ? 'Soporte' : 'Tú',
           text: msg.message,
           time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -135,6 +137,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
     s.on('support:incoming', (data) => {
       if (isAdmin && data.userId === userId) {
         setMessages(prev => [...prev, { 
+          id: uuidv4(),
           sender: 'Usuario', 
           text: data.message, 
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -146,6 +149,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
     s.on('support:message', (data) => {
       if (!isAdmin && data.userId === userId && data.ticketId === activeTicketId) {
         setMessages(prev => [...prev, { 
+          id: uuidv4(),
           sender: 'Soporte', 
           text: data.message, 
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -201,6 +205,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
     
     const payload = { userId, message: input, ticketId };
     const newMsg = { 
+      id: uuidv4(),
       sender: 'Tú', 
       text: input, 
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -244,8 +249,8 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Sin mensajes previos</p>
             </div>
           ) : (
-            messages.map((msg, i) => (
-              <div key={i} className={`flex flex-col max-w-[90%] ${msg.sender === 'Tú' || (isAdmin && msg.sender === 'Soporte') ? 'self-end items-end' : 'self-start items-start'}`}>
+            messages.map((msg) => (
+              <div key={msg.id} className={`flex flex-col max-w-[90%] ${msg.sender === 'Tú' || (isAdmin && msg.sender === 'Soporte') ? 'self-end items-end' : 'self-start items-start'}`}>
                 <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 px-1">
                   {msg.sender} • {msg.time}
                 </span>
@@ -357,10 +362,19 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
                       tickets.map(ticket => (
                         <div 
                           key={ticket.id}
+                          role="button"
+                          tabIndex={0}
                           onClick={() => {
                             setActiveTicketId(ticket.id);
                             setIsResolved(ticket.isResolved);
                             setView('chat');
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              setActiveTicketId(ticket.id);
+                              setIsResolved(ticket.isResolved);
+                              setView('chat');
+                            }
                           }}
                           className="p-5 bg-black/40 border-2 border-brand-gold/10 rounded-2xl hover:border-brand-gold/40 cursor-pointer transition-all flex justify-between items-center group shadow-xl"
                         >
@@ -394,8 +408,8 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
                     </div>
                   </div>
                 ) : (
-                  messages.map((msg, i) => (
-                    <div key={i} className={`flex flex-col max-w-[85%] ${msg.sender === 'Tú' ? 'self-end items-end' : 'self-start items-start'}`}>
+                  messages.map((msg) => (
+                    <div key={msg.id} className={`flex flex-col max-w-[85%] ${msg.sender === 'Tú' ? 'self-end items-end' : 'self-start items-start'}`}>
                       <div className={`flex items-center gap-2 mb-1.5 px-1 ${msg.sender === 'Tú' ? 'flex-row-reverse' : ''}`}>
                          <span className="text-[9px] font-black text-brand-gold uppercase tracking-widest opacity-60">
                            {msg.sender === 'Tú' ? 'MEMBRESÍA ELITE' : 'CONSERJERÍA'}

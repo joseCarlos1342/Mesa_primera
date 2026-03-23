@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 
 interface GameAnnouncerProps {
   phase: string;
@@ -34,7 +34,7 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
     <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-full max-w-sm flex justify-center landscape:top-12">
       <AnimatePresence mode="wait">
         {announcement && (
-          <motion.div
+          <m.div
             key={announcement.id}
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -42,7 +42,7 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
             className="bg-[#1b253b]/90 backdrop-blur-md border border-emerald-500/30 text-white px-6 py-2 md:px-8 md:py-3 rounded-full font-playfair font-bold text-lg md:text-2xl shadow-[0_10px_40px_rgba(16,185,129,0.2)] landscape:text-base landscape:py-1"
           >
             {announcement.text}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
