@@ -1,8 +1,15 @@
+/**
+ * @jest-environment node
+ */
 import { getUsersList, toggleBanStatus } from '@/app/actions/admin-users';
 import { createClient } from '@/utils/supabase/server';
 
 jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
+}));
+
+jest.mock('next/cache', () => ({
+  revalidatePath: jest.fn(),
 }));
 
 describe('Admin Users Server Actions', () => {

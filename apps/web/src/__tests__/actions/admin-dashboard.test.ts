@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { getAdminDashboardStats } from '@/app/actions/admin-dashboard';
 import { createClient } from '@/utils/supabase/server';
 
@@ -33,13 +36,13 @@ describe('Admin Dashboard Server Actions', () => {
   it('should deny access if user is not admin', async () => {
     mockSupabase.single.mockResolvedValue({ data: { role: 'player' }, error: null });
     
-    await expect(getAdminDashboardStats()).rejects.toThrow('Acceso denegado');
+    await expect(getAdminDashboardStats()).rejects.toThrow('NEXT_REDIRECT');
   });
 
   it('should deny access if user is not authenticated', async () => {
     mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null }, error: { message: 'Not logged in' } });
     
-    await expect(getAdminDashboardStats()).rejects.toThrow('No autenticado');
+    await expect(getAdminDashboardStats()).rejects.toThrow('NEXT_REDIRECT');
   });
 
   it('should return correct format array of stats for admin dashboard with proper values', async () => {

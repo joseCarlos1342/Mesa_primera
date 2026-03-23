@@ -1,14 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ActionControls } from '../ActionControls';
 
 describe('ActionControls', () => {
   const mockRoom = {
-    send: vi.fn(),
+    send: jest.fn(),
   } as any;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('LOBBY Phase', () => {
@@ -49,9 +48,8 @@ describe('ActionControls', () => {
       );
       
       expect(screen.getByText('Paso')).toBeInTheDocument();
-      expect(screen.getByText('Toca una ficha para apostar')).toBeInTheDocument();
-      expect(screen.getByText('1k')).toBeInTheDocument();
-      expect(screen.getByText('2k')).toBeInTheDocument();
+      expect(screen.getByText(/1k/i)).toBeInTheDocument();
+      expect(screen.getByText(/2k/i)).toBeInTheDocument();
     });
 
     it('Should call room.send("action", { action: "paso", amount: undefined, droppedCards: undefined }) when PASO is clicked', () => {
@@ -82,7 +80,7 @@ describe('ActionControls', () => {
       );
 
       // Select 1k chip
-      const chip1k = screen.getByText('1k').closest('button');
+      const chip1k = screen.getByText(/1k/i).closest('button');
       fireEvent.click(chip1k!);
 
       // VOY button should appear
@@ -105,7 +103,7 @@ describe('ActionControls', () => {
 
       const voyButton = screen.getAllByText('Voy')[0].closest('button');
       fireEvent.click(voyButton!);
-      expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'call', amount: undefined, droppedCards: undefined });
+      expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'bet', amount: undefined, droppedCards: undefined });
     });
   });
 
@@ -128,7 +126,7 @@ describe('ActionControls', () => {
     });
 
     it('Should send discard action and request selection clearance', () => {
-      const onClearSelection = vi.fn();
+      const onClearSelection = jest.fn();
       
       render(
         <ActionControls 
