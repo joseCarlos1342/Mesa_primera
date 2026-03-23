@@ -145,7 +145,7 @@ export default function GameRoomPage() {
         })
 
         joinedRoom.onError((code, message) => {
-          console.error(`Colyseus Error [${code}]:`, message)
+          console.error('Colyseus Error [%s]: %s', code, message)
           setError(message || 'Ocurrió un error inesperado al conectar al servidor.')
         })
 
