@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Gamepad2, UserX, Edit2, Check, X } from "lucide-react";
+import { MessageCircle, Gamepad2, UserX, Edit2, Check, X, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { getAvatarSvg } from "@/utils/avatars";
 import { inviteToPlay, updateFriendNickname } from "@/app/actions/social-actions";
