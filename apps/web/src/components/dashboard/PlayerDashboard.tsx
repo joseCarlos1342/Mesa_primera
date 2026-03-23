@@ -154,7 +154,7 @@ function QuickActionCard({ icon: Icon, label, href, color }: any) {
   return (
     <Link href={href}>
       <motion.div 
-        whileHover={{ y: -8, shadow: "0 20px 40px rgba(0,0,0,0.4)" }}
+        whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}
         whileTap={{ scale: 0.95 }}
         className={`${color} border-2 p-8 rounded-[2.5rem] flex flex-col items-center gap-5 shadow-2xl transition-all hover:bg-brand-gold/5 group`}
       >
