@@ -1,25 +1,34 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { loginWithPhone, registerPlayer } from '../auth-actions'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
 // Mock de enforceRateLimiting
-vi.mock('@/app/actions/anti-fraud', () => ({
-  enforceRateLimiting: vi.fn().mockResolvedValue({ success: true })
+jest.mock('@/app/actions/anti-fraud', () => ({
+  enforceRateLimiting: jest.fn().mockResolvedValue({ success: true })
 }))
 
 // Mock de next/headers
-vi.mock('next/headers', () => ({
-  cookies: vi.fn().mockResolvedValue({ set: vi.fn() })
+jest.mock('next/headers', () => ({
+  cookies: jest.fn().mockResolvedValue({ set: jest.fn() })
+}))
+
+// Mock supabase server 
+jest.mock('@/utils/supabase/server', () => ({
+  createClient: jest.fn(),
+}))
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  redirect: jest.fn(),
 }))
 
 describe('Auth Actions', () => {
-  let mockSignInWithOtp: ReturnType<typeof vi.fn>;
+  let mockSignInWithOtp: ReturnType<typeof jest.fn>;
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    jest.clearAllMocks()
     process.env.NODE_ENV = 'test'; // Ensure we don't hit the DEV bypass
-    mockSignInWithOtp = vi.fn().mockResolvedValue({ error: null })
+    mockSignInWithOtp = jest.fn().mockResolvedValue({ error: null })
     const mockSupabase = {
       auth: {
         signInWithOtp: mockSignInWithOtp,
@@ -36,7 +45,11 @@ describe('Auth Actions', () => {
       formData.append('nickname', 'Chepe')
       formData.append('avatarId', 'as-oros')
 
-      await registerPlayer({}, formData)
+      try {
+        await registerPlayer({}, formData)
+      } catch (e: any) {
+        expect(e.message).toBe('NEXT_REDIRECT')
+      }
 
       expect(mockSignInWithOtp).toHaveBeenCalledWith({
         phone: '+573205802918',
@@ -59,10 +72,17 @@ describe('Auth Actions', () => {
       const formData = new FormData()
       formData.append('phone', '+573205802918')
 
-      await loginWithPhone({}, formData)
+      try {
+        await loginWithPhone({}, formData)
+      } catch (e: any) {
+        expect(e.message).toBe('NEXT_REDIRECT')
+      }
 
       expect(mockSignInWithOtp).toHaveBeenCalledWith({
-        phone: '+573205802918'
+        phone: '+573205802918',
+        options: {
+          shouldCreateUser: false
+        }
       })
       expect(redirect).toHaveBeenCalledWith('/login/player/verify?phone=%2B573205802918')
     })
