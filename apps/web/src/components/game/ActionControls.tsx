@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { Room } from '@colyseus/sdk'
 import { useState } from 'react'
 import { Mic, Headphones } from 'lucide-react'
@@ -31,7 +31,7 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
 
   return (
     <AnimatePresence>
-      <motion.div 
+      <m.div 
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 50, opacity: 0 }}
@@ -40,7 +40,7 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
       >
 
         {/* FASE: DESCARTE */}
-        {phase === 'DESCARTE' && (
+        {phase === 'DESCARTE' ? (
           <div className="flex flex-col items-center gap-2 bg-black/90 backdrop-blur-xl p-4 md:p-6 rounded-3xl border border-[#e2b044]/40 shadow-2xl w-full md:w-auto">
             <span className="text-[#e2b044] text-sm md:text-base font-bold uppercase tracking-widest text-center">
               {selectedCards.length > 0 ? 'Fichas a botar' : 'Toca cartas para descartar'}
@@ -57,15 +57,13 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
               {selectedCards.length > 0 ? `Botar ${selectedCards.length} y Pedir` : 'Mantener Juego (0)'}
             </button>
           </div>
-        )}
+        ) : null}
 
-        {/* FASE: PIQUE o GUERRA */}
-        {/* FASE: PIQUE o GUERRA */}
-        {/* FASE: PIQUE o GUERRA */}
-        {(phase === 'PIQUE' || phase === 'GUERRA') && (
+        {/* Extended Controls Panel */}
+        {isMyTurn && (phase === 'PIQUE' || phase === 'GUERRA') ? (
           <div className="flex flex-col items-end gap-3 p-2 w-full md:w-auto">
             
-            {/* Chips Area (Horizontal Row floating above) */}
+            {/* Chips Area */}
             <div className="flex flex-col items-end w-full md:w-auto mb-2">
               <div className="flex overflow-x-auto w-full md:w-auto items-center justify-end gap-2 pb-2 px-1 snap-x no-scrollbar">
                 {CHIP_VALUES.map(val => {
@@ -106,10 +104,9 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
 
             {/* Main Action Buttons Grid */}
             <div className="flex flex-col gap-4 w-64 md:w-80 p-4 bg-black/40 backdrop-blur-md rounded-2xl border border-white/5 shadow-[0_15px_30px_rgba(0,0,0,0.8)] landscape:w-56 landscape:p-2 landscape:gap-2">
-              {/* CANTAR JUGADA Button (Huge Gold) */}
               <AnimatePresence mode="wait">
                 {(selectedChip || phase === 'GUERRA') ? (
-                  <motion.button 
+                  <m.button 
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
@@ -124,7 +121,7 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                         +${selectedChip >= 1000 ? selectedChip/1000 + 'k' : selectedChip}
                       </span>
                     )}
-                  </motion.button>
+                  </m.button>
                 ) : (
                   <button 
                     disabled
@@ -138,7 +135,6 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
 
               {/* VOY / PASO split */}
               <div className="grid grid-cols-2 gap-4 w-full">
-                {/* VOY Button (Green) */}
                 <button 
                   onClick={() => handleExecute(phase === 'PIQUE' ? 'voy' : 'bet')} 
                   className="h-14 md:h-16 bg-gradient-to-b from-[#4ade80] to-[#16a34a] hover:from-[#86efac] hover:to-[#15803d] text-white rounded-xl font-black text-lg md:text-xl shadow-[0_8px_15px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.4)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#86efac]/50 border-b-[6px] border-b-[#064e3b]"
@@ -147,7 +143,6 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                   Voy
                 </button>
                 
-                {/* PASO Button (Red) */}
                 <button 
                   onClick={() => handleExecute(phase === 'PIQUE' ? 'paso' : 'fold')} 
                   className="h-14 md:h-16 bg-gradient-to-b from-[#f87171] to-[#dc2626] hover:from-[#fca5a5] hover:to-[#b91c1c] text-white rounded-xl font-black text-lg md:text-xl shadow-[0_8px_15px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.4)] hover:-translate-y-1 transition-all uppercase tracking-widest border border-[#fca5a5]/50 border-b-[6px] border-b-[#7f1d1d]"
@@ -157,7 +152,6 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
                 </button>
               </div>
               
-              {/* Soporte Button (Beige) */}
               <button 
                 onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
                 className="w-full h-12 md:h-14 mt-2 bg-gradient-to-b from-[#fef3c7] to-[#fcd34d] hover:from-[#fffbeb] hover:to-[#fde68a] text-[#78350f] rounded-xl font-bold text-sm md:text-base shadow-[0_4px_10px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.8)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border border-[#fef3c7] border-b-[5px] border-b-[#b45309]"
@@ -168,7 +162,8 @@ export function ActionControls({ room, phase, isMyTurn, playerChips, selectedCar
 
             </div>
           </div>
-        )}      </motion.div>
+        ) : null}
+      </m.div>
     </AnimatePresence>
   )
 }

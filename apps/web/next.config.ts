@@ -9,6 +9,9 @@ const withPWA = require("next-pwa")({
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'date-fns', 'framer-motion'],
+  },
 };
 
 export default withPWA(nextConfig);

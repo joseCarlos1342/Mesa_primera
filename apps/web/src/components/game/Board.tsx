@@ -1,7 +1,7 @@
 "use client"
 
 import { Room } from '@colyseus/sdk'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { PlayerBadge } from './PlayerBadge'
 import { ActionControls } from './ActionControls'
 import { GameAnnouncer } from './GameAnnouncer'
@@ -58,9 +58,9 @@ export function Board({ room, phase, pot, players }: BoardProps) {
           isDealer={p && room.state.dealerId === p.id}
         />
         {/* Opponent's Cards / Placeholder */}
-        {p && (
+        {p ? (
           <div className={`flex justify-center -mt-6 md:-mt-10 z-0 scale-[0.22] md:scale-60 landscape:scale-[0.18] md:landscape:scale-60 origin-top`}>
-            {p.cards && p.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
+            {p.cards ? p.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
                const middle = (arr.length - 1) / 2;
                const angle = (idx - middle) * 10;
                const playerIdx = getPlayerIndex(p.id);
@@ -69,8 +69,8 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                let transX = isLeftSide ? 30 : -30;
                
                return (
-                 <div 
-                   key={idx}
+                 <m.div 
+                   key={`${p.id}-${cardStr}-${idx}`}
                    style={{ 
                      transform: p.isFolded ? `translateY(10vh) scale(0.4) rotate(${(idx * 15) - 30}deg)` : `translateX(${transX}px) rotate(${angle}deg)`,
                      transformOrigin: 'top center',
@@ -86,12 +86,13 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                      delay={dealDelay}
                      isHidden={hideOpponentCards}
                      originY={200}
+                    priority={true}
                    />
-                 </div>
+                 </m.div>
                )
-            })}
+            }) : null}
           </div>
-        )}
+        ) : null}
       </div>
     )
   }
@@ -111,13 +112,13 @@ export function Board({ room, phase, pot, players }: BoardProps) {
 
       {/* ORIENTATION WARNING */}
       <div className="fixed inset-0 z-[1000] bg-[#070b14] flex flex-col items-center justify-center p-8 text-center md:hidden portrait:flex landscape:hidden">
-        <motion.div
+        <m.div
           animate={{ rotate: 90 }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           className="mb-8 p-6 bg-emerald-500/10 rounded-3xl border border-emerald-500/20"
         >
           <RotateCcw className="w-16 h-16 text-emerald-500" />
-        </motion.div>
+        </m.div>
         <h2 className="text-3xl font-black text-white mb-4 italic">GIRA TU DISPOSITIVO</h2>
         <p className="text-[#a8b2d1] text-lg leading-relaxed max-w-xs">
           Para jugar en <span className="text-emerald-400 font-bold uppercase tracking-wider">Mesa Primera</span>, necesitas usar tu pantalla en horizontal.
@@ -235,6 +236,7 @@ export function Board({ room, phase, pot, players }: BoardProps) {
                        suit={cardStr.split('-')[1] as any} 
                        value={parseInt(cardStr.split('-')[0])} 
                        originY={-100}
+                       priority={true}
                        className="shadow-[0_10px_20px_rgba(0,0,0,0.8)] border border-white/10"
                      />
                    </div>
