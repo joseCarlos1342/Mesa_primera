@@ -1,6 +1,6 @@
 "use client"
 
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import Image from 'next/image'
 import { useState } from 'react'
 
@@ -12,9 +12,10 @@ interface CardProps {
   delay?: number; // for staggered deal animations
   originX?: number | string; // X-origin for dealing animations
   originY?: number | string; // Y-origin for dealing animations relative to deck center
+  priority?: boolean;
 }
 
-export function Card({ suit, value, isHidden = false, className = '', delay = 0, originX = 0, originY = -200 }: CardProps) {
+export function Card({ suit, value, isHidden = false, className = '', delay = 0, originX = 0, originY = -200, priority = false }: CardProps) {
   const [imgError, setImgError] = useState(false);
 
   const getCardImage = () => {
@@ -35,7 +36,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
   }
 
   return (
-    <motion.div
+    <m.div
       initial={{ x: originX, y: originY, opacity: 0, rotateY: 180, scale: 0.95, zIndex: 10 }}
       animate={{ x: 0, y: 0, opacity: 1, rotateY: isHidden ? 180 : 0, scale: 1, zIndex: 50 }}
       transition={{ 
@@ -62,6 +63,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
               src={getCardImage()} 
               alt={`${value} de ${suit}`} 
               fill
+              priority={priority}
               sizes="(max-width: 768px) 15vw, 10vw"
               className="object-contain filter drop-shadow-md"
               onError={() => setImgError(true)}
@@ -81,6 +83,6 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
           <div className="w-4 h-4 md:w-6 md:h-6 bg-emerald-500/20 -rotate-45" />
         </div>
       </div>
-    </motion.div>
+    </m.div>
   )
 }
