@@ -79,8 +79,8 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#c0a060]/5 rounded-full blur-[100px] -mr-32 -mt-32 group-hover:bg-[#c0a060]/10 transition-all duration-1000 pointer-events-none" />
         
         <div className="flex flex-col gap-6 md:gap-8 relative z-10 w-full">
-          <div className="space-y-4 md:space-y-6 text-center lg:text-left w-full">
-            <div className="flex items-center justify-center lg:justify-start gap-4">
+          <div className="space-y-4 md:space-y-6 text-center w-full">
+            <div className="flex items-center justify-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-[#c0a060]/20 to-[#8b6b2e]/10 rounded-xl flex items-center justify-center border-2 border-[#c0a060]/30 shadow-[0_0_20px_rgba(192,160,96,0.1)]">
                 <Landmark className="w-6 h-6 text-[#c0a060]" />
               </div>
@@ -98,20 +98,19 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-2">
             <button 
               type="button"
               onClick={copyToClipboard}
               className={`w-full sm:w-auto lg:w-56 px-6 h-14 rounded-xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border-2 active:scale-95 shadow-xl ${
                 copied 
                   ? 'bg-accent-gold-shimmer text-slate-950 border-[#f0d78c] shadow-accent-gold/40' 
-                  : 'bg-white/5 text-[#c0a060] border-[#c0a060]/20 hover:bg-white/10 hover:border-[#c0a060]/60 hover:shadow-accent-gold/10'
+                  : 'bg-brand-gold/5 text-[#c0a060] border-[#c0a060]/20 hover:bg-brand-gold/10 hover:border-[#c0a060]/60 hover:shadow-accent-gold/10'
               }`}
             >
               {copied ? <Check className="w-5 h-5 mx-1" /> : <Copy className="w-5 h-5 mx-1" />}
               <span>{copied ? '¡Copiado!' : 'Copiar Número'}</span>
             </button>
-            <p className="text-[#f3edd7]/30 text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] italic text-center lg:text-left">Seguridad Certificada Mesa Primera</p>
           </div>
         </div>
       </div>
@@ -133,7 +132,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
               required
-              className="w-full h-16 md:h-20 pl-14 md:pl-16 pr-6 bg-black/40 border-2 border-white/10 rounded-2xl md:rounded-[2rem] text-3xl md:text-4xl font-display font-black text-[#f3edd7] placeholder:text-white/5 focus:outline-none focus:border-[#c0a060]/60 focus:bg-black/60 transition-all italic tracking-tight shadow-[inset_0_4px_15px_rgba(0,0,0,0.6)]"
+              className="w-full h-16 md:h-20 pl-14 md:pl-16 pr-6 bg-black/40 border-2 border-brand-gold/10 rounded-2xl md:rounded-[2rem] text-3xl md:text-4xl font-display font-black text-[#f3edd7] placeholder:text-brand-gold/10 focus:outline-none focus:border-[#c0a060]/60 focus:bg-black/60 transition-all italic tracking-tight shadow-[inset_0_4px_15px_rgba(0,0,0,0.6)]"
             />
           </div>
         </div>
@@ -200,7 +199,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
             value={observations}
             onChange={(e) => setObservations(e.target.value)}
             placeholder="Escribe aquí cualquier observación..."
-            className="w-full h-24 md:h-28 p-6 md:p-8 bg-black/30 border-2 border-white/5 rounded-2xl md:rounded-[2rem] text-sm md:text-base font-medium text-[#f3edd7] focus:outline-none focus:border-[#c0a060]/40 focus:bg-black/50 transition-all resize-none shadow-[inset_0_4px_15px_rgba(0,0,0,0.5)] placeholder:text-[#f3edd7]/10"
+            className="w-full h-24 md:h-28 p-6 md:p-8 bg-black/30 border-2 border-brand-gold/5 rounded-2xl md:rounded-[2rem] text-sm md:text-base font-medium text-[#f3edd7] focus:outline-none focus:border-[#c0a060]/40 focus:bg-black/50 transition-all resize-none shadow-[inset_0_4px_15px_rgba(0,0,0,0.5)] placeholder:text-[#f3edd7]/10"
           />
         </div>
 

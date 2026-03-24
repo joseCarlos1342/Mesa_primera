@@ -45,45 +45,39 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none" />
               )}
 
-              <div className="flex items-center gap-4 min-w-0 flex-1">
-                {/* Rank Badge */}
-                <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-display font-black text-xs italic border-2 transition-all duration-500 group-hover:scale-110 ${
-                  idx === 0 ? 'bg-brand-gold text-black border-brand-gold shadow-[0_0_15px_rgba(202,171,114,0.4)]' :
-                  idx === 1 ? 'bg-slate-300 text-black border-slate-300 opacity-90' :
-                  idx === 2 ? 'bg-amber-700 text-white border-amber-700 opacity-80' :
-                  'bg-white/5 text-text-secondary border-white/10'
-                }`}>
-                  {idx + 1}
+              <div className="flex items-center gap-5 min-w-0 flex-1">
+                {/* Avatar with Integrated Rank Badge */}
+                <div className="relative shrink-0">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-brand-gold/30 bg-slate-900 flex items-center justify-center shadow-lg transition-transform duration-500 group-hover:scale-105">
+                    {entry.avatar_url && getAvatarSvg(entry.avatar_url) ? (
+                      <div className="w-full h-full scale-[1.1]">
+                        {getAvatarSvg(entry.avatar_url)}
+                      </div>
+                    ) : (
+                      <User className="w-7 h-7 text-text-secondary opacity-40" />
+                    )}
+                  </div>
+                  
+                  {/* Rank Badge Overlay */}
+                  <div className={`absolute -top-2 -left-2 w-7 h-7 rounded-lg flex items-center justify-center font-display font-black text-[10px] italic border-2 shadow-xl z-20 ${
+                    idx === 0 ? 'bg-brand-gold text-black border-brand-gold shadow-brand-gold/40' :
+                    idx === 1 ? 'bg-slate-300 text-black border-slate-300' :
+                    idx === 2 ? 'bg-amber-700 text-white border-amber-700' :
+                    'bg-slate-900 text-text-secondary border-brand-gold/20'
+                  }`}>
+                    {idx + 1}
+                  </div>
                 </div>
 
-                {/* Avatar */}
-                <div className="relative shrink-0 w-12 h-12 rounded-2xl overflow-hidden border-2 border-brand-gold/20 bg-slate-900 flex items-center justify-center">
-                  {entry.avatar_url && getAvatarSvg(entry.avatar_url) ? (
-                    <div className="w-full h-full scale-[1.2]">
-                      {getAvatarSvg(entry.avatar_url)}
-                    </div>
-                  ) : entry.avatar_url && (entry.avatar_url.startsWith('http') || entry.avatar_url.startsWith('/')) ? (
-                    <Image 
-                      src={entry.avatar_url} 
-                      alt={entry.username || 'User'} 
-                      fill 
-                      className="object-cover"
-                      unoptimized={true}
-                    />
-                  ) : (
-                    <User className="w-6 h-6 text-text-secondary opacity-40" />
-                  )}
-                </div>
-
-                <div className="min-w-0">
-                  <p className={`font-display font-black text-sm md:text-base italic uppercase tracking-tight truncate transition-all ${
+                <div className="min-w-0 flex-1">
+                  <p className={`font-display font-black text-sm md:text-lg italic uppercase tracking-tight transition-all leading-tight break-words ${
                     idx === 0 ? 'text-brand-gold' : 'text-text-premium group-hover:text-brand-gold'
                   }`}>
                     {entry.username || 'Anónimo'}
                   </p>
-                  <div className="flex items-center gap-1.5 opacity-60">
+                  <div className="flex items-center gap-1.5 opacity-60 mt-0.5">
                     <Icon className="w-3 h-3 text-text-secondary" />
-                    <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Global Ranking</span>
+                    <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest whitespace-nowrap">Global Ranking</span>
                   </div>
                 </div>
               </div>

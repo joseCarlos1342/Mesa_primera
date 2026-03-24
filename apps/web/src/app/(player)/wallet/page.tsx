@@ -15,5 +15,9 @@ export default async function WalletPage() {
     )
   }
 
-  return <WalletContent wallet={wallet} transactions={transactions || []} />
+  return (
+    <div className="min-h-full py-12 px-6 max-w-lg mx-auto">
+      <WalletContent wallet={wallet} transactions={transactions || []} />
+    </div>
+  )
 }

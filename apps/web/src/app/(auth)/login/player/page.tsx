@@ -51,14 +51,16 @@ export default function PlayerLoginPage() {
               <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors">
                 Tu Número de Celular
               </label>
-              <div className="relative">
-                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-brand-gold/80 font-black text-xl">+57</span>
+              <div className="relative flex items-center">
+                <span className="absolute left-6 text-brand-gold font-mono font-black text-xl md:text-2xl tracking-tighter pointer-events-none">
+                  +57
+                </span>
                 <input
                   name="phone"
                   type="tel"
                   required
                   placeholder="320..."
-                  className="w-full h-20 pl-20 pr-6 bg-black/50 border-2 border-white/10 rounded-2xl text-lg md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono tracking-tighter md:tracking-[0.2em]"
+                  className="w-full h-20 pl-20 pr-6 bg-black/50 border-2 border-white/10 rounded-2xl text-xl md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner"
                 />
               </div>
             </div>
@@ -66,12 +68,11 @@ export default function PlayerLoginPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-sm rounded-2xl transition-all duration-300 shadow-[0_10px_0_#8b6b2e,0_20px_30px_rgba(0,0,0,0.5)] hover:translate-y-[2px] hover:shadow-[0_8px_0_#8b6b2e,0_15px_25px_rgba(0,0,0,0.5)] active:translate-y-[8px] active:shadow-none disabled:opacity-50 overflow-hidden"
+              className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-base rounded-2xl transition-all duration-200 border-b-8 border-brand-gold-dark active:border-b-0 active:translate-y-2 shadow-[0_15px_30px_rgba(0,0,0,0.4)] disabled:opacity-50 overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-3">
                 {isPending ? 'AUTENTICANDO...' : 'ENTRAR A JUGAR'}
               </span>
-              {/* Shimmer Effect */}
               <div className="absolute inset-0 bg-white/20 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
             </button>
           </form>

@@ -75,6 +75,9 @@ export default function GameRoomPage() {
       try {
         console.log(`Connecting to room ${roomId}...`);
         
+        // Pequeño delay para permitir que el cliente se estabilice tras un reload rápido
+        await new Promise(resolve => setTimeout(resolve, 300));
+
         let joinedRoom: Room | undefined;
         const tokenKey = `reconnectionToken_${roomId}`;
         const nickKey = `nickname_${roomId}`;
@@ -87,8 +90,13 @@ export default function GameRoomPage() {
             console.log("Token de reconexión encontrado, intentando reconectar...");
             joinedRoom = await client.reconnect(savedToken);
             console.log("Reconectado exitosamente a la silla original!");
-          } catch (e) {
-            console.warn("Fallo al reconectar, intentando entrar como nuevo jugador...", e);
+          } catch (e: any) {
+            // No mostrar como error crítico si es solo que el token expiró (común tras reinicio de server o mucho tiempo offline)
+            if (e.message?.includes("expired") || e.message?.includes("invalid")) {
+              console.log("El token de reconexión expiró o es inválido. Entrando como nuevo jugador...");
+            } else {
+              console.warn("Fallo al reconectar:", e.message || e);
+            }
             sessionStorage.removeItem(tokenKey);
           }
         }
@@ -120,6 +128,7 @@ export default function GameRoomPage() {
             localStorage.setItem('deviceId', deviceId);
           }
 
+          console.log(`Joining room ${roomId} as new player: ${nick}...`);
           joinedRoom = await client.joinById(roomId, {
             nickname: nick,
             deviceId: deviceId,
@@ -131,7 +140,7 @@ export default function GameRoomPage() {
         }
         
         activeRoom = joinedRoom;
-        console.log('Joined room:', joinedRoom)
+        console.log('Joined room:', joinedRoom.roomId, 'Session ID:', joinedRoom.sessionId);
         setRoom(joinedRoom)
 
         joinedRoom.onLeave((code) => {
@@ -231,7 +240,7 @@ export default function GameRoomPage() {
       <GameHeader onMenuClick={() => router.push('/')} />
       
       {/* MAIN GAME AREA */}
-      <main className={`flex-1 flex flex-col items-center justify-center relative z-0 p-0 m-0 ${phase === 'LOBBY' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+      <main className={`flex-1 flex flex-col items-center justify-center relative z-0 p-0 m-0 ${phase === 'LOBBY' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}>
         {phase === 'LOBBY' ? (
           <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center px-2 py-4 md:p-8">
             {/* Atmospheric Background Effects */}
@@ -239,21 +248,24 @@ export default function GameRoomPage() {
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#c0a060]/5 rounded-full blur-[150px] pointer-events-none" />
             
             {/* Main Luxury Panel */}
-            <div className="relative z-10 w-full max-w-5xl bg-gradient-to-br from-black/70 to-black/90 backdrop-blur-2xl border-2 border-[#c5a059]/30 rounded-[2rem] md:rounded-[3.5rem] p-4 md:p-12 landscape:p-4 landscape:md:p-8 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-y-auto custom-scrollbar space-y-4 md:space-y-10 landscape:space-y-2">
+            <div className="relative z-10 w-full max-w-5xl bg-gradient-to-br from-black/70 to-black/90 backdrop-blur-2xl border-2 border-[#c5a059]/30 rounded-[2rem] md:rounded-[3.5rem] p-4 md:p-12 landscape:p-4 landscape:md:p-8 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scrollbar space-y-4 md:space-y-8 landscape:space-y-4">
               
-              <div className="flex flex-col items-center landscape:flex-row landscape:gap-6 landscape:items-center">
-                <Users className="w-8 h-8 md:w-16 md:h-16 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] mb-2 md:mb-4 landscape:mb-0 landscape:w-8 landscape:h-8" />
-                <div className="flex flex-col items-center landscape:items-start">
-                  <h2 className="text-3xl md:text-6xl landscape:text-2xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium text-center landscape:text-left">
+              <div className="flex flex-col items-center gap-3 md:gap-6">
+                {/* Row 1: Icon + Title */}
+                <div className="flex flex-row items-center gap-3 md:gap-5">
+                  <Users className="w-8 h-8 md:w-16 landscape:w-8 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] flex-shrink-0" />
+                  <h2 className="text-3xl md:text-6xl landscape:text-3xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium">
                     Sala de Espera
                   </h2>
-                  <div className="flex items-center gap-3 mt-2 md:mt-6 landscape:mt-1">
-                    <div className="hidden sm:block h-0.5 w-8 md:w-12 bg-[#c5a059]/30 rounded-full" />
-                    <p className="text-[#f3edd7]/60 text-[10px] md:text-[12px] font-black uppercase tracking-[0.4em]">
-                      Jugadores: <span className="text-[#c5a059] text-[11px] md:text-[14px]">{players.length}</span> <span className="opacity-40">/ 7</span>
-                    </p>
-                    <div className="hidden sm:block h-0.5 w-8 md:w-12 bg-[#c5a059]/30 rounded-full" />
-                  </div>
+                </div>
+
+                {/* Row 2: Players Status (Centered below) */}
+                <div className="flex items-center gap-3">
+                  <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
+                  <p className="text-[#f3edd7]/60 text-[10px] md:text-[14px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
+                    Jugadores: <span className="text-[#c5a059] text-[11px] md:text-[16px]">{players.length}</span> <span className="opacity-40">/ 7</span>
+                  </p>
+                  <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
                 </div>
               </div>
 

@@ -96,7 +96,7 @@ function VerifyContent() {
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-sm rounded-2xl transition-all duration-300 shadow-[0_10px_0_#8b6b2e,0_20px_30px_rgba(0,0,0,0.5)] hover:translate-y-[2px] hover:shadow-[0_8px_0_#8b6b2e,0_15px_25px_rgba(0,0,0,0.5)] active:translate-y-[8px] active:shadow-none disabled:opacity-50 overflow-hidden"
+              className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-base rounded-2xl transition-all duration-200 border-b-8 border-brand-gold-dark active:border-b-0 active:translate-y-2 shadow-[0_15px_30px_rgba(0,0,0,0.4)] disabled:opacity-50 overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-3">
                 {isPending ? 'AUTENTICANDO...' : 'CÓDIGO CORRECTO →'}
