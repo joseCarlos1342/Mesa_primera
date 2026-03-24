@@ -8,11 +8,11 @@ import {
   useLocalParticipant,
   useParticipants,
   useIsSpeaking,
-  BarVisualizer,
   useConnectionState,
+  StartAudio,
 } from '@livekit/components-react';
 import { Track, ConnectionState } from 'livekit-client';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, VolumeX } from 'lucide-react';
 
 interface VoiceChatProps {
   roomName: string;
@@ -86,6 +86,24 @@ export function VoiceChat({ roomName, username, showSpeakers = false }: VoiceCha
 
       <RoomAudioRenderer />
       
+      {/* Overlay to handle AudioContext if blocked */}
+      <StartAudio 
+        label="Activar Audio" 
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm group"
+      >
+        <div className="bg-[#0c1220] border-2 border-[#d4af37] p-8 rounded-3xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300 shadow-[0_20px_50px_rgba(0,0,0,0.9)]">
+           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#d4af37] to-[#8a6d29] flex items-center justify-center animate-bounce">
+              <VolumeX className="w-8 h-8 text-white" />
+           </div>
+           <p className="text-[#fdf0a6] font-bold text-center max-w-xs uppercase tracking-widest text-sm">
+             El navegador bloqueó el audio automático.<br/>Haz clic para escuchar a los jugadores.
+           </p>
+           <div className="mt-2 px-6 py-3 bg-[#d4af37] text-black font-black uppercase rounded-xl hover:scale-105 transition-transform">
+             CONECTAR SONIDO
+           </div>
+        </div>
+      </StartAudio>
+
       <CustomMicToggle />
 
       {mounted && <PlayerAudioModal isOpen={isAudioModalOpen} onClose={() => setIsAudioModalOpen(false)} />}

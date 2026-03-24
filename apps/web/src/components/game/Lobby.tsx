@@ -204,7 +204,7 @@ export function Lobby() {
 
   return (
     <div className="min-h-screen w-full bg-table animate-in fade-in duration-1000">
-      <div className="w-full max-w-7xl mx-auto p-4 md:p-12 space-y-12 pb-24">
+      <div className="w-full max-w-7xl mx-auto p-4 md:p-12 space-y-12 pb-0 md:pb-24">
       {reconnecting && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-br from-black to-[#0d0d14] backdrop-blur-xl animate-in fade-in duration-500">
           <div className="absolute inset-0 bg-[url('/textures/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
@@ -241,17 +241,17 @@ export function Lobby() {
       )}
 
       {/* Premium Header Section */}
-      <header className="flex flex-col items-center justify-center gap-12 pb-20 relative px-4">
+      <header className="flex flex-col items-center justify-center gap-6 md:gap-12 pb-8 md:pb-20 relative px-4">
         {/* 1. Server Status & Tables - Larger and Primary */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="inline-flex items-center gap-4 px-8 py-3 bg-accent-gold/5 border-2 border-accent-gold/30 rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(202,171,114,0.1)]"
+          className="inline-flex items-center gap-4 px-8 py-3 bg-brand-gold/5 border-2 border-brand-gold/20 rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(197,160,89,0.1)]"
         >
-          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-          <span className="text-[11px] md:text-sm font-black text-accent-gold uppercase tracking-[0.4em]">SERVIDOR ACTIVO</span>
-          <div className="w-px h-5 bg-white/20 mx-2" />
-          <span className="text-[11px] md:text-sm font-black text-white uppercase tracking-[0.2em]">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+          <span className="text-[10px] md:text-xs font-black text-brand-gold uppercase tracking-[0.4em]">SERVIDOR ACTIVO</span>
+          <div className="w-px h-4 bg-brand-gold/20 mx-1" />
+          <span className="text-[10px] md:text-xs font-black text-text-premium uppercase tracking-[0.2em]">
             {rooms.length} MESAS DISPONIBLES
           </span>
         </motion.div>
@@ -261,7 +261,7 @@ export function Lobby() {
           <motion.h1 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-8xl md:text-9xl lg:text-[10rem] font-display font-black italic text-[#c0a060] uppercase tracking-tighter leading-[0.75] drop-shadow-[0_10px_40px_rgba(0,0,0,0.5)] pr-4"
+            className="text-6xl md:text-9xl lg:text-[10rem] font-display font-black italic text-brand-gold uppercase tracking-tighter leading-[0.75] pr-4 drop-shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
           >
             Lobby
           </motion.h1>
@@ -285,22 +285,22 @@ export function Lobby() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex flex-col md:flex-row items-center gap-8 pl-10 pr-4 py-4 rounded-[3rem] bg-slate-950/60 backdrop-blur-3xl border-2 border-accent-gold/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group transition-all hover:border-accent-gold/40"
+            className="flex flex-col md:flex-row items-center gap-6 md:gap-10 px-8 md:px-12 py-6 rounded-[3rem] bg-black/40 backdrop-blur-3xl border-2 border-brand-gold/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group transition-all hover:border-brand-gold/30"
           >
             <div className="flex flex-col items-center justify-center text-center">
-              <span className="text-[11px] font-black uppercase tracking-[0.4em] text-accent-gold/50 group-hover:text-accent-gold/70 transition-colors mb-1">Mi Balance</span>
-              <span className="text-5xl md:text-6xl font-black text-white tracking-tighter leading-none flex items-center drop-shadow-premium">
-                <span className="text-accent-gold mr-2 opacity-80">$</span>
+              <span className="text-xs md:text-sm font-black uppercase tracking-[0.4em] text-brand-gold group-hover:text-brand-gold-light transition-colors mb-2">Mi Balance</span>
+              <span className="text-6xl md:text-7xl font-black text-text-premium tracking-tighter leading-none flex items-center drop-shadow-premium">
+                <span className="text-brand-gold mr-2 opacity-90">$</span>
                 {userProfile.balance?.toLocaleString() || '0'}
               </span>
             </div>
             <button 
               onClick={() => setShowDeposit(true)}
-              className="w-20 h-20 rounded-3xl bg-accent-gold-shimmer flex items-center justify-center shadow-[0_10px_30px_rgba(202,171,114,0.3)] hover:scale-105 hover:shadow-accent-gold/50 transition-all active:scale-95 group/btn relative overflow-hidden"
+              className="w-14 h-14 md:w-18 md:h-18 rounded-2xl bg-accent-gold-shimmer flex items-center justify-center shadow-xl hover:scale-105 transition-all active:translate-y-1 active:shadow-inner group/btn relative overflow-hidden border-b-4 border-black/30"
               title="Cargar Saldo"
             >
-              <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-              <Plus className="w-10 h-10 text-slate-950 stroke-[4]" />
+              <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
+              <Plus className="w-7 h-7 md:w-9 md:h-9 text-slate-950 stroke-[4] relative z-10" />
             </button>
           </motion.div>
         )}
@@ -311,7 +311,7 @@ export function Lobby() {
             <button 
               onClick={createTable}
               disabled={creating}
-              className="group relative h-20 w-20 bg-white text-slate-950 rounded-[2.5rem] font-black flex items-center justify-center transition-all hover:bg-accent-gold hover:text-white hover:scale-105 active:scale-95 disabled:opacity-50 shadow-premium border-2 border-transparent hover:border-white/20"
+              className="group relative h-20 w-20 bg-brand-gold text-slate-950 rounded-[2.5rem] font-black flex items-center justify-center transition-all hover:scale-105 active:translate-y-1 active:shadow-inner disabled:opacity-50 shadow-premium border-b-4 border-black/30"
               title="Nueva Mesa"
             >
               <Plus className="w-8 h-8 transition-transform group-hover:rotate-90" />
@@ -321,23 +321,18 @@ export function Lobby() {
       </header>
 
       {/* Main Content Area - Anchored with Premium Table Container */}
-      <div className="relative p-10 md:p-16 lg:p-20 bg-gradient-to-b from-[#1b4d3e]/40 to-[#0d211a]/60 backdrop-blur-3xl rounded-[5rem] border-2 border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden min-h-[800px]">
+      <div className="relative p-5 md:p-16 lg:p-20 bg-black/40 backdrop-blur-3xl rounded-[3rem] md:rounded-[5rem] border-2 border-brand-gold/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden min-h-[400px] md:min-h-[800px] w-full max-w-full">
         {/* Decorative Background Elements */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-gold/5 rounded-full blur-[150px] -mr-64 -mt-64 opacity-60" />
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent-gold/5 rounded-full blur-[150px] -ml-64 -mb-64 opacity-30" />
         <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('/textures/noise.png')] mix-blend-overlay" />
 
-        <div className="relative z-10 space-y-20">
+        <div className="relative z-10 space-y-12 md:space-y-20">
           {/* Mesas Principales */}
-          <div className="space-y-12">
-            <div className="flex items-center justify-center gap-4 md:gap-6">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-accent-gold/10 rounded-2xl flex items-center justify-center border-2 border-accent-gold/30 shadow-2xl">
-                <Trophy className="w-6 h-6 md:w-8 md:h-8 text-accent-gold" />
-              </div>
-              <div className="space-y-1 flex flex-col items-center md:items-start">
-                <h2 className="text-3xl md:text-4xl font-display font-black italic uppercase text-white tracking-widest drop-shadow-premium">Mesas</h2>
-                <div className="h-1 w-16 md:w-20 bg-accent-gold/40 rounded-full" />
-              </div>
+          <div className="space-y-8 md:space-y-12">
+            <div className="flex flex-col items-center space-y-1">
+              <h2 className="text-3xl md:text-4xl font-display font-black italic uppercase text-text-premium tracking-widest drop-shadow-premium">Mesas</h2>
+              <div className="h-1 w-16 md:w-20 bg-brand-gold/40 rounded-full" />
             </div>
             
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 lg:gap-16">
@@ -359,11 +354,9 @@ export function Lobby() {
           {/* Otras Mesas */}
           {otherTables.length > 0 && (
             <div className="space-y-12 pt-20 border-t-2 border-white/5">
-              <div className="flex items-center justify-center gap-4 md:gap-6">
-                <div className="w-14 h-14 md:w-16 md:h-16 bg-white/5 rounded-2xl flex items-center justify-center border-2 border-white/10">
-                  <Users className="w-6 h-6 md:w-8 md:h-8 text-slate-500" />
-                </div>
+              <div className="flex flex-col items-center space-y-1">
                 <h2 className="text-3xl md:text-4xl font-display font-black italic uppercase text-slate-400 tracking-widest">Mesas</h2>
+                <div className="h-1 w-16 md:w-20 bg-white/10 rounded-full" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
                 {otherTables.map((room) => (
@@ -386,15 +379,15 @@ export function Lobby() {
 
 
       {/* Bottom info - Enhanced for Accessibility */}
-      <div className="flex flex-col md:flex-row items-center justify-center gap-16 opacity-40 pt-24 border-t-2 border-white/5">
-        <div className="flex items-center gap-4 text-sm font-black uppercase tracking-[0.3em] text-white">
-          <Shield className="w-6 h-6 text-accent-gold" /> Seguridad de Élite
+      <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 pt-4 md:pt-24 pb-4 border-t-2 border-brand-gold/10 opacity-60 w-full overflow-hidden">
+        <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-500">
+          <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Seguridad de Élite
         </div>
-        <div className="flex items-center gap-4 text-sm font-black uppercase tracking-[0.3em] text-white">
-          <Shield className="w-6 h-6 text-accent-gold" /> Juego Auditado
+        <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-500">
+          <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Juego Auditado
         </div>
-        <div className="flex items-center gap-4 text-sm font-black uppercase tracking-[0.3em] text-accent-gold">
-          <Shield className="w-6 h-6" /> Conexión Blindada
+        <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-500">
+          <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Conexión Blindada
         </div>
       </div>
 
@@ -457,81 +450,87 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
     }
   };
 
+  const tableName = (room.metadata as any)?.tableName || "Mesa VIP";
+  const displayTitle = tableName.toUpperCase().replace(/MESA\s*/i, "").trim();
+
   return (
-    <div className={`group relative bg-slate-950/90 backdrop-blur-3xl p-6 md:p-14 rounded-[2.5rem] md:rounded-[4.5rem] transition-all hover:bg-slate-950 flex flex-col justify-between shadow-[0_30px_70px_rgba(0,0,0,0.6)] overflow-hidden border-2 aspect-square md:aspect-auto md:min-h-[480px] ${
-      isFixed ? 'border-[#c0a060]/40 hover:border-[#c0a060] shadow-[#c0a060]/10' : 'border-white/10 hover:border-white/20 shadow-white/5'
+    <div className={`group relative bg-black/40 backdrop-blur-3xl p-5 md:p-14 rounded-[2.5rem] md:rounded-[4.5rem] transition-all hover:bg-black/60 flex flex-col justify-between shadow-[0_30px_70px_rgba(0,0,0,0.6)] overflow-hidden border-2 md:aspect-auto md:min-h-[480px] w-full max-w-full ${
+      isFixed ? 'border-brand-gold/20 hover:border-brand-gold/40 shadow-brand-gold/5' : 'border-white/5 hover:border-brand-gold/10 shadow-white/5'
     } ${!isPlaceholder ? 'hover:-translate-y-4' : 'opacity-95 hover:opacity-100 hover:scale-[1.01]'}`}>
       
       {/* Decorative Glow */}
       <div className={`absolute -top-48 -right-48 w-96 h-96 blur-[150px] transition-opacity duration-1000 opacity-10 group-hover:opacity-20 ${
-        isFixed ? 'bg-accent-gold' : 'bg-white'
+        isFixed ? 'bg-brand-gold' : 'bg-white'
       }`} />
 
-      <div className="relative flex flex-col h-full justify-between pb-6 md:pb-8">
-        <div className="flex items-center justify-between">
-          <div className={`w-16 h-16 md:w-20 md:h-20 rounded-[1.4rem] md:rounded-[1.8rem] border-2 flex items-center justify-center shadow-2xl transition-transform group-hover:rotate-12 ${
-            isFixed ? 'bg-accent-gold/20 border-accent-gold/40' : 'bg-white/10 border-white/20'
-          }`}>
-            <Trophy className={`w-8 h-8 md:w-10 md:h-10 ${isFixed ? 'text-accent-gold' : 'text-slate-400'}`} />
-          </div>
-          
-          {!isPlaceholder && (
-            <div className="flex flex-col items-end gap-1 md:gap-2">
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.4em] text-slate-500">Ocupación</span>
-              <div className="flex items-center gap-2 md:gap-3 px-4 md:px-8 py-2 md:py-3.5 rounded-xl md:rounded-[1.2rem] bg-black/60 border-2 border-white/5 text-white font-black text-xs md:text-lg shadow-inner overflow-hidden relative">
-                <Users className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 relative z-10" />
-                <span className="relative z-10">
-                  <span className="text-emerald-400">{(room.metadata as any)?.activePlayers ?? room.clients}</span>
-                  <span className="text-slate-600 mx-1.5 md:mx-2">/</span>
-                  {room.maxClients || 7}
-                </span>
-                <div 
-                  className="absolute inset-y-0 left-0 bg-emerald-500/20 transition-all duration-1000" 
-                  style={{ width: `${(((room.metadata as any)?.activePlayers ?? room.clients) / (room.maxClients || 7)) * 100}%` }}
-                />
-              </div>
+      <div className="relative flex flex-col h-full gap-6 md:gap-10 pb-4 md:pb-10">
+        {/* Top Indicators Row */}
+        <div className="flex items-center justify-center md:justify-between w-full">
+          <div className="flex items-center gap-3 md:gap-5">
+            <div className={`shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-[1.2rem] md:rounded-[1.8rem] border-2 flex items-center justify-center shadow-2xl transition-transform group-hover:rotate-12 ${
+              isFixed ? 'bg-brand-gold/10 border-brand-gold/20' : 'bg-white/5 border-white/10'
+            }`}>
+              <Trophy className={`w-6 h-6 md:w-10 md:h-10 ${isFixed ? 'text-brand-gold' : 'text-slate-600'}`} />
             </div>
-          )}
+            
+            {!isPlaceholder && (
+              <div className="flex flex-col gap-1 md:gap-2">
+                <span className="text-[7px] md:text-[11px] font-black uppercase tracking-[0.3em] text-slate-500/60 leading-none">Ocupación</span>
+                <div className="flex items-center gap-1.5 md:gap-3 px-3 md:px-6 py-1.5 md:py-3 rounded-lg md:rounded-2xl bg-black/60 border border-white/5 text-white font-black text-[10px] md:text-lg shadow-inner overflow-hidden relative">
+                  <Users className="w-3 h-3 md:w-5 md:h-5 text-emerald-400 relative z-10" />
+                  <span className="relative z-10 lining-nums">
+                    <span className="text-emerald-400">{(room.metadata as any)?.activePlayers ?? room.clients}</span>
+                    <span className="text-slate-600 mx-1 md:mx-2">/</span>
+                    {room.maxClients || 7}
+                  </span>
+                  <div 
+                    className="absolute inset-y-0 left-0 bg-emerald-500/10 transition-all duration-1000" 
+                    style={{ width: `${(((room.metadata as any)?.activePlayers ?? room.clients) / (room.maxClients || 7)) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           {isAdmin && !isPlaceholder && (
             <button 
               onClick={(e) => { e.stopPropagation(); onDelete(room.roomId); }}
-              className="w-16 h-16 rounded-[1.5rem] bg-red-500/10 border-2 border-red-500/30 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all ml-auto active:scale-95 shadow-2xl shadow-red-500/20"
+              className="w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-red-500/10 border-2 border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95 shadow-xl shadow-red-500/10"
               title="Cerrar Mesa"
             >
-              <Zap className="w-6 h-6" />
+              <Zap className="w-4 h-4 md:w-6 md:h-6" />
             </button>
           )}
         </div>
-        
-        <div className="mt-auto pt-4 md:pt-0">
-          <h3 className={`text-3xl md:text-6xl font-display font-black transition-colors uppercase italic tracking-tighter leading-[0.9] pr-2 break-words ${
-            isFixed ? 'text-white group-hover:text-accent-gold text-accent-gold-shimmer' : 'text-slate-200 group-hover:text-white'
-          }`}>
-            {(room.metadata as any)?.tableName || "Mesa VIP"}
-          </h3>
-          
-          <div className="flex items-center gap-3 md:gap-4 mt-2 md:mt-6">
-            <div className={`w-3.5 h-3.5 rounded-full ${isPlaceholder ? 'bg-slate-700' : 'bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.8)]'}`} />
-            <p className="text-slate-500 text-xs font-black uppercase tracking-[0.5em] pt-0.5 opacity-60">
-              {isPlaceholder ? 'ESTADO: DISPONIBLE' : `REF: ${room.roomId.substring(0, 8)}`}
-            </p>
+
+        {/* Identity & Status Tag Region */}
+        <div className="flex flex-col gap-1 md:gap-3 items-center md:items-start w-full">
+          <div className="flex items-center justify-center md:justify-start w-full px-2">
+            <span className="text-slate-500 text-[11px] md:text-base font-black uppercase tracking-[0.3em] md:tracking-[0.5em] opacity-40 whitespace-nowrap">
+              {isPlaceholder ? 'MESA RESERVADA' : `REF: ${room.roomId.substring(0, 8)}`}
+            </span>
           </div>
+
+          <h3 className={`text-6xl md:text-9xl font-display font-black transition-colors uppercase italic tracking-tighter leading-none text-center md:text-left w-full pr-0 md:pr-12 ${
+            isFixed ? 'text-text-premium group-hover:text-brand-gold' : 'text-slate-400 group-hover:text-text-premium'
+          }`}>
+            {displayTitle}
+          </h3>
         </div>
       </div>
 
       <button 
         onClick={handleAction}
         disabled={!isPlaceholder && (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7)}
-        className={`relative mt-12 md:mt-16 w-full h-20 md:h-28 font-display font-black uppercase italic tracking-[0.15em] md:tracking-[0.25em] text-2xl md:text-3xl rounded-[1.8rem] md:rounded-[2.2rem] transition-all flex items-center justify-center shadow-2xl border-t-2 border-b-[6px] md:border-b-[8px] border-x-2 ${
+        className={`relative mt-2 md:mt-4 w-full h-16 md:h-24 font-display font-black uppercase italic tracking-[0.2em] text-lg md:text-2xl rounded-[1.5rem] md:rounded-[2rem] transition-all flex items-center justify-center shadow-2xl border-b-8 active:border-b-2 active:translate-y-1.5 ${
           !isPlaceholder && (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7)
-            ? "bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed opacity-50"
+            ? "bg-slate-900 border-slate-950 text-slate-600 cursor-not-allowed"
             : isFixed 
-              ? "bg-accent-gold-shimmer border-t-white/40 border-b-black/70 border-x-white/20 text-slate-950 hover:scale-[1.03] active:translate-y-2 active:border-b-[4px] shadow-[#c0a060]/40 hover:shadow-[#c0a060]/70"
-              : "bg-slate-800 border-t-white/10 border-b-black/80 border-x-white/5 text-white hover:bg-slate-700 hover:scale-[1.03] active:translate-y-2 active:border-b-[4px]"
+              ? "bg-accent-gold-shimmer border-brand-gold-dark text-slate-950 hover:brightness-110"
+              : "bg-slate-900 border-black text-text-premium hover:bg-slate-800"
         }`}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[200%] group-hover:animate-shimmer pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[200%] group-hover:animate-[shimmer_2s_infinite] pointer-events-none" />
         {isPlaceholder ? "ABRIR MESA" : (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7) ? "MESA LLENA" : "ENTRAR"}
       </button>
     </div>

@@ -29,12 +29,12 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
   const balance = wallet?.balance_cents || 0
 
   return (
-    <div className="space-y-8 max-w-lg mx-auto pb-20">
+    <div className="space-y-10">
       {/* Premium Balance Card */}
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="group relative overflow-hidden bg-[#0a2a1f] p-8 md:p-10 rounded-[2.5rem] border-2 border-brand-gold/30 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700 hover:border-brand-gold/60"
+        className="group relative overflow-hidden bg-[#0a2a1f] p-8 md:p-12 rounded-[2.5rem] border-2 border-brand-gold/30 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700 hover:border-brand-gold/60"
       >
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_transparent_100%)] opacity-40 group-hover:opacity-60 transition-opacity duration-1000" />
@@ -49,10 +49,12 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
 
           <div className="w-full pt-4">
             <Link href="/wallet/withdraw" className="block w-full">
-              <button className="group relative w-full h-16 bg-black/60 backdrop-blur-xl text-text-premium border-2 border-brand-gold/40 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-brand-gold hover:text-black transition-all duration-500 flex items-center justify-center gap-3 overflow-hidden active:scale-95">
-                <ArrowUpWideNarrow className="w-5 h-5" />
-                <span>Retirar Saldo</span>
-                <div className="absolute inset-0 bg-brand-gold/20 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-500" />
+              <button className="group relative w-full h-16 bg-brand-gold rounded-2xl transition-all duration-200 shadow-[inset_0_-8px_0_#8b6b2e,0_15px_30px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_-6px_0_#8b6b2e,0_10px_20px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[inset_0_-2px_0_#8b6b2e,0_4px_8px_rgba(0,0,0,0.2)] overflow-hidden">
+                <span className="relative z-10 flex items-center justify-center gap-3 text-black font-black uppercase tracking-[0.2em] text-xs">
+                  <ArrowUpWideNarrow className="w-5 h-5" />
+                  <span>Retirar Saldo</span>
+                </span>
+                <div className="absolute inset-0 bg-white/20 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out"></div>
               </button>
             </Link>
           </div>
@@ -62,10 +64,10 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
       {/* Chip Packs Grid */}
       <section className="space-y-6">
         <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 bg-brand-gold/10 rounded-xl flex items-center justify-center border border-brand-gold/20">
-            <ShoppingCart className="w-5 h-5 text-brand-gold" />
+          <div className="w-10 h-10 bg-brand-gold/10 rounded-xl flex items-center justify-center border border-brand-gold/20 shadow-inner">
+            <Plus className="w-5 h-5 text-brand-gold" />
           </div>
-          <h3 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic [word-spacing:0.2em]">Cargar&nbsp; Fichas</h3>
+          <h3 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic">Carga Saldo</h3>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -78,37 +80,41 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
             >
               <Link 
                 href={`/wallet/deposit?amount=${pack.amount}`}
-                className={`relative p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center text-center gap-2 group active:scale-95 overflow-hidden ${
+                className={`group relative p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center text-center gap-2 active:scale-95 overflow-hidden ${
                   pack.popular 
-                    ? 'bg-accent-gold/10 border-accent-gold/60 shadow-[0_10px_30px_rgba(202,171,114,0.1)]' 
-                    : 'bg-black/40 border-white/5 hover:border-accent-gold/30 hover:bg-black/60 shadow-xl'
+                    ? 'bg-[#0a2a1f] border-brand-gold/60 shadow-[0_10px_40px_rgba(0,0,0,0.5)]' 
+                    : 'bg-black/40 border-brand-gold/10 hover:border-brand-gold/30 hover:bg-black/60 shadow-xl'
                 }`}
               >
                 {pack.popular && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-accent-gold/5 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--color-brand-gold)_0%,_transparent_70%)] opacity-10 pointer-events-none" />
                 )}
                 
                 {pack.popular && (
-                  <span className="absolute top-0 right-0 bg-accent-gold text-black text-[8px] font-black uppercase py-1 px-3 rounded-bl-xl tracking-widest shadow-lg">Popular</span>
+                  <div className="absolute top-0 right-0 z-20">
+                    <span className="bg-brand-gold text-black text-[9px] font-black uppercase py-1.5 px-4 rounded-bl-2xl tracking-[0.2em] shadow-xl border-b border-l border-white/20">
+                      Popular
+                    </span>
+                  </div>
                 )}
 
-                <div className={`p-4 rounded-full transition-transform duration-500 group-hover:scale-110 shadow-inner ${pack.popular ? 'bg-accent-gold/20' : 'bg-white/5'}`}>
-                  <Landmark className={`w-6 h-6 ${pack.popular ? 'text-accent-gold' : 'text-text-secondary'}`} />
+                <div className={`p-4 rounded-full transition-transform duration-500 group-hover:scale-110 shadow-inner ${pack.popular ? 'bg-brand-gold/20' : 'bg-brand-gold/5'}`}>
+                  <Landmark className={`w-6 h-6 ${pack.popular ? 'text-brand-gold' : 'text-brand-gold/60'}`} />
                 </div>
                 
                 <div className="space-y-0.5">
                   <span className="block text-lg font-display font-black text-white leading-tight">${pack.label}</span>
-                  <span className="block text-[8px] font-black text-accent-gold opacity-60 uppercase tracking-widest leading-none">Pagas {pack.price}</span>
+                  <span className="block text-[8px] font-black text-brand-gold opacity-60 uppercase tracking-widest leading-none">Pagas {pack.price}</span>
                 </div>
                 
-                <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-accent-gold/10 rounded-full blur-xl group-hover:bg-accent-gold/20 transition-all opacity-0 group-hover:opacity-100" />
+                <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-brand-gold/10 rounded-full blur-xl group-hover:bg-brand-gold/20 transition-all opacity-0 group-hover:opacity-100" />
               </Link>
             </motion.div>
           ))}
         </div>
         
-        <Link href="/wallet/deposit" className="group block text-center p-6 bg-black/30 border-2 border-dashed border-white/10 rounded-[2rem] transition-all hover:border-accent-gold/30 hover:bg-black/50">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary group-hover:text-accent-gold transition-colors">O ingresar otro monto manualmente</span>
+        <Link href="/wallet/deposit" className="group block text-center p-6 bg-black/30 border-2 border-dashed border-brand-gold/20 rounded-[2rem] transition-all hover:border-brand-gold/40 hover:bg-black/50">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary group-hover:text-brand-gold transition-colors">Otro Monto Manual</span>
         </Link>
       </section>
 
@@ -116,21 +122,26 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
       <section className="space-y-6">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
-              <ArrowUpWideNarrow className="w-5 h-5 text-text-secondary" />
+            <div className="w-10 h-10 bg-brand-gold/5 rounded-xl flex items-center justify-center border border-brand-gold/10 shadow-inner">
+              <ArrowUpWideNarrow className="w-5 h-5 text-brand-gold/60" />
             </div>
             <h3 className="text-xl font-display font-black text-white uppercase tracking-tight italic">Actividad</h3>
           </div>
-          <button className="text-[10px] font-black uppercase tracking-widest text-accent-gold hover:underline">Ver Todo</button>
+          <button className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold hover:text-brand-gold-light transition-colors flex items-center gap-2 group/btn">
+            Ver Todo
+            <Link href="/wallet/history">
+              <ArrowUpRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1" />
+            </Link>
+          </button>
         </div>
 
         <div className="space-y-3">
           {transactions?.length === 0 ? (
-            <div className="text-center py-16 bg-black/40 border-2 border-dashed border-white/10 rounded-[2.5rem]">
-              <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
-                <Landmark className="w-6 h-6 text-text-secondary opacity-40" />
+            <div className="text-center py-16 bg-black/40 border-2 border-dashed border-brand-gold/10 rounded-[2.5rem]">
+              <div className="w-12 h-12 bg-brand-gold/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-brand-gold/10">
+                <Landmark className="w-6 h-6 text-brand-gold/20" />
               </div>
-              <p className="text-text-secondary text-[10px] font-black uppercase tracking-[.3em] opacity-60">Sin movimientos</p>
+              <p className="text-text-secondary text-[10px] font-black uppercase tracking-[.3em] opacity-40">Sin movimientos</p>
             </div>
           ) : (
             transactions?.map((tx: any, idx: number) => (
@@ -140,15 +151,15 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 onClick={() => handleTxClick(tx)}
-                className="group bg-black/40 backdrop-blur-xl border border-white/10 p-5 rounded-[2rem] flex items-center justify-between gap-4 transition-all hover:bg-black/60 hover:border-accent-gold/30 shadow-lg overflow-hidden cursor-pointer active:scale-[0.98]"
+                className="group bg-black/40 backdrop-blur-xl border border-brand-gold/10 p-5 rounded-[2rem] flex items-center justify-between gap-4 transition-all hover:bg-black/60 hover:border-brand-gold/30 shadow-lg overflow-hidden cursor-pointer active:scale-[0.98]"
               >
                 <div className="flex items-center gap-4 min-w-0 flex-1">
                   <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-inner ${
                     tx.type === 'deposit' 
-                      ? 'bg-accent-gold/10 text-accent-gold border border-accent-gold/20' 
-                      : 'bg-white/5 text-text-secondary border border-white/10'
+                      ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20' 
+                      : 'bg-white/5 text-text-secondary border border-brand-gold/10'
                   }`}>
-                    {tx.type === 'deposit' ? <ShoppingCart className="w-5 h-5" /> : <ArrowUpWideNarrow className="w-5 h-5" />}
+                    {tx.type === 'deposit' ? <Plus className="w-5 h-5" /> : <ArrowUpWideNarrow className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
                     <p className="font-display font-black text-sm md:text-base italic uppercase tracking-tight text-text-premium truncate group-hover:text-brand-gold transition-all [word-spacing:0.2em]">
