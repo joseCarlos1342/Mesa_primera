@@ -20,5 +20,10 @@
     "dev:game": "npm run dev --workspace=game-server",
     "test": "echo \"Testing placeholder...\"",
     "prepare": "husky"
+  },
+  "overrides": {
+    "elliptic": "^6.6.1",
+    "serialize-javascript": "^7.0.4",
+    "flatted": "^3.4.2"
   }
 }
