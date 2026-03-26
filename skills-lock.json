@@ -34,7 +34,7 @@
     "tailwind-design-system": {
       "source": "wshobson/agents",
       "sourceType": "github",
-      "computedHash": "d0e4d2ba5a99cdc6e264d3927d1d81e85e79f551c8e246fa0a86123217eaad94"
+      "computedHash": "7ff2f4650597e98ca4cd8f01231fb432ab4d187d6b12e641485aa871a04448cc"
     },
     "typescript-advanced-types": {
       "source": "wshobson/agents",
@@ -44,7 +44,7 @@
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
-      "computedHash": "3462ec83f862abb2d532953df33a4dbf87f4616849da5d4b5cc7c13601aaf997"
+      "computedHash": "bbc31a48537b473ff4feea6360ef0de3bfdcbef26c14f4967a5deefe8ca801d3"
     }
   }
 }
