@@ -96,40 +96,62 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         this.advanceTurnPhase2();
       } else if (this.state.phase === "DESCARTE") {
         const { action, droppedCards, amount } = message; 
+        const betAmount = amount || 0;
+        
         player.hasActed = true;
+        this.currentTimeline.push({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, amount: betAmount, time: Date.now() });
 
-        this.currentTimeline.push({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, amount, time: Date.now() });
+        if (action === "discard") {
+          // Si hay una apuesta previa y el jugador no la iguala ni la sube, es un paso/fold implícito o error de UI
+          // Para esta lógica, si manda amount y es mayor que el actual, es un SUBE
+          if (betAmount > this.state.currentMaxBet) {
+             this.state.currentMaxBet = betAmount;
+             this.state.highestBetPlayerId = player.id;
+             // Resetear hasActed para todos los demás activos para que deban responder al nuevo aumento
+             this.state.players.forEach(p => {
+               if (p.id !== player.id && !p.isFolded && p.connected) {
+                 p.hasActed = false;
+               }
+             });
+          }
 
-        if (action === "discard" && droppedCards && Array.isArray(droppedCards)) {
-          // Guardar descartes para procesar al final de la fase (reemplazos lentos)
-          player.pendingDiscardCards = droppedCards;
-          
-          const betAmount = amount || 0;
           if (betAmount > 0) {
-            if (player.chips >= betAmount) {
-              player.chips -= betAmount;
-              this.state.pot += betAmount;
+            const deduction = betAmount; // Simplificación: asumiendo que amount es el total a poner en esta fase
+            if (player.chips >= deduction) {
+              player.chips -= deduction;
+              this.state.pot += deduction;
             } else {
               this.state.pot += player.chips;
               player.chips = 0;
             }
           }
 
-          // Remover de la mano visual inmediatamente para que el jugador vea que "ya botó"
-          let currentHand = player.cards ? player.cards.split(',') : [];
-          currentHand = currentHand.filter((c: string) => !droppedCards.includes(c));
-          player.cards = currentHand.join(',');
+          // Guardar descartes (solo si se enviaron)
+          if (droppedCards && Array.isArray(droppedCards) && droppedCards.length > 0) {
+            player.pendingDiscardCards = droppedCards;
+            
+            // Remover de la mano visual inmediatamente
+            let currentHand = player.cards ? player.cards.split(',') : [];
+            currentHand = currentHand.filter((c: string) => !droppedCards.includes(c));
+            player.cards = currentHand.join(',');
 
-          // Poner en el tope del mazo (Memoria de deck)
-          for (const c of droppedCards) {
-             this.state.tableCards.push(c);
-          }
-
-          if (betAmount > 0) {
+            // Poner en el tope del mazo
+            for (const c of droppedCards) {
+               this.state.tableCards.push(c);
+            }
+            
             this.state.lastAction = `${player.nickname} va $${betAmount} y bota ${droppedCards.length} cartas`;
           } else {
-            this.state.lastAction = `${player.nickname} bota ${droppedCards.length} cartas`;
+            this.state.lastAction = `${player.nickname} va $${betAmount} y mantiene su mano`;
           }
+        } else if (action === "paso") {
+           // Si alguien ya apostó, pasar significa retirarse (fallecer)
+           if (this.state.currentMaxBet > 0) {
+              player.isFolded = true;
+              this.state.lastAction = `${player.nickname} fallece (no iguala la apuesta)`;
+           } else {
+              this.state.lastAction = `${player.nickname} pasa`;
+           }
         }
         
         this.advanceTurnPhaseDescarte();
@@ -641,6 +663,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     console.log(`[MesaRoom] Iniciando Fase: Descarte`);
 
     this.state.players.forEach((p: Player) => p.hasActed = false); // Reset actions
+    this.state.currentMaxBet = 0;
+    this.state.highestBetPlayerId = "";
 
     const playerIds = Array.from(this.state.players.keys());
     const dealerIdx = playerIds.indexOf(this.state.dealerId);

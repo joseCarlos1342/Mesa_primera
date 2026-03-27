@@ -360,9 +360,9 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
                 )}
               </div>
 
-              {/* CHIPS: Only show if it matches turn and betting phase */}
+              {/* CHIPS: Only show if it matches turn and betting/discard phase */}
               <AnimatePresence>
-                {isMyTurn && (phase === 'PIQUE' || phase === 'GUERRA') && (
+                {isMyTurn && (phase === 'PIQUE' || phase === 'GUERRA' || phase === 'DESCARTE') && (
                   <m.div 
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -391,7 +391,15 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
                     </div>
                     {selectedChip && (
                       <button 
-                        onClick={() => { room.send('action', { action: phase === 'PIQUE' ? 'voy' : 'bet', amount: selectedChip }); setSelectedChip(null); }}
+                        onClick={() => { 
+                          if (phase === 'DESCARTE') {
+                             room.send('action', { action: 'discard', amount: selectedChip, droppedCards: selectedCards });
+                             setSelectedCards([]);
+                          } else {
+                             room.send('action', { action: phase === 'PIQUE' ? 'voy' : 'bet', amount: selectedChip }); 
+                          }
+                          setSelectedChip(null); 
+                        }}
                         className="h-10 md:h-12 px-4 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black shadow-lg uppercase tracking-tight text-[10px] md:text-sm border-b-[3px] border-green-700 ml-1">
                         IR!
                       </button>

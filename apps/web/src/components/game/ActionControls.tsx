@@ -40,18 +40,21 @@ export function ActionControls({ room, phase, isMyTurn, selectedCards = EMPTY_CA
         {phase === 'DESCARTE' ? (
           <div className="flex flex-row items-center gap-2 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-[#e2b044]/30 shadow-xl">
             <span className="hidden md:block text-[#e2b044] text-[10px] font-bold uppercase tracking-widest px-2">
-              {selectedCards.length > 0 ? 'Descartar' : 'Pedir'}
+              {room.state.currentMaxBet > 0 ? 'Responder' : (selectedCards.length > 0 ? 'Descartar' : 'Pedir')}
             </span>
             <button 
-              onClick={() => handleExecute('discard', selectedCards)}
+              onClick={() => handleExecute(room.state.currentMaxBet > 0 ? 'paso' : 'discard', selectedCards)}
               className={`
                 px-6 h-10 md:h-12 rounded-xl font-black text-white text-xs md:text-sm shadow-lg hover:-translate-y-0.5 active:translate-y-1 transition-all uppercase tracking-wider
-                ${selectedCards.length > 0 
-                  ? 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] border-b-2 border-[#962d22]' 
-                  : 'bg-gradient-to-br from-[#2980b9] to-[#1c5980] border-b-2 border-[#154360]'}
+                ${room.state.currentMaxBet > 0 
+                  ? 'bg-gradient-to-br from-[#f87171] to-[#dc2626] border-b-2 border-[#7f1d1d]'
+                  : (selectedCards.length > 0 
+                    ? 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] border-b-2 border-[#962d22]' 
+                    : 'bg-gradient-to-br from-[#2980b9] to-[#1c5980] border-b-2 border-[#154360]')
+                }
               `}
             >
-              {selectedCards.length > 0 ? `Botar ${selectedCards.length}` : 'Pasar'}
+              {room.state.currentMaxBet > 0 ? 'Fallecer' : (selectedCards.length > 0 ? `Botar ${selectedCards.length}` : 'Pasar')}
             </button>
           </div>
         ) : null}
