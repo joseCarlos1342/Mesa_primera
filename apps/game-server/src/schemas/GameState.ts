@@ -33,5 +33,7 @@ export class GameState extends Schema {
   @type("string") lastSeed: string = ""; // Seed del RNG para auditoría
   @type("string") lastAction: string = ""; // Para mostrar mensajes como "Dario va $5.000 para Pique" en UI
   @type("uint8") showdownTimer: number = 0; // Temporizador para Mostrar/No Mostrar cartas
+  @type("uint32") currentMaxBet: number = 0; // Apuesta más alta en la fase actual
+  @type("string") highestBetPlayerId: string = ""; // Quién puso la apuesta más alta
   @type("boolean") isFirstGame: boolean = true; // Define si es la primera partida de la sesión para el Sorteo
 }
