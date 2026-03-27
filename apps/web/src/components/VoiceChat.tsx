@@ -149,7 +149,7 @@ function CustomMicToggle() {
       <button 
         onClick={toggleMic}
         disabled={isPending || !isConnected}
-        className={`group relative flex items-center justify-center w-12 h-12 md:w-16 md:h-16 landscape:w-10 landscape:h-10 md:landscape:w-16 md:landscape:h-16 rounded-full transition-all hover:-translate-y-0.5 active:translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-[0_10px_20px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)]
+        className={`group relative flex items-center justify-center w-10 h-10 md:w-14 md:h-14 landscape:w-9 landscape:h-9 md:landscape:w-14 md:landscape:h-14 rounded-full transition-all hover:-translate-y-0.5 active:translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-[0_10px_20px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)]
           ${isMicrophoneEnabled 
             ? 'bg-gradient-to-b from-[#4ade80] via-[#16a34a] to-[#14532d] hover:from-[#86efac] hover:via-[#22c55e] border border-[#86efac]/50 border-b-[4px] border-b-[#064e3b] text-white' 
             : 'bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] hover:from-[#fca5a5] hover:via-[#ef4444] border border-[#fca5a5]/50 border-b-[4px] border-b-[#7f1d1d] text-white'
@@ -159,14 +159,14 @@ function CustomMicToggle() {
       >
         {/* OFF STATE */}
         {!isMicrophoneEnabled && (
-          <MicOff className="w-5 h-5 md:w-7 md:h-7 drop-shadow-md" />
+          <MicOff className="w-4 h-4 md:w-6 md:h-6 drop-shadow-md" />
         )}
 
         {/* ON STATE */}
         {isMicrophoneEnabled && (
           <div className="relative">
               <div className="absolute inset-0 rounded-full animate-ping bg-emerald-300 opacity-60"></div>
-              <Mic className="w-5 h-5 md:w-7 md:h-7 relative z-10 drop-shadow-md text-[#fdf0a6]" />
+              <Mic className="w-4 h-4 md:w-6 md:h-6 relative z-10 drop-shadow-md text-[#fdf0a6]" />
           </div>
         )}
       </button>

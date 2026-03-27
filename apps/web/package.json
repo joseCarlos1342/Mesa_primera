@@ -14,6 +14,7 @@
   "dependencies": {
     "@colyseus/sdk": "^0.17.34",
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@gsap/react": "^2.1.2",
     "@livekit/components-react": "^2.9.20",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.98.0",
@@ -21,6 +22,7 @@
     "date-fns": "^4.1.0",
     "flatted": "3.4.2",
     "framer-motion": "^12.35.0",
+    "gsap": "^3.14.2",
     "ioredis": "^5.10.0",
     "livekit-client": "^2.17.2",
     "livekit-server-sdk": "^2.15.0",

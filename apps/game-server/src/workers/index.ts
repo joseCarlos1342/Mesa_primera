@@ -17,7 +17,6 @@ export const ledgerQueueEvents = new QueueEvents("ledgerProcessing", {
 
 // Silenciar errores de conexión de Redis
 ledgerQueue.on('error', (err) => console.warn('[Redis Silenced - LedgerQueue]:', err.message));
-ledgerWorker.on('error', (err) => console.warn('[Redis Silenced - LedgerWorker]:', err.message));
 ledgerQueueEvents.on('error', (err) => console.warn('[Redis Silenced - LedgerQueueEvents]:', err.message));
 
 export const ledgerWorker = new Worker(
@@ -31,6 +30,8 @@ export const ledgerWorker = new Worker(
   },
   { connection: redisOptions }
 );
+
+ledgerWorker.on('error', (err) => console.warn('[Redis Silenced - LedgerWorker]:', err.message));
 
 ledgerWorker.on("completed", (job) => {
   console.log(`[LedgerWorker] Trabajo ${job.id} ha completado exitosamente`);

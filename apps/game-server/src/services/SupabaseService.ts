@@ -25,17 +25,17 @@ export class SupabaseService {
       // 1. Get the user's wallet
       const { data: wallet, error: walletError } = await supabase
         .from('wallets')
-        .select('id, balance')
+        .select('id, balance_cents')
         .eq('user_id', userId)
         .single();
       
       if (walletError || !wallet) throw new Error('Wallet not found for ' + userId);
 
       // 2. Add payout to winner's balance
-      const newBalance = Number(wallet.balance) + payout;
+      const newBalance = Number(wallet.balance_cents) + payout;
       const { error: updateError } = await supabase
         .from('wallets')
-        .update({ balance: newBalance })
+        .update({ balance_cents: newBalance })
         .eq('id', wallet.id);
 
       if (updateError) throw updateError;

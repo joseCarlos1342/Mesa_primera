@@ -1,17 +1,19 @@
 "use client"
 
 import { m, AnimatePresence } from 'framer-motion'
-import { Mic, MicOff } from 'lucide-react'
 import { getAvatarSvg } from '@/utils/avatars'
+import { formatCurrency } from '@/utils/format'
 
 interface PlayerBadgeProps {
   player: any;
   isActive: boolean;
   isMe: boolean;
   isDealer?: boolean;
+  hideAvatar?: boolean;
+  points?: number;
 }
 
-export function PlayerBadge({ player, isActive, isMe, isDealer = false }: PlayerBadgeProps) {
+export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points }: PlayerBadgeProps) {
   const isMuted = true; // Placeholder for actual voice chat state if available
 
   // Determine avatar rendering
@@ -48,74 +50,64 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false }: Player
 
   return (
     <m.div 
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: isActive ? 1.05 : 1, opacity: player.connected === false ? 0.4 : 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: player.connected === false ? 0.4 : 1 }}
+      transition={{ duration: 0.3 }}
       className={`relative flex flex-col items-center group ${isMe ? 'z-50' : 'z-10'}`}
     >
-       {/* Active Glow Ring Behind Avatar */}
-       <AnimatePresence>
-          {isActive && (
-            <m.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1.25, opacity: [0.5, 0.8, 0.5] }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-1 left-1 right-1 bottom-10 bg-[#4ade80] rounded-full blur-[20px] z-0"
-            />
-          )}
-       </AnimatePresence>
 
-       {/* Avatar Circle Frame (Brushed Gold) */}
+       {/* Horizontal Pill Container */}
        <div className={`
-         relative rounded-full mb-2 z-10 flex items-center justify-center
-         ${isMe ? 'w-20 h-20 md:w-28 md:h-28 landscape:w-16 landscape:h-16 lg:landscape:w-32 lg:landscape:h-32' : 'w-14 h-14 md:w-20 md:h-20 landscape:w-12 landscape:h-12 lg:landscape:w-24 lg:landscape:h-24'}
-         bg-gradient-to-br from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c]
-         p-[3px] shadow-[0_8px_16px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)]
+         relative z-20 flex items-center gap-2 md:gap-3 px-2 md:px-3 py-1 md:py-1.5
+         bg-gradient-to-r from-[#112a1a] via-[#0a180e] to-[#112a1a] 
+         rounded-full border 
+         ${isActive ? 'border-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.5)]' : 'border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.6)]'}
+         transition-all duration-300
        `}>
-        {/* Inner shadow/border for depth */}
-        <div className="w-full h-full rounded-full border border-black/40 overflow-hidden shadow-[inset_0_4px_10px_rgba(0,0,0,0.8)] relative bg-[#111]">
-          {avatarContent}
-        </div>
-      </div>
+         
+         {/* Small Avatar Circle */}
+         {!hideAvatar && (
+            <div className={`
+              relative rounded-full flex-shrink-0 flex items-center justify-center
+              w-8 h-8 md:w-10 md:h-10 
+              bg-gradient-to-br from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c]
+              p-[2px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]
+            `}>
+              <div className="w-full h-full rounded-full overflow-hidden bg-[#111] border border-black/20">
+                {avatarContent}
+              </div>
+            </div>
+         )}
 
-       {/* Name and Balance Tab */}
-       <div className={`
-         relative z-20 flex flex-col items-center justify-center w-max px-3 md:px-4 py-1.5 md:py-2 
-         bg-gradient-to-b from-[#112a1a] to-[#0a180e] rounded-md md:rounded-lg 
-         border ${isActive ? 'border-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.5)]' : 'border-[#d4af37]/30 shadow-[0_4px_8px_rgba(0,0,0,0.8)]'}
-         -mt-6 md:-mt-8 landscape:-mt-4 landscape:py-1
-       `}>
-        <div className="flex items-center gap-2">
-          <p className="text-[#e2c161] text-[9px] md:text-[11px] font-bold tracking-widest uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-            {player.nickname ? (isMe ? player.nickname.split(' ')[0] : player.nickname.split(' ')[0]) : 'VACÍO'}
-          </p>
-          {isActive ? (
-             <Mic className="w-3 h-3 md:w-4 md:h-4 text-[#4ade80] drop-shadow-[0_0_5px_rgba(74,222,128,1)]" />
-          ) : (
-             <MicOff className="w-3 h-3 md:w-4 md:h-4 text-[#d4af37]/50" />
-          )}
-        </div>
-        
-        <span className="text-[#c1a052] text-[8px] md:text-[10px] font-mono font-black tracking-widest mt-0.5 opacity-80">
-          ${player.chips != null ? 'XXXXXXX' : 'XXXXXXX'} 
-          {/* Note: The mockup shows masked balances $XXXXXXX for privacy/aesthetic in the lobby/others. Can also show real value if desired. */}
-        </span>
-      </div>
-
-      {/* LA MANO Ribbon (Dealer) */}
-      {isDealer && (
-         <div className="absolute -right-4 -top-2 bg-gradient-to-r from-[#d4af37] to-[#a17822] text-black text-[8px] md:text-[10px] font-bold px-2 py-0.5 rounded-sm shadow-[0_2px_4px_rgba(0,0,0,0.5)] border border-[#fff7d6]/50 uppercase tracking-widest z-30">
-           Mano
+         {/* Info Column (Name & Balance) */}
+         <div className="flex flex-col items-start pr-2">
+            <span className="text-[#e2c161] text-[9px] md:text-[11px] font-bold tracking-wider uppercase truncate max-w-[60px] md:max-w-[80px]">
+              {player.nickname ? player.nickname.split(' ')[0] : 'VACÍO'}
+            </span>
+            <span className="text-[#c1a052] text-[8px] md:text-[9px] font-mono font-bold opacity-90 flex items-center">
+              {player.chips != null ? formatCurrency(player.chips) : '$0'}
+              {points != null && (
+                <span className="ml-2 pl-2 border-l border-white/20 text-[#d4af37] font-sans font-black">
+                  {points} PTS
+                </span>
+              )}
+            </span>
          </div>
-      )}
 
-      {/* Disconnected Overlay */}
-      {player.connected === false && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-full z-40 mx-auto w-[80%] aspect-square top-0">
-           <span className="text-red-500 text-[10px] font-bold uppercase tracking-widest bg-black px-2 py-1 border border-red-900">Afk</span>
-        </div>
-      )}
+         {/* Dealer Icon (Compact) */}
+         {isDealer && (
+            <div className="bg-[#d4af37] text-black text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white/20 uppercase tracking-tighter">
+              Mano
+            </div>
+         )}
+       </div>
+
+       {/* Disconnected Overlay (Small Icon instead of full overlay) */}
+       {player.connected === false && (
+         <div className="absolute -left-1 -top-1 bg-red-600 rounded-full p-1 border border-red-900 z-50 shadow-lg">
+            <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+         </div>
+       )}
     </m.div>
   )
 }
