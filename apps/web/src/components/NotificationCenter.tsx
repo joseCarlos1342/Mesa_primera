@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/utils/format';
 import { deleteNotification, markNotificationAsRead } from '@/app/actions/social-actions';
 
 interface NotificationCenterProps {
@@ -151,6 +152,15 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     }
   };
 
+  const formatNotificationBody = (body: string) => {
+    if (!body) return '';
+    // Identify amounts like $100000.000000000000 and format them
+    return body.replace(/\$(\d+)\.\d+/g, (match, amountStr) => {
+      const amount = parseInt(amountStr, 10);
+      return formatCurrency(amount);
+    });
+  };
+
   return (
     <div className="relative z-[60]">
       <button 
@@ -218,7 +228,9 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
                       {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-text-secondary leading-relaxed group-hover:text-text-premium transition-colors mb-4">{n.body}</p>
+                  <p className="text-sm font-medium text-text-secondary leading-relaxed group-hover:text-text-premium transition-colors mb-4">
+                    {formatNotificationBody(n.body)}
+                  </p>
                   
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2 pt-2 border-t border-white/5">

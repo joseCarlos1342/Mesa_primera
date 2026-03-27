@@ -14,9 +14,13 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
     if (phase === 'LOBBY') return;
     
     const messages: Record<string, string> = {
+      'BARAJANDO': 'Barajando las cartas...',
       'SORTEO_MANO': 'Sorteando La Mano...',
+      'PIQUE_DEAL': 'Repartiendo...',
       'PIQUE': '¡A Picar!',
       'COMPLETAR': 'Completando Manos...',
+      'DESCARTE': 'La Bajada (Descarte)',
+      'COMPLETAR_DESCARTE': 'Entregando reemplazos...',
       'CANTICOS': 'Momento de Cánticos...',
       'GUERRA': '¡Guerra!',
       'SHOWDOWN': 'Cartas sobre la mesa',

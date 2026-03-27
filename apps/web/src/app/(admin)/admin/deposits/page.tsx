@@ -3,7 +3,7 @@ import { formatCurrency } from '@/utils/format'
 import { ArrowLeft, User, ExternalLink, CheckCircle2, XCircle, MessageSquare, Image as ImageIcon, Wallet, Clock, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
-
+import { DepositActions } from './DepositActions'
 export default async function AdminDepositsPage() {
   const result = await getPendingDeposits()
   const supabase = await createClient()
@@ -129,33 +129,7 @@ export default async function AdminDepositsPage() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                      <form className="w-full sm:w-auto" action={async () => {
-                        'use server'
-                        await processTransaction(dep.id, 'completed')
-                      }}>
-                        <button 
-                          type="submit" 
-                          className="w-full sm:w-48 h-16 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl transition-all shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 group/btn"
-                        >
-                          <CheckCircle2 className="w-5 h-5 group-hover/btn:animate-bounce" />
-                          <span className="drop-shadow-sm">Aprobar</span>
-                        </button>
-                      </form>
-                      
-                      <form className="w-full sm:w-auto" action={async () => {
-                        'use server'
-                        await processTransaction(dep.id, 'failed')
-                      }}>
-                        <button 
-                          type="submit" 
-                          className="w-full sm:w-48 h-16 bg-slate-950 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/30 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 group/btn2"
-                        >
-                          <XCircle className="w-5 h-5 group-hover/btn2:animate-pulse" />
-                          Rechazar
-                        </button>
-                      </form>
-                    </div>
+                    <DepositActions depositId={dep.id} />
                   </div>
                 </div>
 

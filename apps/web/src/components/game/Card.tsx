@@ -1,7 +1,6 @@
 "use client"
 
 import { m } from 'framer-motion'
-import Image from 'next/image'
 import { useState } from 'react'
 
 interface CardProps {
@@ -32,7 +31,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
     
     const mappedSuit = suitNameObj[suit as string] || suit.toLowerCase();
     
-    return `/cards/${paddedValue}-${mappedSuit}.png`;
+    return `/cards/${paddedValue}-${mappedSuit}.png?v=3`;
   }
 
   return (
@@ -47,11 +46,12 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
         rotateY: { duration: 0.6, ease: "easeInOut", delay: delay + 0.2 },
         zIndex: { delay: delay + 0.3 }
       }}
-      className={`relative w-20 h-[8rem] md:w-28 md:h-[11rem] lg:w-32 lg:h-[13rem] landscape:h-[35vh] landscape:max-h-[140px] landscape:w-[24vh] landscape:max-w-[96px] lg:landscape:h-[13rem] lg:landscape:w-32 rounded-xl md:rounded-2xl shadow-2xl transform-style-3d cursor-pointer ${className}`}
+      className={`relative w-20 h-[8rem] md:w-28 md:h-[11rem] lg:w-32 lg:h-[13rem] landscape:h-[35vh] landscape:max-h-[140px] landscape:w-[24vh] landscape:max-w-[96px] lg:landscape:h-[13rem] lg:landscape:w-32 rounded-lg shadow-2xl transform-style-3d cursor-pointer ${className}`}
       style={{ perspective: 1000 }}
     >
       <div 
-        className="absolute inset-0 w-full h-full bg-slate-50 border-2 border-slate-200 rounded-xl md:rounded-2xl backface-hidden flex flex-col items-center justify-center overflow-hidden"
+        className={`absolute inset-0 w-full h-full bg-white rounded-lg flex flex-col items-center justify-center overflow-hidden transition-opacity duration-300 ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        style={{ backfaceVisibility: 'hidden' }}
       >
         {!isHidden && suit && value && (
           imgError ? (
@@ -59,29 +59,23 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
               {value}<br/>{suit.substring(0,1)}
             </span>
           ) : (
-            <Image 
+            /* Using standard img instead of next/image to handle local query string cache busting without extra config */
+            <img 
               src={getCardImage()} 
               alt={`${value} de ${suit}`} 
-              fill
-              priority={priority}
-              sizes="(max-width: 768px) 15vw, 10vw"
-              className="object-contain filter drop-shadow-md"
+              className="w-full h-full object-fill"
               onError={() => setImgError(true)}
             />
           )
         )}
       </div>
 
-      {/* Back of Card */}
+      {/* Back of Card - Premium Rooster Design */}
       <div 
-        className="absolute inset-0 w-full h-full bg-[#0c1220] border-2 border-emerald-500/30 rounded-lg md:rounded-xl backface-hidden rotate-y-180 flex items-center justify-center overflow-hidden"
+        className={`absolute inset-0 w-full h-full bg-[#0c1220] border-2 border-[#d4af37]/40 rounded-lg overflow-hidden bg-[url('/images/card-back-rooster.png')] bg-cover bg-center transition-opacity duration-300 ${isHidden ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        style={{ backfaceVisibility: 'hidden' }}
       >
-        {/* Nice geometric pattern for the back */}
-        <div className="absolute inset-1 border border-emerald-500/20 rounded md:rounded-lg opacity-50" />
-        <div className="absolute inset-2 border border-emerald-500/10 rounded-sm md:rounded-md bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-80" />
-        <div className="w-8 h-8 md:w-12 md:h-12 border-2 border-emerald-500/40 rotate-45 flex items-center justify-center bg-[#1b253b]/80 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-          <div className="w-4 h-4 md:w-6 md:h-6 bg-emerald-500/20 -rotate-45" />
-        </div>
+        <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] pointer-events-none" />
       </div>
     </m.div>
   )

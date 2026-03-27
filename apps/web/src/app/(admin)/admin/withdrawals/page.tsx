@@ -3,7 +3,7 @@ import { processTransaction } from '@/app/actions/admin-wallet'
 import { formatCurrency } from '@/utils/format'
 import { ArrowLeft, User, CheckCircle2, XCircle, Clock, Wallet, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-
+import { WithdrawalActions } from './WithdrawalActions'
 export default async function AdminWithdrawalsPage() {
   const result = await getPendingWithdrawals()
 
@@ -129,33 +129,7 @@ export default async function AdminWithdrawalsPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                    <form className="w-full sm:w-auto" action={async () => {
-                      'use server'
-                      await processTransaction(wit.id, 'completed')
-                    }}>
-                      <button 
-                        type="submit" 
-                        className="w-full sm:w-48 h-16 bg-gradient-to-br from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 group/btn"
-                      >
-                        <CheckCircle2 className="w-5 h-5 group-hover/btn:animate-bounce" />
-                        <span className="drop-shadow-sm">Procesar</span>
-                      </button>
-                    </form>
-                    
-                    <form className="w-full sm:w-auto" action={async () => {
-                      'use server'
-                      await processTransaction(wit.id, 'failed')
-                    }}>
-                      <button 
-                        type="submit" 
-                        className="w-full sm:w-48 h-16 bg-slate-950 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/30 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 group/btn2"
-                      >
-                        <XCircle className="w-5 h-5 group-hover/btn2:animate-pulse" />
-                        Anular
-                      </button>
-                    </form>
-                  </div>
+                  <WithdrawalActions withdrawalId={wit.id} />
                 </div>
 
                 {/* Background Decor */}

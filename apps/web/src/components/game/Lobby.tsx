@@ -84,7 +84,8 @@ export function Lobby() {
           
           const profileWithBalance = {
             ...profile,
-            balance: wallet ? wallet.balance_cents / 100 : 0
+            balance: wallet ? wallet.balance_cents / 100 : 0,
+            balance_cents: wallet ? wallet.balance_cents : 0
           }
           
           setUserProfile(profileWithBalance)
@@ -151,7 +152,8 @@ export function Lobby() {
         maxPlayers: 7,
         nickname: nick,
         deviceId: deviceId,
-        avatarUrl: avatarUrl
+        avatarUrl: avatarUrl,
+        chips: userProfile?.balance_cents || 0
       })
       
       sessionStorage.setItem(`reconnectionToken_${room.roomId}`, room.reconnectionToken);
@@ -346,6 +348,7 @@ export function Lobby() {
                   isFixed={true}
                   creating={creating}
                   setCreating={setCreating}
+                  userProfile={userProfile}
                 />
               ))}
             </div>
@@ -369,6 +372,7 @@ export function Lobby() {
                     isFixed={false}
                     creating={creating}
                     setCreating={setCreating}
+                    userProfile={userProfile}
                   />
                 ))}
               </div>
@@ -400,14 +404,15 @@ export function Lobby() {
 )
 }
 
-function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCreating }: { 
+function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCreating, userProfile }: { 
   room: any, 
   isAdmin: boolean, 
   onJoin: (id: string) => void,
   onDelete: (id: string) => void,
   isFixed: boolean,
   creating: boolean,
-  setCreating: (v: boolean) => void
+  setCreating: (v: boolean) => void,
+  userProfile: any
 }) {
   const isPlaceholder = room.metadata?.isPlaceholder;
   
@@ -428,7 +433,8 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
           maxPlayers: 7,
           nickname: nick,
           deviceId: deviceId,
-          avatarUrl: avatarUrl
+          avatarUrl: avatarUrl,
+          chips: userProfile?.balance_cents || 0
         });
         
         sessionStorage.setItem(`reconnectionToken_${newRoom.roomId}`, newRoom.reconnectionToken);

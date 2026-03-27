@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Menu, ShoppingCart, LogOut, Settings, HelpCircle, X, Mic } from 'lucide-react'
+import { Menu, ShoppingCart, LogOut, Settings, HelpCircle, X, Mic, Headphones } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -25,12 +25,12 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <>
-    <header className="flex h-14 md:h-16 w-full items-center justify-between px-4 md:px-6 bg-[#0c1220]/80 backdrop-blur-md border-b border-[#c0a060]/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative z-50 landscape:h-12 md:landscape:h-16">
+    <header className="absolute top-0 left-0 w-full flex h-14 md:h-16 items-center justify-between px-4 md:px-6 bg-transparent pointer-events-none z-50 landscape:h-12 md:landscape:h-16">
       {/* Top Left: Hamburger Menu */}
       <div className="relative" ref={menuRef}>
         <button 
           onClick={() => setIsMenuOpen(!isMenuOpen)} 
-          className="p-2 -ml-2 rounded-md hover:bg-[#d4af37]/10 transition-colors relative z-50"
+          className="p-2 -ml-2 rounded-md hover:bg-[#d4af37]/10 transition-colors relative z-50 pointer-events-auto"
         >
           {isMenuOpen ? (
             <X className="w-8 h-8 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
@@ -82,6 +82,17 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
                 <HelpCircle className="w-5 h-5 group-hover:text-[#d4af37] transition-colors" />
                 <span className="font-medium group-hover:text-white transition-colors">Reglas del Juego</span>
               </button>
+
+              <button 
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  window.dispatchEvent(new CustomEvent('open-support-chat'));
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-amber-500/10 transition-colors text-amber-500 group"
+              >
+                <Headphones className="w-5 h-5 group-hover:text-amber-400 transition-colors" />
+                <span className="font-bold group-hover:text-amber-400 transition-colors">Llamar al Admin</span>
+              </button>
               
               <div className="my-1 border-t border-white/5" />
 
@@ -100,17 +111,13 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
         </AnimatePresence>
       </div>
 
-      {/* Center: Game Title */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none w-full flex justify-center">
-        <h1 className="text-sm md:text-2xl font-serif font-bold tracking-tight md:tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] max-w-[180px] md:max-w-none leading-tight" style={{ textShadow: '0px 2px 4px rgba(0,0,0,0.8), 0px 0px 2px rgba(212,175,55,0.4)', WebkitTextStroke: '0.3px rgba(138, 109, 28, 0.5)' }}>
-          Juego de primera: los 4 ases
-        </h1>
-      </div>
+      {/* Center: Empty (Title moved to Board felt) */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
       {/* Top Right: Shopping Cart */}
       <button 
         onClick={() => window.dispatchEvent(new CustomEvent('open-recharge-modal'))}
-        className="p-2 -mr-2 rounded-md hover:bg-[#d4af37]/10 transition-colors"
+        className="p-2 -mr-2 rounded-md hover:bg-[#d4af37]/10 transition-colors pointer-events-auto"
       >
         <ShoppingCart className="w-7 h-7 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] hover:scale-110 transition-transform" />
       </button>

@@ -12,6 +12,7 @@ import { RulesModal } from '@/components/game/RulesModal'
 import { ReconnectOverlay } from '@/components/game/ReconnectOverlay'
 import { GameHeader } from '@/components/game/game-header'
 import dynamic from 'next/dynamic'
+import { formatCurrency } from '@/utils/format'
 
 const Board = dynamic(
   () => import('../../../components/game/Board').then(mod => mod.Board),
@@ -41,6 +42,7 @@ export default function GameRoomPage() {
     players: [] as any[],
     phase: 'LOBBY',
     pot: 0,
+    piquePot: 0,
     dealerId: '',
     countdown: -1
   })
@@ -108,10 +110,23 @@ export default function GameRoomPage() {
             avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
           }
           
-          if (!nick) {
-            const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user?.user_metadata?.username) {
+          // Sync with Supabase session and ALWAYS fetch fresh balance
+          const supabase = createClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          if (user) {
+            // Fetch real balance from wallets table
+            const { data: wallet } = await supabase
+              .from('wallets')
+              .select('balance_cents')
+              .eq('user_id', user.id)
+              .single()
+            
+            if (wallet) {
+              sessionStorage.setItem(`chips_${roomId}`, wallet.balance_cents.toString())
+            }
+
+            if (!nick && user.user_metadata?.username) {
               nick = user.user_metadata.username
               sessionStorage.setItem(nickKey, nick!)
             }
@@ -128,11 +143,14 @@ export default function GameRoomPage() {
             localStorage.setItem('deviceId', deviceId);
           }
 
-          console.log(`Joining room ${roomId} as new player: ${nick}...`);
+          const chips = parseInt(sessionStorage.getItem(`chips_${roomId}`) || "1000");
+
+          console.log(`Joining room ${roomId} as new player: ${nick} with ${chips} chips...`);
           joinedRoom = await client.joinById(roomId, {
             nickname: nick,
             deviceId: deviceId,
-            avatarUrl: avatarUrl
+            avatarUrl: avatarUrl,
+            chips: chips
           })
           
           // Guardar el token para permitir reconexiones si se recarga la página (F5)
@@ -171,6 +189,7 @@ export default function GameRoomPage() {
           setGameState({
             phase: state.phase,
             pot: state.pot,
+            piquePot: state.piquePot || 0,
             dealerId: state.dealerId,
             countdown: state.countdown,
             players: playersArray
@@ -235,7 +254,7 @@ export default function GameRoomPage() {
   const { players, phase, pot, dealerId, countdown } = gameState;
 
   return (
-    <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#0d2e1b] bg-[url('https://www.transparenttextures.com/patterns/woven-light.png')] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.2)] before:to-[rgba(0,0,0,0.85)] before:pointer-events-none">
+    <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#0d2e1b] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.2)] before:to-[rgba(0,0,0,0.85)] before:pointer-events-none">
       {/* HEADER */}
       <GameHeader onMenuClick={() => router.push('/')} />
       
@@ -248,7 +267,7 @@ export default function GameRoomPage() {
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#c0a060]/5 rounded-full blur-[150px] pointer-events-none" />
             
             {/* Main Luxury Panel */}
-            <div className="relative z-10 w-full max-w-5xl bg-gradient-to-br from-black/70 to-black/90 backdrop-blur-2xl border-2 border-[#c5a059]/30 rounded-[2rem] md:rounded-[3.5rem] p-4 md:p-12 landscape:p-4 landscape:md:p-8 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scrollbar space-y-4 md:space-y-8 landscape:space-y-4">
+            <div className="relative z-10 w-full max-w-5xl bg-gradient-to-br from-black/80 to-[#1b4d3e]/30 backdrop-blur-2xl border-2 border-[#c5a059]/30 rounded-[2rem] md:rounded-[3.5rem] p-4 md:p-14 landscape:p-4 shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scrollbar space-y-6 md:space-y-12">
               
               <div className="flex flex-col items-center gap-3 md:gap-6">
                 {/* Row 1: Icon + Title */}
@@ -269,36 +288,36 @@ export default function GameRoomPage() {
                 </div>
               </div>
 
-              {/* Player Plates Grid */}
+              {/* Player Plates Grid - More Spacious */}
               {players.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 landscape:grid-cols-4 gap-3 md:gap-6 landscape:gap-2 w-full justify-items-center mt-2 landscape:mt-1">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-14 w-full px-4 md:px-10 justify-items-center mt-4">
                   {players.map(p => {
                     const isMe = room?.sessionId === p.id;
                     return (
                       <div 
                         key={p.id} 
                         className={`
-                          w-full flex items-center gap-3 md:gap-4 landscape:gap-2 px-4 md:px-6 landscape:px-3 py-3 md:py-4 landscape:py-2 rounded-xl md:rounded-2xl border transition-all
+                          w-full flex items-center gap-4 md:gap-6 px-5 md:px-8 py-4 md:py-6 rounded-2xl md:rounded-[2.5rem] border transition-all duration-300
                           ${p.isReady 
-                            ? 'bg-gradient-to-br from-[#1b4d3e]/90 to-[#0e2a22] border-[#c5a059]/50 shadow-[0_10px_20px_rgba(0,0,0,0.5)] scale-105 z-10' 
-                            : 'bg-black/40 border-white/5 shadow-inner opacity-60'}
+                            ? 'bg-gradient-to-br from-[#1b4d3e]/90 to-[#0e2a22] border-[#c5a059]/50 shadow-[0_20px_40px_rgba(0,0,0,0.6)] scale-105 z-10' 
+                            : 'bg-black/40 border-white/5 shadow-inner opacity-40 hover:opacity-60'}
                         `}
                       >
                         {/* LED Gem */}
                         <div className={`
-                          w-3 h-3 md:w-4 md:h-4 rounded-full flex-shrink-0 border border-black/50
+                          w-3 h-3 md:w-5 md:h-5 rounded-full flex-shrink-0 border border-black/50
                           ${p.isReady 
-                            ? 'bg-gradient-to-br from-[#2ecc71] to-[#27ae60] shadow-[0_0_12px_rgba(46,204,113,0.8)]' 
-                            : 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]'} 
+                            ? 'bg-gradient-to-br from-[#2ecc71] to-[#27ae60] shadow-[0_0_15px_rgba(46,204,113,0.8)]' 
+                            : 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] shadow-[inset_0_1px_4px_rgba(0,0,0,0.8)]'} 
                           ${isMe ? 'animate-pulse' : ''}
                         `} />
                         
                         <div className="flex flex-col items-start overflow-hidden flex-1">
-                          <span className={`${p.isReady ? 'text-[#f3edd7]' : 'text-slate-400'} font-bold truncate w-full text-left text-xs md:text-base landscape:text-sm`}>
-                            {p.nickname} {isMe ? <span className="text-[#c5a059] font-normal text-[10px] md:text-xs ml-1 tracking-widest uppercase">(Tú)</span> : ''}
+                          <span className={`text-[#f3edd7] font-black tracking-tight truncate w-full text-left text-sm md:text-2xl`}>
+                            {p.nickname} {isMe ? <span className="text-[#c5a059] font-normal text-[10px] md:text-sm ml-2 tracking-[0.2em] uppercase opacity-70">(Tú)</span> : ''}
                           </span>
-                          <span className="text-[#c5a059] font-black font-display tracking-tight text-xs md:text-sm landscape:text-xs mt-0.5">
-                            ${p.chips >= 1000 ? (p.chips/1000).toFixed(1) + 'k' : p.chips}
+                          <span className="text-[#c5a059] font-mono font-bold tracking-widest text-[10px] md:text-lg mt-1 opacity-90">
+                            {formatCurrency(p.chips)}
                           </span>
                         </div>
                       </div>
@@ -375,7 +394,13 @@ export default function GameRoomPage() {
             </div>
           </div>
         ) : (
-          <Board room={room} phase={phase} players={players} pot={pot} />
+          <Board 
+            room={room} 
+            phase={phase} 
+            players={players} 
+            pot={pot} 
+            piquePot={gameState.piquePot || 0}
+          />
         )}
         
         {/* Voice Chat Component */}
