@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { depositAmountSchema, observationsSchema } from '@/lib/validations'
 
 export async function getWalletData() {
   const supabase = await createClient()
@@ -84,6 +85,14 @@ export async function getWalletData() {
 }
 
 export async function createDepositRequest(amount: number, proofUrl: string, observations?: string) {
+  const amountParsed = depositAmountSchema.safeParse(Math.round(amount))
+  if (!amountParsed.success) {
+    return { error: amountParsed.error.issues?.[0]?.message ?? 'Monto inválido' }
+  }
+
+  const obsParsed = observationsSchema.safeParse(observations)
+  const cleanObservations = obsParsed.success ? obsParsed.data : ''
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No authenticated' }
@@ -100,10 +109,10 @@ export async function createDepositRequest(amount: number, proofUrl: string, obs
     .from('deposit_requests')
     .insert({
       user_id: user.id,
-      amount_cents: Math.round(amount * 100),
+      amount_cents: amountParsed.data * 100,
       status: 'pending',
       proof_url: proofUrl,
-      observations: observations,
+      observations: cleanObservations || null,
     })
 
   if (error) return { error: error.message }

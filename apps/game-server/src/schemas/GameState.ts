@@ -10,6 +10,8 @@ export class Player extends Schema {
   @type("boolean") hasActed: boolean = false;
   @type("boolean") isReady: boolean = false;
   @type("number") chips: number = 0;
+  /** Posición de turno relativa a La Mano: 1 = La Mano, 2 = siguiente, etc. 0 = aún no asignado. */
+  @type("uint8") turnOrder: number = 0;
   
   // TODO: Colyseus @view has bugs in 0.17 with MapSchema. Removed temporarily for logic testing.
   @type("string") cards: string = "";
@@ -20,10 +22,12 @@ export class Player extends Schema {
 }
 
 export class GameState extends Schema {
-  @type("string") phase: string = "LOBBY"; // LOBBY, SORTEO_MANO, PIQUE, COMPLETAR, CANTICOS, GUERRA, SHOWDOWN
+  @type("string") phase: string = "LOBBY"; // LOBBY, STARTING, BARAJANDO, SORTEO_MANO, PIQUE_DEAL, PIQUE, COMPLETAR, APUESTA_4_CARTAS, DESCARTE, COMPLETAR_DESCARTE, REVELAR_CARTA, CANTICOS, GUERRA, SHOWDOWN
   @type({ map: Player }) players = new MapSchema<Player>();
   @type(["string"]) tableCards = new ArraySchema<string>();
   @type("string") dealerId: string = "";
+  /** La Mano activa para el orden de turnos (puede transferirse si dealerId se retira mid-game) */
+  @type("string") activeManoId: string = "";
   @type("uint32") pot: number = 0;
   @type("uint32") piquePot: number = 0;
   @type("string") turnPlayerId: string = "";
@@ -36,4 +40,6 @@ export class GameState extends Schema {
   @type("uint32") currentMaxBet: number = 0; // Apuesta más alta en la fase actual
   @type("string") highestBetPlayerId: string = ""; // Quién puso la apuesta más alta
   @type("boolean") isFirstGame: boolean = true; // Define si es la primera partida de la sesión para el Sorteo
+  /** Última carta del mazo revelada boca arriba al finalizar el reparto; visible el resto de la partida */
+  @type("string") bottomCard: string = "";
 }

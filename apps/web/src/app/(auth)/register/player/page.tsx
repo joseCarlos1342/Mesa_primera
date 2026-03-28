@@ -5,21 +5,74 @@ import { registerPlayer } from '../../auth-actions'
 import { AvatarSelector } from '@/components/auth/avatar-selector'
 import Link from 'next/link'
 import { UserPlus } from 'lucide-react'
+import { fullNameSchema, nicknameSchema, phoneSchema } from '@/lib/validations'
+
+// Helper: inline error message
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null
+  return <p className="text-red-400 text-xs font-bold ml-2 mt-1">{msg}</p>
+}
+
+// Helper: compute input border class
+function inputBorder(error?: string, valid?: boolean) {
+  if (error) return 'border-red-500/60 focus:border-red-500/80 focus:ring-red-500/10'
+  if (valid) return 'border-green-500/40 focus:border-green-500/60 focus:ring-green-500/10'
+  return 'border-white/10 focus:border-brand-gold/50 focus:ring-brand-gold/10'
+}
 
 export default function PlayerRegisterPage() {
   const [state, formAction, isPending] = useActionState(registerPlayer, null)
   const [selectedAvatar, setSelectedAvatar] = useState('as-oros')
+
+  // Local field errors
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [nicknameLen, setNicknameLen] = useState(0)
+
+  const serverErrors = (state as any)?.fieldErrors ?? {}
+
+  function touch(field: string) {
+    setTouched(prev => ({ ...prev, [field]: true }))
+  }
+
+  function setError(field: string, msg: string | null) {
+    setErrors(prev => {
+      if (msg === null) {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      }
+      return { ...prev, [field]: msg }
+    })
+  }
+
+  function validateField(field: string, value: string) {
+    touch(field)
+    let result
+    if (field === 'fullName')  result = fullNameSchema.safeParse(value.trim())
+    else if (field === 'nickname') result = nicknameSchema.safeParse(value.trim())
+    else if (field === 'phone') result = phoneSchema.safeParse(value.trim())
+    else return
+
+    setError(field, result.success ? null : result.error.issues?.[0]?.message ?? 'Campo inválido')
+  }
+
+  function displayError(field: string) {
+    return serverErrors[field] ?? errors[field]
+  }
+
+  function isValid(field: string) {
+    return touched[field] && !displayError(field)
+  }
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-hidden">
       {/* Premium Casino Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_#0a2a1f_100%)]" />
-        {/* Subtle Felt Texture Overlay */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3%3C/filter%3%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3%3C/svg%3")` }} 
         />
-        {/* Shadow Vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
@@ -41,42 +94,75 @@ export default function PlayerRegisterPage() {
             <p className="text-text-secondary text-base">Crea tu perfil para empezar a jugar</p>
           </div>
 
-          {state?.error && (
+          {(state as any)?.error && (
             <div className="mb-8 p-5 bg-brand-red/10 border-2 border-brand-red/30 rounded-2xl text-brand-red text-sm font-bold text-center animate-shake">
-              {state.error}
+              {(state as any).error}
             </div>
           )}
 
           <form action={formAction} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3 group">
+              {/* Nombre Real */}
+              <div className="space-y-2 group">
                 <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors">
                   Nombre Real
                 </label>
-                <input
-                  name="fullName"
-                  type="text"
-                  required
-                  placeholder="Jose Carlos"
-                  className="w-full h-18 px-6 bg-black/50 border-2 border-white/10 rounded-2xl text-text-premium text-lg placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all shadow-inner"
-                />
+                <div className="relative">
+                  <input
+                    name="fullName"
+                    type="text"
+                    required
+                    maxLength={80}
+                    placeholder="Jose Carlos"
+                    onChange={e => { if (touched.fullName) validateField('fullName', e.target.value) }}
+                    onBlur={e => validateField('fullName', e.target.value)}
+                    className={`w-full h-14 px-5 bg-black/50 border-2 rounded-2xl text-text-premium text-lg placeholder-white/10 focus:outline-none focus:ring-4 transition-all shadow-inner ${inputBorder(displayError('fullName'), isValid('fullName'))}`}
+                  />
+                  {isValid('fullName') && (
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-green-400 font-black">✓</span>
+                  )}
+                </div>
+                <FieldError msg={displayError('fullName')} />
+                {!displayError('fullName') && (
+                  <p className="text-white/20 text-[10px] ml-2">Solo letras, espacios y guiones</p>
+                )}
               </div>
 
-              <div className="space-y-3 group">
-                <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors">
-                  Apodo / Nickname
+              {/* Apodo */}
+              <div className="space-y-2 group">
+                <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors flex justify-between">
+                  <span>Apodo / Nickname</span>
+                  <span className={`font-mono ${nicknameLen > 18 ? 'text-yellow-400' : 'text-white/20'}`}>
+                    {nicknameLen}/20
+                  </span>
                 </label>
-                <input
-                  name="nickname"
-                  type="text"
-                  required
-                  placeholder="@AsDelDestino"
-                  className="w-full h-18 px-6 bg-black/50 border-2 border-white/10 rounded-2xl text-text-premium text-lg placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all shadow-inner"
-                />
+                <div className="relative">
+                  <input
+                    name="nickname"
+                    type="text"
+                    required
+                    maxLength={20}
+                    placeholder="AsDelDestino"
+                    onChange={e => {
+                      setNicknameLen(e.target.value.length)
+                      if (touched.nickname) validateField('nickname', e.target.value)
+                    }}
+                    onBlur={e => validateField('nickname', e.target.value)}
+                    className={`w-full h-14 px-5 bg-black/50 border-2 rounded-2xl text-text-premium text-lg placeholder-white/10 focus:outline-none focus:ring-4 transition-all shadow-inner ${inputBorder(displayError('nickname'), isValid('nickname'))}`}
+                  />
+                  {isValid('nickname') && (
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-green-400 font-black">✓</span>
+                  )}
+                </div>
+                <FieldError msg={displayError('nickname')} />
+                {!displayError('nickname') && (
+                  <p className="text-white/20 text-[10px] ml-2">Letras, números y _ (sin espacios)</p>
+                )}
               </div>
             </div>
 
-            <div className="space-y-3 group">
+            {/* Teléfono */}
+            <div className="space-y-2 group">
               <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors">
                 Número de Celular
               </label>
@@ -87,11 +173,26 @@ export default function PlayerRegisterPage() {
                 <input
                   name="phone"
                   type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
                   required
-                  placeholder="320..."
-                  className="w-full h-18 pl-20 pr-6 bg-black/50 border-2 border-white/10 rounded-2xl text-xl md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner"
+                  placeholder="3001234567"
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '')
+                    e.target.value = digits
+                    if (touched.phone) validateField('phone', digits)
+                  }}
+                  onBlur={e => validateField('phone', e.target.value)}
+                  className={`w-full h-14 pl-20 pr-10 bg-black/50 border-2 rounded-2xl text-xl md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:ring-4 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner ${inputBorder(displayError('phone'), isValid('phone'))}`}
                 />
+                {isValid('phone') && (
+                  <span className="absolute right-5 text-green-400 text-xl font-black pointer-events-none">✓</span>
+                )}
               </div>
+              <FieldError msg={displayError('phone')} />
+              {!displayError('phone') && (
+                <p className="text-white/20 text-[10px] ml-2">10 dígitos, debe empezar por 3</p>
+              )}
             </div>
 
             <AvatarSelector onSelect={setSelectedAvatar} selectedId={selectedAvatar} />

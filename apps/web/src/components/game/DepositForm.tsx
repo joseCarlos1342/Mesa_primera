@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { createDepositRequest } from '@/app/actions/wallet'
 import { Upload, Landmark, MessageSquare, Image as ImageIcon, Copy, Check, ShieldCheck, DollarSign } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { depositAmountSchema, observationsSchema, validateImageFile } from '@/lib/validations'
 
 interface DepositFormProps {
   initialAmount?: string
@@ -18,7 +19,38 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [formError, setFormError] = useState<string | null>(null)
   const supabase = createClient()
+
+  // Formatted amount display
+  const amountNum = Number(amount)
+  const amountFormatted = !isNaN(amountNum) && amountNum > 0
+    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(amountNum)
+    : null
+
+  function setFieldError(field: string, msg: string | null) {
+    setFieldErrors(prev => {
+      if (msg === null) { const next = { ...prev }; delete next[field]; return next }
+      return { ...prev, [field]: msg }
+    })
+  }
+
+  function validateAmount(val: string) {
+    const n = Number(val)
+    if (!val || isNaN(n)) { setFieldError('amount', 'Ingresa un monto válido'); return false }
+    const r = depositAmountSchema.safeParse(Math.round(n))
+    if (!r.success) { setFieldError('amount', r.error.issues?.[0]?.message ?? 'Monto inválido'); return false }
+    setFieldError('amount', null)
+    return true
+  }
+
+  function validateObs(val: string) {
+    const r = observationsSchema.safeParse(val)
+    if (!r.success) { setFieldError('observations', r.error.issues?.[0]?.message ?? 'Texto inválido'); return false }
+    setFieldError('observations', null)
+    return true
+  }
 
   useEffect(() => {
     if (initialAmount) setAmount(initialAmount)
@@ -26,11 +58,20 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null
-    setFile(selectedFile)
     if (selectedFile) {
+      const fileError = validateImageFile(selectedFile)
+      setFieldError('file', fileError)
+      if (fileError) {
+        setFile(null)
+        setPreviewUrl(null)
+        e.target.value = ''
+        return
+      }
+      setFile(selectedFile)
       const url = URL.createObjectURL(selectedFile)
       setPreviewUrl(url)
     } else {
+      setFile(null)
       setPreviewUrl(null)
     }
   }
@@ -43,7 +84,12 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file || !amount) return
+    setFormError(null)
+
+    // Client-side validation before upload
+    const amountOk = validateAmount(amount)
+    if (!file) { setFieldError('file', 'El comprobante de pago es obligatorio'); return }
+    if (!amountOk || Object.keys(fieldErrors).length > 0) return
 
     setLoading(true)
     try {
@@ -57,8 +103,8 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
 
       if (storageError) throw storageError
 
-      const { error: dbError } = await createDepositRequest(Number(amount), data.path, observations)
-      if (dbError) throw new Error(dbError)
+      const result = await createDepositRequest(Number(amount), data.path, observations)
+      if (result?.error) throw new Error(result.error)
 
       if (onSuccess) {
         onSuccess()
@@ -66,7 +112,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
         alert('Solicitud enviada correctamente. Se acreditará pronto.')
       }
     } catch (err: any) {
-      alert(err.message)
+      setFormError(err.message)
     } finally {
       setLoading(false)
     }
@@ -116,8 +162,16 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
       </div>
 
       <form onSubmit={handleUpload} className="space-y-8">
+        {/* Form-level error */}
+        {formError && (
+          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-400 text-sm font-bold flex items-center gap-3">
+            <span className="text-lg">⚠️</span>
+            {formError}
+          </div>
+        )}
+
         {/* Amount Section */}
-        <div className="space-y-6">
+        <div className="space-y-3">
           <div className="flex items-center gap-4 ml-6">
             <div className="w-2 h-2 rounded-full bg-[#c0a060] shadow-[0_0_12px_rgba(192,160,96,0.8)] animate-pulse" />
             <label className="text-xs font-black text-[#f3edd7]/60 uppercase tracking-[0.4em] drop-shadow-sm">Monto a Cargar ($)</label>
@@ -129,21 +183,39 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
             <input
               type="number"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
+              onChange={(e) => {
+                setAmount(e.target.value)
+                if (e.target.value) validateAmount(e.target.value)
+              }}
+              onBlur={(e) => validateAmount(e.target.value)}
+              placeholder="0"
               required
-              className="w-full h-16 md:h-20 pl-14 md:pl-16 pr-6 bg-black/40 border-2 border-brand-gold/10 rounded-2xl md:rounded-[2rem] text-3xl md:text-4xl font-display font-black text-[#f3edd7] placeholder:text-brand-gold/10 focus:outline-none focus:border-[#c0a060]/60 focus:bg-black/60 transition-all italic tracking-tight shadow-[inset_0_4px_15px_rgba(0,0,0,0.6)]"
+              min={10000}
+              max={50000000}
+              step={1}
+              className={`w-full h-16 md:h-20 pl-14 md:pl-16 pr-6 bg-black/40 border-2 rounded-2xl md:rounded-[2rem] text-3xl md:text-4xl font-display font-black text-[#f3edd7] placeholder:text-brand-gold/10 focus:outline-none focus:bg-black/60 transition-all italic tracking-tight shadow-[inset_0_4px_15px_rgba(0,0,0,0.6)]
+                ${fieldErrors.amount ? 'border-red-500/60 focus:border-red-500/80' : 'border-brand-gold/10 focus:border-[#c0a060]/60'}`}
             />
           </div>
+          {fieldErrors.amount && (
+            <p className="text-red-400 text-xs font-bold ml-6">{fieldErrors.amount}</p>
+          )}
+          {!fieldErrors.amount && amountFormatted && (
+            <p className="text-[#c0a060]/60 text-xs font-bold ml-6">{amountFormatted}</p>
+          )}
+          {!fieldErrors.amount && !amountFormatted && (
+            <p className="text-[#f3edd7]/20 text-[10px] font-bold ml-6 uppercase tracking-widest">Mínimo $10.000 — Máximo $50.000.000 COP</p>
+          )}
         </div>
 
         {/* Upload Section */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="flex items-center gap-4 ml-6">
             <div className="w-2 h-2 rounded-full bg-[#c0a060] shadow-[0_0_12px_rgba(192,160,96,0.8)]" />
             <label className="text-xs font-black text-[#f3edd7]/60 uppercase tracking-[0.4em]">Subir Comprobante de Pago</label>
           </div>
-          <div className="relative group min-h-[220px] md:min-h-[280px] border-2 border-dashed border-[#c0a060]/20 rounded-[2rem] md:rounded-[2.5rem] flex flex-col items-center justify-center hover:border-[#c0a060]/50 transition-all cursor-pointer overflow-hidden bg-black/30 shadow-[inset_0_4px_20px_rgba(0,0,0,0.4)]">
+          <div className={`relative group min-h-[220px] md:min-h-[280px] border-2 border-dashed rounded-[2rem] md:rounded-[2.5rem] flex flex-col items-center justify-center hover:border-[#c0a060]/50 transition-all cursor-pointer overflow-hidden bg-black/30 shadow-[inset_0_4px_20px_rgba(0,0,0,0.4)]
+            ${fieldErrors.file ? 'border-red-500/50' : 'border-[#c0a060]/20'}`}>
             <AnimatePresence mode="wait">
               {previewUrl ? (
                 <motion.div 
@@ -181,26 +253,44 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
             </AnimatePresence>
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={handleFileChange}
               className="absolute inset-0 opacity-0 cursor-pointer z-20"
-              required={!previewUrl}
             />
           </div>
+          {fieldErrors.file && (
+            <p className="text-red-400 text-xs font-bold ml-6">{fieldErrors.file}</p>
+          )}
+          {!fieldErrors.file && (
+            <p className="text-[#f3edd7]/20 text-[10px] font-bold ml-6 uppercase tracking-widest">JPG, PNG, WebP o GIF — Máx. 5 MB</p>
+          )}
         </div>
 
         {/* Observations Section */}
-        <div className="space-y-6">
+        <div className="space-y-4">
            <div className="flex items-center gap-4 ml-6">
             <div className="w-2 h-2 rounded-full bg-[#c0a060]/30" />
-            <label className="text-xs font-black text-[#f3edd7]/40 uppercase tracking-[0.4em]">Notas adicionales (Opcional)</label>
+            <label className="text-xs font-black text-[#f3edd7]/40 uppercase tracking-[0.4em]">
+              Notas adicionales (Opcional)
+              <span className={`ml-3 font-mono ${observations.length > 450 ? 'text-yellow-400/80' : 'text-[#f3edd7]/20'}`}>
+                {observations.length}/500
+              </span>
+            </label>
           </div>
           <textarea
             value={observations}
-            onChange={(e) => setObservations(e.target.value)}
+            maxLength={500}
+            onChange={(e) => {
+              setObservations(e.target.value)
+              validateObs(e.target.value)
+            }}
             placeholder="Escribe aquí cualquier observación..."
-            className="w-full h-24 md:h-28 p-6 md:p-8 bg-black/30 border-2 border-brand-gold/5 rounded-2xl md:rounded-[2rem] text-sm md:text-base font-medium text-[#f3edd7] focus:outline-none focus:border-[#c0a060]/40 focus:bg-black/50 transition-all resize-none shadow-[inset_0_4px_15px_rgba(0,0,0,0.5)] placeholder:text-[#f3edd7]/10"
+            className={`w-full h-24 md:h-28 p-6 md:p-8 bg-black/30 border-2 rounded-2xl md:rounded-[2rem] text-sm md:text-base font-medium text-[#f3edd7] focus:outline-none focus:bg-black/50 transition-all resize-none shadow-[inset_0_4px_15px_rgba(0,0,0,0.5)] placeholder:text-[#f3edd7]/10
+              ${fieldErrors.observations ? 'border-red-500/40 focus:border-red-500/60' : 'border-brand-gold/5 focus:border-[#c0a060]/40'}`}
           />
+          {fieldErrors.observations && (
+            <p className="text-red-400 text-xs font-bold ml-6">{fieldErrors.observations}</p>
+          )}
         </div>
 
         {/* Submit Section */}
