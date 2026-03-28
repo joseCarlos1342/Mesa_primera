@@ -2,10 +2,14 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 import { enforceRateLimiting } from '@/app/actions/anti-fraud'
-
-
+import {
+  registerPlayerSchema,
+  loginPlayerSchema,
+  loginAdminSchema,
+  otpTokenSchema,
+  flattenZodErrors,
+} from '@/lib/validations'
 
 function normalizePhone(phone: string): string {
   // Solo dígitos y el +
@@ -26,28 +30,27 @@ function normalizePhone(phone: string): string {
 export async function registerPlayer(prevState: unknown, formData: FormData) {
   const rl = await enforceRateLimiting('register_player', 3, 300)
   if (!rl.success) return { error: rl.error }
-  
-  const supabase = await createClient()
-  const rawPhone = formData.get('phone') as string
-  const phone = normalizePhone(rawPhone)
-  
-  /* 
-  if (!TEST_PHONES.includes(phone)) {
-    return { error: 'Acceso restringido: Solo los números de prueba autorizados pueden ingresar en este momento.' }
-  }
-  */
 
-  const fullName = formData.get('fullName') as string
-  const nickname = formData.get('nickname') as string
+  const rawPhone = (formData.get('phone') as string ?? '').trim()
+  const fullName = (formData.get('fullName') as string ?? '').trim()
+  const nickname = (formData.get('nickname') as string ?? '').trim()
   const avatarId = formData.get('avatarId') as string
+
+  const parsed = registerPlayerSchema.safeParse({ phone: rawPhone, fullName, nickname })
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
+  const supabase = await createClient()
+  const phone = normalizePhone(parsed.data.phone)
 
   const { error } = await supabase.auth.signInWithOtp({
     phone,
     options: {
       shouldCreateUser: true,
       data: {
-        full_name: fullName,
-        username: nickname,
+        full_name: parsed.data.fullName,
+        username: parsed.data.nickname,
         avatar_url: avatarId,
         role: 'player'
       }
@@ -73,9 +76,14 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
   const rl = await enforceRateLimiting('login_player', 5, 60)
   if (!rl.success) return { error: rl.error }
 
+  const rawPhone = (formData.get('phone') as string ?? '').trim()
+  const parsed = loginPlayerSchema.safeParse({ phone: rawPhone })
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
   const supabase = await createClient()
-  const rawPhone = formData.get('phone') as string
-  const phone = normalizePhone(rawPhone)
+  const phone = normalizePhone(parsed.data.phone)
   
   const { error } = await supabase.auth.signInWithOtp({
     phone,
@@ -106,13 +114,19 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
   const rl = await enforceRateLimiting('verify_otp', 5, 60)
   if (!rl.success) return { error: rl.error }
 
+  const phone = (formData.get('phone') as string ?? '').trim()
+  const token = (formData.get('token') as string ?? '').trim()
+
+  const tokenParsed = otpTokenSchema.safeParse(token)
+  if (!tokenParsed.success) {
+    return { fieldErrors: { token: tokenParsed.error.issues?.[0]?.message ?? 'Código inválido' } }
+  }
+
   const supabase = await createClient()
-  const phone = formData.get('phone') as string
-  const token = formData.get('token') as string
 
   const { error } = await supabase.auth.verifyOtp({
     phone,
-    token,
+    token: tokenParsed.data,
     type: 'sms',
   })
 
@@ -130,13 +144,18 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
   const rl = await enforceRateLimiting('login_admin', 5, 300)
   if (!rl.success) return { error: rl.error }
 
-  const supabase = await createClient()
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
+  const email = (formData.get('email') as string ?? '').trim()
+  const password = (formData.get('password') as string ?? '')
 
+  const parsed = loginAdminSchema.safeParse({ email, password })
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
+  const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
+    email: parsed.data.email,
+    password: parsed.data.password,
   })
 
   if (error) {

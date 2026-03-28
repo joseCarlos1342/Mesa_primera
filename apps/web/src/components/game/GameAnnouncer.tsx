@@ -16,14 +16,16 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
     const messages: Record<string, string> = {
       'BARAJANDO': 'Barajando las cartas...',
       'SORTEO_MANO': 'Sorteando La Mano...',
-      'PIQUE_DEAL': 'Repartiendo...',
+      'PIQUE_DEAL': 'Repartiendo el Pique...',
       'PIQUE': '¡A Picar!',
       'COMPLETAR': 'Completando Manos...',
-      'DESCARTE': 'La Bajada (Descarte)',
+      'APUESTA_4_CARTAS': '¡Apuesta! — 4 cartas',
+      'DESCARTE': 'La Bajada — Descarta lo que no sirve',
       'COMPLETAR_DESCARTE': 'Entregando reemplazos...',
-      'CANTICOS': 'Momento de Cánticos...',
-      'GUERRA': '¡Guerra!',
-      'SHOWDOWN': 'Cartas sobre la mesa',
+      'REVELAR_CARTA': '¡Carta del fondo!',
+      'GUERRA': '¡Guerra — Apuesta fuerte!',
+      'CANTICOS': '¡Cánticos — Declara y apuesta!',
+      'SHOWDOWN': '¡Cartas sobre la mesa!',
       'PAYOUT': 'Repartiendo el Pozo...'
     };
 

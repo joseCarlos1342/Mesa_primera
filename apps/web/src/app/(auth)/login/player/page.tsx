@@ -1,24 +1,34 @@
 "use client"
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { loginWithPhone } from '../../auth-actions'
-import Image from 'next/image'
 import Link from 'next/link'
 import { LogIn } from 'lucide-react'
+import { phoneSchema } from '@/lib/validations'
 
 export default function PlayerLoginPage() {
   const [state, formAction, isPending] = useActionState(loginWithPhone, null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [phoneTouched, setPhoneTouched] = useState(false)
+
+  function validatePhone(value: string) {
+    const result = phoneSchema.safeParse(value.trim())
+    setPhoneError(result.success ? null : result.error.issues?.[0]?.message ?? 'Número inválido')
+  }
+
+  // Combine local + server errors (server error takes precedence after submit)
+  const serverPhoneError = (state as any)?.fieldErrors?.phone
+  const displayPhoneError = serverPhoneError ?? phoneError
+  const phoneIsValid = phoneTouched && !displayPhoneError
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-hidden">
       {/* Premium Casino Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_#0a2a1f_100%)]" />
-        {/* Subtle Felt Texture Overlay */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3%3C/filter%3%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3%3C/svg%3")` }} 
         />
-        {/* Shadow Vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
@@ -40,9 +50,9 @@ export default function PlayerLoginPage() {
             <p className="text-text-secondary text-base">Ingresa para entrar a la mesa</p>
           </div>
 
-          {state?.error && (
+          {(state as any)?.error && (
             <div className="mb-8 p-5 bg-brand-red/10 border-2 border-brand-red/30 rounded-2xl text-brand-red text-sm font-bold text-center animate-shake">
-              {state.error}
+              {(state as any).error}
             </div>
           )}
 
@@ -58,11 +68,36 @@ export default function PlayerLoginPage() {
                 <input
                   name="phone"
                   type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
                   required
-                  placeholder="320..."
-                  className="w-full h-20 pl-20 pr-6 bg-black/50 border-2 border-white/10 rounded-2xl text-xl md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner"
+                  placeholder="3001234567"
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '')
+                    e.target.value = digits
+                    if (phoneTouched) validatePhone(digits)
+                  }}
+                  onBlur={e => {
+                    setPhoneTouched(true)
+                    validatePhone(e.target.value)
+                  }}
+                  className={`w-full h-20 pl-20 pr-6 bg-black/50 border-2 rounded-2xl text-xl md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:ring-4 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner
+                    ${displayPhoneError
+                      ? 'border-red-500/60 focus:border-red-500/80 focus:ring-red-500/10'
+                      : phoneIsValid
+                        ? 'border-green-500/40 focus:border-green-500/60 focus:ring-green-500/10'
+                        : 'border-white/10 focus:border-brand-gold/50 focus:ring-brand-gold/10'
+                    }`}
                 />
+                {phoneIsValid && (
+                  <span className="absolute right-5 text-green-400 text-xl font-black pointer-events-none">✓</span>
+                )}
               </div>
+              {displayPhoneError && (
+                <p className="text-red-400 text-xs font-bold ml-2 mt-1">
+                  {displayPhoneError}
+                </p>
+              )}
             </div>
 
             <button

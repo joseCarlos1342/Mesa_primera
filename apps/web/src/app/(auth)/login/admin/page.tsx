@@ -3,14 +3,35 @@
 import { useActionState, useEffect, useState } from 'react'
 import { loginAdmin } from '../../auth-actions'
 import { ShieldCheck, Lock, Mail } from 'lucide-react'
+import { adminEmailSchema, adminPasswordSchema } from '@/lib/validations'
 
 export default function AdminLoginPage() {
   const [state, formAction, isPending] = useActionState(loginAdmin, null)
   const [mounted, setMounted] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [emailTouched, setEmailTouched] = useState(false)
+  const [passwordTouched, setPasswordTouched] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  function validateEmail(value: string) {
+    const r = adminEmailSchema.safeParse(value.trim())
+    setEmailError(r.success ? null : r.error.issues?.[0]?.message ?? 'Correo inválido')
+  }
+
+  function validatePassword(value: string) {
+    const r = adminPasswordSchema.safeParse(value)
+    setPasswordError(r.success ? null : r.error.issues?.[0]?.message ?? 'Contraseña inválida')
+  }
+
+  const serverErrors = (state as any)?.fieldErrors ?? {}
+  const displayEmailError = serverErrors.email ?? emailError
+  const displayPasswordError = serverErrors.password ?? passwordError
+  const emailValid = emailTouched && !displayEmailError
+  const passwordValid = passwordTouched && !displayPasswordError
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans overflow-hidden selection:bg-red-500/30">
@@ -43,38 +64,79 @@ export default function AdminLoginPage() {
           {/* Decorative Corner */}
           <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/10 blur-3xl rounded-full" />
 
-          {state?.error && (
+          {(state as any)?.error && (
             <div className="mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-400 text-xs font-bold flex items-center gap-3 animate-in shake-1">
               <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              {state.error}
+              {(state as any).error}
             </div>
           )}
 
           <form action={formAction} className="space-y-6">
+            {/* Email */}
             <div className="space-y-2 group">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
                 <Mail className="w-3 h-3" /> Correo Autorizado
               </label>
-              <input
-                name="email"
-                type="email"
-                required
-                className="w-full h-16 px-6 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/40 transition-all font-mono shadow-inner"
-                placeholder="id@terminal.auth"
-              />
+              <div className="relative">
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="id@terminal.auth"
+                  onBlur={e => {
+                    setEmailTouched(true)
+                    validateEmail(e.target.value)
+                  }}
+                  onChange={e => {
+                    if (emailTouched) validateEmail(e.target.value)
+                  }}
+                  className={`w-full h-16 px-6 bg-black/40 border rounded-2xl text-white placeholder-slate-700 focus:outline-none focus:ring-2 transition-all font-mono shadow-inner
+                    ${displayEmailError
+                      ? 'border-red-500/60 focus:ring-red-500/30'
+                      : emailValid
+                        ? 'border-green-500/40 focus:ring-green-500/20'
+                        : 'border-white/5 focus:ring-red-500/40 focus:border-red-500/40'
+                    }`}
+                />
+                {emailValid && (
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-green-400 text-sm font-black">✓</span>
+                )}
+              </div>
+              {displayEmailError && (
+                <p className="text-red-400 text-[11px] font-bold ml-1">{displayEmailError}</p>
+              )}
             </div>
 
+            {/* Password */}
             <div className="space-y-2 group">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
                 <Lock className="w-3 h-3" /> Clave de Acceso
               </label>
-              <input
-                name="password"
-                type="password"
-                required
-                className="w-full h-16 px-6 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/40 transition-all shadow-inner"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  onBlur={e => {
+                    setPasswordTouched(true)
+                    validatePassword(e.target.value)
+                  }}
+                  onChange={e => {
+                    if (passwordTouched) validatePassword(e.target.value)
+                  }}
+                  className={`w-full h-16 px-6 bg-black/40 border rounded-2xl text-white placeholder-slate-700 focus:outline-none focus:ring-2 transition-all shadow-inner
+                    ${displayPasswordError
+                      ? 'border-red-500/60 focus:ring-red-500/30'
+                      : passwordValid
+                        ? 'border-green-500/40 focus:ring-green-500/20'
+                        : 'border-white/5 focus:ring-red-500/40 focus:border-red-500/40'
+                    }`}
+                />
+              </div>
+              {displayPasswordError && (
+                <p className="text-red-400 text-[11px] font-bold ml-1">{displayPasswordError}</p>
+              )}
             </div>
 
             <button

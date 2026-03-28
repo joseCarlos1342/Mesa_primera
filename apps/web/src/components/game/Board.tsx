@@ -13,6 +13,7 @@ import { RechargeButton } from './RechargeButton'
 import { useState, useEffect, useRef } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { AnimationLayer } from './AnimationLayer'
+import { ShuffleAnimation } from './ShuffleAnimation'
 
 interface BoardProps {
   room: Room | null;
@@ -24,14 +25,24 @@ interface BoardProps {
 
 export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
-  const [selectedChip, setSelectedChip] = useState<number | null>(null);
-  const [showIntro, setShowIntro] = useState(true);
+  const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
 
-  useEffect(() => {
-    // Hide intro after 5 seconds automatically
-    const timer = setTimeout(() => setShowIntro(false), 5000);
-    return () => clearTimeout(timer);
-  }, []);
+  const totalBet = Object.entries(chipCounts).reduce((sum, [denom, count]) => sum + Number(denom) * count, 0);
+
+  const addChip = (val: number) => {
+    if ((me?.chips || 0) < totalBet + val) return;
+    setChipCounts(prev => ({ ...prev, [val]: (prev[val] || 0) + 1 }));
+  };
+  const removeChip = (val: number) => {
+    setChipCounts(prev => {
+      const newCount = (prev[val] || 0) - 1;
+      if (newCount <= 0) { const { [val]: _removed, ...rest } = prev; return rest; }
+      return { ...prev, [val]: newCount };
+    });
+  };
+
+  // Intro shows only during the STARTING phase (server-controlled timing)
+  const showIntro = phase === 'STARTING';
   
   if (!room) return null;
 
@@ -110,6 +121,7 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
           isMe={false} 
           isDealer={p && room.state.dealerId === p.id}
           points={undefined} /* Opponents don't show points, only for self */
+          turnOrder={p?.turnOrder}
         />
         {/* Opponent's Cards / Placeholder */}
         {p ? (
@@ -183,6 +195,11 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
       </div>
 
       <GameAnnouncer phase={phase} />
+
+      {/* 🃏 SHUFFLE ANIMATION - GSAP professional shuffle during BARAJANDO */}
+      <AnimatePresence>
+        {phase === 'BARAJANDO' && <ShuffleAnimation key="shuffle" />}
+      </AnimatePresence>
 
       {/* 🎬 INTRO TITLE ANIMATION - High-end cinematic entrance */}
       <AnimatePresence>
@@ -265,17 +282,35 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
             </div>
           </div>
 
-          {/* Column 2: Central Deck (Mazo) */}
-          <div id="deck-center" className="relative group cursor-pointer hover:drop-shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all shrink-0">
-             {/* Deck stack effect */}
-             <div className="w-10 h-14 md:w-16 md:h-24 bg-[#0a0a0a] rounded-lg absolute translate-x-1 translate-y-1 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
-             <div className="w-10 h-14 md:w-16 md:h-24 bg-[#1a1a1a] rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1 md:translate-y-1" />
-             
-             {/* Top Card */}
-             <div className="w-10 h-14 md:w-16 md:h-24 rounded-lg overflow-hidden transition-transform group-hover:-translate-y-2 border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
-                <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-lg" />
-                <div className="absolute inset-0 border border-white/10 rounded-lg pointer-events-none" />
-             </div>
+          {/* Column 2: Central Deck (Mazo) + bottom card */}
+          <div className="flex flex-col items-center gap-2">
+            <div id="deck-center" className="relative group cursor-pointer hover:drop-shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all shrink-0">
+               {/* Deck stack effect */}
+               <div className="w-10 h-14 md:w-16 md:h-24 bg-[#0a0a0a] rounded-lg absolute translate-x-1 translate-y-1 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
+               <div className="w-10 h-14 md:w-16 md:h-24 bg-[#1a1a1a] rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1 md:translate-y-1" />
+               
+               {/* Top Card */}
+               <div className="w-10 h-14 md:w-16 md:h-24 rounded-lg overflow-hidden transition-transform group-hover:-translate-y-2 border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
+                  <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-lg" />
+                  <div className="absolute inset-0 border border-white/10 rounded-lg pointer-events-none" />
+               </div>
+            </div>
+
+            {/* Bottom card — face-up, revealed after REVELAR_CARTA, stays visible */}
+            {room.state.bottomCard && (
+              <div className="flex flex-col items-center">
+                <span className="text-[7px] text-[#d4af37]/60 uppercase tracking-wider mb-0.5">carta del fondo</span>
+                <div className="ring-2 ring-[#d4af37]/60 rounded-lg shadow-[0_0_12px_rgba(212,175,55,0.4)]">
+                  <Card
+                    suit={room.state.bottomCard.split('-')[1] as any}
+                    value={parseInt(room.state.bottomCard.split('-')[0])}
+                    isHidden={false}
+                    priority={false}
+                    className="w-8 h-11 md:w-12 md:h-16"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -309,19 +344,22 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
                            position: 'absolute',
                            left: `calc(50% + ${offsetX}px)`,
                            bottom: 0,
-                           transform: `translate(-50%, ${isSelected ? -40 : 0}px) scale(${isSelected ? 1.15 : 1.1}) rotate(${angle}deg)`,
+                           transform: `translate(-50%, ${isSelected ? -65 : 0}px) scale(${isSelected ? 1.22 : 1.1}) rotate(${angle}deg)`,
                            transformOrigin: 'bottom center',
-                           zIndex: idx,
-                           transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                           zIndex: isSelected ? 50 + idx : idx,
+                           transition: 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.35s ease'
                          }}
-                         className={`drop-shadow-[0_15px_25px_rgba(0,0,0,0.8)] ${isDescarteTurn ? 'cursor-pointer' : ''}`}
+                         className={`
+                           ${isSelected ? 'drop-shadow-[0_0_20px_rgba(212,175,55,1)]' : 'drop-shadow-[0_15px_25px_rgba(0,0,0,0.8)]'}
+                           ${isDescarteTurn ? 'cursor-pointer' : ''}
+                         `}
                        >
                          <Card 
                            suit={cardStr.split('-')[1] as any} 
                            value={parseInt(cardStr.split('-')[0])} 
                            isHidden={false}
                            priority={true}
-                           className="border border-white/20"
+                           className={`${isSelected ? 'border-2 border-[#d4af37] ring-2 ring-[#d4af37]/80 ring-offset-1 ring-offset-black' : 'border border-white/20'}`}
                          />
                        </m.div>
                      )
@@ -348,7 +386,7 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
                     <div className="flex flex-col items-center">
                       <span className="text-[8px] md:text-[9px] text-[#fdf0a6] uppercase tracking-[0.15em] font-black opacity-60 leading-none mb-1">Puntos</span>
                       <span className="text-[#d4af37] font-mono font-black text-sm md:text-xl leading-none">
-                        {evaluateHand(me.cards).points}
+                        {evaluateHand(me.cards).points + (room.state.dealerId === myId ? 1 : 0)}
                       </span>
                     </div>
                   </div>
@@ -358,11 +396,14 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
                 {room.state.dealerId === myId && (
                    <div className="ml-1 bg-[#d4af37] text-black text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">Mano</div>
                 )}
+                {room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
+                   <div className="ml-1 bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">{me.turnOrder}ª</div>
+                )}
               </div>
 
-              {/* CHIPS: Only show if it matches turn and betting/discard phase */}
+              {/* CHIPS: Only show in betting phases and on my turn */}
               <AnimatePresence>
-                {isMyTurn && (phase === 'PIQUE' || phase === 'GUERRA' || phase === 'DESCARTE') && (
+                {isMyTurn && (phase === 'PIQUE' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS') && (
                   <m.div 
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -371,8 +412,8 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
                   >
                     <div className="flex flex-row gap-1">
                       {[100000, 200000, 500000, 1000000, 2000000, 5000000].map(val => {
-                        const canAfford = (me.chips || 0) >= val;
-                        const isSelected = selectedChip === val;
+                        const count = chipCounts[val] || 0;
+                        const canAfford = (me.chips || 0) >= totalBet + val;
                         const visualVal = val / 100;
                         let colorClass = "bg-white text-black border-gray-300";
                         if (val === 200000) colorClass = "bg-[#e53935] text-white border-red-800";
@@ -382,28 +423,41 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
                         if (val === 5000000) colorClass = "bg-[#fbc02d] text-black border-yellow-700";
                         
                         return (
-                          <button key={val} disabled={!canAfford} onClick={() => setSelectedChip(isSelected ? null : val)}
-                            className={`w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center font-black text-[7px] md:text-[9px] border-[1.5px] border-dashed transition-all ${colorClass} ${canAfford ? (isSelected ? 'ring-1 ring-white scale-110 -translate-y-1' : 'hover:-translate-y-0.5') : 'opacity-20 shadow-none'}`}>
-                            {visualVal >= 1000 ? `${visualVal/1000}k` : visualVal}
-                          </button>
+                          <div key={val} className="flex flex-col items-center gap-0.5">
+                            {count > 0 ? (
+                              <button onClick={() => removeChip(val)}
+                                className="w-5 h-4 md:w-6 md:h-5 flex items-center justify-center text-[#f87171] text-xs font-black hover:text-red-300 transition-colors bg-black/40 rounded-sm leading-none">−</button>
+                            ) : <div className="h-4 md:h-5" />}
+                            <button disabled={!canAfford} onClick={() => addChip(val)}
+                              className={`w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center font-black text-[7px] md:text-[9px] border-[1.5px] border-dashed transition-all ${colorClass} ${canAfford ? (count > 0 ? 'ring-2 ring-white scale-110 -translate-y-1 shadow-lg' : 'hover:-translate-y-0.5') : 'opacity-20 shadow-none'}`}>
+                              {visualVal >= 1000 ? `${visualVal/1000}k` : visualVal}
+                            </button>
+                            {count > 0 ? (
+                              <span className="text-[#fdf0a6] font-black text-[9px] leading-none">×{count}</span>
+                            ) : <div className="h-3" />}
+                          </div>
                         );
                       })}
                     </div>
-                    {selectedChip && (
-                      <button 
-                        onClick={() => { 
-                          if (phase === 'DESCARTE') {
-                             room.send('action', { action: 'discard', amount: selectedChip, droppedCards: selectedCards });
-                             setSelectedCards([]);
-                          } else {
-                             room.send('action', { action: phase === 'PIQUE' ? 'voy' : 'bet', amount: selectedChip }); 
-                          }
-                          setSelectedChip(null); 
-                        }}
-                        className="h-10 md:h-12 px-4 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black shadow-lg uppercase tracking-tight text-[10px] md:text-sm border-b-[3px] border-green-700 ml-1">
-                        IR!
-                      </button>
+                    {totalBet > 0 && (
+                      <div className="flex flex-col items-center gap-1 ml-1">
+                        <span className="text-[#4ade80] font-mono font-black text-[9px] leading-none">${(totalBet / 100).toLocaleString()}</span>
+                        <button 
+                          onClick={() => { 
+                            room.send('action', { action: 'voy', amount: totalBet }); 
+                            setChipCounts({});
+                          }}
+                          className="h-8 md:h-10 px-3 md:px-4 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black shadow-lg uppercase tracking-tight text-[10px] md:text-sm border-b-[3px] border-green-700">
+                          IR!
+                        </button>
+                        <button
+                          onClick={() => setChipCounts({})}
+                          className="text-[#f87171] text-[8px] font-bold hover:text-red-300 transition-colors uppercase tracking-tight leading-none">
+                          ✕ limpiar
+                        </button>
+                      </div>
                     )}
+
                   </m.div>
                 )}
               </AnimatePresence>
@@ -422,6 +476,23 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
           </>
         )}
       </div>
+
+      {/* SHOWDOWN Timer Overlay */}
+      <AnimatePresence>
+        {phase === 'SHOWDOWN' && (
+          <m.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="absolute top-1/3 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+          >
+            <div className="bg-black/80 backdrop-blur-md border border-[#d4af37]/50 px-8 py-4 rounded-2xl text-center shadow-[0_0_40px_rgba(212,175,55,0.3)]">
+              <div className="text-[#d4af37] text-[10px] uppercase tracking-widest mb-1">Mostrando cartas</div>
+              <div className="text-white font-mono font-black text-5xl">{room.state.showdownTimer ?? 20}</div>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
 
       {/* Global Card Animations Overlay */}
       <AnimationLayer />

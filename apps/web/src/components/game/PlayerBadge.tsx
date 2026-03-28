@@ -11,9 +11,11 @@ interface PlayerBadgeProps {
   isDealer?: boolean;
   hideAvatar?: boolean;
   points?: number;
+  /** Posición de turno: 1 = La Mano (ya indicado por isDealer), 2+ = próximos en recibir la mano */
+  turnOrder?: number;
 }
 
-export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points }: PlayerBadgeProps) {
+export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points, turnOrder }: PlayerBadgeProps) {
   const isMuted = true; // Placeholder for actual voice chat state if available
 
   // Determine avatar rendering
@@ -98,6 +100,13 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
          {isDealer && (
             <div className="bg-[#d4af37] text-black text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white/20 uppercase tracking-tighter">
               Mano
+            </div>
+         )}
+
+         {/* Turno de Mano: "2ª", "3ª"... para que todos sepan quién sigue después */}
+         {!isDealer && (turnOrder ?? 0) > 1 && (
+            <div className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+              {turnOrder}ª
             </div>
          )}
        </div>
