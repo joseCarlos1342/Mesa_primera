@@ -2,7 +2,7 @@ import { Room, Client } from "colyseus";
 import { GameState, Player } from "../schemas/GameState";
 import { SupabaseService } from "../services/SupabaseService";
 import * as crypto from "crypto";
-import { evaluateHand, compareHands } from "./combinations";
+import { evaluateHand, compareHands, HandEvaluation } from "./combinations";
 
 export interface MesaMetadata {
   tableName: string;
@@ -17,6 +17,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private countdownTimer?: any;
   private currentGameId: string = crypto.randomUUID();
   private currentTimeline: any[] = [];
+  /**
+   * Orden estable de asientos (por orden de entrada).
+   * Garantiza que la rotación de La Mano sea siempre "al jugador de la derecha",
+   * independientemente del orden interno del MapSchema.
+   */
+  private seatOrder: string[] = [];
 
   onCreate(options: any) {
     this.setState(new GameState());
@@ -230,6 +236,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.players.delete(oldSessionId);
       this.state.players.set(client.sessionId, newPlayer);
 
+      // Actualizar el asiento en el orden estable para mantener la rotación correcta
+      const ghostSeatIdx = this.seatOrder.indexOf(oldSessionId);
+      if (ghostSeatIdx !== -1) {
+        this.seatOrder[ghostSeatIdx] = client.sessionId;
+      }
+
       if (this.state.dealerId === oldSessionId) {
         this.state.dealerId = client.sessionId;
       }
@@ -253,6 +265,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     newPlayer.deviceId = deviceId;
       
     this.state.players.set(client.sessionId, newPlayer);
+    // Registrar el asiento del nuevo jugador para la rotación estable de la mano
+    this.seatOrder.push(client.sessionId);
     this.updateLobbyMetadata();
 
     // El primer jugador es el dealer por defecto, o si el dealer actual no es válido
@@ -321,6 +335,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
   private removePlayer(sessionId: string) {
     this.state.players.delete(sessionId);
+    // Liberar el asiento del jugador del orden estable
+    const seatIdx = this.seatOrder.indexOf(sessionId);
+    if (seatIdx !== -1) this.seatOrder.splice(seatIdx, 1);
     this.updateLobbyMetadata();
     
     // Si era el dealer y quedan jugadores, asignar otro dealer
@@ -397,6 +414,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Genera el seed de encriptación aleatorio y reparte el mazo.
    */
   private startNewGame() {
+    // Detener cualquier contador activo antes de arrancar para evitar que
+    // un timer residual vuelva a llamar a startNewGame() mientras el juego está en curso.
+    this.stopCountdown();
+
     const seed = crypto.randomBytes(16).toString('hex');
     console.log(`[MesaRoom] Iniciando partida con seed: ${seed}`);
     this.state.lastSeed = seed;
@@ -467,6 +488,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
                if (manoPlayerId) {
                   this.state.dealerId = manoPlayerId;
                   this.state.lastAction = `¡${this.state.players.get(manoPlayerId)?.nickname} sacó ORO y es La Mano!`;
+                  // Asignar números de turno a todos los jugadores según el orden de asientos
+                  this.assignTurnOrders();
                }
                
                this.clock.setTimeout(() => {
@@ -490,7 +513,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             
             currentPlayerIndex = (currentPlayerIndex + 1) % orderedActivePlayers.length;
         }, 3000); // 3s delay for cinematic sorteo
-    }, 3000);
+    }, 7000); // 7s delay to allow the cinematic intro UI to finish before dealing starts
   }
 
   /**
@@ -870,17 +893,27 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
        return;
     }
 
-    // Evaluar la mano de todos los activos
+    // Evaluar la mano de todos los activos.
+    // La Mano recibe +1 punto de bonificación (desempata a su favor si el tipo de mano es igual).
+    const manoId = this.state.dealerId;
+
+    const evaluateWithManoBonus = (player: Player): HandEvaluation => {
+      const evaluation = evaluateHand(player.cards);
+      return player.id === manoId
+        ? { ...evaluation, points: evaluation.points + 1 }
+        : evaluation;
+    };
+
     let winner = activePlayers[0];
-    let bestHand = evaluateHand(winner.cards);
+    let bestHand = evaluateWithManoBonus(winner);
 
     for (let i = 1; i < activePlayers.length; i++) {
       const p = activePlayers[i];
-      const pHand = evaluateHand(p.cards);
+      const pHand = evaluateWithManoBonus(p);
       
-      console.log(`[MesaRoom] Player ${p.nickname} final hand: ${pHand.type} (Points: ${pHand.points})`);
+      const isMano = p.id === manoId;
+      console.log(`[MesaRoom] ${p.nickname}${isMano ? ' (La Mano +1)' : ''}: ${pHand.type} (${pHand.points} pts)`);
 
-      // compareHands devuelve positivo si pHand gana a bestHand, negativo si bestHand gana
       if (compareHands(pHand, bestHand) > 0) {
          winner = p;
          bestHand = pHand;
@@ -942,10 +975,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.piquePot = 0;
     this.state.phase = "LOBBY";
 
-    // Preparar siguiente mano (rotar dealer)
-    const playerIds = Array.from(this.state.players.keys());
-    const dealerIdx = playerIds.indexOf(this.state.dealerId);
-    this.state.dealerId = playerIds[(dealerIdx + 1) % playerIds.length];
+    // Rotar La Mano al siguiente asiento en orden estable (jugador a la derecha)
+    const dealerSeatIdx = this.seatOrder.indexOf(this.state.dealerId);
+    if (dealerSeatIdx !== -1 && this.seatOrder.length > 1) {
+      const nextSeatIdx = (dealerSeatIdx + 1) % this.seatOrder.length;
+      this.state.dealerId = this.seatOrder[nextSeatIdx];
+    }
+    // Actualizar números de turno para reflejar el nuevo orden desde ya en el LOBBY
+    this.assignTurnOrders();
   }
 
   private endRound() {
@@ -977,6 +1014,25 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.piquePot = 0;
       this.state.phase = "LOBBY";
     }
+  }
+
+  /**
+   * Asigna el número de turno relativo a La Mano a cada jugador activo.
+   * La Mano recibe turnOrder = 1, el siguiente jugador a la derecha = 2, y así sucesivamente.
+   * Permite que el cliente muestre visualmente el orden de rotación de la mano.
+   */
+  private assignTurnOrders(): void {
+    const manoSeatIdx = this.seatOrder.indexOf(this.state.dealerId);
+    if (manoSeatIdx === -1) return;
+
+    this.state.players.forEach((player: Player) => {
+      const playerSeatIdx = this.seatOrder.indexOf(player.id);
+      if (playerSeatIdx === -1) {
+        player.turnOrder = 0;
+        return;
+      }
+      player.turnOrder = ((playerSeatIdx - manoSeatIdx + this.seatOrder.length) % this.seatOrder.length) + 1;
+    });
   }
 
   private shuffleDeck() {
