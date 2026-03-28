@@ -57,7 +57,7 @@ export function usePresence(friends: any[]) {
       });
 
     return () => {
-      channel.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [friends]);
 
