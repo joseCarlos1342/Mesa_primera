@@ -17,52 +17,58 @@ if (!supabaseKey) {
 
 export class SupabaseService {
   /**
-   * Distributes the pot to the winner and records the rake.
+   * Distributes the pot to the winner and records the rake atomically
+   * via the `award_pot` database RPC. This guarantees that the ledger
+   * entries (win credit + rake debit) are created in a single transaction.
    */
-  static async awardPot(userId: string, payout: number, rake: number) {
+  static async awardPot(userId: string, payout: number, rake: number, gameId?: string, tableId?: string) {
     if (!supabaseKey) return;
     try {
-      // 1. Get the user's wallet
-      const { data: wallet, error: walletError } = await supabase
-        .from('wallets')
-        .select('id, balance_cents')
-        .eq('user_id', userId)
-        .single();
-      
-      if (walletError || !wallet) throw new Error('Wallet not found for ' + userId);
+      const { data, error } = await supabase.rpc('award_pot', {
+        p_winner_id: userId,
+        p_payout: payout,
+        p_rake: rake,
+        p_game_id: gameId || null,
+        p_table_id: tableId || null,
+        p_pot_details: { payout, rake, total: payout + rake }
+      });
 
-      // 2. Add payout to winner's balance
-      const newBalance = Number(wallet.balance_cents) + payout;
-      const { error: updateError } = await supabase
-        .from('wallets')
-        .update({ balance_cents: newBalance })
-        .eq('id', wallet.id);
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      if (updateError) throw updateError;
-
-      // 3. Record transactions in Ledger
-      await supabase.from('transactions').insert([
-        {
-          wallet_id: wallet.id,
-          amount: payout,
-          type: 'win',
-          status: 'completed',
-          reference_id: `pot-win-${Date.now()}`
-        },
-        {
-          wallet_id: wallet.id,
-          amount: -rake, // Rake is usually deducted from the pot before giving the payout. We record the rake taken.
-          // Or wait, if the pot was 100, rake 5, payout 95. The winner gets 95. Rake doesn't strictly need to be a transaction on the winner's wallet unless we want to log the gross win and then the rake deduction. We'll simply record the net payout as "win". For accounting, we record a global rake transaction or just keep the net. Let's record the net payout.
-          // If we want to record the rake, we could do a separate system wallet.
-        //   type: 'rake',
-        //   status: 'completed',
-        //   reference_id: `rake-${Date.now()}`
-        }
-      ]);
-      
-      // Player stats update is now handled separately per player
+      console.log(`[SupabaseService] Pot awarded via RPC: winner=${userId}, payout=${payout}, rake=${rake}, balance_after=${data?.balance_after}`);
     } catch (e) {
       console.error('[SupabaseService] Error awarding pot:', e);
+    }
+  }
+
+  /**
+   * Records a bet deduction from a player's balance through the immutable ledger.
+   */
+  static async recordBet(userId: string, amount: number, gameId?: string, tableId?: string) {
+    if (!supabaseKey) return;
+    try {
+      const { data, error } = await supabase.rpc('process_ledger_entry', {
+        p_user_id: userId,
+        p_amount_cents: amount,
+        p_type: 'bet',
+        p_direction: 'debit',
+        p_game_id: gameId || null,
+        p_table_id: tableId || null,
+        p_description: 'Apuesta en mesa',
+        p_reference_id: `bet-${gameId}-${Date.now()}`
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        console.warn(`[SupabaseService] Bet rejected: ${data.error}`);
+        return { success: false, error: data.error };
+      }
+
+      return { success: true, balance_after: data?.balance_after };
+    } catch (e) {
+      console.error('[SupabaseService] Error recording bet:', e);
+      return { success: false, error: String(e) };
     }
   }
 
@@ -78,7 +84,7 @@ export class SupabaseService {
         .eq('user_id', userId)
         .single();
 
-      const incrementSpecial = (current: number, type: string, targetType: string) => 
+      const incrementSpecial = (current: number, type: string, targetType: string) =>
         type === targetType ? (current || 0) + 1 : (current || 0);
 
       const now = new Date().toISOString();
@@ -128,8 +134,10 @@ export class SupabaseService {
 
   /**
    * Saves a replay of the game hand timeline and RNG seed.
+   * The `timeline` field contains the player-visible events (no per-step RNG).
+   * The `admin_timeline` field contains per-action RNG seeds for admin auditing.
    */
-  static async saveReplay(gameId: string, seed: string, timeline: any[], players: any[]) {
+  static async saveReplay(gameId: string, seed: string, timeline: any[], players: any[], adminTimeline?: any[]) {
     if (!supabaseKey) return;
     try {
       // 1. Fetch or create a default table if missing (for foreign key constraint on games)
@@ -144,12 +152,19 @@ export class SupabaseService {
       const { error: gameErr } = await supabase.from('games').upsert({ id: gameId, table_id: table.id, status: 'finished' });
       if (gameErr) throw gameErr;
 
-      // 3. Save the replay
+      // 3. Build player-safe timeline (strip rng_state from each event)
+      const playerTimeline = timeline.map(({ rng_state, ...event }) => event);
+
+      // 4. Save the replay with both timelines
       const { error: replayErr } = await supabase.from('game_replays').insert({
         game_id: gameId,
-        seed,
-        timeline,
-        players
+        round_number: 1,
+        rng_seed: seed,
+        timeline: playerTimeline,
+        admin_timeline: adminTimeline || timeline,
+        players,
+        pot_breakdown: {},
+        final_hands: {}
       });
 
       if (replayErr) throw replayErr;
