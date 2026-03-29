@@ -17,6 +17,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private countdownTimer?: any;
   private currentGameId: string = crypto.randomUUID();
   private currentTimeline: any[] = [];
+  /** RNG state tracker: incremented per action for admin audit trail */
+  private rngCounter: number = 0;
   /**
    * Orden estable de asientos (por orden de entrada).
    * Garantiza que la rotación de La Mano sea siempre "al jugador de la derecha",
@@ -88,7 +90,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
         player.hasActed = true; 
 
-        this.currentTimeline.push({ event: 'action', phase: 'PIQUE', player: client.sessionId, action, time: Date.now() });
+        this.currentTimeline.push({ event: 'action', phase: 'PIQUE', player: client.sessionId, action, time: Date.now(), rng_state: this.getRngState() });
 
         if (action === "paso") {
           player.isFolded = true;
@@ -110,7 +112,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       } else if (this.state.phase === "DESCARTE") {
         const { action, droppedCards } = message;
         player.hasActed = true;
-        this.currentTimeline.push({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, time: Date.now() });
+        this.currentTimeline.push({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, time: Date.now(), rng_state: this.getRngState() });
 
         if (action === "discard") {
           if (droppedCards && Array.isArray(droppedCards) && droppedCards.length > 0) {
@@ -134,7 +136,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       } else if (this.state.phase === "APUESTA_4_CARTAS") {
         const { action, amount } = message;
         player.hasActed = true;
-        this.currentTimeline.push({ event: 'action', phase: 'APUESTA_4_CARTAS', player: client.sessionId, action, amount, time: Date.now() });
+        this.currentTimeline.push({ event: 'action', phase: 'APUESTA_4_CARTAS', player: client.sessionId, action, amount, time: Date.now(), rng_state: this.getRngState() });
 
         if (action === "paso") {
           player.isFolded = true;
@@ -151,7 +153,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       } else if (this.state.phase === "CANTICOS") {
         const { action, amount, combination } = message;
         player.hasActed = true;
-        this.currentTimeline.push({ event: 'action', phase: 'CANTICOS', player: client.sessionId, action, amount, combination, time: Date.now() });
+        this.currentTimeline.push({ event: 'action', phase: 'CANTICOS', player: client.sessionId, action, amount, combination, time: Date.now(), rng_state: this.getRngState() });
 
         if (action === "paso") {
           player.isFolded = true;
@@ -175,7 +177,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
         player.hasActed = true;
 
-        this.currentTimeline.push({ event: 'action', phase: 'GUERRA', player: client.sessionId, action, amount, time: Date.now() });
+        this.currentTimeline.push({ event: 'action', phase: 'GUERRA', player: client.sessionId, action, amount, time: Date.now(), rng_state: this.getRngState() });
 
         if (action === "paso") {
           player.isFolded = true;
@@ -435,6 +437,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     
     this.currentGameId = crypto.randomUUID();
     this.currentTimeline = [];
+    this.rngCounter = 0;
     this.currentTimeline.push({ event: 'start', seed, time: Date.now() });
 
     SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP");
@@ -968,7 +971,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     winner.chips += payout;
     console.log(`[MesaRoom] Ganador: ${winner.id} ganó ${payout} (Rake: ${rake})`);
     
-    this.currentTimeline.push({ event: 'end', winner: winnerId, pot: totalPot, payout, rake, time: Date.now() });
+    this.currentTimeline.push({ event: 'end', winner: winnerId, pot: totalPot, payout, rake, time: Date.now(), rng_state: this.getRngState() });
 
     const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
       userId: p.id,
@@ -978,8 +981,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }));
     
     // Llamar al Ledger en Supabase para persistir en DB y actualizar stats
-    SupabaseService.awardPot(winner.id, payout, rake).catch(console.error);
-    SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, this.currentTimeline, playersSnapshot).catch(console.error);
+    SupabaseService.awardPot(winner.id, payout, rake, this.currentGameId).catch(console.error);
+
+    // Save replay: admin_timeline includes rng_state per action, player timeline strips it
+    const adminTimeline = [...this.currentTimeline];
+    const playerTimeline = this.currentTimeline.map(({ rng_state, ...event }) => event);
+    SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, playerTimeline, playersSnapshot, adminTimeline).catch(console.error);
 
     // Update stats for all participating players
     Array.from(this.state.players.values()).forEach(p => {
@@ -1097,5 +1104,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       cards[i] = cards[j];
       cards[j] = temp;
     }
+  }
+
+  /**
+   * Generates a deterministic RNG state hash for the current action.
+   * Used in the admin timeline for step-by-step cryptographic auditing.
+   */
+  private getRngState(): string {
+    this.rngCounter++;
+    return crypto
+      .createHash('sha256')
+      .update(`${this.state.lastSeed}:${this.rngCounter}`)
+      .digest('hex')
+      .substring(0, 16);
   }
 }
