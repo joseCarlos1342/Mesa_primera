@@ -25,6 +25,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * independientemente del orden interno del MapSchema.
    */
   private seatOrder: string[] = [];
+  /** Mazo privado del servidor (nunca sincronizado a los clientes). */
+  private deck: string[] = [];
+  /** Mapa de clientes conectados para el envío de mensajes privados. */
+  private clientMap = new Map<string, Client>();
+  /** Espectadores admin (no reciben cartas, solo observan estado público). */
+  private spectators = new Map<string, Client>();
 
   onCreate(options: any) {
     this.setState(new GameState());
@@ -74,7 +80,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
     });
 
-    this.onMessage("action", (client, message) => {
+    this.onMessage("action", async (client, message) => {
       if (this.state.turnPlayerId !== client.sessionId) return;
       
       const player = this.state.players.get(client.sessionId);
@@ -98,14 +104,28 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (player.id === this.state.activeManoId) this.transferMano();
         } else if (action === "voy") {
           const betAmount = message.amount || 10;
-          if (player.chips >= betAmount) {
-            player.chips -= betAmount;
-            this.state.piquePot += betAmount;
+          const actualBet = Math.min(betAmount, player.chips);
+          if (actualBet <= 0) {
+            player.isFolded = true;
+            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
+            if (player.id === this.state.activeManoId) this.transferMano();
           } else {
-            this.state.piquePot += player.chips;
-            player.chips = 0;
+            // Persist bet to DB before modifying RAM state
+            if (player.supabaseUserId) {
+              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, this.roomId);
+              if (!result?.success) {
+                console.warn(`[MesaRoom] Bet rejected by DB for ${player.nickname}: ${result?.error}`);
+                player.isFolded = true;
+                this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
+                if (player.id === this.state.activeManoId) this.transferMano();
+                this.advanceTurnPhase2();
+                return;
+              }
+            }
+            player.chips -= actualBet;
+            this.state.piquePot += actualBet;
+            this.state.lastAction = `${player.nickname} va $${actualBet} para Pique`;
           }
-          this.state.lastAction = `${player.nickname} va $${betAmount} para Pique`;
         }
 
         this.advanceTurnPhase2();
@@ -118,8 +138,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (droppedCards && Array.isArray(droppedCards) && droppedCards.length > 0) {
             let currentHand = player.cards ? player.cards.split(',').filter(Boolean) : [];
             currentHand = currentHand.filter((c: string) => !droppedCards.includes(c));
-            player.cards = currentHand.join(',');
-            for (const c of droppedCards) { this.state.tableCards.push(c); }
+            this.setPlayerCards(client.sessionId, currentHand.join(','));
+            for (const c of droppedCards) { this.deck.push(c); }
             player.pendingDiscardCards = droppedCards;
             this.state.lastAction = `${player.nickname} bota ${droppedCards.length} carta${droppedCards.length !== 1 ? 's' : ''}`;
           } else {
@@ -144,9 +164,27 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (player.id === this.state.activeManoId) this.transferMano();
         } else if (action === "voy") {
           const betAmount = amount || 10;
-          if (player.chips >= betAmount) { player.chips -= betAmount; this.state.pot += betAmount; }
-          else { this.state.pot += player.chips; player.chips = 0; }
-          this.state.lastAction = `${player.nickname} va $${betAmount}`;
+          const actualBet = Math.min(betAmount, player.chips);
+          if (actualBet <= 0) {
+            player.isFolded = true;
+            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
+            if (player.id === this.state.activeManoId) this.transferMano();
+          } else {
+            if (player.supabaseUserId) {
+              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, this.roomId);
+              if (!result?.success) {
+                console.warn(`[MesaRoom] Bet rejected by DB for ${player.nickname}: ${result?.error}`);
+                player.isFolded = true;
+                this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
+                if (player.id === this.state.activeManoId) this.transferMano();
+                this.advanceTurnApuesta4();
+                return;
+              }
+            }
+            player.chips -= actualBet;
+            this.state.pot += actualBet;
+            this.state.lastAction = `${player.nickname} va $${actualBet}`;
+          }
         }
         this.advanceTurnApuesta4();
 
@@ -161,10 +199,28 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (player.id === this.state.activeManoId) this.transferMano();
         } else if (action === "voy") {
           const betAmount = amount || 10;
-          if (player.chips >= betAmount) { player.chips -= betAmount; this.state.pot += betAmount; }
-          else { this.state.pot += player.chips; player.chips = 0; }
-          const comboStr = combination ? ` a la ${combination}` : '';
-          this.state.lastAction = `${player.nickname} va $${betAmount}${comboStr}`;
+          const actualBet = Math.min(betAmount, player.chips);
+          if (actualBet <= 0) {
+            player.isFolded = true;
+            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
+            if (player.id === this.state.activeManoId) this.transferMano();
+          } else {
+            if (player.supabaseUserId) {
+              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, this.roomId);
+              if (!result?.success) {
+                console.warn(`[MesaRoom] Bet rejected by DB for ${player.nickname}: ${result?.error}`);
+                player.isFolded = true;
+                this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
+                if (player.id === this.state.activeManoId) this.transferMano();
+                this.advanceTurnCanticos();
+                return;
+              }
+            }
+            player.chips -= actualBet;
+            this.state.pot += actualBet;
+            const comboStr = combination ? ` a la ${combination}` : '';
+            this.state.lastAction = `${player.nickname} va $${actualBet}${comboStr}`;
+          }
         }
         this.advanceTurnCanticos();
       } else if (this.state.phase === "GUERRA") {
@@ -185,14 +241,27 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (player.id === this.state.activeManoId) this.transferMano();
         } else if (action === "voy") {
           const betAmount = amount || 10;
-          if (player.chips >= betAmount) {
-            player.chips -= betAmount;
-            this.state.pot += betAmount;
+          const actualBet = Math.min(betAmount, player.chips);
+          if (actualBet <= 0) {
+            player.isFolded = true;
+            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
+            if (player.id === this.state.activeManoId) this.transferMano();
           } else {
-            this.state.pot += player.chips;
-            player.chips = 0;
+            if (player.supabaseUserId) {
+              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, this.roomId);
+              if (!result?.success) {
+                console.warn(`[MesaRoom] Bet rejected by DB for ${player.nickname}: ${result?.error}`);
+                player.isFolded = true;
+                this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
+                if (player.id === this.state.activeManoId) this.transferMano();
+                this.advanceTurnPhase5();
+                return;
+              }
+            }
+            player.chips -= actualBet;
+            this.state.pot += actualBet;
+            this.state.lastAction = `${player.nickname} va $${actualBet}`;
           }
-          this.state.lastAction = `${player.nickname} va $${betAmount}`;
         }
         this.advanceTurnPhase5();
       }
@@ -205,17 +274,74 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
        
        if (message.action === "show") {
           this.state.lastAction = `${player.nickname} muestra sus cartas`;
+          player.revealedCards = player.cards;
        } else {
           this.state.lastAction = `${player.nickname} no muestra las cartas`;
-          player.cards = "";
+          this.setPlayerCards(client.sessionId, "");
        }
        this.endRound();
+    });
+
+    // ── Admin Moderation (spectator-only) ──
+
+    this.onMessage("admin:kick", (client, message) => {
+      if (!this.spectators.has(client.sessionId)) return;
+      const targetId = message.playerId;
+      const target = this.state.players.get(targetId);
+      if (!target) return;
+
+      console.log(`[MesaRoom] Admin kick: ${target.nickname} (${targetId})`);
+      this.state.lastAction = `${target.nickname} fue retirado por el admin`;
+
+      const targetClient = this.clients.find(c => c.sessionId === targetId);
+      if (targetClient) targetClient.leave(4001, "Kicked by admin");
+      this.removePlayer(targetId);
+    });
+
+    this.onMessage("admin:mute", (client, message) => {
+      if (!this.spectators.has(client.sessionId)) return;
+      const targetId = message.playerId;
+      const target = this.state.players.get(targetId);
+      if (!target) return;
+
+      console.log(`[MesaRoom] Admin mute: ${target.nickname} (${targetId})`);
+      // Notify the target client; the frontend/LiveKit will handle the actual muting
+      const targetClient = this.clientMap.get(targetId);
+      if (targetClient) targetClient.send("admin:muted", { reason: message.reason || "Silenciado por admin" });
+    });
+
+    this.onMessage("admin:ban", (client, message) => {
+      if (!this.spectators.has(client.sessionId)) return;
+      const targetId = message.playerId;
+      const target = this.state.players.get(targetId);
+      if (!target) return;
+
+      console.log(`[MesaRoom] Admin ban: ${target.nickname} (${targetId})`);
+      this.state.lastAction = `${target.nickname} fue baneado de la mesa`;
+
+      const targetClient = this.clients.find(c => c.sessionId === targetId);
+      if (targetClient) targetClient.leave(4002, "Banned by admin");
+      this.removePlayer(targetId);
     });
   }
 
   onJoin(client: Client, options: any) {
+    // ── Spectator (admin) mode ──
+    if (options.spectator === true) {
+      console.log(`[MesaRoom] Espectador (admin) conectado: ${client.sessionId}`);
+      this.spectators.set(client.sessionId, client);
+      // Spectators do NOT get a Player schema entry and NEVER receive private cards (Admin Blindness)
+      client.send("spectator:joined", { roomId: this.roomId, phase: this.state.phase });
+      // Notify all players that an admin is watching
+      this.broadcast("admin:status", { active: true, count: this.spectators.size });
+      return;
+    }
+
     const requestedNickname = options.nickname || `Jugador_${client.sessionId}`;
     const deviceId = options.deviceId;
+
+    // Registrar cliente para mensajería privada
+    this.clientMap.set(client.sessionId, client);
     
     // Ghost player cleanup and state restoration:
     const existingPlayerEntry = Array.from(this.state.players.entries()).find(
@@ -240,11 +366,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       newPlayer.avatarUrl = oldPlayer.avatarUrl;
       newPlayer.chips = oldPlayer.chips;
       newPlayer.cards = oldPlayer.cards;
+      newPlayer.cardCount = oldPlayer.cardCount;
+      newPlayer.revealedCards = oldPlayer.revealedCards;
       newPlayer.isReady = oldPlayer.isReady;
       newPlayer.hasActed = oldPlayer.hasActed;
       newPlayer.isFolded = oldPlayer.isFolded;
       newPlayer.connected = true;
       newPlayer.deviceId = oldPlayer.deviceId;
+      newPlayer.supabaseUserId = oldPlayer.supabaseUserId;
 
       this.state.players.delete(oldSessionId);
       this.state.players.set(client.sessionId, newPlayer);
@@ -261,6 +390,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       if (this.state.turnPlayerId === oldSessionId) {
         this.state.turnPlayerId = client.sessionId;
       }
+
+      // Re-enviar las cartas privadas al cliente reconectado
+      this.sendPrivateCards(client.sessionId);
       
       this.updateLobbyMetadata();
       this.checkStartCountdown();
@@ -276,6 +408,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     newPlayer.chips = options.chips || 1000;
     newPlayer.connected = true;
     newPlayer.deviceId = deviceId;
+    newPlayer.supabaseUserId = options.userId || "";
       
     this.state.players.set(client.sessionId, newPlayer);
     // Registrar el asiento del nuevo jugador para la rotación estable de la mano
@@ -305,6 +438,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   async onLeave(client: Client, code?: number) {
+    // Clean up spectator if applicable
+    if (this.spectators.has(client.sessionId)) {
+      console.log(`[MesaRoom] Espectador desconectado: ${client.sessionId}`);
+      this.spectators.delete(client.sessionId);
+      // Notify players that admin left
+      this.broadcast("admin:status", { active: this.spectators.size > 0, count: this.spectators.size });
+      return;
+    }
+
     const consented = (code === 1000);
     const player = this.state.players.get(client.sessionId);
     
@@ -348,6 +490,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
   private removePlayer(sessionId: string) {
     this.state.players.delete(sessionId);
+    this.clientMap.delete(sessionId);
     // Liberar el asiento del jugador del orden estable
     const seatIdx = this.seatOrder.indexOf(sessionId);
     if (seatIdx !== -1) this.seatOrder.splice(seatIdx, 1);
@@ -414,10 +557,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     const suits = ["O", "C", "E", "B"]; // Oros, Copas, Espadas, Bastos
     const values = ["1", "2", "3", "4", "5", "6", "7"]; // 7 cartas por palo
     
-    this.state.tableCards.clear();
+    this.deck = [];
     for (const suit of suits) {
       for (const val of values) {
-        this.state.tableCards.push(`${val}-${suit}`);
+        this.deck.push(`${val}-${suit}`);
       }
     }
   }
@@ -443,14 +586,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP");
 
     // Resetear el estado de los jugadores para la nueva ronda
-    Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => {
+    Array.from(this.state.players.entries()).forEach(([sessionId, p]) => {
        if (!p.isReady) {
            p.isFolded = true; 
        } else {
            p.isFolded = false;
        }
        p.hasActed = false;
-       p.cards = "";
+       this.setPlayerCards(sessionId, "");
+       p.revealedCards = "";
     });
 
     // Fase 1: Sorteo de la mano (solo la primera vez de la sesión)
@@ -476,7 +620,6 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.phase = "BARAJANDO";
       console.log(`[MesaRoom] Barajando para Sorteo Mano...`);
 
-      this.state.tableCards.clear();
       this.createDeck();
       this.shuffleDeck();
 
@@ -490,12 +633,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         const playerIds = Array.from(this.state.players.keys());
         const hostIdx = playerIds.indexOf(this.state.dealerId) >= 0 ? playerIds.indexOf(this.state.dealerId) : 0;
         
-        const orderedActivePlayers: Player[] = [];
+        const orderedActivePlayers: { player: Player; sessionId: string }[] = [];
         for(let i=0; i<playerIds.length; i++) {
             const idx = (hostIdx + i) % playerIds.length;
-            const p = this.state.players.get(playerIds[idx]);
+            const sessionId = playerIds[idx];
+            const p = this.state.players.get(sessionId);
             if (p && !p.isFolded && p.connected) {
-                orderedActivePlayers.push(p);
+                orderedActivePlayers.push({ player: p, sessionId });
             }
         }
 
@@ -503,7 +647,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
         const dealInterval = this.clock.setInterval(() => {
             // Si ya encontramos oro o nos quedamos sin cartas, terminar
-            if (manoPlayerId || this.state.tableCards.length === 0) {
+            if (manoPlayerId || this.deck.length === 0) {
                dealInterval.clear();
                if (manoPlayerId) {
                   this.state.dealerId = manoPlayerId;
@@ -518,16 +662,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
                return;
             }
 
-            const player = orderedActivePlayers[currentPlayerIndex];
-            const card = this.state.tableCards.pop();
+            const { player, sessionId } = orderedActivePlayers[currentPlayerIndex];
+            const card = this.deck.pop();
             
             if (card) {
-                player.cards = player.cards ? player.cards + "," + card : card;
+                const newCards = player.cards ? player.cards + "," + card : card;
+                // SORTEO: cartas visibles para todos (reveal = true)
+                this.setPlayerCards(sessionId, newCards, true);
                 
                 // Cualquier Oro otorga la mano
                 const suit = card.split('-')[1];
                 if (suit === 'O') {
-                   manoPlayerId = player.id;
+                   manoPlayerId = sessionId;
                 }
             }
             
@@ -540,31 +686,44 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   /**
    * Fase 2: El Pique
    */
-  private startPhase2Pique() {
+  private async startPhase2Pique() {
     this.state.phase = "BARAJANDO";
     console.log(`[MesaRoom] Barajando para el Pique...`);
 
     // Recoger cartas, barajar de nuevo
     this.createDeck();
     this.shuffleDeck();
-    this.state.players.forEach(p => p.cards = "");
+    // Limpiar cartas (privadas + públicas) de todos los jugadores
+    this.state.players.forEach((p: Player, sessionId: string) => {
+      this.setPlayerCards(sessionId, "");
+      p.revealedCards = "";
+    });
 
     // Inicializar la Mano activa para el orden de turnos de esta partida
     this.state.activeManoId = this.state.dealerId;
 
     // Reset folds and deduct ante (Casa)
-    this.state.players.forEach((p: Player) => {
+    let antePlayerCount = 0;
+    for (const [, p] of this.state.players) {
         p.isFolded = !p.connected;
         if (!p.isFolded) {
-          if (p.chips >= 10) {
-            p.chips -= 10;
-            this.state.pot += 10;
-          } else {
-            this.state.pot += p.chips;
-            p.chips = 0;
+          const anteAmount = Math.min(10, p.chips);
+          if (anteAmount <= 0) continue;
+          // Persist ante to DB
+          if (p.supabaseUserId) {
+            const result = await SupabaseService.recordBet(p.supabaseUserId, anteAmount, this.currentGameId, this.roomId);
+            if (!result?.success) {
+              console.warn(`[MesaRoom] Ante rejected by DB for ${p.nickname}: ${result?.error}`);
+              p.isFolded = true;
+              continue;
+            }
           }
+          antePlayerCount++;
+          p.chips -= anteAmount;
+          this.state.pot += anteAmount;
         }
-    });
+    }
+    this.state.lastAction = `Entrada obligatoria: $10 × ${antePlayerCount} jugadores = $${this.state.pot} al pozo`;
 
     this.clock.setTimeout(() => {
         this.state.phase = "PIQUE_DEAL";
@@ -573,12 +732,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         // Ordered by seatOrder starting from La Mano (dealerId)
         const dealerSeatIdx = this.seatOrder.indexOf(this.state.dealerId);
         const startIdx = dealerSeatIdx >= 0 ? dealerSeatIdx : 0;
-        const orderedActivePlayers: Player[] = [];
+        const orderedActivePlayers: { player: Player; sessionId: string }[] = [];
         for (let i = 0; i < this.seatOrder.length; i++) {
           const idx = (startIdx + i) % this.seatOrder.length;
-          const p = this.state.players.get(this.seatOrder[idx]);
+          const sessionId = this.seatOrder[idx];
+          const p = this.state.players.get(sessionId);
           if (p && !p.isFolded && p.connected) {
-            orderedActivePlayers.push(p);
+            orderedActivePlayers.push({ player: p, sessionId });
           }
         }
 
@@ -596,12 +756,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
                return;
             }
 
-            const player = orderedActivePlayers[currentPlayerIndex];
+            const { player, sessionId } = orderedActivePlayers[currentPlayerIndex];
             // Give both cards at once
-            const card1 = this.state.tableCards.pop();
-            const card2 = this.state.tableCards.pop();
-            if (card1) player.cards = card1;
-            if (card2) player.cards = player.cards ? player.cards + "," + card2 : card2;
+            const card1 = this.deck.pop();
+            const card2 = this.deck.pop();
+            let newCards = "";
+            if (card1) newCards = card1;
+            if (card2) newCards = newCards ? newCards + "," + card2 : card2;
+            this.setPlayerCards(sessionId, newCards);
 
             currentPlayerIndex++;
         }, 3000); // 3s between each player receiving their 2 cards
@@ -643,21 +805,22 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const p = this.state.players.get(id);
       if (p && p.isFolded && p.cards) {
         for (const card of p.cards.split(',').filter(Boolean)) {
-          this.state.tableCards.push(card);
+          this.deck.push(card);
         }
-        p.cards = "";
+        this.setPlayerCards(id, "");
       }
     }
 
     // Build ordered active players starting from La Mano
     const dealerSeatIdx = this.seatOrder.indexOf(this.state.dealerId);
     const startIdx = dealerSeatIdx >= 0 ? dealerSeatIdx : 0;
-    const orderedActivePlayers: Player[] = [];
+    const orderedActivePlayers: { player: Player; sessionId: string }[] = [];
     for (let i = 0; i < this.seatOrder.length; i++) {
       const idx = (startIdx + i) % this.seatOrder.length;
-      const p = this.state.players.get(this.seatOrder[idx]);
+      const sessionId = this.seatOrder[idx];
+      const p = this.state.players.get(sessionId);
       if (p && !p.isFolded && p.connected) {
-        orderedActivePlayers.push(p);
+        orderedActivePlayers.push({ player: p, sessionId });
       }
     }
 
@@ -678,12 +841,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
            return;
         }
 
-        const player = orderedActivePlayers[currentPlayerIndex];
+        const { player, sessionId } = orderedActivePlayers[currentPlayerIndex];
         const currentCardsCount = player.cards ? player.cards.split(',').filter(Boolean).length : 0;
 
         if (currentCardsCount < 4) {
-            const card = this.state.tableCards.pop();
-            if (card) player.cards = player.cards ? player.cards + "," + card : card;
+            const card = this.deck.pop();
+            if (card) {
+              const newCards = player.cards ? player.cards + "," + card : card;
+              this.setPlayerCards(sessionId, newCards);
+            }
         }
 
         currentPlayerIndex++;
@@ -770,12 +936,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // Ordered by seatOrder starting from activeManoId
     const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
     const startIdx = manoSeatIdx >= 0 ? manoSeatIdx : 0;
-    const playersNeedingCards: Player[] = [];
+    const playersNeedingCards: { player: Player; sessionId: string }[] = [];
     for (let i = 0; i < this.seatOrder.length; i++) {
       const idx = (startIdx + i) % this.seatOrder.length;
-      const p = this.state.players.get(this.seatOrder[idx]);
+      const sessionId = this.seatOrder[idx];
+      const p = this.state.players.get(sessionId);
       if (p && !p.isFolded && p.connected && p.pendingDiscardCards.length > 0) {
-        playersNeedingCards.push(p);
+        playersNeedingCards.push({ player: p, sessionId });
       }
     }
 
@@ -793,13 +960,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
            return;
         }
 
-        const player = playersNeedingCards[currentPlayerIndex];
+        const { player, sessionId } = playersNeedingCards[currentPlayerIndex];
         const count = player.pendingDiscardCards.length;
         // Deal all requested cards at once from the bottom of the deck
+        let newCards = player.cards;
         for (let i = 0; i < count; i++) {
-            const card = this.state.tableCards.shift();
-            if (card) player.cards = player.cards ? player.cards + "," + card : card;
+            const card = this.deck.shift();
+            if (card) newCards = newCards ? newCards + "," + card : card;
         }
+        this.setPlayerCards(sessionId, newCards);
         player.pendingDiscardCards = [];
         currentPlayerIndex++;
     }, 2000); // 2s between players
@@ -810,8 +979,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Revela la última carta del mazo boca arriba. Queda visible el resto de la partida.
    */
   private startPhaseRevealBottomCard() {
-    if (this.state.tableCards.length > 0) {
-      this.state.bottomCard = this.state.tableCards.shift()!;
+    if (this.deck.length > 0) {
+      this.state.bottomCard = this.deck.shift()!;
       console.log(`[MesaRoom] Carta revelada del fondo: ${this.state.bottomCard}`);
     }
     this.state.phase = "REVELAR_CARTA";
@@ -926,6 +1095,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
+    // Revelar cartas de todos los jugadores activos para el showdown
+    activePlayers.forEach(p => {
+      p.revealedCards = p.cards;
+    });
+
     // Evaluate hands — La Mano (dealerId) gets +1 point tiebreaker
     const manoId = this.state.dealerId;
     const evaluateWithManoBonus = (player: Player): HandEvaluation => {
@@ -974,14 +1148,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.currentTimeline.push({ event: 'end', winner: winnerId, pot: totalPot, payout, rake, time: Date.now(), rng_state: this.getRngState() });
 
     const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
-      userId: p.id,
+      userId: p.supabaseUserId || p.id,
       nickname: p.nickname,
       cards: p.cards,
       chips: p.chips
     }));
     
     // Llamar al Ledger en Supabase para persistir en DB y actualizar stats
-    SupabaseService.awardPot(winner.id, payout, rake, this.currentGameId).catch(console.error);
+    if (winner.supabaseUserId) {
+      SupabaseService.awardPot(winner.supabaseUserId, payout, rake, this.currentGameId, this.roomId).catch(console.error);
+    }
 
     // Save replay: admin_timeline includes rng_state per action, player timeline strips it
     const adminTimeline = [...this.currentTimeline];
@@ -1005,7 +1181,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
          }
       }
       
-      SupabaseService.updatePlayerStats(p.id, isWinner, playerPayout, playerRake, specialPlay).catch(console.error);
+      if (p.supabaseUserId) {
+        SupabaseService.updatePlayerStats(p.supabaseUserId, isWinner, playerPayout, playerRake, specialPlay).catch(console.error);
+      }
     });
 
     Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => p.isReady = false);
@@ -1015,6 +1193,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.activeManoId = "";
     this.state.showdownTimer = 0;
     this.state.phase = "LOBBY";
+
+    // Limpiar cartas reveladas de todos los jugadores
+    this.state.players.forEach((p: Player, sessionId: string) => {
+      p.revealedCards = "";
+    });
 
     // Rotar La Mano al siguiente asiento en orden estable (jugador a la derecha)
     const dealerSeatIdx = this.seatOrder.indexOf(this.state.dealerId);
@@ -1034,9 +1217,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   private restartLobby() {
-      this.state.players.forEach((p: Player) => {
+      this.state.players.forEach((p: Player, sessionId: string) => {
           p.isReady = false;
-          p.cards = "";
+          this.setPlayerCards(sessionId, "");
+          p.revealedCards = "";
       });
       this.state.pot = 0;
       this.state.piquePot = 0;
@@ -1097,12 +1281,41 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
   private shuffleDeck() {
     // Fisher-Yates con crypto.randomInt para máxima seguridad
-    const cards = this.state.tableCards;
+    const cards = this.deck;
     for (let i = cards.length - 1; i > 0; i--) {
       const j = crypto.randomInt(0, i + 1);
       const temp = cards[i];
       cards[i] = cards[j];
       cards[j] = temp;
+    }
+  }
+
+  /**
+   * Actualiza las cartas de un jugador de forma segura:
+   * 1. Almacena en la propiedad privada del servidor (nunca sincronizada).
+   * 2. Actualiza el conteo público de cartas (cardCount) para que los demás dibujen dorsos.
+   * 3. Envía las cartas reales SOLO al dueño vía mensaje privado.
+   * @param reveal Si true, también establece revealedCards (para SORTEO/SHOWDOWN).
+   */
+  private setPlayerCards(sessionId: string, cards: string, reveal: boolean = false): void {
+    const player = this.state.players.get(sessionId);
+    if (!player) return;
+    player.cards = cards;
+    player.cardCount = cards ? cards.split(',').filter(Boolean).length : 0;
+    if (reveal) player.revealedCards = cards;
+    this.sendPrivateCards(sessionId);
+  }
+
+  /**
+   * Envía las cartas reales a un solo cliente mediante mensaje privado de Colyseus.
+   * Ningún otro navegador recibe este dato.
+   */
+  private sendPrivateCards(sessionId: string): void {
+    const client = this.clientMap.get(sessionId);
+    const player = this.state.players.get(sessionId);
+    if (client && player) {
+      const cards = player.cards ? player.cards.split(',').filter(Boolean) : [];
+      client.send("private-cards", cards);
     }
   }
 

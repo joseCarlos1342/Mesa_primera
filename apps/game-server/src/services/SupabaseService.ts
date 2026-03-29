@@ -30,7 +30,7 @@ export class SupabaseService {
         p_rake: rake,
         p_game_id: gameId || null,
         p_table_id: tableId || null,
-        p_pot_details: { payout, rake, total: payout + rake }
+        p_pot_details: { payout, rake, total: payout + rake, table_id: tableId || null }
       });
 
       if (error) throw error;
