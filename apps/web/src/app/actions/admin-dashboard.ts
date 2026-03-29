@@ -16,6 +16,7 @@ export type AdminDashboardStats = {
   ledgerIntegrityDiff: number;
   volume24h: number;
   pendingSupport: number;
+  pendingAlerts: number;
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
@@ -119,6 +120,12 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
 
   const pendingSupportCount = new Set(supportData?.map(m => m.user_id)).size;
 
+  // Pending table help requests ("Llamar al Admin")
+  const { count: pendingAlertsCount } = await supabase
+    .from('table_help_requests')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['pending', 'attending']);
+
   // Total Rake (House earnings)
   const { data: rakeData } = await supabase
     .from("ledger")
@@ -160,6 +167,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     ledgerIntegrityStatus,
     ledgerIntegrityDiff,
     volume24h,
-    pendingSupport: pendingSupportCount || 0
+    pendingSupport: pendingSupportCount || 0,
+    pendingAlerts: pendingAlertsCount || 0
   };
 }
