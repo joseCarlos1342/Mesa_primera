@@ -46,7 +46,7 @@ export class SupabaseService {
    * Records a bet deduction from a player's balance through the immutable ledger.
    */
   static async recordBet(userId: string, amount: number, gameId?: string, tableId?: string) {
-    if (!supabaseKey) return;
+    if (!supabaseKey) return { success: true, balance_after: null };
     try {
       const { data, error } = await supabase.rpc('process_ledger_entry', {
         p_user_id: userId,
@@ -54,7 +54,7 @@ export class SupabaseService {
         p_type: 'bet',
         p_direction: 'debit',
         p_game_id: gameId || null,
-        p_table_id: tableId || null,
+        p_table_id: null,
         p_description: 'Apuesta en mesa',
         p_reference_id: `bet-${gameId}-${Date.now()}`
       });
@@ -62,13 +62,13 @@ export class SupabaseService {
       if (error) throw error;
       if (data?.error) {
         console.warn(`[SupabaseService] Bet rejected: ${data.error}`);
-        return { success: false, error: data.error };
+        return { success: false, error: data.error, isBalanceError: String(data.error).includes('insuficiente') };
       }
 
       return { success: true, balance_after: data?.balance_after };
     } catch (e) {
       console.error('[SupabaseService] Error recording bet:', e);
-      return { success: false, error: String(e) };
+      return { success: false, error: String(e), isBalanceError: false };
     }
   }
 
