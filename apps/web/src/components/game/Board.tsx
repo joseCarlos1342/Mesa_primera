@@ -10,6 +10,7 @@ import { ActionControls } from './ActionControls'
 import { GameAnnouncer } from './GameAnnouncer'
 import { Card } from './Card'
 import { RechargeButton } from './RechargeButton'
+import { ShowdownCinematic } from './ShowdownCinematic'
 import { useState, useEffect, useRef } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { AnimationLayer } from './AnimationLayer'
@@ -380,11 +381,13 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
               <span className="text-[#4ade80] font-mono font-black text-sm md:text-xl">{formatCurrency(pot)}</span>
             </div>
             
-            {/* Pote del Pique */}
+            {/* Pote del Pique - solo visible cuando > 0 */}
+            {piquePot > 0 && (
             <div className="flex flex-col items-center bg-[#0a180e]/95 px-4 md:px-6 py-1.5 md:py-2 rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[120px] md:min-w-[160px]">
               <span className="text-[#fdf0a6] text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-60">Pote del Pique</span>
               <span className="text-[#4ade80] font-mono font-black text-sm md:text-xl">{formatCurrency(piquePot)}</span>
             </div>
+            )}
           </div>
 
           {/* Column 2: Central Deck (Mazo) + bottom card */}
@@ -582,19 +585,22 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
         )}
       </div>
 
-      {/* SHOWDOWN Timer Overlay */}
+      {/* SHOWDOWN Cinematic Overlay */}
       <AnimatePresence>
         {phase === 'SHOWDOWN' && (
           <m.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute top-1/3 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-60"
           >
-            <div className="bg-black/80 backdrop-blur-md border border-[#d4af37]/50 px-8 py-4 rounded-2xl text-center shadow-[0_0_40px_rgba(212,175,55,0.3)]">
-              <div className="text-[#d4af37] text-[10px] uppercase tracking-widest mb-1">Mostrando cartas</div>
-              <div className="text-white font-mono font-black text-5xl">{room.state.showdownTimer ?? 20}</div>
-            </div>
+            <ShowdownCinematic
+              players={players}
+              timer={room.state.showdownTimer ?? 10}
+              pot={pot}
+              piquePot={piquePot}
+              dealerId={room.state.dealerId}
+            />
           </m.div>
         )}
       </AnimatePresence>
