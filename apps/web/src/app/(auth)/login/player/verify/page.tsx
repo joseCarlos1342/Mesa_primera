@@ -12,10 +12,9 @@ function VerifyContent() {
   const formRef = useRef<HTMLFormElement>(null)
 
   const TEST_PHONES = [
-    '+573001112233',
-    '+573104445566',
-    '+573207778899',
-    '+573150001122'
+    '+573205802918',
+    '+573229122479',
+    '+573125822841'
   ]
 
   const isTestPhone = TEST_PHONES.includes(phone)
@@ -96,12 +95,12 @@ function VerifyContent() {
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-base rounded-2xl transition-all duration-200 border-b-8 border-brand-gold-dark active:border-b-0 active:translate-y-2 shadow-[0_15px_30px_rgba(0,0,0,0.4)] disabled:opacity-50 overflow-hidden"
+              className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-base rounded-2xl transition-all duration-200 border-b-4 border-brand-gold-dark active:border-b-0 active:translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.4)] disabled:opacity-50 overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-3">
                 {isPending ? 'AUTENTICANDO...' : 'CÓDIGO CORRECTO →'}
               </span>
-              <div className="absolute inset-0 bg-white/20 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
+              <div className="absolute inset-0 bg-white/20 translate-x-[-105%] skew-x-[-20deg] group-hover:translate-x-[155%] transition-transform duration-1000 ease-in-out" />
             </button>
           </form>
 
