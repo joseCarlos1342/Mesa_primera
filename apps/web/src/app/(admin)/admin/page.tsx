@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Settings, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Settings, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell } from "lucide-react";
 import Link from "next/link";
 import { getAdminDashboardStats } from "@/app/actions/admin-dashboard";
 import { formatCurrency } from "@/utils/format";
@@ -19,7 +19,7 @@ export default async function AdminPage() {
       value: formatCurrency(statsData.totalRake), 
       icon: <BarChart3 className="w-5 h-5" />, 
       color: "text-emerald-400",
-      href: "/admin/ledger?type=rake"
+      href: "/admin/ganancias"
     },
     { 
       label: "Mesas en Curso", 
@@ -46,7 +46,7 @@ export default async function AdminPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
             Sistema Operativo
           </div>
-          <h1 className="text-5xl font-black italic tracking-tighter bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-black italic tracking-tight leading-tight bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent">
             CENTRO DE MANDO
           </h1>
           <p className="text-slate-500 font-medium mt-1">Gestión administrativa y control de boveda.</p>
@@ -203,6 +203,26 @@ export default async function AdminPage() {
           </div>
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
             <MessageSquare className="w-20 h-20" />
+          </div>
+        </Link>
+
+        <Link href="/admin/alerts" className="group relative overflow-hidden bg-gradient-to-br from-red-500/10 to-transparent backdrop-blur-2xl border border-red-500/20 p-6 rounded-[2rem] hover:scale-[1.02] transition-all hover:border-red-500/40 shadow-2xl">
+          <div className="relative z-10 flex gap-4 items-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center border border-red-500/30">
+              <Bell className="w-6 h-6 text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight text-white">Alertas Mesa</h3>
+            </div>
+          </div>
+          <div className="relative z-10">
+             <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-white">{statsData.pendingAlerts}</span>
+                <span className="text-sm text-slate-400 font-medium mb-1">pendientes</span>
+             </div>
+          </div>
+          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Bell className="w-20 h-20" />
           </div>
         </Link>
       </div>
