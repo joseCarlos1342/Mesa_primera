@@ -112,9 +112,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           } else {
             // Persist bet to DB before modifying RAM state
             if (player.supabaseUserId) {
-              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, this.roomId);
-              if (!result?.success) {
-                console.warn(`[MesaRoom] Bet rejected by DB for ${player.nickname}: ${result?.error}`);
+              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId);
+              if (result && !result.success && result.isBalanceError) {
                 player.isFolded = true;
                 this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
                 if (player.id === this.state.activeManoId) this.transferMano();
@@ -171,9 +170,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             if (player.id === this.state.activeManoId) this.transferMano();
           } else {
             if (player.supabaseUserId) {
-              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, this.roomId);
-              if (!result?.success) {
-                console.warn(`[MesaRoom] Bet rejected by DB for ${player.nickname}: ${result?.error}`);
+              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId);
+              if (result && !result.success && result.isBalanceError) {
                 player.isFolded = true;
                 this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
                 if (player.id === this.state.activeManoId) this.transferMano();
@@ -206,9 +204,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             if (player.id === this.state.activeManoId) this.transferMano();
           } else {
             if (player.supabaseUserId) {
-              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, this.roomId);
-              if (!result?.success) {
-                console.warn(`[MesaRoom] Bet rejected by DB for ${player.nickname}: ${result?.error}`);
+              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId);
+              if (result && !result.success && result.isBalanceError) {
                 player.isFolded = true;
                 this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
                 if (player.id === this.state.activeManoId) this.transferMano();
@@ -248,9 +245,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             if (player.id === this.state.activeManoId) this.transferMano();
           } else {
             if (player.supabaseUserId) {
-              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, this.roomId);
-              if (!result?.success) {
-                console.warn(`[MesaRoom] Bet rejected by DB for ${player.nickname}: ${result?.error}`);
+              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId);
+              if (result && !result.success && result.isBalanceError) {
                 player.isFolded = true;
                 this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
                 if (player.id === this.state.activeManoId) this.transferMano();
@@ -711,11 +707,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (anteAmount <= 0) continue;
           // Persist ante to DB
           if (p.supabaseUserId) {
-            const result = await SupabaseService.recordBet(p.supabaseUserId, anteAmount, this.currentGameId, this.roomId);
-            if (!result?.success) {
-              console.warn(`[MesaRoom] Ante rejected by DB for ${p.nickname}: ${result?.error}`);
+            const result = await SupabaseService.recordBet(p.supabaseUserId, anteAmount, this.currentGameId);
+            if (result && !result.success && result.isBalanceError) {
+              console.warn(`[MesaRoom] Ante rejected (insufficient funds) for ${p.nickname}`);
               p.isFolded = true;
               continue;
+            }
+            if (result && !result.success) {
+              console.warn(`[MesaRoom] Ante DB error for ${p.nickname}: ${result.error} (proceeding anyway)`);
             }
           }
           antePlayerCount++;
@@ -1156,7 +1155,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     
     // Llamar al Ledger en Supabase para persistir en DB y actualizar stats
     if (winner.supabaseUserId) {
-      SupabaseService.awardPot(winner.supabaseUserId, payout, rake, this.currentGameId, this.roomId).catch(console.error);
+      SupabaseService.awardPot(winner.supabaseUserId, payout, rake, this.currentGameId).catch(console.error);
     }
 
     // Save replay: admin_timeline includes rng_state per action, player timeline strips it
