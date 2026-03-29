@@ -137,7 +137,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent pb-32 pt-10 md:pt-16 px-4 sm:px-6 space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 overflow-x-hidden overflow-y-auto">
+    <div className="min-h-screen bg-transparent pb-24 pt-10 md:pt-16 px-4 sm:px-6 space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 overflow-x-hidden overflow-y-auto relative">
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/20 to-transparent pointer-events-none -z-10" />
       {/* Header */}
       <header className="flex flex-col items-center justify-center relative w-full max-w-4xl mx-auto space-y-4 px-2 text-center">
         <div className="overflow-visible w-full px-4">
@@ -288,7 +289,7 @@ export default function ProfilePage() {
                       type="text"
                       value={formData.username}
                       onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      className="w-full bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 pl-14 sm:pl-16 pr-8 text-lg sm:text-xl font-bold text-white focus:outline-none focus:border-brand-gold/40 transition-all placeholder:text-slate-800 shadow-inner"
+                      className="w-full bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 pl-14 sm:pl-16 pr-8 text-lg sm:text-xl font-bold text-white focus:outline-none focus:border-brand-gold/40 transition-all placeholder:text-slate-800"
                       placeholder="Identidad"
                     />
                   </div>
@@ -303,7 +304,7 @@ export default function ProfilePage() {
                       type="text"
                       value={formData.full_name}
                       onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      className="w-full bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 pl-14 sm:pl-16 pr-8 text-lg sm:text-xl font-bold text-white focus:outline-none focus:border-brand-gold/40 transition-all placeholder:text-slate-800 shadow-inner"
+                      className="w-full bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 pl-14 sm:pl-16 pr-8 text-lg sm:text-xl font-bold text-white focus:outline-none focus:border-brand-gold/40 transition-all placeholder:text-slate-800"
                       placeholder="Nombre completo"
                     />
                   </div>
@@ -319,7 +320,7 @@ export default function ProfilePage() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 pl-14 sm:pl-16 pr-8 text-lg sm:text-xl font-bold text-white focus:outline-none focus:border-brand-gold/40 transition-all placeholder:text-slate-800 shadow-inner"
+                    className="w-full bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 pl-14 sm:pl-16 pr-8 text-lg sm:text-xl font-bold text-white focus:outline-none focus:border-brand-gold/40 transition-all placeholder:text-slate-800"
                     placeholder="+57 3..."
                   />
                 </div>
@@ -339,19 +340,19 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-6 pt-4 w-full overflow-hidden">
+              <div className="flex flex-row gap-4 pt-10 w-full max-w-md mx-auto sm:max-w-none">
                 <button
                   type="submit"
                   disabled={saving}
-                  className="group relative flex-[2] w-full sm:w-auto h-20 bg-accent-gold-shimmer rounded-[2rem] font-display font-black text-lg uppercase italic tracking-[0.3em] text-slate-950 shadow-xl transition-all duration-500 disabled:opacity-50 overflow-hidden active:translate-y-1 active:shadow-inner border-b-4 border-black/30 hover:shadow-gold-shimmer/20 flex items-center justify-center gap-3"
+                  className="group relative flex-1 h-14 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-wider text-xs rounded-xl transition-all duration-200 border-b-4 border-brand-gold-dark active:border-b-0 active:translate-y-1 shadow-lg disabled:opacity-50 overflow-hidden flex items-center justify-center gap-2"
                 >
-                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
+                  <div className="absolute inset-x-[-20%] inset-y-0 translate-x-[-120%] skew-x-[-25deg] group-hover:translate-x-[120%] transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
                   {saving ? (
-                    <Loader2 className="w-10 h-10 animate-spin text-slate-900" />
+                    <Loader2 className="w-5 h-5 animate-spin text-black" />
                   ) : (
                     <>
-                      <Save className="w-6 h-6 group-hover:rotate-12 transition-transform relative z-10 mr-1" />
-                      <span className="relative z-10">Guardar</span>
+                      <Save className="w-5 h-5 group-hover:scale-110 transition-transform relative z-10" />
+                      <span className="relative z-10 italic">Guardar</span>
                     </>
                   )}
                 </button>
@@ -359,10 +360,10 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex-1 w-full sm:w-auto h-20 bg-red-950/20 hover:bg-red-950/30 border-2 border-red-500/20 hover:border-red-500/40 rounded-[2rem] font-display font-black text-lg uppercase italic tracking-[0.3em] text-red-500/80 hover:text-red-500 transition-all active:translate-y-1 active:shadow-inner border-b-4 border-black/40 flex items-center justify-center gap-3 group shadow-xl"
+                  className="group relative flex-1 h-14 bg-red-950/20 hover:bg-red-500/10 border-2 border-red-500/30 rounded-xl text-red-500 font-display font-black text-xs uppercase italic tracking-widest transition-all duration-200 active:translate-y-1 active:border-b-0 border-b-4 border-black/20 shadow-lg flex items-center justify-center gap-2"
                 >
-                  <LogOut className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
-                  Salir
+                  <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform opacity-70" />
+                  <span className="relative z-10 text-red-500">Salir</span>
                 </button>
               </div>
             </form>
