@@ -21,11 +21,14 @@ interface BoardProps {
   pot: number;
   piquePot: number;
   players: any[];
+  /** Cartas privadas del jugador local (recibidas por mensaje privado del servidor). */
+  myCards?: string;
 }
 
-export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
+export function Board({ room, phase, pot, piquePot, players, myCards = "" }: BoardProps) {
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
+  const [adminWatching, setAdminWatching] = useState(false);
 
   const totalBet = Object.entries(chipCounts).reduce((sum, [denom, count]) => sum + Number(denom) * count, 0);
 
@@ -77,41 +80,93 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
   const mySlotIdx = 0; // In this UI logic, 'me' is always at the bottom, and others rotate around
 
   const prevPlayersRef = useRef<any[]>([]);
+  const prevMyCardsRef = useRef<string>("");
 
   useEffect(() => {
+    const myId = room?.sessionId;
+
     players.forEach(p => {
       // Don't track empty/dummy players
       if (!p || !p.id) return;
 
       const prevP = prevPlayersRef.current.find(old => old.id === p.id);
-      const oldCards = prevP && prevP.cards ? prevP.cards.split(',').filter(Boolean) : [];
-      const newCards = p.cards ? p.cards.split(',').filter(Boolean) : [];
+      const isMe = p.id === myId;
 
-      const added = newCards.filter((c: string) => !oldCards.includes(c));
-      const removed = oldCards.filter((c: string) => !newCards.includes(c));
+      if (isMe) {
+        // Track own cards via private message state (myCards prop)
+        const oldCards = prevMyCardsRef.current ? prevMyCardsRef.current.split(',').filter(Boolean) : [];
+        const newCards = myCards ? myCards.split(',').filter(Boolean) : [];
 
-      if (added.length > 0) {
-        window.dispatchEvent(new CustomEvent('animate-deal', { detail: { 
-          toPlayerId: p.id, 
-          cards: added,
-          isFaceUp: currentPhase === 'SORTEO_MANO' || currentPhase === 'SHOWDOWN'
-        }}));
-      }
-      if (removed.length > 0) {
-        window.dispatchEvent(new CustomEvent('animate-discard', { detail: { fromPlayerId: p.id, cards: removed }}));
+        const added = newCards.filter((c: string) => !oldCards.includes(c));
+        const removed = oldCards.filter((c: string) => !newCards.includes(c));
+
+        if (added.length > 0) {
+          window.dispatchEvent(new CustomEvent('animate-deal', { detail: { 
+            toPlayerId: p.id, 
+            cards: added,
+            isFaceUp: true
+          }}));
+        }
+        if (removed.length > 0) {
+          window.dispatchEvent(new CustomEvent('animate-discard', { detail: { fromPlayerId: p.id, cards: removed }}));
+        }
+      } else {
+        // For opponents: track revealedCards in reveal phases, else cardCount
+        const isRevealPhase = currentPhase === 'SORTEO_MANO' || currentPhase === 'SHOWDOWN';
+
+        if (isRevealPhase) {
+          const oldRevealed = prevP?.revealedCards ? prevP.revealedCards.split(',').filter(Boolean) : [];
+          const newRevealed = p.revealedCards ? p.revealedCards.split(',').filter(Boolean) : [];
+          const added = newRevealed.filter((c: string) => !oldRevealed.includes(c));
+
+          if (added.length > 0) {
+            window.dispatchEvent(new CustomEvent('animate-deal', { detail: { 
+              toPlayerId: p.id, 
+              cards: added,
+              isFaceUp: true
+            }}));
+          }
+        } else {
+          const oldCount = prevP?.cardCount || 0;
+          const newCount = p.cardCount || 0;
+          const addedCount = newCount - oldCount;
+
+          if (addedCount > 0) {
+            const fakeCards = Array.from({length: addedCount}, (_, i) => `back-${Date.now()}-${i}`);
+            window.dispatchEvent(new CustomEvent('animate-deal', { detail: { 
+              toPlayerId: p.id, 
+              cards: fakeCards,
+              isFaceUp: false
+            }}));
+          }
+        }
       }
     });
 
     // Save copy of current state
     prevPlayersRef.current = players.map(p => ({ ...p }));
-  }, [players]);
+    prevMyCardsRef.current = myCards;
+  }, [players, myCards]);
+
+  // Listen for admin spectator presence
+  useEffect(() => {
+    if (!room) return;
+    const handler = (msg: { active: boolean }) => setAdminWatching(msg.active);
+    room.onMessage("admin:status", handler);
+  }, [room]);
 
   const renderPlayerAtSeat = (p: any, seatIndex: number) => {
-    const hideOpponentCards = phase !== 'SORTEO_MANO' && phase !== 'SHOWDOWN';
     const seatClass = opponentSeats[seatIndex];
     
     // Determine card fan direction based on seat
     const isLeftSide = seatIndex < 3;
+
+    // For opponents: use revealedCards during SORTEO/SHOWDOWN, cardCount for backs otherwise
+    const isRevealPhase = phase === 'SORTEO_MANO' || phase === 'SHOWDOWN';
+    const opponentVisibleCards = isRevealPhase && p?.revealedCards
+      ? p.revealedCards.split(',').filter(Boolean)
+      : [];
+    const opponentCardCount = p?.cardCount || 0;
     
     return (
       <div id={`seat-${p?.id || `empty-${seatIndex}`}`} key={p?.id || `empty-${seatIndex}`} className={`absolute ${seatClass} flex flex-col items-center z-20 transition-all duration-700`}>
@@ -126,40 +181,71 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
         {/* Opponent's Cards / Placeholder */}
         {p ? (
           <div className={`flex justify-center mt-1 md:mt-2 z-0 scale-[0.22] md:scale-60 landscape:scale-[0.18] md:landscape:scale-60 origin-top`}>
-            {p.cards ? p.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
-               const middle = (arr.length - 1) / 2;
-               const angle = (idx - middle) * 10;
-               const playerIdx = getPlayerIndex(p.id);
-               const dealDelay = phase === 'SORTEO_MANO' ? (playerIdx * 0.4) + (idx * 2) : (playerIdx * 0.4) + (idx * 0.2);
-               
-               let transX = isLeftSide ? 30 : -30;
-               
-               return (
-                 <m.div 
-                   key={`${p.id}-${cardStr}-${idx}`}
-                   initial={{ opacity: 0, scale: 0.8 }}
-                   animate={{ opacity: p.isFolded ? 0.2 : 1, scale: 1 }}
-                   transition={{ delay: 0.45, duration: 0.3 }}
-                   style={{ 
-                     transform: p.isFolded ? `translateY(10vh) scale(0.4) rotate(${(idx * 15) - 30}deg)` : `translateX(${transX}px) rotate(${angle}deg)`,
-                     transformOrigin: 'top center',
-                     marginRight: idx !== arr.length - 1 ? '-35px' : '0px',
-                     zIndex: idx,
-                     transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                   }}
-                   className={p.isFolded ? 'pointer-events-none' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
-                 >
-                   <Card 
-                     suit={cardStr.split('-')[1] as any} 
-                     value={parseInt(cardStr.split('-')[0])} 
-                     delay={dealDelay}
-                     isHidden={hideOpponentCards}
-                     originY={200}
-                    priority={true}
-                   />
-                 </m.div>
-               )
-            }) : null}
+            {isRevealPhase && opponentVisibleCards.length > 0
+              ? opponentVisibleCards.map((cardStr: string, idx: number, arr: any[]) => {
+                  const middle = (arr.length - 1) / 2;
+                  const angle = (idx - middle) * 10;
+                  const playerIdx = getPlayerIndex(p.id);
+                  const dealDelay = phase === 'SORTEO_MANO' ? (playerIdx * 0.4) + (idx * 2) : (playerIdx * 0.4) + (idx * 0.2);
+                  let transX = isLeftSide ? 30 : -30;
+                  
+                  return (
+                    <m.div 
+                      key={`${p.id}-${cardStr}-${idx}`}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: p.isFolded ? 0.2 : 1, scale: 1 }}
+                      transition={{ delay: 0.45, duration: 0.3 }}
+                      style={{ 
+                        transform: p.isFolded ? `translateY(10vh) scale(0.4) rotate(${(idx * 15) - 30}deg)` : `translateX(${transX}px) rotate(${angle}deg)`,
+                        transformOrigin: 'top center',
+                        marginRight: idx !== arr.length - 1 ? '-35px' : '0px',
+                        zIndex: idx,
+                        transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                      }}
+                      className={p.isFolded ? 'pointer-events-none' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
+                    >
+                      <Card 
+                        suit={cardStr.split('-')[1] as any} 
+                        value={parseInt(cardStr.split('-')[0])} 
+                        delay={dealDelay}
+                        isHidden={false}
+                        originY={200}
+                        priority={true}
+                      />
+                    </m.div>
+                  )
+                })
+              : opponentCardCount > 0
+                ? Array.from({ length: opponentCardCount }).map((_, idx) => {
+                    const middle = (opponentCardCount - 1) / 2;
+                    const angle = (idx - middle) * 10;
+                    let transX = isLeftSide ? 30 : -30;
+                    
+                    return (
+                      <m.div 
+                        key={`${p.id}-back-${idx}`}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: p.isFolded ? 0.2 : 1, scale: 1 }}
+                        transition={{ delay: 0.45, duration: 0.3 }}
+                        style={{ 
+                          transform: p.isFolded ? `translateY(10vh) scale(0.4) rotate(${(idx * 15) - 30}deg)` : `translateX(${transX}px) rotate(${angle}deg)`,
+                          transformOrigin: 'top center',
+                          marginRight: idx !== opponentCardCount - 1 ? '-35px' : '0px',
+                          zIndex: idx,
+                          transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        }}
+                        className={p.isFolded ? 'pointer-events-none' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
+                      >
+                        <Card 
+                          isHidden={true}
+                          originY={200}
+                          priority={true}
+                        />
+                      </m.div>
+                    )
+                  })
+                : null
+            }
           </div>
         ) : null}
       </div>
@@ -195,6 +281,25 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
       </div>
 
       <GameAnnouncer phase={phase} />
+
+      {/* Admin Spectator Banner */}
+      <AnimatePresence>
+        {adminWatching && (
+          <m.div
+            initial={{ y: -40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -40, opacity: 0 }}
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-[90] pointer-events-none"
+          >
+            <div className="flex items-center gap-2 bg-red-900/80 backdrop-blur-md border border-red-500/50 px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+              <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+              <span className="text-red-200 text-[10px] md:text-xs font-bold uppercase tracking-wider">
+                👮‍♂️ El equipo de soporte está observando la mesa
+              </span>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
 
       {/* 🃏 SHUFFLE ANIMATION - GSAP professional shuffle during BARAJANDO */}
       <AnimatePresence>
@@ -322,7 +427,7 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
             {/* 🃏 MY CARDS - Fan positioned strictly above the dashboard bar */}
             <div className="relative h-28 md:h-44 w-full max-w-[500px] mb-1 md:mb-2 pointer-events-auto">
               <div className="relative w-full h-full flex justify-center items-end">
-                {me.cards && me.cards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
+                {myCards && myCards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
                     const isSelected = selectedCards.includes(cardStr);
                     const middle = (arr.length - 1) / 2;
                     const angle = (idx - middle) * 8; 
@@ -380,13 +485,13 @@ export function Board({ room, phase, pot, piquePot, players }: BoardProps) {
                   <span className="text-[#4ade80] font-mono font-black text-xs md:text-lg leading-none">{formatCurrency(me.chips || 0)}</span>
                 </div>
                 
-                {me.cards && (
+                {myCards && (
                   <div className="flex flex-row items-center gap-3">
                     <div className="w-px h-6 bg-white/10" />
                     <div className="flex flex-col items-center">
                       <span className="text-[8px] md:text-[9px] text-[#fdf0a6] uppercase tracking-[0.15em] font-black opacity-60 leading-none mb-1">Puntos</span>
                       <span className="text-[#d4af37] font-mono font-black text-sm md:text-xl leading-none">
-                        {evaluateHand(me.cards).points + (room.state.dealerId === myId ? 1 : 0)}
+                        {evaluateHand(myCards).points + (room.state.dealerId === myId ? 1 : 0)}
                       </span>
                     </div>
                   </div>

@@ -78,7 +78,7 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
               <button 
                 onClick={() => {
                   setIsMenuOpen(false);
-                  window.dispatchEvent(new CustomEvent('open-support-chat'));
+                  window.dispatchEvent(new CustomEvent('open-table-help'));
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#c0a060]/10 transition-colors text-[#c0a060] group"
               >

@@ -24,6 +24,7 @@ const VoiceChat = dynamic(
   { ssr: false }
 )
 import { DepositModal } from '@/components/game/DepositModal'
+import { TableHelpModal } from '@/components/game/TableHelpModal'
 
 export default function GameRoomPage() {
   const params = useParams()
@@ -35,6 +36,7 @@ export default function GameRoomPage() {
   const [loading, setLoading] = useState(true)
   const [showRules, setShowRules] = useState(false)
   const [showDeposit, setShowDeposit] = useState(false)
+  const [showTableHelp, setShowTableHelp] = useState(false)
   const [isReconnecting, setIsReconnecting] = useState(false)
   
   // Game State
@@ -46,6 +48,10 @@ export default function GameRoomPage() {
     dealerId: '',
     countdown: -1
   })
+
+  /** Cartas privadas del jugador local. Solo llegan vía mensaje privado del servidor. */
+  const [myCards, setMyCards] = useState<string>("")
+  const [supabaseUserId, setSupabaseUserId] = useState<string>("")
   
   const hasAttemptedJoin = useRef(false)
   
@@ -56,13 +62,16 @@ export default function GameRoomPage() {
   useEffect(() => {
     const handleOpenDeposit = () => setShowDeposit(true)
     const handleOpenRules = () => setShowRules(true)
+    const handleOpenTableHelp = () => setShowTableHelp(true)
     
     window.addEventListener('open-recharge-modal', handleOpenDeposit)
     window.addEventListener('open-rules-modal', handleOpenRules)
+    window.addEventListener('open-table-help', handleOpenTableHelp)
     
     return () => {
       window.removeEventListener('open-recharge-modal', handleOpenDeposit)
       window.removeEventListener('open-rules-modal', handleOpenRules)
+      window.removeEventListener('open-table-help', handleOpenTableHelp)
     }
   }, [])
 
@@ -79,6 +88,11 @@ export default function GameRoomPage() {
         
         // Pequeño delay para permitir que el cliente se estabilice tras un reload rápido
         await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Always fetch Supabase user for features that need it (e.g. table help requests)
+        const supabase = createClient()
+        const { data: { user: sbUser } } = await supabase.auth.getUser()
+        if (sbUser) setSupabaseUserId(sbUser.id);
 
         let joinedRoom: Room | undefined;
         const tokenKey = `reconnectionToken_${roomId}`;
@@ -110,24 +124,20 @@ export default function GameRoomPage() {
             avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
           }
           
-          // Sync with Supabase session and ALWAYS fetch fresh balance
-          const supabase = createClient()
-          const { data: { user } } = await supabase.auth.getUser()
-          
-          if (user) {
+          if (sbUser) {
             // Fetch real balance from wallets table
             const { data: wallet } = await supabase
               .from('wallets')
               .select('balance_cents')
-              .eq('user_id', user.id)
+              .eq('user_id', sbUser.id)
               .single()
             
             if (wallet) {
               sessionStorage.setItem(`chips_${roomId}`, wallet.balance_cents.toString())
             }
 
-            if (!nick && user.user_metadata?.username) {
-              nick = user.user_metadata.username
+            if (!nick && sbUser.user_metadata?.username) {
+              nick = sbUser.user_metadata.username
               sessionStorage.setItem(nickKey, nick!)
             }
           }
@@ -150,7 +160,8 @@ export default function GameRoomPage() {
             nickname: nick,
             deviceId: deviceId,
             avatarUrl: avatarUrl,
-            chips: chips
+            chips: chips,
+            userId: sbUser?.id || null
           })
           
           // Guardar el token para permitir reconexiones si se recarga la página (F5)
@@ -194,6 +205,11 @@ export default function GameRoomPage() {
             countdown: state.countdown,
             players: playersArray
           })
+        })
+
+        // Cartas privadas: solo el dueño recibe sus cartas reales
+        joinedRoom.onMessage("private-cards", (cards: string[]) => {
+          setMyCards(cards.join(','));
         })
 
       } catch (err: any) {
@@ -400,6 +416,7 @@ export default function GameRoomPage() {
             players={players} 
             pot={pot} 
             piquePot={gameState.piquePot || 0}
+            myCards={myCards}
           />
         )}
         
@@ -420,6 +437,14 @@ export default function GameRoomPage() {
       <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
       <ReconnectOverlay isVisible={isReconnecting} />
       <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
+      {room && supabaseUserId && (
+        <TableHelpModal
+          isOpen={showTableHelp}
+          onClose={() => setShowTableHelp(false)}
+          roomId={roomId}
+          userId={supabaseUserId}
+        />
+      )}
     </div>
   )
 }
