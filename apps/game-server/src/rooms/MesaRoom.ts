@@ -1086,7 +1086,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (activePlayers.length === 1) {
       this.state.lastAction = `¡${activePlayers[0].nickname} gana!`;
-      this.state.showdownTimer = 5;
+      this.state.showdownTimer = 10;
       const interval = this.clock.setInterval(() => {
         this.state.showdownTimer--;
         if (this.state.showdownTimer <= 0) { interval.clear(); this.awardPot(activePlayers[0].id); }
@@ -1120,8 +1120,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     console.log(`[MesaRoom] Ganador: ${winner.nickname} con ${bestHand.type} (${bestHand.points} pts)`);
     this.state.lastAction = `¡${winner.nickname} gana con ${bestHand.type}! (${bestHand.points} pts)`;
 
-    // Show cards for 20 seconds before awarding
-    this.state.showdownTimer = 20;
+    // Show cards for 10 seconds before awarding
+    this.state.showdownTimer = 10;
     const interval = this.clock.setInterval(() => {
       this.state.showdownTimer--;
       if (this.state.showdownTimer <= 0) {
@@ -1135,14 +1135,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     const winner = this.state.players.get(winnerId);
     if (!winner) return;
 
+    // Rake del 5% independiente para cada pozo
+    const potRake = Math.floor(this.state.pot * 0.05);
+    const piqueRake = Math.floor(this.state.piquePot * 0.05);
+    const potPayout = this.state.pot - potRake;
+    const piquePayout = this.state.piquePot - piqueRake;
+
+    const rake = potRake + piqueRake;
+    const payout = potPayout + piquePayout;
     const totalPot = this.state.pot + this.state.piquePot;
 
-    // Rake del 5%
-    const rake = Math.floor(totalPot * 0.05);
-    const payout = totalPot - rake;
-
     winner.chips += payout;
-    console.log(`[MesaRoom] Ganador: ${winner.id} ganó ${payout} (Rake: ${rake})`);
+    console.log(`[MesaRoom] Ganador: ${winner.id} ganó ${payout} (Pot: ${potPayout}, Pique: ${piquePayout}, Rake total: ${rake})`);
     
     this.currentTimeline.push({ event: 'end', winner: winnerId, pot: totalPot, payout, rake, time: Date.now(), rng_state: this.getRngState() });
 
