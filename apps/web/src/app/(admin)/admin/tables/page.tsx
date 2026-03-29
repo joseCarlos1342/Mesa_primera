@@ -1,5 +1,5 @@
-import { getActiveGames, getTablesList, deleteTable } from "@/app/actions/admin-tables";
-import { Gamepad2, AlertCircle, Play, Pause, Trash2, Settings2, Plus, Users as UsersIcon } from "lucide-react";
+import { getActiveGames, getTablesList, deleteTable, getTableFinancials } from "@/app/actions/admin-tables";
+import { Gamepad2, AlertCircle, Play, Pause, Trash2, Settings2, Plus, Users as UsersIcon, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import { TableControls } from "@/components/admin/TableControls";
 import { PlayerControls } from "@/components/admin/PlayerControls";
@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AdminTablesPage() {
-  const [games, tables] = await Promise.all([
+  const [games, tables, financials] = await Promise.all([
      getActiveGames(),
-     getTablesList()
+     getTablesList(),
+     getTableFinancials()
   ]);
 
   return (
@@ -125,7 +126,87 @@ export default async function AdminTablesPage() {
         </div>
       </section>
 
-      {/* ⚙️ SECTION 2: TABLE TEMPLATES (CONFIGURACIONES) */}
+      {/* 💰 SECTION 2: TABLE FINANCIALS (AUDITORÍA) */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-4 px-2">
+           <BarChart3 className="w-5 h-5 text-amber-400" />
+           <h2 className="text-xl font-black italic tracking-tight text-white uppercase">Auditoría Financiera por Mesa</h2>
+           <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-black">{financials.length} MESAS</span>
+        </div>
+
+        {financials.length === 0 ? (
+          <div className="border border-dashed border-white/10 rounded-[2.5rem] p-12 text-center text-slate-500 bg-white/5 backdrop-blur-md">
+             <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-20 text-amber-400" />
+             <p className="text-sm font-bold">No hay registros financieros aún.</p>
+          </div>
+        ) : (
+          <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
+             <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-300">
+                   <thead className="text-[10px] uppercase bg-slate-950/80 text-slate-500 font-black tracking-[0.2em] border-b border-white/5">
+                      <tr>
+                         <th className="px-6 py-5">Mesa</th>
+                         <th className="px-6 py-5 text-center">Partidas</th>
+                         <th className="px-6 py-5 text-center">Jugadores</th>
+                         <th className="px-6 py-5 text-right">Total Apostado</th>
+                         <th className="px-6 py-5 text-right">Premios</th>
+                         <th className="px-6 py-5 text-right">
+                           <span className="flex items-center justify-end gap-1">
+                             <TrendingUp className="w-3 h-3 text-emerald-400" />
+                             Rake Casa
+                           </span>
+                         </th>
+                         <th className="px-6 py-5 text-right">Última Actividad</th>
+                      </tr>
+                   </thead>
+                   <tbody className="divide-y divide-white/5">
+                      {financials.map(f => (
+                         <tr key={f.table_id} className="hover:bg-white/5 transition-colors">
+                            <td className="px-6 py-5">
+                               <div className="flex items-center gap-3">
+                                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                     <DollarSign className="w-4 h-4 text-amber-400" />
+                                  </div>
+                                  <div>
+                                     <p className="font-black text-white text-sm tracking-tight">{f.table_name}</p>
+                                     <p className="text-[10px] font-mono text-slate-500 uppercase">{f.game_type}</p>
+                                  </div>
+                               </div>
+                            </td>
+                            <td className="px-6 py-5 text-center">
+                               <span className="bg-slate-800 text-white text-xs font-black px-3 py-1 rounded-full border border-white/10">
+                                 {f.total_games}
+                               </span>
+                            </td>
+                            <td className="px-6 py-5 text-center">
+                               <span className="text-sm font-bold text-slate-300">{f.unique_players}</span>
+                            </td>
+                            <td className="px-6 py-5 text-right font-black text-slate-300 text-sm">
+                               {formatCurrency(f.total_bets_cents)}
+                            </td>
+                            <td className="px-6 py-5 text-right font-black text-white text-sm">
+                               {formatCurrency(f.total_winnings_cents)}
+                            </td>
+                            <td className="px-6 py-5 text-right">
+                               <span className="font-black text-emerald-400 text-base">
+                                 {formatCurrency(f.total_rake_cents)}
+                               </span>
+                            </td>
+                            <td className="px-6 py-5 text-right text-xs text-slate-500">
+                               {f.last_activity
+                                 ? new Date(f.last_activity).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                 : 'Sin actividad'}
+                            </td>
+                         </tr>
+                      ))}
+                   </tbody>
+                </table>
+             </div>
+          </div>
+        )}
+      </section>
+
+      {/* ⚙️ SECTION 3: TABLE TEMPLATES (CONFIGURACIONES) */}
       <section className="space-y-6">
         <div className="flex items-center gap-4 px-2">
            <Settings2 className="w-5 h-5 text-indigo-400" />
