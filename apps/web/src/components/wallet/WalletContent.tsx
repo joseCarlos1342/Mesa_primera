@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingCart, ArrowUpWideNarrow, Landmark, Wallet, Plus, ArrowUpRight, TrendingUp } from 'lucide-react'
+import { ShoppingCart, ArrowUpWideNarrow, Landmark, Wallet, Plus, ArrowUpRight, TrendingUp, Gamepad2, Play } from 'lucide-react'
 import { useState } from 'react'
 import { TransactionModal } from './TransactionModal'
 
@@ -127,12 +127,10 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
             </div>
             <h3 className="text-xl font-display font-black text-white uppercase tracking-tight italic">Actividad</h3>
           </div>
-          <button className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold hover:text-brand-gold-light transition-colors flex items-center gap-2 group/btn">
+          <Link href="/wallet/history" className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold hover:text-brand-gold-light transition-colors flex items-center gap-2 group/btn">
             Ver Todo
-            <Link href="/wallet/history">
-              <ArrowUpRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1" />
-            </Link>
-          </button>
+            <ArrowUpRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1" />
+          </Link>
         </div>
 
         <div className="space-y-3">
@@ -150,20 +148,38 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                onClick={() => handleTxClick(tx)}
-                className="group bg-black/40 backdrop-blur-xl border border-brand-gold/10 p-5 rounded-[2rem] flex items-center justify-between gap-4 transition-all hover:bg-black/60 hover:border-brand-gold/30 shadow-lg overflow-hidden cursor-pointer active:scale-[0.98]"
+                className="group bg-black/40 backdrop-blur-xl border border-brand-gold/10 rounded-[2rem] overflow-hidden shadow-lg transition-all hover:bg-black/60 hover:border-brand-gold/30"
               >
+                <div 
+                  onClick={() => handleTxClick(tx)}
+                  className="p-5 flex items-center justify-between gap-4 cursor-pointer active:scale-[0.98]"
+                >
                 <div className="flex items-center gap-4 min-w-0 flex-1">
                   <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-inner ${
                     tx.type === 'deposit' 
-                      ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20' 
+                      ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20'
+                      : tx.type === 'win'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : tx.type === 'rake'
+                      ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                      : tx.type === 'bet'
+                      ? 'bg-red-500/10 text-red-400 border border-red-500/20'
                       : 'bg-white/5 text-text-secondary border border-brand-gold/10'
                   }`}>
-                    {tx.type === 'deposit' ? <Plus className="w-5 h-5" /> : <ArrowUpWideNarrow className="w-5 h-5" />}
+                    {tx.type === 'deposit' ? <Plus className="w-5 h-5" /> :
+                     tx.type === 'win' ? <TrendingUp className="w-5 h-5" /> :
+                     tx.type === 'bet' || tx.type === 'rake' ? <Gamepad2 className="w-5 h-5" /> :
+                     <ArrowUpWideNarrow className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
                     <p className="font-display font-black text-sm md:text-base italic uppercase tracking-tight text-text-premium truncate group-hover:text-brand-gold transition-all [word-spacing:0.2em]">
-                      {tx.type === 'deposit' ? 'Depósito' : 'Retiro'}
+                      {tx.type === 'deposit' ? 'Depósito' :
+                       tx.type === 'withdrawal' ? 'Retiro' :
+                       tx.type === 'win' ? 'Ganancia' :
+                       tx.type === 'bet' ? 'Apuesta' :
+                       tx.type === 'rake' ? 'Comisión' :
+                       tx.type === 'refund' ? 'Reembolso' :
+                       tx.type}
                     </p>
                     <p className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 truncate">
                       {new Date(tx.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} • {new Date(tx.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
@@ -172,8 +188,11 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                 </div>
 
                 <div className="shrink-0 text-right space-y-1">
-                  <p className={`font-display font-black text-lg md:text-xl italic tracking-tighter ${tx.type === 'deposit' ? 'text-brand-gold' : 'text-text-premium'}`}>
-                    {tx.type === 'deposit' ? '+' : '-'}${Math.abs((tx.amount_cents || 0) / 100).toLocaleString()}
+                  <p className={`font-display font-black text-lg md:text-xl italic tracking-tighter ${
+                    tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund'
+                      ? 'text-brand-gold' : 'text-text-premium'
+                  }`}>
+                    {tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? '+' : '-'}${Math.abs((tx.amount_cents || 0) / 100).toLocaleString()}
                   </p>
                   <div className="flex justify-end">
                     <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${
@@ -185,6 +204,21 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                     </span>
                   </div>
                 </div>
+                </div>
+
+                {/* Replay Link for game-related transactions */}
+                {tx.game_id && (tx.type === 'win' || tx.type === 'bet' || tx.type === 'rake') && (
+                  <Link
+                    href={`/replays/${tx.game_id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center justify-center gap-2 px-5 py-3 border-t border-brand-gold/10 bg-brand-gold/5 hover:bg-brand-gold/10 transition-all"
+                  >
+                    <Play className="w-3.5 h-3.5 text-brand-gold" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold">
+                      Ver Repetición
+                    </span>
+                  </Link>
+                )}
               </motion.div>
             ))
           )}

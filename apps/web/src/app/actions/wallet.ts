@@ -60,7 +60,8 @@ export async function getWalletData() {
       type: tx.type,
       amount_cents: tx.amount_cents,
       status: 'completed',
-      created_at: tx.created_at
+      created_at: tx.created_at,
+      game_id: tx.game_id || null
     })),
     ...(depositRequests || []).filter(dr => dr.status !== 'completed').map(dr => ({
       id: dr.id,
@@ -82,6 +83,63 @@ export async function getWalletData() {
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return { wallet, transactions: activities.slice(0, 20) }
+}
+
+export async function getWalletHistory() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No authenticated' }
+
+  const { data: ledger } = await supabase
+    .from('ledger')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  const { data: depositRequests } = await supabase
+    .from('deposit_requests')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const { data: withdrawalRequests } = await supabase
+    .from('withdrawal_requests')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const activities: any[] = [
+    ...(ledger || []).map(tx => ({
+      id: tx.id,
+      type: tx.type,
+      amount_cents: tx.amount_cents,
+      status: 'completed',
+      created_at: tx.created_at,
+      game_id: tx.game_id || null
+    })),
+    ...(depositRequests || []).filter(dr => dr.status !== 'completed').map(dr => ({
+      id: dr.id,
+      type: 'deposit',
+      amount_cents: dr.amount_cents,
+      status: dr.status,
+      created_at: dr.created_at,
+      proof_url: dr.proof_url,
+      observations: dr.observations
+    })),
+    ...(withdrawalRequests || []).filter(wr => wr.status !== 'completed').map(wr => ({
+      id: wr.id,
+      type: 'withdrawal',
+      amount_cents: wr.amount_cents,
+      status: wr.status,
+      created_at: wr.created_at,
+      observations: wr.observations
+    }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+  return { transactions: activities }
 }
 
 export async function createDepositRequest(amount: number, proofUrl: string, observations?: string) {
