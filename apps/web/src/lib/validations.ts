@@ -30,7 +30,7 @@ const MESSAGES = {
 export const phoneSchema = z
   .string({ error: MESSAGES.phone })
   .trim()
-  .regex(/^3[0-9]{9}$/, MESSAGES.phone)
+  .regex(/^[0-9]{10}$/, MESSAGES.phone)
 
 /**
  * Nombre real: letras con o sin tilde, espacios, guiones, puntos.
