@@ -12,19 +12,24 @@ export class Player extends Schema {
   @type("number") chips: number = 0;
   /** Posición de turno relativa a La Mano: 1 = La Mano, 2 = siguiente, etc. 0 = aún no asignado. */
   @type("uint8") turnOrder: number = 0;
-  
-  // TODO: Colyseus @view has bugs in 0.17 with MapSchema. Removed temporarily for logic testing.
-  @type("string") cards: string = "";
 
-  // Server-only properties (not synced to clients)
+  /** Cantidad de cartas en la mano (para que el frontend dibuje dorsos). Sincronizado a todos. */
+  @type("uint8") cardCount: number = 0;
+  /** Cartas visibles para todos (durante SORTEO_MANO y SHOWDOWN). */
+  @type("string") revealedCards: string = "";
+
+  // ── Server-only properties (NEVER synced to clients) ──
+  /** Mano real del jugador. Solo el servidor lo conoce; se envía por mensaje privado al dueño. */
+  cards: string = "";
   deviceId?: string;
   pendingDiscardCards: string[] = [];
+  /** Supabase auth UUID — used for all database operations (ledger, stats). */
+  supabaseUserId: string = "";
 }
 
 export class GameState extends Schema {
   @type("string") phase: string = "LOBBY"; // LOBBY, STARTING, BARAJANDO, SORTEO_MANO, PIQUE_DEAL, PIQUE, COMPLETAR, APUESTA_4_CARTAS, DESCARTE, COMPLETAR_DESCARTE, REVELAR_CARTA, CANTICOS, GUERRA, SHOWDOWN
   @type({ map: Player }) players = new MapSchema<Player>();
-  @type(["string"]) tableCards = new ArraySchema<string>();
   @type("string") dealerId: string = "";
   /** La Mano activa para el orden de turnos (puede transferirse si dealerId se retira mid-game) */
   @type("string") activeManoId: string = "";
