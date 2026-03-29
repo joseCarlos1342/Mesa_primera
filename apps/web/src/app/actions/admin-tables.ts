@@ -3,6 +3,20 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
+export type TableFinancials = {
+  table_id: string;
+  table_name: string;
+  game_type: string;
+  total_games: number;
+  unique_players: number;
+  total_winnings_cents: number;
+  total_rake_cents: number;
+  total_bets_cents: number;
+  total_credits_cents: number;
+  total_debits_cents: number;
+  last_activity: string | null;
+};
+
 export type AdminGameView = {
   id: string;
   status: string;
@@ -199,4 +213,14 @@ export async function deleteTable(tableId: string) {
 
   revalidatePath('/admin/tables');
   return { success: true };
+}
+
+export async function getTableFinancials(): Promise<TableFinancials[]> {
+  const supabase = await createClient();
+  await ensureAdmin(supabase);
+
+  const { data, error } = await supabase.rpc('get_table_financials');
+
+  if (error) throw error;
+  return (data || []) as TableFinancials[];
 }
