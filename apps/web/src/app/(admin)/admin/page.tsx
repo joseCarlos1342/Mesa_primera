@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Settings, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Settings, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film } from "lucide-react";
 import Link from "next/link";
 import { getAdminDashboardStats } from "@/app/actions/admin-dashboard";
 import { formatCurrency } from "@/utils/format";
@@ -223,6 +223,25 @@ export default async function AdminPage() {
           </div>
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
             <Bell className="w-20 h-20" />
+          </div>
+        </Link>
+
+        <Link href="/admin/replays" className="group relative overflow-hidden bg-linear-to-br from-purple-500/10 to-transparent backdrop-blur-2xl border border-purple-500/20 p-6 rounded-4xl hover:scale-[1.02] transition-all hover:border-purple-500/40 shadow-2xl">
+          <div className="relative z-10 flex gap-4 items-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+              <Film className="w-6 h-6 text-purple-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight text-white">Repeticiones</h3>
+            </div>
+          </div>
+          <div className="relative z-10">
+             <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-white">Auditar</span>
+             </div>
+          </div>
+          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Film className="w-20 h-20" />
           </div>
         </Link>
       </div>
