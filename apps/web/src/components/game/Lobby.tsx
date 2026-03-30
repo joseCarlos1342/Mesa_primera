@@ -5,9 +5,10 @@ import { client } from '@/lib/colyseus'
 import { createClient } from '@/utils/supabase/client'
 import { RoomAvailable, Room } from '@colyseus/sdk'
 import { useRouter } from 'next/navigation'
-import { Plus, Users, Zap, Trophy, Shield, RefreshCcw, AlertCircle } from 'lucide-react'
+import { Plus, Users, Zap, Trophy, Shield, RefreshCcw, AlertCircle, Film } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DepositModal } from '@/components/game/DepositModal'
+import Link from 'next/link'
 
 export function Lobby() {
   const [rooms, setRooms] = useState<RoomAvailable[]>([])
@@ -107,7 +108,7 @@ export function Lobby() {
       const reconnectionTokenKey = keys.find(k => k.startsWith('reconnectionToken_'));
       
       if (reconnectionTokenKey) {
-        const roomId = reconnectionTokenKey.split('_')[1];
+        const roomId = reconnectionTokenKey.replace('reconnectionToken_', '');
         console.log(`[Lobby] Active session detected for room ${roomId}. Redirecting...`);
         setReconnecting(true);
         router.push(`/play/${roomId}`);
@@ -304,6 +305,14 @@ export function Lobby() {
               <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
               <Plus className="w-7 h-7 md:w-9 md:h-9 text-slate-950 stroke-[4] relative z-10" />
             </button>
+            <Link
+              href="/replays"
+              className="w-14 h-14 md:w-18 md:h-18 rounded-2xl bg-purple-600 flex items-center justify-center shadow-xl hover:scale-105 transition-all active:translate-y-1 active:shadow-inner group/btn relative overflow-hidden border-b-4 border-purple-900/50"
+              title="Repeticiones"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
+              <Film className="w-7 h-7 md:w-9 md:h-9 text-white stroke-[2.5] relative z-10" />
+            </Link>
           </motion.div>
         )}
 
@@ -528,16 +537,21 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
       <button 
         onClick={handleAction}
         disabled={!isPlaceholder && (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7)}
-        className={`relative mt-2 md:mt-4 w-full h-16 md:h-24 font-display font-black uppercase italic tracking-[0.2em] text-lg md:text-2xl rounded-[1.5rem] md:rounded-[2rem] transition-all flex items-center justify-center shadow-2xl border-b-8 active:border-b-2 active:translate-y-1.5 ${
+        className={`relative mt-2 md:mt-4 w-full h-16 md:h-24 font-display font-black uppercase italic tracking-[0.2em] text-lg md:text-2xl rounded-[1.5rem] md:rounded-[2rem] transition-all flex items-center justify-center overflow-hidden ${
           !isPlaceholder && (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7)
-            ? "bg-slate-900 border-slate-950 text-slate-600 cursor-not-allowed"
+            ? "bg-slate-900 text-slate-600 cursor-not-allowed"
             : isFixed 
-              ? "bg-accent-gold-shimmer border-brand-gold-dark text-slate-950 hover:brightness-110"
-              : "bg-slate-900 border-black text-text-premium hover:bg-slate-800"
+              ? "bg-brand-gold text-slate-950 hover:brightness-110"
+              : "bg-slate-900 text-text-premium hover:bg-slate-800"
         }`}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[200%] group-hover:animate-[shimmer_2s_infinite] pointer-events-none" />
-        {isPlaceholder ? "ABRIR MESA" : (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7) ? "MESA LLENA" : "ENTRAR"}
+        {isFixed && !(!isPlaceholder && (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7)) && (
+          <div className="absolute inset-0 bg-accent-gold-shimmer opacity-100" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[200%] group-hover:animate-[shimmer_2s_infinite] pointer-events-none" />
+        <span className="relative z-10">
+          {isPlaceholder ? "ABRIR MESA" : (room.metadata as any)?.totalReservedSeats >= (room.maxClients || 7) ? "MESA LLENA" : "ENTRAR"}
+        </span>
       </button>
     </div>
   )
