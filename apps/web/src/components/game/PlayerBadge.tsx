@@ -13,9 +13,10 @@ interface PlayerBadgeProps {
   points?: number;
   /** Posición de turno: 1 = La Mano (ya indicado por isDealer), 2+ = próximos en recibir la mano */
   turnOrder?: number;
+  isWaiting?: boolean;
 }
 
-export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points, turnOrder }: PlayerBadgeProps) {
+export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points, turnOrder, isWaiting = false }: PlayerBadgeProps) {
   const isMuted = true; // Placeholder for actual voice chat state if available
 
   // Determine avatar rendering
@@ -53,7 +54,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
   return (
     <m.div 
       initial={{ opacity: 0 }}
-      animate={{ opacity: player.connected === false ? 0.4 : 1 }}
+      animate={{ opacity: player.connected === false ? 0.4 : isWaiting ? 0.6 : 1 }}
       transition={{ duration: 0.3 }}
       className={`relative flex flex-col items-center group ${isMe ? 'z-50' : 'z-10'}`}
     >
@@ -63,7 +64,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
          relative z-20 flex items-center gap-2 md:gap-3 px-2 md:px-3 py-1 md:py-1.5
          bg-gradient-to-r from-[#112a1a] via-[#0a180e] to-[#112a1a] 
          rounded-full border 
-         ${isActive ? 'border-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.5)]' : 'border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.6)]'}
+         ${isWaiting ? 'border-[#c0a060]/30 border-dashed' : isActive ? 'border-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.5)]' : 'border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.6)]'}
          transition-all duration-300
        `}>
          
@@ -83,8 +84,8 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
 
          {/* Info Column (Name & Balance) */}
          <div className="flex flex-col items-start pr-2">
-            <span className="text-[#e2c161] text-[9px] md:text-[11px] font-bold tracking-wider uppercase truncate max-w-[60px] md:max-w-[80px]">
-              {player.nickname ? player.nickname.split(' ')[0] : 'VACÍO'}
+            <span className="text-[#e2c161] text-[9px] md:text-[11px] font-bold tracking-wider uppercase truncate max-w-[80px] md:max-w-[100px]">
+              {player.nickname || 'VACÍO'}
             </span>
             <span className="text-[#c1a052] text-[8px] md:text-[9px] font-mono font-bold opacity-90 flex items-center">
               {player.chips != null ? formatCurrency(player.chips) : '$0'}
@@ -97,16 +98,23 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
          </div>
 
          {/* Dealer Icon (Compact) */}
-         {isDealer && (
+         {isDealer && !isWaiting && (
             <div className="bg-[#d4af37] text-black text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white/20 uppercase tracking-tighter">
               Mano
             </div>
          )}
 
          {/* Turno de Mano: "2ª", "3ª"... para que todos sepan quién sigue después */}
-         {!isDealer && (turnOrder ?? 0) > 1 && (
+         {!isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
             <div className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
               {turnOrder}ª
+            </div>
+         )}
+
+         {/* Waiting badge */}
+         {isWaiting && (
+            <div className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[6px] md:text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
+              Espera
             </div>
          )}
        </div>

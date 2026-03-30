@@ -14,19 +14,19 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
     if (phase === 'LOBBY') return;
     
     const messages: Record<string, string> = {
-      'BARAJANDO': 'Barajando las cartas...',
-      'SORTEO_MANO': 'Sorteando La Mano...',
-      'PIQUE_DEAL': 'Repartiendo el Pique...',
+      'SORTEO_MANO': 'Sorteando La Mano',
+      'PIQUE_DEAL': 'Repartiendo el Pique',
       'PIQUE': '¡A Picar!',
-      'COMPLETAR': 'Completando Manos...',
+      'COMPLETAR': 'Completando Manos',
+      'CANTAR_JUEGO': '¿Quién canta Juego?',
       'APUESTA_4_CARTAS': '¡Apuesta! — 4 cartas',
-      'DESCARTE': 'La Bajada — Descarta lo que no sirve',
-      'COMPLETAR_DESCARTE': 'Entregando reemplazos...',
+      'DESCARTE': 'La Bajada',
+      'COMPLETAR_DESCARTE': 'Entregando reemplazos',
       'REVELAR_CARTA': '¡Carta del fondo!',
-      'GUERRA': '¡Guerra — Apuesta fuerte!',
-      'CANTICOS': '¡Cánticos — Declara y apuesta!',
+      'GUERRA': '¡Guerra!',
+      'CANTICOS': '¡Cánticos!',
       'SHOWDOWN': '¡Cartas sobre la mesa!',
-      'PAYOUT': 'Repartiendo el Pozo...'
+      'PAYOUT': 'Repartiendo el Pozo',
     };
 
     if (messages[phase]) {
@@ -37,17 +37,22 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
   }, [phase]);
 
   return (
-    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-full max-w-sm flex justify-center landscape:top-12">
+    <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none mb-56 md:mb-72">
       <AnimatePresence mode="wait">
         {announcement && (
           <m.div
             key={announcement.id}
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 12, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="bg-[#1b253b]/90 backdrop-blur-md border border-emerald-500/30 text-white px-6 py-2 md:px-8 md:py-3 rounded-full font-playfair font-bold text-lg md:text-2xl shadow-[0_10px_40px_rgba(16,185,129,0.2)] landscape:text-base landscape:py-1"
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+            className="flex flex-col items-center gap-0.5"
           >
-            {announcement.text}
+            <div className="h-px w-10 bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent" />
+            <span className="text-[#fdf0a6] font-serif font-black italic text-base md:text-2xl tracking-wide drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)] px-5 py-1.5 text-center whitespace-nowrap">
+              {announcement.text}
+            </span>
+            <div className="h-px w-10 bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent" />
           </m.div>
         )}
       </AnimatePresence>

@@ -9,12 +9,14 @@ interface ActionControlsProps {
   isMyTurn: boolean;
   selectedCards?: string[];
   onClearSelection?: () => void;
+  /** Tipo de mano del jugador (para habilitar botón Juego). */
+  handType?: string;
 }
 
 const EMPTY_CARDS: string[] = [];
-const ACTIVE_PHASES = ['PIQUE', 'APUESTA_4_CARTAS', 'DESCARTE', 'GUERRA', 'CANTICOS'];
+const ACTIVE_PHASES = ['PIQUE', 'APUESTA_4_CARTAS', 'DESCARTE', 'GUERRA', 'CANTICOS', 'CANTAR_JUEGO'];
 
-export function ActionControls({ room, phase, isMyTurn, selectedCards = EMPTY_CARDS, onClearSelection }: ActionControlsProps) {
+export function ActionControls({ room, phase, isMyTurn, selectedCards = EMPTY_CARDS, onClearSelection, handType }: ActionControlsProps) {
   if (!isMyTurn || !ACTIVE_PHASES.includes(phase)) return null;
 
   const send = (action: string, extra?: object) => {
@@ -42,12 +44,22 @@ export function ActionControls({ room, phase, isMyTurn, selectedCards = EMPTY_CA
           </button>
         )}
 
-        {/* BOTARSE: fold in any active phase */}
+        {/* CANTAR JUEGO: declarar juego para ganar el pique o en cánticos */}
+        {(phase === 'CANTAR_JUEGO' || phase === 'CANTICOS') && handType && handType !== 'NINGUNA' && (
+          <button
+            onClick={() => send('juego')}
+            className="h-10 md:h-12 px-4 md:px-6 bg-gradient-to-b from-[#fbbf24] via-[#f59e0b] to-[#d97706] text-[#1a0a00] rounded-xl font-black text-xs md:text-base shadow-lg border-b-[3px] border-b-[#92400e] hover:-translate-y-0.5 transition-all uppercase tracking-widest animate-pulse"
+          >
+            ¡Juego!
+          </button>
+        )}
+
+        {/* BOTARSE / PASO */}
         <button
           onClick={() => send('paso')}
           className="h-10 md:h-12 px-4 md:px-8 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-xl font-black text-xs md:text-base shadow-lg border-b-[3px] border-b-[#7f1d1d] hover:-translate-y-0.5 transition-all uppercase tracking-widest"
         >
-          Botarse
+          {phase === 'CANTAR_JUEGO' ? 'Paso' : 'Botarse'}
         </button>
       </m.div>
     </AnimatePresence>

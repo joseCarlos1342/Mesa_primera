@@ -178,6 +178,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
           isDealer={p && room.state.dealerId === p.id}
           points={undefined} /* Opponents don't show points, only for self */
           turnOrder={p?.turnOrder}
+          isWaiting={p?.isWaiting}
         />
         {/* Opponent's Cards / Placeholder */}
         {p ? (
@@ -194,16 +195,16 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
                     <m.div 
                       key={`${p.id}-${cardStr}-${idx}`}
                       initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: p.isFolded ? 0.2 : 1, scale: 1 }}
+                      animate={{ opacity: p.isFolded ? 0.3 : 1, scale: p.isFolded ? 0.85 : 1 }}
                       transition={{ delay: 0.45, duration: 0.3 }}
                       style={{ 
-                        transform: p.isFolded ? `translateY(10vh) scale(0.4) rotate(${(idx * 15) - 30}deg)` : `translateX(${transX}px) rotate(${angle}deg)`,
+                        transform: `translateX(${transX}px) rotate(${angle}deg)`,
                         transformOrigin: 'top center',
                         marginRight: idx !== arr.length - 1 ? '-35px' : '0px',
                         zIndex: idx,
                         transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
                       }}
-                      className={p.isFolded ? 'pointer-events-none' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
+                      className={p.isFolded ? 'pointer-events-none grayscale' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
                     >
                       <Card 
                         suit={cardStr.split('-')[1] as any} 
@@ -217,7 +218,22 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
                   )
                 })
               : opponentCardCount > 0
-                ? Array.from({ length: opponentCardCount }).map((_, idx) => {
+                ? p.isFolded
+                  ? /* Folded: single collapsed stack */
+                    (<m.div
+                      key={`${p.id}-folded-stack`}
+                      initial={{ opacity: 1 }}
+                      animate={{ opacity: 0.25, scale: 0.7, y: 10 }}
+                      transition={{ duration: 0.5 }}
+                      className="relative pointer-events-none"
+                    >
+                      {/* Stacked card backs */}
+                      <div className="absolute top-0 left-0 translate-x-[2px] translate-y-[2px]">
+                        <Card isHidden={true} originY={200} priority={true} />
+                      </div>
+                      <Card isHidden={true} originY={200} priority={true} />
+                    </m.div>)
+                  : Array.from({ length: opponentCardCount }).map((_, idx) => {
                     const middle = (opponentCardCount - 1) / 2;
                     const angle = (idx - middle) * 10;
                     let transX = isLeftSide ? 30 : -30;
@@ -226,16 +242,16 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
                       <m.div 
                         key={`${p.id}-back-${idx}`}
                         initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: p.isFolded ? 0.2 : 1, scale: 1 }}
+                        animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.45, duration: 0.3 }}
                         style={{ 
-                          transform: p.isFolded ? `translateY(10vh) scale(0.4) rotate(${(idx * 15) - 30}deg)` : `translateX(${transX}px) rotate(${angle}deg)`,
+                          transform: `translateX(${transX}px) rotate(${angle}deg)`,
                           transformOrigin: 'top center',
                           marginRight: idx !== opponentCardCount - 1 ? '-35px' : '0px',
                           zIndex: idx,
                           transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
                         }}
-                        className={p.isFolded ? 'pointer-events-none' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
+                        className="drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]"
                       >
                         <Card 
                           isHidden={true}
@@ -267,17 +283,21 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
       <div className="absolute w-[85vw] h-[55vh] border-[1px] border-white/5 rounded-[50%] pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]" />
 
       {/* ORIENTATION WARNING */}
-      <div className="fixed inset-0 z-[1000] bg-[#070b14] flex flex-col items-center justify-center p-8 text-center md:hidden portrait:flex landscape:hidden">
+      <div className="fixed inset-0 z-[1000] bg-[#073926] flex flex-col items-center justify-center p-8 text-center md:hidden portrait:flex landscape:hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
+        
         <m.div
           animate={{ rotate: 90 }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="mb-8 p-6 bg-emerald-500/10 rounded-3xl border border-emerald-500/20"
+          className="relative z-10 mb-8 w-24 h-24 flex items-center justify-center bg-[#0a180e]/80 rounded-3xl border border-[#d4af37]/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
         >
-          <RotateCcw className="w-16 h-16 text-emerald-500" />
+          <RotateCcw className="w-14 h-14 text-[#d4af37]" />
         </m.div>
-        <h2 className="text-3xl font-black text-white mb-4 italic">GIRA TU DISPOSITIVO</h2>
-        <p className="text-[#a8b2d1] text-lg leading-relaxed max-w-xs">
-          Para jugar en <span className="text-emerald-400 font-bold uppercase tracking-wider">Mesa Primera</span>, necesitas usar tu pantalla en horizontal.
+        <h2 className="relative z-10 text-3xl font-black text-[#fdf0a6] mb-3 italic uppercase tracking-wider">Gira tu Dispositivo</h2>
+        <div className="relative z-10 h-px w-24 bg-[#d4af37]/30 mb-4" />
+        <p className="relative z-10 text-[#8faa96] text-base leading-relaxed max-w-xs">
+          Para jugar en <span className="text-[#d4af37] font-bold uppercase tracking-wider">Mesa Primera</span>, necesitas usar tu pantalla en horizontal.
         </p>
       </div>
 
@@ -390,35 +410,31 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
             )}
           </div>
 
-          {/* Column 2: Central Deck (Mazo) + bottom card */}
-          <div className="flex flex-col items-center gap-2">
-            <div id="deck-center" className="relative group cursor-pointer hover:drop-shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all shrink-0">
+          {/* Column 2: Central Deck (Mazo) + bottom card tucked under */}
+          <div className="flex flex-col items-center gap-0">
+            <div id="deck-center" className="relative shrink-0">
                {/* Deck stack effect */}
                <div className="w-10 h-14 md:w-16 md:h-24 bg-[#0a0a0a] rounded-lg absolute translate-x-1 translate-y-1 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
                <div className="w-10 h-14 md:w-16 md:h-24 bg-[#1a1a1a] rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1 md:translate-y-1" />
                
                {/* Top Card */}
-               <div className="w-10 h-14 md:w-16 md:h-24 rounded-lg overflow-hidden transition-transform group-hover:-translate-y-2 border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
+               <div className="w-10 h-14 md:w-16 md:h-24 rounded-lg overflow-hidden border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
                   <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-lg" />
                   <div className="absolute inset-0 border border-white/10 rounded-lg pointer-events-none" />
                </div>
-            </div>
 
-            {/* Bottom card — face-up, revealed after REVELAR_CARTA, stays visible */}
-            {room.state.bottomCard && (
-              <div className="flex flex-col items-center">
-                <span className="text-[7px] text-[#d4af37]/60 uppercase tracking-wider mb-0.5">carta del fondo</span>
-                <div className="ring-2 ring-[#d4af37]/60 rounded-lg shadow-[0_0_12px_rgba(212,175,55,0.4)]">
-                  <Card
-                    suit={room.state.bottomCard.split('-')[1] as any}
-                    value={parseInt(room.state.bottomCard.split('-')[0])}
-                    isHidden={false}
-                    priority={false}
-                    className="w-8 h-11 md:w-12 md:h-16"
-                  />
-                </div>
-              </div>
-            )}
+               {/* Bottom card — slides out to the right of the deck */}
+               {room.state.bottomCard && (
+                 <div className="absolute top-1/2 -translate-y-1/2 left-[70%] z-[5] w-10 h-14 md:w-16 md:h-24 rounded-lg overflow-hidden border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] rotate-[8deg]">
+                   <img
+                     src={`/cards/${room.state.bottomCard.split('-')[0].padStart(2, '0')}-${({'O':'oros','C':'copas','E':'espadas','B':'bastos'} as Record<string,string>)[room.state.bottomCard.split('-')[1]] || room.state.bottomCard.split('-')[1]?.toLowerCase()}.png?v=3`}
+                     alt=""
+                     className="w-full h-full object-cover"
+                   />
+                   <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.4)] pointer-events-none rounded-lg" />
+                 </div>
+               )}
+            </div>
           </div>
         </div>
       </div>
@@ -427,7 +443,19 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
         
         {me && (
           <>
+            {/* Waiting indicator for spectators who joined mid-game */}
+            {me.isWaiting && (
+              <div className="flex flex-col items-center gap-2 mb-4 pointer-events-auto">
+                <div className="bg-[#0a180e]/90 border border-dashed border-[#c0a060]/40 rounded-2xl px-6 py-3 backdrop-blur-md">
+                  <p className="text-[#c0a060] text-xs md:text-sm font-bold uppercase tracking-widest animate-pulse">
+                    Esperando próxima partida...
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* 🃏 MY CARDS - Fan positioned strictly above the dashboard bar */}
+            {!me.isWaiting && (
             <div className="relative h-28 md:h-44 w-full max-w-[500px] mb-1 md:mb-2 pointer-events-auto">
               <div className="relative w-full h-full flex justify-center items-end">
                 {myCards && myCards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
@@ -474,8 +502,10 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
                 })}
               </div>
             </div>
+            )}
 
             {/* 🕹️ CONSOLIDATED CONTROLS BAR - Smaller & Stick to Bottom */}
+            {!me.isWaiting && (
             <div className="flex flex-row items-center gap-2 md:gap-4 bg-[#0a180e]/95 p-1 md:p-1.5 rounded-t-2xl border-x border-t border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-15px_40px_rgba(0,0,0,0.8)] pointer-events-auto max-w-full md:max-w-none overflow-x-auto no-scrollbar">
               
               {/* HUD: Saldo & Puntos */}
@@ -578,16 +608,18 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
                   isMyTurn={isMyTurn} 
                   selectedCards={selectedCards}
                   onClearSelection={() => setSelectedCards([])}
+                  handType={myCards ? evaluateHand(myCards).type : undefined}
                 />
               </div>
             </div>
+            )}
           </>
         )}
       </div>
 
-      {/* SHOWDOWN Cinematic Overlay */}
+      {/* SHOWDOWN / Pique Showdown Cinematic Overlay */}
       <AnimatePresence>
-        {phase === 'SHOWDOWN' && (
+        {(phase === 'SHOWDOWN' || (phase === 'CANTAR_JUEGO' && (room.state.showdownTimer ?? 0) > 0)) && (
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -597,10 +629,60 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
             <ShowdownCinematic
               players={players}
               timer={room.state.showdownTimer ?? 10}
-              pot={pot}
+              pot={phase === 'SHOWDOWN' ? pot : 0}
               piquePot={piquePot}
               dealerId={room.state.dealerId}
             />
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      {/* SHOWDOWN_WAIT: Winner decides to show or hide cards */}
+      <AnimatePresence>
+        {phase === 'SHOWDOWN_WAIT' && room.state.turnPlayerId === myId && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto"
+          >
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-[#d4af37] text-xs uppercase tracking-[0.3em] font-black">¡Ganaste!</div>
+              <div className="text-white font-mono font-black text-4xl md:text-6xl tabular-nums mb-2">{room.state.showdownTimer ?? 5}</div>
+              <div className="text-white/70 text-sm mb-2">¿Deseas mostrar tus cartas?</div>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => { room.send('show-muck', { action: 'show' }); }}
+                  className="h-12 px-6 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-xl font-black text-sm shadow-lg border-b-[3px] border-b-[#5c4613] hover:-translate-y-0.5 transition-all uppercase tracking-wider"
+                >
+                  Mostrar
+                </button>
+                <button
+                  onClick={() => { room.send('show-muck', { action: 'hide' }); }}
+                  className="h-12 px-6 bg-gradient-to-b from-[#6b7280] to-[#374151] text-white rounded-xl font-black text-sm shadow-lg border-b-[3px] border-b-[#1f2937] hover:-translate-y-0.5 transition-all uppercase tracking-wider"
+                >
+                  No Mostrar
+                </button>
+              </div>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      {/* SHOWDOWN_WAIT: Other players see blur overlay */}
+      <AnimatePresence>
+        {phase === 'SHOWDOWN_WAIT' && room.state.turnPlayerId !== myId && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-60 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none"
+          >
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-[#d4af37] text-xs uppercase tracking-[0.3em] font-black">{room.state.lastAction}</div>
+              <div className="text-white/50 text-sm">Esperando decisión del ganador...</div>
+              <div className="text-white font-mono font-black text-3xl tabular-nums">{room.state.showdownTimer ?? 5}</div>
+            </div>
           </m.div>
         )}
       </AnimatePresence>
