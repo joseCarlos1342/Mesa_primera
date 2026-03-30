@@ -15,3 +15,8 @@
 | `/admin`               | Panel de Control principal para Administradores | ✅ Terminado               |
 | `/admin/deposits`      | Cola de Aprobación/Rechazo de Fichaje           | ✅ Terminado               |
 | `/admin/withdrawals`   | Cola de Aprobación de Egresos Financieros       | ✅ Terminado               |
+| `/replays`             | Listado de replays para jugadores               | ✅ Terminado               |
+| `/replays/[gameId]`    | Detalle de un replay de partida                 | ✅ Terminado               |
+| `/admin/replays`       | Auditoría de replays para administradores       | ✅ Terminado               |
+| `/admin/ledger`        | Historial global de transacciones (Admin)       | ✅ Terminado               |
+| `/admin/ledger/[userId]`| Historial de transacciones de un usuario       | ✅ Terminado               |
