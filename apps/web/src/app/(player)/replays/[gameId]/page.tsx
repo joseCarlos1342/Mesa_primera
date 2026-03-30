@@ -53,15 +53,23 @@ function formatCard(card: string): string {
   return `${value}${suitMap[suit] || suit}`;
 }
 
-export default function ReplayViewer({ params }: { params: { gameId: string } }) {
+export default function ReplayViewer({ params }: { params: Promise<{ gameId: string }> }) {
+  const [gameId, setGameId] = useState<string>('');
   const [replay, setReplay] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showRng, setShowRng] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [speed, setSpeed] = useState(1);
+  const SPEEDS = [0.5, 1, 2, 4];
 
   useEffect(() => {
+    params.then(p => setGameId(p.gameId));
+  }, [params]);
+
+  useEffect(() => {
+    if (!gameId) return;
     async function fetchData() {
       // Check if current user is admin
       const { data: { user } } = await supabase.auth.getUser();
@@ -77,7 +85,7 @@ export default function ReplayViewer({ params }: { params: { gameId: string } })
       const { data, error } = await supabase
         .from('game_replays')
         .select('*')
-        .eq('game_id', params.gameId)
+        .eq('game_id', gameId)
         .single();
 
       if (error) console.error('Error fetching replay:', error);
@@ -85,7 +93,7 @@ export default function ReplayViewer({ params }: { params: { gameId: string } })
       setLoading(false);
     }
     fetchData();
-  }, [params.gameId]);
+  }, [gameId]);
 
   // Autoplay timer
   useEffect(() => {
@@ -95,9 +103,9 @@ export default function ReplayViewer({ params }: { params: { gameId: string } })
       setIsPlaying(false);
       return;
     }
-    const timer = setTimeout(() => setCurrentStep(s => s + 1), 1500);
+    const timer = setTimeout(() => setCurrentStep(s => s + 1), 1500 / speed);
     return () => clearTimeout(timer);
-  }, [isPlaying, currentStep, replay]);
+  }, [isPlaying, currentStep, replay, speed]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'ArrowRight') setCurrentStep(s => s + 1);
@@ -165,8 +173,8 @@ export default function ReplayViewer({ params }: { params: { gameId: string } })
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <Link href="/lobby" className="text-[var(--text-secondary)] hover:text-[var(--accent-gold)] transition-colors text-sm font-bold">
-              ← Lobby
+            <Link href="/replays" className="text-[var(--text-secondary)] hover:text-[var(--accent-gold)] transition-colors text-sm font-bold">
+              ← Repeticiones
             </Link>
             {isAdmin && (
               <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 tracking-widest">
@@ -309,6 +317,24 @@ export default function ReplayViewer({ params }: { params: { gameId: string } })
         </button>
       </div>
 
+      {/* Speed Controls */}
+      <div className="flex items-center justify-center gap-2 mb-8">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mr-2">Velocidad</span>
+        {SPEEDS.map(s => (
+          <button
+            key={s}
+            onClick={() => setSpeed(s)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border ${
+              speed === s
+                ? 'bg-[var(--accent-gold)] text-black border-[var(--accent-gold)]'
+                : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            {s}x
+          </button>
+        ))}
+      </div>
+
       {/* Timeline Mini-Map */}
       <div className="bg-[var(--bg-card)] border border-[var(--border-glow)] rounded-[2rem] p-6 mb-6 shadow-2xl">
         <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Línea de Tiempo</h3>
@@ -377,7 +403,7 @@ export default function ReplayViewer({ params }: { params: { gameId: string } })
 
       {/* Keyboard Shortcuts Hint */}
       <p className="text-center text-[10px] text-slate-600 mt-6 font-bold uppercase tracking-widest">
-        ◀ ▶ para navegar &middot; Espacio para reproducir/pausar
+        ◀ ▶ para navegar &middot; Espacio para reproducir/pausar &middot; Controles de velocidad arriba
       </p>
     </div>
   );

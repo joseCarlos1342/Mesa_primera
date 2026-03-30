@@ -54,6 +54,8 @@ export default function GameRoomPage() {
   const [supabaseUserId, setSupabaseUserId] = useState<string>("")
   
   const hasAttemptedJoin = useRef(false)
+  /** Marca si el jugador abandonó intencionalmente (evita auto-reconexión) */
+  const abandonedRef = useRef(false)
   
   // Mantiene la pantalla encendida en móviles
   useWakeLock()
@@ -174,7 +176,8 @@ export default function GameRoomPage() {
 
         joinedRoom.onLeave((code) => {
           console.warn('Left room with code', code)
-          if (code !== 1000) {
+          // No intentar reconectar si el jugador abandonó intencionalmente
+          if (code !== 1000 && !abandonedRef.current) {
             setIsReconnecting(true);
             setTimeout(() => {
               window.location.reload();
@@ -223,43 +226,52 @@ export default function GameRoomPage() {
     joinRoom()
 
     return () => {
-      // Si el componente se desmonta porque el usuario navegó a otra página (Lobby)
+      // Si el jugador ya abandonó explícitamente, no hacer nada (ya se limpió)
+      if (abandonedRef.current) return;
+      // Desmontaje no intencional (navegación, refresh): NO borrar el token
+      // para permitir auto-reconexión desde el lobby.
+      // Dejar que el WebSocket se cierre naturalmente (code != 1000)
+      // para que el servidor otorgue período de gracia.
       if (activeRoom) {
-        sessionStorage.removeItem(`reconnectionToken_${roomId}`);
-        activeRoom.leave(true);
+        activeRoom.leave(false);
       }
     }
   }, [roomId]) // solo lo ejecutamos una vez, por eso hasAttemptedJoin
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-[#070b14] text-white">
-        <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mb-4" />
-        <h2 className="text-xl font-medium tracking-widest text-[#a8b2d1]">CONECTANDO A LA MESA...</h2>
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-[#073926] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
+        <Loader2 className="h-10 w-10 animate-spin text-[#d4af37] mb-4 relative z-10" />
+        <h2 className="text-lg font-black tracking-[0.3em] text-[#fdf0a6]/70 uppercase relative z-10">Conectando a la mesa...</h2>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-black to-[#0a0a0a] text-[#f3edd7] p-6 text-center">
-        {/* Background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/20 blur-[100px] rounded-full pointer-events-none" />
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-[#073926] text-[#f3edd7] p-6 text-center relative overflow-hidden">
+        {/* Felt texture */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
+        {/* Subtle warm glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
         
-        <div className="relative z-10 bg-black/60 backdrop-blur-2xl border-2 border-red-900/50 p-10 rounded-3xl max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col items-center">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-900 flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(231,76,60,0.4)] border border-red-400/30">
-             <AlertCircle className="w-8 h-8 text-white" />
+        <div className="relative z-10 bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/30 p-10 rounded-3xl max-w-md w-full shadow-[0_20px_60px_rgba(0,0,0,0.6),_0_0_40px_rgba(212,175,55,0.05)] flex flex-col items-center">
+          <div className="w-14 h-14 rounded-full bg-[#0a180e] border-2 border-[#d4af37]/40 flex items-center justify-center mb-5 shadow-[0_0_20px_rgba(212,175,55,0.15)]">
+             <AlertCircle className="w-7 h-7 text-[#d4af37]" />
           </div>
-          <h2 className="text-3xl md:text-4xl font-black font-display text-[#e74c3c] uppercase tracking-widest mb-4 drop-shadow-premium">Error de Conexión</h2>
-          <p className="text-[#a0a0b0] mb-8 text-sm md:text-base leading-relaxed">{error}</p>
+          <h2 className="text-2xl md:text-3xl font-black font-display text-[#fdf0a6] uppercase tracking-[0.2em] mb-3">Error de Conexión</h2>
+          <div className="h-px w-24 bg-[#d4af37]/30 mb-4" />
+          <p className="text-[#8faa96] mb-8 text-sm md:text-base leading-relaxed">{error}</p>
           <button 
             onClick={() => {
               sessionStorage.removeItem(`reconnectionToken_${roomId}`);
               router.push('/');
             }}
-            className="inline-flex items-center justify-center gap-3 w-full bg-gradient-to-b from-[#1b1b24] to-[#0a0a0f] hover:from-[#2a2a35] hover:to-[#1a1a24] border border-white/10 hover:border-white/20 px-8 py-4 rounded-2xl transition-all shadow-[0_10px_20px_rgba(0,0,0,0.5)] hover:-translate-y-1 active:translate-y-1 active:scale-95 text-white uppercase font-bold tracking-widest text-sm tactile-button"
+            className="inline-flex items-center justify-center gap-3 w-full bg-gradient-to-b from-[#0f2e1a] to-[#071a0e] hover:from-[#143d23] hover:to-[#0c2414] border border-[#d4af37]/20 hover:border-[#d4af37]/40 px-8 py-4 rounded-2xl transition-all shadow-[0_10px_20px_rgba(0,0,0,0.4)] hover:-translate-y-1 active:translate-y-1 active:scale-95 text-[#fdf0a6] uppercase font-bold tracking-widest text-sm"
           >
-            <ArrowLeft className="h-5 w-5 text-[#c5a059]" />
+            <ArrowLeft className="h-5 w-5 text-[#d4af37]" />
             Vuelve al Lobby
           </button>
         </div>
@@ -270,20 +282,32 @@ export default function GameRoomPage() {
   const { players, phase, pot, dealerId, countdown } = gameState;
 
   return (
-    <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#0d2e1b] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.2)] before:to-[rgba(0,0,0,0.85)] before:pointer-events-none">
+    <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#073926] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.1)] before:to-[rgba(0,0,0,0.5)] before:pointer-events-none">
       {/* HEADER */}
-      <GameHeader onMenuClick={() => router.push('/')} />
+      <GameHeader onMenuClick={() => {
+        // Abandonar partida: limpiar ANTES de navegar para evitar race condition
+        abandonedRef.current = true;
+        sessionStorage.removeItem(`reconnectionToken_${roomId}`);
+        sessionStorage.removeItem(`nickname_${roomId}`);
+        sessionStorage.removeItem(`avatarUrl_${roomId}`);
+        sessionStorage.removeItem(`chips_${roomId}`);
+        if (room) {
+          room.send('abandon');
+          room.leave(true);
+        }
+        router.push('/');
+      }} />
       
       {/* MAIN GAME AREA */}
       <main className={`flex-1 flex flex-col items-center justify-center relative z-0 p-0 m-0 ${phase === 'LOBBY' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}>
         {phase === 'LOBBY' ? (
           <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center px-2 py-4 md:p-8">
             {/* Atmospheric Background Effects */}
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none mix-blend-overlay" />
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#c0a060]/5 rounded-full blur-[150px] pointer-events-none" />
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 pointer-events-none mix-blend-multiply" />
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#d4af37]/5 rounded-full blur-[150px] pointer-events-none" />
             
-            {/* Main Luxury Panel */}
-            <div className="relative z-10 w-full max-w-5xl bg-gradient-to-br from-black/80 to-[#1b4d3e]/30 backdrop-blur-2xl border-2 border-[#c5a059]/30 rounded-[2rem] md:rounded-[3.5rem] p-4 md:p-14 landscape:p-4 shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scrollbar space-y-6 md:space-y-12">
+            {/* Main Panel */}
+            <div className="relative z-10 w-full max-w-5xl bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/25 rounded-3xl md:rounded-[3rem] p-4 md:p-14 landscape:p-4 shadow-[0_40px_100px_rgba(0,0,0,0.6),_0_0_60px_rgba(212,175,55,0.04)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scrollbar space-y-6 md:space-y-12">
               
               <div className="flex flex-col items-center gap-3 md:gap-6">
                 {/* Row 1: Icon + Title */}
@@ -313,10 +337,10 @@ export default function GameRoomPage() {
                       <div 
                         key={p.id} 
                         className={`
-                          w-full flex items-center gap-4 md:gap-6 px-5 md:px-8 py-4 md:py-6 rounded-2xl md:rounded-[2.5rem] border transition-all duration-300
+                          w-full flex items-center gap-4 md:gap-6 px-5 md:px-8 py-4 md:py-6 rounded-2xl md:rounded-3xl border transition-all duration-300
                           ${p.isReady 
-                            ? 'bg-gradient-to-br from-[#1b4d3e]/90 to-[#0e2a22] border-[#c5a059]/50 shadow-[0_20px_40px_rgba(0,0,0,0.6)] scale-105 z-10' 
-                            : 'bg-black/40 border-white/5 shadow-inner opacity-40 hover:opacity-60'}
+                            ? 'bg-[#0f2e1a]/90 border-[#d4af37]/30 shadow-[0_10px_30px_rgba(0,0,0,0.4)]' 
+                            : 'bg-[#071a0e]/60 border-white/5 shadow-inner opacity-50'}
                         `}
                       >
                         {/* LED Gem */}
@@ -394,7 +418,7 @@ export default function GameRoomPage() {
                               onClick={() => room.send('startGame')}
                               className="bg-transparent text-[#d4af37] border border-[#d4af37]/50 hover:bg-[#d4af37]/10 font-bold px-8 py-3 rounded-full uppercase tracking-widest transition-colors mt-2"
                             >
-                              Forzar Inicio
+                              Iniciar Juego
                             </button>
                           ) : (
                             <p className="text-[#d4af37]/70 animate-pulse uppercase tracking-widest text-sm md:text-base font-bold text-center">
