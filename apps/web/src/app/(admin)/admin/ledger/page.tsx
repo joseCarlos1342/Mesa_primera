@@ -1,9 +1,15 @@
-import { getLedgerEntries } from "@/app/actions/admin-ledger";
-import { BookOpen, Search, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, ShieldCheck } from "lucide-react";
+import { getLedgerEntries, getUsersWithBalances } from "@/app/actions/admin-ledger";
+import { BookOpen, Search, ArrowUpRight, ArrowDownLeft, ShieldCheck, Users, Eye, Wallet } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
+import Link from "next/link";
 
 export default async function AdminLedgerPage() {
-  const entries = await getLedgerEntries(50); // Fetch last 50 for initial view
+  const [entries, users] = await Promise.all([
+    getLedgerEntries(50),
+    getUsersWithBalances()
+  ]);
+
+  const totalBalance = users.reduce((sum, u) => sum + u.balance, 0);
 
   return (
     <div className="min-h-full space-y-8 animate-in fade-in duration-700">
@@ -17,23 +23,90 @@ export default async function AdminLedgerPage() {
             Registro de auditoría inmutable de todas las transacciones de fichas.
             </p>
         </div>
-        <div className="relative w-full md:w-64">
-           {/* Para versión final: componente de filtrado por usuario/ID de mesa */}
-           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-             <Search className="w-4 h-4 text-slate-500" />
-           </div>
-           <input type="text" placeholder="Buscar por referencia o usuario..." className="w-full bg-slate-900 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" disabled />
+      </div>
+
+      {/* Users Summary Section */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-black text-white flex items-center gap-3">
+            <Users className="w-5 h-5 text-emerald-400" />
+            Jugadores Registrados
+            <span className="text-sm font-bold text-slate-500 ml-2">({users.length})</span>
+          </h2>
+          <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <Wallet className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">
+              Total en Sistema: {formatCurrency(totalBalance)}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-300">
+              <thead className="text-xs uppercase bg-slate-950/80 text-slate-500 font-black tracking-widest border-b border-white/5">
+                <tr>
+                  <th className="px-6 py-4">Jugador</th>
+                  <th className="px-6 py-4 text-right">Saldo Actual</th>
+                  <th className="px-6 py-4 text-right">Total Créditos</th>
+                  <th className="px-6 py-4 text-right">Total Débitos</th>
+                  <th className="px-6 py-4">Última Actividad</th>
+                  <th className="px-6 py-4 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {users.map(user => (
+                  <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-white">{user.display_name}</span>
+                        <span className="text-[10px] font-mono text-slate-500">{user.id.substring(0, 8)}...</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`font-black text-lg ${user.balance > 0 ? 'text-emerald-400' : user.balance < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                        {formatCurrency(user.balance)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right text-emerald-400 font-bold">
+                      +{formatCurrency(user.total_credits)}
+                    </td>
+                    <td className="px-6 py-4 text-right text-red-400 font-bold">
+                      -{formatCurrency(user.total_debits)}
+                    </td>
+                    <td className="px-6 py-4 text-xs font-mono text-slate-400">
+                      {user.last_activity ? new Date(user.last_activity).toLocaleString('es-ES') : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Link
+                        href={`/admin/ledger/${user.id}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-xl text-xs font-black uppercase tracking-widest transition-all hover:scale-105 border border-indigo-500/20"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Desglose
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
+                      No hay usuarios registrados.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
+      {/* Recent Global Ledger */}
       <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl mt-8">
          <div className="px-6 py-4 border-b border-white/5 bg-slate-950/50 flex justify-between items-center">
             <h3 className="font-bold text-white flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Últimas 50 transacciones
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Últimas 50 transacciones globales
             </h3>
-            <button className="text-xs font-bold text-indigo-400 hover:text-indigo-300">
-                EXPORTAR CSV
-            </button>
          </div>
          <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
