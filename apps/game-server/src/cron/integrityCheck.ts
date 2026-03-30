@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { createClient } from "@supabase/supabase-js";
+import { ledgerQueue } from "../workers/index";
 
 // Basic Supabase Service Role client to bypass RLS for internal tasks
 const supabase = createClient(
@@ -41,6 +42,16 @@ export function startIntegrityCron() {
 
     } catch (e) {
       console.error("[CRON ERROR] Fallo al verificar integridad:", e);
+    }
+  });
+
+  // Run wallet-vs-ledger reconciliation every 2 hours via BullMQ worker
+  cron.schedule("0 */2 * * *", async () => {
+    try {
+      console.log("[CRON] Encolando reconciliación de billeteras...");
+      await ledgerQueue.add("reconcile", {}, { removeOnComplete: 10, removeOnFail: 5 });
+    } catch (e) {
+      console.error("[CRON ERROR] Fallo al encolar reconciliación:", e);
     }
   });
 }

@@ -21,16 +21,34 @@ export class SupabaseService {
    * via the `award_pot` database RPC. This guarantees that the ledger
    * entries (win credit + rake debit) are created in a single transaction.
    */
-  static async awardPot(userId: string, payout: number, rake: number, gameId?: string, tableId?: string) {
+  static async awardPot(
+    userId: string,
+    payout: number,
+    rake: number,
+    gameId?: string,
+    tableId?: string,
+    meta?: { roomId?: string; tableName?: string; playersPresent?: { odisplayName: string; odisplayAvatar?: string }[] }
+  ) {
     if (!supabaseKey) return;
     try {
+      const potDetails = {
+        payout,
+        rake,
+        total: payout + rake,
+        table_id: tableId || null,
+        room_id: meta?.roomId || null,
+        table_name: meta?.tableName || null,
+        players_present: meta?.playersPresent || [],
+        commission_pct: 0.05
+      };
+
       const { data, error } = await supabase.rpc('award_pot', {
         p_winner_id: userId,
         p_payout: payout,
         p_rake: rake,
         p_game_id: gameId || null,
         p_table_id: tableId || null,
-        p_pot_details: { payout, rake, total: payout + rake, table_id: tableId || null }
+        p_pot_details: potDetails
       });
 
       if (error) throw error;
@@ -45,7 +63,13 @@ export class SupabaseService {
   /**
    * Records a bet deduction from a player's balance through the immutable ledger.
    */
-  static async recordBet(userId: string, amount: number, gameId?: string, tableId?: string) {
+  static async recordBet(
+    userId: string,
+    amount: number,
+    gameId?: string,
+    tableId?: string,
+    meta?: { roomId?: string; tableName?: string; phase?: string }
+  ) {
     if (!supabaseKey) return { success: true, balance_after: null };
     try {
       const { data, error } = await supabase.rpc('process_ledger_entry', {
@@ -55,8 +79,13 @@ export class SupabaseService {
         p_direction: 'debit',
         p_game_id: gameId || null,
         p_table_id: null,
-        p_description: 'Apuesta en mesa',
-        p_reference_id: `bet-${gameId}-${Date.now()}`
+        p_description: meta?.phase ? `Apuesta en mesa (${meta.phase})` : 'Apuesta en mesa',
+        p_reference_id: `bet-${gameId}-${Date.now()}`,
+        p_metadata: {
+          room_id: meta?.roomId || null,
+          table_name: meta?.tableName || null,
+          phase: meta?.phase || null
+        }
       });
 
       if (error) throw error;
@@ -137,7 +166,7 @@ export class SupabaseService {
    * The `timeline` field contains the player-visible events (no per-step RNG).
    * The `admin_timeline` field contains per-action RNG seeds for admin auditing.
    */
-  static async saveReplay(gameId: string, seed: string, timeline: any[], players: any[], adminTimeline?: any[]) {
+  static async saveReplay(gameId: string, seed: string, timeline: any[], players: any[], adminTimeline?: any[], potBreakdown?: Record<string, any>, finalHands?: Record<string, any>) {
     if (!supabaseKey) return;
     try {
       // 1. Fetch or create a default table if missing (for foreign key constraint on games)
@@ -163,8 +192,8 @@ export class SupabaseService {
         timeline: playerTimeline,
         admin_timeline: adminTimeline || timeline,
         players,
-        pot_breakdown: {},
-        final_hands: {}
+        pot_breakdown: potBreakdown || {},
+        final_hands: finalHands || {}
       });
 
       if (replayErr) throw replayErr;

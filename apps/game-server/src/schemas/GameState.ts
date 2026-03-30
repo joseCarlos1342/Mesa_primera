@@ -9,6 +9,7 @@ export class Player extends Schema {
   @type("boolean") isFolded: boolean = false;
   @type("boolean") hasActed: boolean = false;
   @type("boolean") isReady: boolean = false;
+  @type("boolean") isWaiting: boolean = false;
   @type("number") chips: number = 0;
   /** Posición de turno relativa a La Mano: 1 = La Mano, 2 = siguiente, etc. 0 = aún no asignado. */
   @type("uint8") turnOrder: number = 0;
@@ -28,7 +29,7 @@ export class Player extends Schema {
 }
 
 export class GameState extends Schema {
-  @type("string") phase: string = "LOBBY"; // LOBBY, STARTING, BARAJANDO, SORTEO_MANO, PIQUE_DEAL, PIQUE, COMPLETAR, APUESTA_4_CARTAS, DESCARTE, COMPLETAR_DESCARTE, REVELAR_CARTA, CANTICOS, GUERRA, SHOWDOWN
+  @type("string") phase: string = "LOBBY"; // LOBBY, STARTING, BARAJANDO, SORTEO_MANO, PIQUE_DEAL, PIQUE, COMPLETAR, CANTAR_JUEGO, APUESTA_4_CARTAS, DESCARTE, COMPLETAR_DESCARTE, REVELAR_CARTA, CANTICOS, GUERRA, SHOWDOWN
   @type({ map: Player }) players = new MapSchema<Player>();
   @type("string") dealerId: string = "";
   /** La Mano activa para el orden de turnos (puede transferirse si dealerId se retira mid-game) */
