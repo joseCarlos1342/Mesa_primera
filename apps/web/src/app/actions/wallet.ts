@@ -59,9 +59,13 @@ export async function getWalletData() {
       id: tx.id,
       type: tx.type,
       amount_cents: tx.amount_cents,
+      direction: tx.direction,
+      balance_after_cents: tx.balance_after_cents,
       status: 'completed',
       created_at: tx.created_at,
-      game_id: tx.game_id || null
+      game_id: tx.game_id || null,
+      metadata: tx.metadata || null,
+      description: tx.description || null
     })),
     ...(depositRequests || []).filter(dr => dr.status !== 'completed').map(dr => ({
       id: dr.id,
@@ -116,9 +120,13 @@ export async function getWalletHistory() {
       id: tx.id,
       type: tx.type,
       amount_cents: tx.amount_cents,
+      direction: tx.direction,
+      balance_after_cents: tx.balance_after_cents,
       status: 'completed',
       created_at: tx.created_at,
-      game_id: tx.game_id || null
+      game_id: tx.game_id || null,
+      metadata: tx.metadata || null,
+      description: tx.description || null
     })),
     ...(depositRequests || []).filter(dr => dr.status !== 'completed').map(dr => ({
       id: dr.id,
