@@ -9,6 +9,10 @@
 ---
 
 ### 🏁 Estado para la Hackatón
+**URLs de Producción para Evaluación:**
+*   **Acceso Jugador (PWA):** [Abrir App](https://mesa-primera-cyjkpr7dh-josecarlos1342s-projects.vercel.app/player)
+*   **Acceso Admin (Dashboard):** [Abrir Panel](https://mesa-primera-cyjkpr7dh-josecarlos1342s-projects.vercel.app/admin)
+
 Para facilitar la evaluación por parte del jurado, se han aplicado las siguientes configuraciones temporales:
 
 *   **Interfaz Optimizada para Mayores:** Notará que la interfaz de escritorio tiene un diseño con elementos inusualmente grandes, alto contraste y botones de gran escala. Esto **no es un error de diseño**, sino una decisión deliberada de accesibilidad (WCAG AAA) para nuestro público objetivo: personas mayores con agudeza visual reducida o dificultades motoras finas.

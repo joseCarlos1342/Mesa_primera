@@ -14,6 +14,15 @@ import {
 } from '@/lib/validations'
 import crypto from 'crypto'
 
+type ProfileSeedCandidate = {
+  id: string
+  username: string | null
+  full_name?: string | null
+  avatar_url?: string | null
+  role?: string | null
+  is_banned?: boolean | null
+}
+
 /**
  * Genera un device ID seguro, lo guarda como cookie httpOnly,
  * actualiza profiles.last_device_id y publica un evento Redis
@@ -59,6 +68,86 @@ function normalizePhone(phone: string): string {
     return `+57${cleaned}`
   }
   return cleaned
+}
+
+function isMissingPhoneAuthUser(errorMessage: string): boolean {
+  const normalized = errorMessage.toLowerCase()
+
+  return normalized.includes('signups not allowed for otp') ||
+    normalized.includes('user not found') ||
+    normalized.includes('can only use shouldcreateuser: true')
+}
+
+async function provisionMissingPhoneAuthUser(phone: string) {
+  const { createAdminClient } = await import('@/utils/supabase/server')
+  const adminSupabase = await createAdminClient()
+
+  const { data: profile, error: profileError } = await adminSupabase
+    .from('profiles')
+    .select('id, username, full_name, avatar_url, role, is_banned')
+    .eq('phone', phone)
+    .maybeSingle()
+
+  if (profileError) {
+    console.error('[AUTH_RECOVERY] No fue posible consultar perfil por teléfono (%s): %s', phone, profileError.message)
+    return { recovered: false as const, reason: 'lookup_failed' as const }
+  }
+
+  if (!profile) {
+    return { recovered: false as const, reason: 'profile_not_found' as const }
+  }
+
+  const candidate = profile as ProfileSeedCandidate
+
+  if (candidate.is_banned) {
+    return {
+      recovered: false as const,
+      reason: 'banned' as const,
+      error: 'Tu cuenta se encuentra bloqueada. Contacta soporte.'
+    }
+  }
+
+  const adminAuth = adminSupabase.auth.admin as typeof adminSupabase.auth.admin & {
+    createUser: (params: {
+      id: string
+      phone: string
+      phone_confirm: boolean
+      user_metadata?: Record<string, unknown>
+      app_metadata?: Record<string, unknown>
+    }) => Promise<{
+      data: { user?: { id: string } | null } | null
+      error: { message: string } | null
+    }>
+  }
+
+  const { error: createError } = await adminAuth.createUser({
+    id: candidate.id,
+    phone,
+    phone_confirm: true,
+    user_metadata: {
+      username: candidate.username,
+      full_name: candidate.full_name ?? null,
+      avatar_url: candidate.avatar_url ?? null,
+    },
+    app_metadata: {
+      role: candidate.role ?? 'player',
+    },
+  })
+
+  if (createError) {
+    const normalizedMessage = createError.message.toLowerCase()
+
+    if (normalizedMessage.includes('already registered') || normalizedMessage.includes('already been registered')) {
+      return { recovered: true as const, reason: 'already_exists' as const }
+    }
+
+    console.error('[AUTH_RECOVERY] No fue posible crear auth.user faltante para %s: %s', phone, createError.message)
+    return { recovered: false as const, reason: 'create_failed' as const }
+  }
+
+  console.info('[AUTH_RECOVERY] Usuario auth restaurado para teléfono %s', phone)
+
+  return { recovered: true as const, reason: 'created' as const }
 }
 
 /**
@@ -121,18 +210,37 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
 
   const supabase = await createClient()
   const phone = normalizePhone(parsed.data.phone)
-  
-  const { error } = await supabase.auth.signInWithOtp({
+
+  let { error } = await supabase.auth.signInWithOtp({
     phone,
     options: {
       shouldCreateUser: false // No crear usuario aquí, forzar registro para nuevos
     }
   })
 
+  if (error && isMissingPhoneAuthUser(error.message)) {
+    const recovery = await provisionMissingPhoneAuthUser(phone)
+
+    if (recovery.error) {
+      return { error: recovery.error }
+    }
+
+    if (recovery.recovered) {
+      const retry = await supabase.auth.signInWithOtp({
+        phone,
+        options: {
+          shouldCreateUser: false
+        }
+      })
+
+      error = retry.error
+    }
+  }
+
   if (error) {
     console.error('[AUTH_ERROR] Error en login (%s): %s', phone, error.message)
 
-    if (error.message.includes('User not found') || error.message.includes('can only use shouldCreateUser: true')) {
+    if (isMissingPhoneAuthUser(error.message)) {
       return { error: 'Usuario no encontrado. Por favor, regístrate primero.' }
     }
     if (error.message.includes('saving new user')) {
