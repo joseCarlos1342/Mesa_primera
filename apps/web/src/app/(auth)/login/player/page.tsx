@@ -1,13 +1,13 @@
 "use client"
 
-import { useActionState, useState } from 'react'
+import { Suspense, useActionState, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { loginWithPhone } from '../../auth-actions'
 import Link from 'next/link'
 import { LogIn } from 'lucide-react'
 import { phoneSchema } from '@/lib/validations'
 
-export default function PlayerLoginPage() {
+function PlayerLoginContent() {
   const [state, formAction, isPending] = useActionState(loginWithPhone, null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [phoneTouched, setPhoneTouched] = useState(false)
@@ -132,5 +132,13 @@ export default function PlayerLoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PlayerLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+      <PlayerLoginContent />
+    </Suspense>
   )
 }
