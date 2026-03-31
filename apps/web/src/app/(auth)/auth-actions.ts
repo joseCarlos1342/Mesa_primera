@@ -90,7 +90,7 @@ async function getPhoneProfileCandidate(phone: string) {
 
   const { data, error } = await adminSupabase
     .from('profiles')
-    .select('id, username, full_name, avatar_url, role, is_banned, phone')
+    .select('id, username, full_name, avatar_url, role, phone')
     .eq('phone', phone)
     .maybeSingle()
 
