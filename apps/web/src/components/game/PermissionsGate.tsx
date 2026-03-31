@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { useGamePermissions } from '../../hooks/useGamePermissions'
+import { useGamePermissions } from '@/hooks/useGamePermissions'
 import { ShieldAlert, Bell, Mic, Smartphone, Check, ChevronRight } from 'lucide-react'
 
 interface PermissionsGateProps {
