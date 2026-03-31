@@ -9,13 +9,17 @@
 ---
 
 ### 🏁 Estado para la Hackatón
+**URLs de Producción para Evaluación:**
+*   **Acceso Jugador (PWA):** [Abrir App](https://mesa-primera-cyjkpr7dh-josecarlos1342s-projects.vercel.app/player)
+*   **Acceso Admin (Dashboard):** [Abrir Panel](https://mesa-primera-cyjkpr7dh-josecarlos1342s-projects.vercel.app/admin)
+
 Para facilitar la evaluación por parte del jurado, se han aplicado las siguientes configuraciones temporales:
 
 *   **Autenticación en Modo "Demo":** El sistema de OTP por SMS (Twilio) está desactivado para evitar la recolección de datos personales. En su lugar, se han habilitado **20 perfiles colombianos reales** con identidad completa.
     *   **Cuentas de Evaluación (Listado Completo):**
-        | Rol | Usuario | Nombre Real | Apodo | Teléfono | Saldo (COP) |
+        | Rol | Usuario / Email | Nombre Real | Apodo | Teléfono / Clave | Saldo (COP) |
         | :--- | :--- | :--- | :--- | :--- | :--- |
-        | **Admin** | `carlos_admin` | Carlos Marulanda | El Patrón | +57 300 123 4567 | 100.000 |
+        | **Admin** | `admin@mesaprimera.com` | Carlos Marulanda | El Patrón | `Mesa123456!` | 100.000 |
         | **Jugador** | `0000000002` | Pacho Herrera | Reina de la Mesa | +57 321 987 6543 | 100.000 |
         | **Jugador** | `0000000003` | Maria Cano | La Musa | +57 311 222 3333 | 100.000 |
         | **Jugador** | `alvaro_fino` | Alvaro Gomez | El Pro | +57 301 666 7777 | 100.000 |
