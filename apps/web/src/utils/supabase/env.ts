@@ -8,10 +8,35 @@ const SUPABASE_ADMIN_ENV_NAMES = [
   'SUPABASE_SERVICE_ROLE_KEY',
 ] as const
 
+type PublicEnvName = (typeof SUPABASE_PUBLIC_ENV_NAMES)[number]
 type EnvName = (typeof SUPABASE_ADMIN_ENV_NAMES)[number]
 
+declare global {
+  interface Window {
+    __MESA_PRIMERA_RUNTIME_ENV__?: Partial<Record<PublicEnvName, string>>
+  }
+}
+
+function getEnvValue(name: EnvName) {
+  const processValue = process.env[name]?.trim()
+
+  if (processValue) {
+    return processValue
+  }
+
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  if (name === 'NEXT_PUBLIC_SUPABASE_URL' || name === 'NEXT_PUBLIC_SUPABASE_ANON_KEY') {
+    return window.__MESA_PRIMERA_RUNTIME_ENV__?.[name]?.trim() ?? null
+  }
+
+  return null
+}
+
 function getMissingEnv(names: readonly EnvName[]) {
-  return names.filter((name) => !process.env[name]?.trim())
+  return names.filter((name) => !getEnvValue(name))
 }
 
 function buildMissingEnvMessage(missingEnv: readonly string[]) {
@@ -19,7 +44,7 @@ function buildMissingEnvMessage(missingEnv: readonly string[]) {
 }
 
 function getRequiredEnv(name: EnvName) {
-  const value = process.env[name]?.trim()
+  const value = getEnvValue(name)
 
   if (!value) {
     throw new Error(buildMissingEnvMessage([name]))
