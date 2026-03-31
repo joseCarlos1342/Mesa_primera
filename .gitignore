@@ -70,6 +70,7 @@ workbox-*.js.map
 *.key
 *.secret
 .env*.local
+.ssh_mesa/
 
 # Local Debug & Test Scripts
 test-*.js

@@ -161,6 +161,35 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
 
   const supabase = await createClient()
 
+  // --- HACKATHON DEMO BYPASS ---
+  if (token === '123456') {
+    const { createAdminClient } = await import('@/utils/supabase/server')
+    const adminSupabase = await createAdminClient()
+    
+    // @ts-ignore - Demo bypass logic for hackathon
+    const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+      type: 'login_otp',
+      phone: phone,
+    })
+
+    // @ts-ignore
+    if (!linkError && linkData?.properties?.token_hash) {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone,
+        // @ts-ignore
+        token: linkData.properties.token_hash,
+        type: 'hash',
+      })
+
+      if (!error && data.user) {
+        await enforceSessionPolicy(data.user.id)
+        redirect('/')
+      }
+    }
+    // If admin bypass fails, fall back to normal verification
+  }
+  // -----------------------------
+
   const { data, error } = await supabase.auth.verifyOtp({
     phone,
     token: tokenParsed.data,
