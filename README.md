@@ -10,8 +10,8 @@
 
 ### 🏁 Estado para la Hackatón
 **URLs de Producción para Evaluación:**
-*   **Acceso Jugador (PWA):** [Abrir App](https://mesa-primera-cyjkpr7dh-josecarlos1342s-projects.vercel.app/player)
-*   **Acceso Admin (Dashboard):** [Abrir Panel](https://mesa-primera-cyjkpr7dh-josecarlos1342s-projects.vercel.app/admin)
+*   **Acceso Jugador (PWA):** [Abrir App](https://mesa-primera-web.vercel.app/login/player)
+*   **Acceso Admin (Dashboard):** [Abrir Panel](https://mesa-primera-web.vercel.app/login/admin)
 
 Para facilitar la evaluación por parte del jurado, se han aplicado las siguientes configuraciones temporales:
 
