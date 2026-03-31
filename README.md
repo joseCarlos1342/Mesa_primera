@@ -8,6 +8,14 @@
 
 ---
 
+### 🏁 Estado para la Hackatón
+Para facilitar la evaluación por parte del jurado, se han aplicado las siguientes configuraciones temporales:
+
+*   **Interfaz Optimizada para Mayores:** Notará que la interfaz de escritorio tiene un diseño con elementos inusualmente grandes, alto contraste y botones de gran escala. Esto **no es un error de diseño**, sino una decisión deliberada de accesibilidad (WCAG AAA) para nuestro público objetivo: personas mayores con agudeza visual reducida o dificultades motoras finas.
+*   **Secciones Pendientes:** Debido al límite de tiempo de la hackatón, algunas secciones secundarias.
+
+---
+
 ## 📖 Visión General
 
 Mesa de Primera no es solo un juego de cartas; es un ecosistema completo diseñado para digitalizar la experiencia tradicional de la "Primera" con naipe español. El proyecto se fundamenta en tres pilares técnicos innegociables:
@@ -26,47 +34,32 @@ Mesa de Primera no es solo un juego de cartas; es un ecosistema completo diseña
 - **Reconexión Nativa:** Gracia de 60 segundos con restauración de estado mediante snapshots en **Redis**.
 - **Voz sobre IP:** Integración de **LiveKit WebRTC** para chat de voz con latencia sub-100ms.
 
-### 🛡️ Seguridad y Finanzas
-- **Ledger Inmutable:** Libro mayor blindado que prohíbe `UPDATE` o `DELETE`, registrando cada movimiento de fichas al centavo.
-- **Validación de Identidad:** Sistema de retiros vinculado estrictamente al `display_name` verificado.
-- **Anti-Fraude Avanzado:** Device fingerprinting para detectar multi-cuentas y patrones de colusión.
-
-### 👥 Ecosistema Social
-- **Sistema de Amigos y Leaderboards:** Clasificaciones semanales por ganancias, rachas y jugadas especiales.
-- **Replays Detallados:** Generación de timeline JSON para auditoría y resolución de disputas.
-- **Soporte Integrado:** Chat directo Jugador ↔ Admin mediante namespaces de **Socket.IO**.
-
 ---
 
 ## 🏗 Arquitectura y Stack Tecnológico
 
 El proyecto utiliza un stack moderno de microservicios coordinados para máxima escalabilidad:
 
-| Componente | Tecnología | Propósito |
-| :--- | :--- | :--- |
-| **Frontend** | [Next.js 16](https://nextjs.org/) (App Router) | Dual-UI (SSR/PWA), TailwindCSS 4. |
-| **Game Server** | [Colyseus](https://colyseus.io/) | Motor de juego autoritativo, sync de estado. |
-| **BBDD & Auth** | [Supabase](https://supabase.com/) | PostgreSQL con RLS, Auth OTP SMS (Twilio). |
-| **Infraestructura** | [Redis](https://redis.io/) & [BullMQ](https://docs.bullmq.io/) | Cache de sesiones, rate limiting y colas de jobs. |
-| **Real-Time** | [Socket.IO](https://socket.io/) | Chat de soporte y notificaciones push masivas. |
-| **Multimedia** | [LiveKit](https://livekit.io/) | Voz WebRTC en tiempo real. |
+| Componente | Tecnología | Propósito | Despliegue |
+ | :--- | :--- | :--- | :--- |
+ | **Frontend** | [Next.js 16](https://nextjs.org/) | Dual-UI (SSR/PWA), TailwindCSS 4. | **Vercel** |
+ | **Game Server** | [Colyseus](https://colyseus.io/) | Motor de juego autoritativo, sync de estado. | **CubePath VPS** |
+ | **BBDD & Auth** | [Supabase](https://supabase.com/) | PostgreSQL con RLS, Auth OTP SMS. | **Supabase Cloud** |
+ | **Infraestructura** | [Redis](https://redis.io/) | Cache de sesiones y snapshots de juego. | **CubePath (Local)** |
+ | **Real-Time** | [Socket.IO](https://socket.io/) | Chat de soporte y notificaciones. | **CubePath VPS** |
+ | **Multimedia** | [LiveKit](https://livekit.io/) | Voz WebRTC en tiempo real. | **LiveKit Cloud** |
 
 ---
 
 ## 🗂 Estructura del Proyecto
 
 ```bash
-src/
-├── app/
-│   ├── (player)/       # 👤 Interfaz PWA: Lobby, Juego, Wallet, Stats.
-│   ├── (admin)/        # 👑 Dashboard: Control de mesas, Ledger, Auditoría.
-│   └── api/            # Webhooks y endpoints compartidos.
-├── engine/             # ⚙️ Colyseus Game Rooms (Lógica inmutable).
-├── services/           # Socket.IO (Chat/Notifs), LiveKit, Supabase SDK.
-└── shared/
-    ├── components/     # UI optimizada para accesibilidad (Adultos Mayores).
-    ├── lib/            # RNG, validadores financieros, auditoría.
-    └── types/          # Tipado estricto TS para el Ledger y el Estado.
+mesa_primera/
+├── apps/
+│   ├── web/            # Frontend (Next.js)
+│   └── game-server/    # Backend (Colyseus + Node.js)
+├── packages/           # Lógica compartida y tipos.
+└── supabase/           # Migraciones y políticas RLS.
 ```
 
 ---
@@ -76,7 +69,7 @@ src/
 ### Prerrequisitos
 - Node.js 22 LTS o superior.
 - Instancia de Redis activa.
-- Proyecto Supabase configurado con el esquema de 15 tablas (ver `plan_primera.md`).
+- Proyecto Supabase configurado.
 
 ### Instalación
 ```bash
@@ -84,16 +77,12 @@ src/
 npm install
 
 # 2. Configurar variables de entorno
-cp .env.example .env.local
+cp apps/web/.env.example apps/web/.env.local
+cp apps/game-server/.env.example apps/game-server/.env.local
 
-# 3. Iniciar entorno de desarrollo (Hybrid: Next.js + Game Server)
+# 3. Iniciar entorno de desarrollo
 npm run dev
 ```
-
-### Convenciones de Desarrollo
-- **Commits:** Uso obligatorio de [Conventional Commits](https://www.conventionalcommits.org/).
-- **IA/Agent Workflow:** Uso estricto de MCPs (Context7) para evitar alucinaciones en APIs de terceros.
-- **Accesibilidad:** Todo componente en `(player)` debe cumplir con WCAG AAA (alto contraste y botones >64px).
 
 ---
 
@@ -105,5 +94,4 @@ La integridad financiera se verifica mediante la fórmula:
 Un cron job ejecuta esta verificación cada hora. Cualquier discrepancia bloquea automáticamente las transacciones del sistema y alerta al administrador.
 
 ---
-*© 2026 Mesa de Primera. Desarrollado con excelencia técnica para una experiencia de juego justa y profesional.*
-
+*© 2026 Mesa de Primera. Desarrollado con excelencia técnica para la Hackatón CubePath 2026.*
