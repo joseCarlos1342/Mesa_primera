@@ -47,6 +47,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.sublime-*
+.cursorrules
 
 # AI Agent Skills & Configs (sensitive, local only)
 .agents/
@@ -81,3 +82,6 @@ simulate-game.ts
 
 # Common cli assets
 dump.rdb
+dev.sh
+*plan.md
+skills*.json
