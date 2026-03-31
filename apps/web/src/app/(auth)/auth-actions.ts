@@ -428,7 +428,12 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
 
   // --- HACKATHON DEMO BYPASS ---
-  if (token === '123456' && process.env.NODE_ENV !== 'production') {
+  // Active in development, or in production/preview when
+  // DEMO_OTP_BYPASS_ENABLED=true is set as a server-side env var in Vercel.
+  const isDemoBypassEnabled =
+    process.env.NODE_ENV === 'development' ||
+    process.env.DEMO_OTP_BYPASS_ENABLED === 'true'
+  if (token === '123456' && isDemoBypassEnabled) {
     const { createAdminClient } = await import('@/utils/supabase/server')
     const adminSupabase = await createAdminClient()
 
