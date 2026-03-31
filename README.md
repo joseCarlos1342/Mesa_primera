@@ -49,7 +49,7 @@ El proyecto utiliza un stack moderno de microservicios coordinados para máxima 
  | **Frontend** | [Next.js 16](https://nextjs.org/) | Dual-UI (SSR/PWA), TailwindCSS 4. | **Vercel** |
  | **Game Server** | [Colyseus](https://colyseus.io/) | Motor de juego autoritativo, sync de estado. | **CubePath VPS** |
  | **BBDD & Auth** | [Supabase](https://supabase.com/) | PostgreSQL con RLS, Auth OTP SMS. | **Supabase Cloud** |
- | **Infraestructura** | [Redis](https://redis.io/) | Cache de sesiones y snapshots de juego. | **CubePath (Local)** |
+ | **Infraestructura** | [Redis](https://redis.io/) | Cache de sesiones y snapshots de juego. | **CubePath VPS** |
  | **Real-Time** | [Socket.IO](https://socket.io/) | Chat de soporte y notificaciones. | **CubePath VPS** |
  | **Multimedia** | [LiveKit](https://livekit.io/) | Voz WebRTC en tiempo real. | **LiveKit Cloud** |
 
