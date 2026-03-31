@@ -1,13 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createClient } from '@/utils/supabase/client';
 
 type TimelineEvent = {
   event: string;
@@ -54,6 +49,7 @@ function formatCard(card: string): string {
 }
 
 export default function ReplayViewer({ params }: { params: Promise<{ gameId: string }> }) {
+  const supabase = createClient();
   const [gameId, setGameId] = useState<string>('');
   const [replay, setReplay] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(0);
