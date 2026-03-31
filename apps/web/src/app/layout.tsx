@@ -88,6 +88,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const runtimePublicSupabaseEnv = {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
+  };
+  const runtimeSupabaseEnvScript = `window.__MESA_PRIMERA_RUNTIME_ENV__=${JSON.stringify(runtimePublicSupabaseEnv).replace(/</g, "\\u003c")};`;
+
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -104,6 +110,11 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: runtimeSupabaseEnvScript,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
