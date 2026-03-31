@@ -27,6 +27,22 @@ interface Ticket {
   lastMessage?: string;
 }
 
+interface SupportMessageRow {
+  id?: string;
+  user_id: string;
+  ticket_id: string;
+  message: string;
+  created_at: string;
+  from_admin: boolean;
+  is_resolved: boolean;
+}
+
+interface SupportSocketPayload {
+  userId: string;
+  message: string;
+  ticketId: string;
+}
+
 export function SupportChat({ userId, isAdmin = false, embedded = false, ticketId: initialTicketId }: SupportChatProps) {
   const [isOpen, setIsOpen] = useState(embedded);
   const [view, setView] = useState<'list' | 'chat'>(isAdmin || initialTicketId ? 'chat' : 'list');
@@ -58,7 +74,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
         
       if (!error && data) {
         const grouped: Record<string, Ticket> = {};
-        data.forEach(msg => {
+        (data as SupportMessageRow[]).forEach((msg) => {
           if (!grouped[msg.ticket_id]) {
             grouped[msg.ticket_id] = {
               id: msg.ticket_id,
@@ -105,7 +121,9 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
       const { data, error } = await query.order('created_at', { ascending: true });
         
       if (!error && data) {
-        setMessages(data.map(msg => ({
+        const typedMessages = data as SupportMessageRow[];
+
+        setMessages(typedMessages.map((msg) => ({
           id: msg.id || `${msg.created_at}-${msg.message.slice(0,10)}`,
           sender: msg.from_admin ? 'Soporte' : 'Tú',
           text: msg.message,
@@ -113,7 +131,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
           ticketId: msg.ticket_id
         })));
         
-        const lastMsg = data[data.length - 1];
+        const lastMsg = typedMessages[typedMessages.length - 1];
         if (lastMsg?.is_resolved) {
           setIsResolved(true);
         } else {
@@ -134,7 +152,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
     });
     setSocket(s);
 
-    s.on('support:incoming', (data) => {
+    s.on('support:incoming', (data: SupportSocketPayload) => {
       if (isAdmin && data.userId === userId) {
         setMessages(prev => [...prev, { 
           id: uuidv4(),
@@ -146,7 +164,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
       }
     });
 
-    s.on('support:message', (data) => {
+    s.on('support:message', (data: SupportSocketPayload) => {
       if (!isAdmin && data.userId === userId && data.ticketId === activeTicketId) {
         setMessages(prev => [...prev, { 
           id: uuidv4(),
@@ -168,7 +186,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
       }
     });
 
-    s.on('support:resolved', (data) => {
+    s.on('support:resolved', (data: SupportSocketPayload) => {
       if (data.userId === userId && data.ticketId === activeTicketId) {
         setIsResolved(true);
       }

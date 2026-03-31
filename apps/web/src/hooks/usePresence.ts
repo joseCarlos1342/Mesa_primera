@@ -29,9 +29,11 @@ export function usePresence(friends: any[]) {
         },
       });
 
-      globalChannel
+      const channel = globalChannel as RealtimeChannel;
+
+      channel
         .on('presence', { event: 'sync' }, () => {
-          const state = globalChannel!.presenceState();
+          const state = channel.presenceState();
           const statusMap: Record<string, UserStatus> = {};
           
           Object.keys(state).forEach((key) => {
@@ -55,8 +57,8 @@ export function usePresence(friends: any[]) {
         .subscribe(async (status: string) => {
           if (status === 'SUBSCRIBED') {
             const { data: { user } } = await supabase.auth.getUser();
-            if (user && globalChannel) {
-              await globalChannel.track({
+            if (user) {
+              await channel.track({
                 user_id: user.id,
                 online_at: new Date().toISOString(),
                 status: 'online',

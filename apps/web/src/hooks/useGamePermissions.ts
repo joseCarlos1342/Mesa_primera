@@ -13,6 +13,10 @@ export interface GamePermissions {
   requestAll: () => Promise<void>
 }
 
+type ScreenOrientationWithLock = ScreenOrientation & {
+  lock?: (orientation: 'landscape') => Promise<void>
+}
+
 function getIsMobile(): boolean {
   if (typeof window === 'undefined') return false
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
@@ -21,6 +25,9 @@ function getIsMobile(): boolean {
 
 export function useGamePermissions(): GamePermissions {
   const isMobile = typeof window !== 'undefined' ? getIsMobile() : false
+  const screenOrientation = typeof window !== 'undefined'
+    ? (window.screen.orientation as ScreenOrientationWithLock | undefined)
+    : undefined
   const [orientation, setOrientation] = useState<PermissionStatus>(isMobile ? 'pending' : 'unavailable')
   const [notifications, setNotifications] = useState<PermissionStatus>('pending')
   const [microphone, setMicrophone] = useState<PermissionStatus>('pending')
@@ -53,20 +60,20 @@ export function useGamePermissions(): GamePermissions {
     }
 
     // Orientation lock: check support
-    if (isMobile && screen?.orientation?.lock) {
+    if (isMobile && screenOrientation?.lock) {
       setOrientation('pending')
     } else if (isMobile) {
       // API not supported, we'll still try
       setOrientation('pending')
     }
-  }, [isMobile])
+  }, [isMobile, screenOrientation])
 
   const requestAll = useCallback(async () => {
     // 1. Screen orientation lock (mobile only)
     if (isMobile) {
       try {
-        if (screen?.orientation?.lock) {
-          await screen.orientation.lock('landscape')
+        if (screenOrientation?.lock) {
+          await screenOrientation.lock('landscape')
           setOrientation('granted')
         } else {
           setOrientation('unavailable')
@@ -76,7 +83,7 @@ export function useGamePermissions(): GamePermissions {
         if (err.name === 'SecurityError' || err.name === 'NotSupportedError') {
           try {
             await document.documentElement.requestFullscreen()
-            await screen.orientation.lock('landscape')
+            await screenOrientation?.lock?.('landscape')
             setOrientation('granted')
           } catch {
             // Can't lock orientation - the portrait overlay will still show as fallback
@@ -106,7 +113,7 @@ export function useGamePermissions(): GamePermissions {
     } catch {
       setMicrophone('denied')
     }
-  }, [isMobile])
+  }, [isMobile, screenOrientation])
 
   const allGranted =
     (orientation === 'granted' || orientation === 'unavailable') &&
