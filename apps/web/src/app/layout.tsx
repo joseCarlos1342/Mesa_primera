@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Outfit, Geist_Mono } from "next/font/google";
+import { Analytics } from '@vercel/analytics/next';
 import { ClientErrorSuppressor } from "@/components/ClientErrorSuppressor";
 import "./globals.css";
 
@@ -119,6 +120,7 @@ export default function RootLayout({
         <FramerMotionProvider>
           {children}
         </FramerMotionProvider>
+        <Analytics />
       </body>
     </html>
   );
