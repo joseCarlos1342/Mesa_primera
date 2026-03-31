@@ -25,6 +25,7 @@ const VoiceChat = dynamic(
 )
 import { DepositModal } from '@/components/game/DepositModal'
 import { TableHelpModal } from '@/components/game/TableHelpModal'
+import { PermissionsGate } from '@/components/game/PermissionsGate'
 
 export default function GameRoomPage() {
   const params = useParams()
@@ -385,9 +386,10 @@ export default function GameRoomPage() {
 
 
   return (
-    <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#073926] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.1)] before:to-[rgba(0,0,0,0.5)] before:pointer-events-none">
+    <PermissionsGate>
+      <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#073926] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.1)] before:to-[rgba(0,0,0,0.5)] before:pointer-events-none">
 
-      {/* ── ORIENTATION WARNING (global, cubre LOBBY y GAME) ── */}
+        {/* ── ORIENTATION WARNING (global, cubre LOBBY y GAME) ── */}
       {isPortrait && (
         <div className="fixed inset-0 z-[1000] bg-[#073926] flex flex-col items-center justify-center p-8 text-center">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
@@ -715,14 +717,15 @@ export default function GameRoomPage() {
       <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
       <ReconnectOverlay isVisible={isReconnecting} />
       <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
-      {room && supabaseUserId && (
-        <TableHelpModal
-          isOpen={showTableHelp}
-          onClose={() => setShowTableHelp(false)}
-          roomId={roomId}
-          userId={supabaseUserId}
-        />
-      )}
-    </div>
+        {room && supabaseUserId && (
+          <TableHelpModal
+            isOpen={showTableHelp}
+            onClose={() => setShowTableHelp(false)}
+            roomId={roomId}
+            userId={supabaseUserId}
+          />
+        )}
+      </div>
+    </PermissionsGate>
   )
 }

@@ -44,7 +44,7 @@ export function DirectChat({ friend, onClose }: DirectChatProps) {
         event: 'INSERT', 
         schema: 'public', 
         table: 'direct_messages'
-      }, (payload) => {
+      }, (payload: any) => {
         // Only add if it's relevant to this chat
         const msg = payload.new;
         if ((msg.sender_id === friend.profile.id) || (msg.receiver_id === friend.profile.id)) {
