@@ -2,27 +2,48 @@ import Redis from 'ioredis'
 import { headers } from 'next/headers'
 
 // Usar una variable global en desarrollo para prevenir múltiples conexiones por HMR de Next.js
-const globalForRedis = global as unknown as { redis: Redis }
+const globalForRedis = global as unknown as { redis?: Redis }
+const redisUrl = process.env.REDIS_URL?.trim()
 
-export const redis =
-  globalForRedis.redis ||
-  new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-    maxRetriesPerRequest: 3,
+function createRedisClient() {
+  if (!redisUrl) {
+    return null
+  }
+
+  const client = new Redis(redisUrl, {
+    lazyConnect: true,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 1,
   })
 
-// Silenciar errores de conexión/auth para evitar ruidos en los logs
-let lastRedisError = '';
-redis.on('error', (err) => {
-  if (err.message === lastRedisError) return;
-  lastRedisError = err.message;
-  
-  if (process.env.NODE_ENV === 'development') {
-    // Solo loguear resumido para no ensuciar
-    console.warn('[REDIS_SILENCED_ERROR]:', err.message)
-  }
-})
+  let lastRedisError = ''
+  client.on('error', (err) => {
+    if (err.message === lastRedisError) return
+    lastRedisError = err.message
 
-if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[REDIS_SILENCED_ERROR]:', err.message)
+    }
+  })
+
+  return client
+}
+
+const redisClient = globalForRedis.redis ?? createRedisClient()
+
+if (redisClient && process.env.NODE_ENV !== 'production') {
+  globalForRedis.redis = redisClient
+}
+
+export const redis = {
+  async publish(channel: string, message: string) {
+    if (!redisClient) {
+      return 0
+    }
+
+    return redisClient.publish(channel, message)
+  },
+}
 
 /**
  * Ticker Token Bucket Rate Limiter
@@ -31,10 +52,19 @@ if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis
  * @param window Tiempo en segundos
  */
 export async function checkRateLimit(key: string, limit: number, windowSecs: number) {
+  if (!redisClient) {
+    return {
+      success: true,
+      limit,
+      remaining: limit,
+      reset: windowSecs
+    }
+  }
+
   try {
-    const current = await redis.incr(key)
+    const current = await redisClient.incr(key)
     if (current === 1) {
-      await redis.expire(key, windowSecs)
+      await redisClient.expire(key, windowSecs)
     }
     
     return {
