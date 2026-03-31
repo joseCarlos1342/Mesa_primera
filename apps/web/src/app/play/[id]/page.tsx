@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { client } from '@/lib/colyseus'
 import { createClient } from '@/utils/supabase/client'
 import { Room } from '@colyseus/sdk'
-import { Loader2, ArrowLeft, Users, Gamepad2, BookOpen, AlertCircle } from 'lucide-react'
+import { Loader2, ArrowLeft, Users, Gamepad2, BookOpen, AlertCircle, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { useWakeLock } from '../../../../hooks/useWakeLock'
 import { RulesModal } from '@/components/game/RulesModal'
@@ -38,7 +38,7 @@ export default function GameRoomPage() {
   const [showDeposit, setShowDeposit] = useState(false)
   const [showTableHelp, setShowTableHelp] = useState(false)
   const [isReconnecting, setIsReconnecting] = useState(false)
-  
+
   // Game State
   const [gameState, setGameState] = useState({
     players: [] as any[],
@@ -46,30 +46,76 @@ export default function GameRoomPage() {
     pot: 0,
     piquePot: 0,
     dealerId: '',
-    countdown: -1
+    countdown: -1,
+    minPique: 500_000,
+    proposedPique: 0,
+    proposedPiqueBy: '',
+    piqueVotesFor: 0,
+    piqueVotesAgainst: 0,
+    piqueVotersTotal: 0,
+    currentMaxBet: 0
   })
+
+  // Destructure early to avoid ReferenceError in hooks
+  const { 
+    players, phase, pot, dealerId, countdown, minPique, 
+    proposedPique, proposedPiqueBy, piqueVotesFor, piqueVotesAgainst, piqueVotersTotal 
+  } = gameState;
 
   /** Cartas privadas del jugador local. Solo llegan vía mensaje privado del servidor. */
   const [myCards, setMyCards] = useState<string>("")
   const [supabaseUserId, setSupabaseUserId] = useState<string>("")
-  
+  const [showPiqueOptions, setShowPiqueOptions] = useState(false)
+  const [hasVotedPique, setHasVotedPique] = useState(false)
+  const [bandaEvent, setBandaEvent] = useState<any>(null)
+
   const hasAttemptedJoin = useRef(false)
   /** Marca si el jugador abandonó intencionalmente (evita auto-reconexión) */
   const abandonedRef = useRef(false)
-  
+
   // Mantiene la pantalla encendida en móviles
   useWakeLock()
+
+  // ── Detección de orientación: bloquear en portrait y auto-cancelar "Listo" ──
+  const [isPortrait, setIsPortrait] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mql = window.matchMedia('(orientation: portrait)')
+    setIsPortrait(mql.matches)
+
+    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
+
+  // Si el jugador rota a portrait estando "Listo" en LOBBY, auto-cancelar su ready
+  useEffect(() => {
+    if (!isPortrait || !room || phase !== 'LOBBY') return
+    const me = players.find(p => p.id === room.sessionId)
+    if (me?.isReady) {
+      room.send('toggleReady', { isReady: false })
+    }
+  }, [isPortrait, room, phase, players])
+
+  // Reset voto local si la propuesta cambia (nueva propuesta o se resolvió)
+  useEffect(() => {
+    if (proposedPique === 0) {
+      setHasVotedPique(false)
+      setShowPiqueOptions(false)
+    }
+  }, [proposedPique])
 
   // Listen to open-recharge-modal and open-rules-modal events
   useEffect(() => {
     const handleOpenDeposit = () => setShowDeposit(true)
     const handleOpenRules = () => setShowRules(true)
     const handleOpenTableHelp = () => setShowTableHelp(true)
-    
+
     window.addEventListener('open-recharge-modal', handleOpenDeposit)
     window.addEventListener('open-rules-modal', handleOpenRules)
     window.addEventListener('open-table-help', handleOpenTableHelp)
-    
+
     return () => {
       window.removeEventListener('open-recharge-modal', handleOpenDeposit)
       window.removeEventListener('open-rules-modal', handleOpenRules)
@@ -83,11 +129,11 @@ export default function GameRoomPage() {
     hasAttemptedJoin.current = true;
 
     let activeRoom: Room | undefined;
-    
+
     async function joinRoom() {
       try {
         console.log(`Connecting to room ${roomId}...`);
-        
+
         // Pequeño delay para permitir que el cliente se estabilice tras un reload rápido
         await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -99,10 +145,10 @@ export default function GameRoomPage() {
         let joinedRoom: Room | undefined;
         const tokenKey = `reconnectionToken_${roomId}`;
         const nickKey = `nickname_${roomId}`;
-        
+
         const savedToken = sessionStorage.getItem(tokenKey);
         let nick = sessionStorage.getItem(nickKey);
-        
+
         if (savedToken) {
           try {
             console.log("Token de reconexión encontrado, intentando reconectar...");
@@ -118,14 +164,14 @@ export default function GameRoomPage() {
             sessionStorage.removeItem(tokenKey);
           }
         }
-        
+
         if (!joinedRoom) {
           // Sync with Supabase session first
           let avatarUrl = sessionStorage.getItem(`avatarUrl_${roomId}`);
           if (!avatarUrl) {
             avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
           }
-          
+
           if (sbUser) {
             // Fetch real balance from wallets table
             const { data: wallet } = await supabase
@@ -133,9 +179,16 @@ export default function GameRoomPage() {
               .select('balance_cents')
               .eq('user_id', sbUser.id)
               .single()
-            
+
             if (wallet) {
-              sessionStorage.setItem(`chips_${roomId}`, wallet.balance_cents.toString())
+              const balance = wallet.balance_cents;
+              // VALIDACIÓN DE SALDO MÍNIMO ($50,000)
+              if (balance < 5000000) {
+                setError("Fondos insuficientes. Se requiere un saldo mínimo de $50,000 para entrar a una mesa. Por favor, recargue su cuenta.");
+                setLoading(false);
+                return;
+              }
+              sessionStorage.setItem(`chips_${roomId}`, balance.toString())
             }
 
             if (!nick && sbUser.user_metadata?.username) {
@@ -148,11 +201,23 @@ export default function GameRoomPage() {
             nick = 'Jugador ' + Math.floor(Math.random() * 1000);
             sessionStorage.setItem(nickKey, nick);
           }
-          
-          let deviceId = localStorage.getItem('deviceId');
+
+          // Use the server-assigned device ID from the single-session policy
+          let deviceId: string | null = null;
+          if (sbUser) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('last_device_id')
+              .eq('id', sbUser.id)
+              .single()
+            deviceId = profile?.last_device_id || null;
+          }
           if (!deviceId) {
-            deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('deviceId', deviceId);
+            deviceId = localStorage.getItem('deviceId');
+            if (!deviceId) {
+              deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
+              localStorage.setItem('deviceId', deviceId);
+            }
           }
 
           const chips = parseInt(sessionStorage.getItem(`chips_${roomId}`) || "1000");
@@ -165,11 +230,11 @@ export default function GameRoomPage() {
             chips: chips,
             userId: sbUser?.id || null
           })
-          
+
           // Guardar el token para permitir reconexiones si se recarga la página (F5)
           sessionStorage.setItem(tokenKey, joinedRoom.reconnectionToken);
         }
-        
+
         activeRoom = joinedRoom;
         console.log('Joined room:', joinedRoom.roomId, 'Session ID:', joinedRoom.sessionId);
         setRoom(joinedRoom)
@@ -199,20 +264,59 @@ export default function GameRoomPage() {
             if (state.phase === 'LOBBY' && !player.connected) return;
             playersArray.push(player);
           })
-          
+
           setGameState({
             phase: state.phase,
             pot: state.pot,
             piquePot: state.piquePot || 0,
             dealerId: state.dealerId,
             countdown: state.countdown,
-            players: playersArray
+            players: playersArray,
+            minPique: state.minPique ?? 500_000,
+            proposedPique: state.proposedPique ?? 0,
+            proposedPiqueBy: state.proposedPiqueBy ?? '',
+            piqueVotesFor: state.piqueVotesFor ?? 0,
+            piqueVotesAgainst: state.piqueVotesAgainst ?? 0,
+            piqueVotersTotal: state.piqueVotersTotal ?? 0,
+            currentMaxBet: state.currentMaxBet ?? 0
           })
         })
 
         // Cartas privadas: solo el dueño recibe sus cartas reales
         joinedRoom.onMessage("private-cards", (cards: string[]) => {
           setMyCards(cards.join(','));
+        })
+
+        // Reset voto local cuando cambia la propuesta de pique
+        joinedRoom.onMessage("pique_approved", () => {
+          setHasVotedPique(false);
+          setShowPiqueOptions(false);
+        })
+        joinedRoom.onMessage("pique_rejected", () => {
+          setHasVotedPique(false);
+          setShowPiqueOptions(false);
+        })
+
+        // Evento de banda para animaciones
+        joinedRoom.onMessage("banda", (data: any) => {
+          setBandaEvent(data);
+          setTimeout(() => setBandaEvent(null), 4000);
+        })
+
+        // Errores inline del servidor (ej: pique mínimo no alcanzado)
+        joinedRoom.onMessage("error", (data: any) => {
+          if (data?.message) {
+            setBandaEvent({ winnerNickname: '⚠', totalBanda: 0, bandaPerPlayer: 0, details: [], _errorMsg: data.message });
+            setTimeout(() => setBandaEvent(null), 3000);
+          }
+        })
+
+        // ── Single-session policy: force logout ──
+        joinedRoom.onMessage("ForceLogout", (data: any) => {
+          abandonedRef.current = true; // prevent auto-reconnection
+          alert(data?.message || "Se ha iniciado sesión en otro dispositivo. Tu sesión actual ha expirado.");
+          joinedRoom?.leave(true);
+          router.push('/login/player?kicked=true');
         })
 
       } catch (err: any) {
@@ -256,15 +360,15 @@ export default function GameRoomPage() {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
         {/* Subtle warm glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
-        
+
         <div className="relative z-10 bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/30 p-10 rounded-3xl max-w-md w-full shadow-[0_20px_60px_rgba(0,0,0,0.6),_0_0_40px_rgba(212,175,55,0.05)] flex flex-col items-center">
           <div className="w-14 h-14 rounded-full bg-[#0a180e] border-2 border-[#d4af37]/40 flex items-center justify-center mb-5 shadow-[0_0_20px_rgba(212,175,55,0.15)]">
-             <AlertCircle className="w-7 h-7 text-[#d4af37]" />
+            <AlertCircle className="w-7 h-7 text-[#d4af37]" />
           </div>
           <h2 className="text-2xl md:text-3xl font-black font-display text-[#fdf0a6] uppercase tracking-[0.2em] mb-3">Error de Conexión</h2>
           <div className="h-px w-24 bg-[#d4af37]/30 mb-4" />
           <p className="text-[#8faa96] mb-8 text-sm md:text-base leading-relaxed">{error}</p>
-          <button 
+          <button
             onClick={() => {
               sessionStorage.removeItem(`reconnectionToken_${roomId}`);
               router.push('/');
@@ -279,10 +383,27 @@ export default function GameRoomPage() {
     )
   }
 
-  const { players, phase, pot, dealerId, countdown } = gameState;
 
   return (
     <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#073926] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.1)] before:to-[rgba(0,0,0,0.5)] before:pointer-events-none">
+
+      {/* ── ORIENTATION WARNING (global, cubre LOBBY y GAME) ── */}
+      {isPortrait && (
+        <div className="fixed inset-0 z-[1000] bg-[#073926] flex flex-col items-center justify-center p-8 text-center">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
+
+          <div className="relative z-10 mb-8 w-24 h-24 flex items-center justify-center bg-[#0a180e]/80 rounded-3xl border border-[#d4af37]/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)] animate-[spin_4s_ease-in-out_infinite]">
+            <RotateCcw className="w-14 h-14 text-[#d4af37]" />
+          </div>
+          <h2 className="relative z-10 text-3xl font-black text-[#fdf0a6] mb-3 italic uppercase tracking-wider">Gira tu Dispositivo</h2>
+          <div className="relative z-10 h-px w-24 bg-[#d4af37]/30 mb-4" />
+          <p className="relative z-10 text-[#8faa96] text-base leading-relaxed max-w-xs">
+            Para jugar en <span className="text-[#d4af37] font-bold uppercase tracking-wider">Mesa Primera</span>, necesitas usar tu pantalla en horizontal.
+          </p>
+        </div>
+      )}
+
       {/* HEADER */}
       <GameHeader onMenuClick={() => {
         // Abandonar partida: limpiar ANTES de navegar para evitar race condition
@@ -297,160 +418,293 @@ export default function GameRoomPage() {
         }
         router.push('/');
       }} />
-      
+
       {/* MAIN GAME AREA */}
       <main className={`flex-1 flex flex-col items-center justify-center relative z-0 p-0 m-0 ${phase === 'LOBBY' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}>
+
+        {/* ── Banda / Error Notification Overlay ── */}
+        {bandaEvent && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="bg-[#0a180e]/95 border border-[#d4af37]/40 rounded-2xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.8),_0_0_20px_rgba(212,175,55,0.15)] flex flex-col items-center gap-1 backdrop-blur-xl">
+              {bandaEvent._errorMsg ? (
+                <>
+                  <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-red-400">Error</span>
+                  <span className="text-sm md:text-base font-bold text-[#fdf0a6]">{bandaEvent._errorMsg}</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-[#d4af37]">Cobro de Banda</span>
+                  <span className="text-lg md:text-2xl font-black text-[#fdf0a6]">
+                    {bandaEvent.winnerNickname} +${(bandaEvent.totalBanda / 100).toLocaleString()}
+                  </span>
+                  <span className="text-[9px] md:text-[11px] text-[#8faa96] font-bold">
+                    ${(bandaEvent.bandaPerPlayer / 100).toLocaleString()} × {bandaEvent.details?.length || 0} jugador(es)
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         {phase === 'LOBBY' ? (
           <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center px-2 py-4 md:p-8">
             {/* Atmospheric Background Effects */}
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 pointer-events-none mix-blend-multiply" />
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#d4af37]/5 rounded-full blur-[150px] pointer-events-none" />
-            
+
             {/* Main Panel */}
-            <div className="relative z-10 w-full max-w-5xl bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/25 rounded-3xl md:rounded-[3rem] p-4 md:p-14 landscape:p-4 shadow-[0_40px_100px_rgba(0,0,0,0.6),_0_0_60px_rgba(212,175,55,0.04)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scrollbar space-y-6 md:space-y-12">
-              
-              <div className="flex flex-col items-center gap-3 md:gap-6">
-                {/* Row 1: Icon + Title */}
-                <div className="flex flex-row items-center gap-3 md:gap-5">
-                  <Users className="w-8 h-8 md:w-16 landscape:w-8 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] flex-shrink-0" />
-                  <h2 className="text-3xl md:text-6xl landscape:text-3xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium">
-                    Sala de Espera
-                  </h2>
-                </div>
+            <div className="relative z-10 w-full max-w-5xl bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/25 rounded-3xl md:rounded-[3rem] p-4 md:p-14 landscape:p-4 shadow-[0_40px_100px_rgba(0,0,0,0.6),_0_0_60px_rgba(212,175,55,0.04)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-hidden custom-scrollbar space-y-0">
+              <div className="w-full flex flex-col items-center overflow-y-auto overflow-x-hidden custom-scrollbar space-y-6 md:space-y-12 py-4 md:py-2 px-1">
 
-                {/* Row 2: Players Status (Centered below) */}
-                <div className="flex items-center gap-3">
-                  <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
-                  <p className="text-[#f3edd7]/60 text-[10px] md:text-[14px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
-                    Jugadores: <span className="text-[#c5a059] text-[11px] md:text-[16px]">{players.length}</span> <span className="opacity-40">/ 7</span>
-                  </p>
-                  <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
-                </div>
-              </div>
+                <div className="flex flex-col items-center gap-3 md:gap-6">
+                  {/* Row 1: Icon + Title */}
+                  <div className="flex flex-row items-center gap-3 md:gap-5">
+                    <Users className="w-8 h-8 md:w-16 landscape:w-8 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] flex-shrink-0" />
+                    <h2 className="text-3xl md:text-6xl landscape:text-3xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium">
+                      Sala de Espera
+                    </h2>
+                  </div>
 
-              {/* Player Plates Grid - More Spacious */}
-              {players.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-14 w-full px-4 md:px-10 justify-items-center mt-4">
-                  {players.map(p => {
-                    const isMe = room?.sessionId === p.id;
-                    return (
-                      <div 
-                        key={p.id} 
-                        className={`
-                          w-full flex items-center gap-4 md:gap-6 px-5 md:px-8 py-4 md:py-6 rounded-2xl md:rounded-3xl border transition-all duration-300
-                          ${p.isReady 
-                            ? 'bg-[#0f2e1a]/90 border-[#d4af37]/30 shadow-[0_10px_30px_rgba(0,0,0,0.4)]' 
-                            : 'bg-[#071a0e]/60 border-white/5 shadow-inner opacity-50'}
-                        `}
-                      >
-                        {/* LED Gem */}
-                        <div className={`
-                          w-3 h-3 md:w-5 md:h-5 rounded-full flex-shrink-0 border border-black/50
-                          ${p.isReady 
-                            ? 'bg-gradient-to-br from-[#2ecc71] to-[#27ae60] shadow-[0_0_15px_rgba(46,204,113,0.8)]' 
-                            : 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] shadow-[inset_0_1px_4px_rgba(0,0,0,0.8)]'} 
-                          ${isMe ? 'animate-pulse' : ''}
-                        `} />
-                        
-                        <div className="flex flex-col items-start overflow-hidden flex-1">
-                          <span className={`text-[#f3edd7] font-black tracking-tight truncate w-full text-left text-sm md:text-2xl`}>
-                            {p.nickname} {isMe ? <span className="text-[#c5a059] font-normal text-[10px] md:text-sm ml-2 tracking-[0.2em] uppercase opacity-70">(Tú)</span> : ''}
-                          </span>
-                          <span className="text-[#c5a059] font-mono font-bold tracking-widest text-[10px] md:text-lg mt-1 opacity-90">
-                            {formatCurrency(p.chips)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-              
-              {room && (
-                <div className="flex flex-col items-center w-full">
-                  {players.find(p => p.id === room?.sessionId)?.isReady ? (
-                    <button 
-                      onClick={() => room.send('toggleReady', { isReady: false })}
-                      className="w-full max-w-sm h-16 md:h-20 bg-gradient-to-b from-[#e74c3c] via-[#c0392b] to-[#922b21] hover:from-[#f1948a] hover:via-[#e74c3c] hover:to-[#c0392b] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-12 landscape:text-xs shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#7b241c] tactile-button"
-                    >
-                      Anular Listo
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={() => room.send('toggleReady', { isReady: true })}
-                      className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8449] hover:from-[#82e0aa] hover:via-[#2ecc71] hover:to-[#27ae60] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#186a3b] tactile-button"
-                    >
-                      ¡Estoy Listo!
-                    </button>
-                  )}
-                           {/* Status Messages Below Button */}
-                  <div className="h-12 md:h-16 mt-2 md:mt-6 flex flex-col justify-center items-center landscape:mt-2">
-                    {players.length < (room?.state.minPlayers || 3) ? (
-                      <p className="text-[#a0a0b0] uppercase tracking-widest text-[10px] md:text-base font-bold text-center">
-                        Esperando al menos <span className="text-[#f3edd7]">{room?.state.minPlayers || 3} jugadores</span>...
-                      </p>
-                    ) : (
-                      <>
-                        {players.filter((p: any) => p.isReady).length < (room?.state.minPlayers || 3) && (
-                          <p className="text-[#d4af37]/80 uppercase tracking-widest text-sm md:text-base font-bold flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Esperando listos ({players.filter((p: any) => p.isReady).length}/{room?.state.minPlayers || 3})
-                          </p>
-                        )}
-                        
-                        {countdown > 0 && countdown <= 60 ? (
-                          <div className="flex flex-col items-center gap-3 w-full max-w-xs animate-in fade-in zoom-in duration-300">
-                             <p className="text-[#fdf0a6] font-black tracking-widest uppercase text-xl">
-                                Iniciando: <span className="text-white text-3xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{countdown}</span>
-                             </p>
-                             <div className="w-full h-3 bg-black/50 rounded-full overflow-hidden border border-white/10 shadow-inner">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-[#d4af37] to-[#fdf0a6] transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(212,175,55,0.8)]"
-                                  style={{ width: `${(countdown / 60) * 100}%` }}
-                                />
-                             </div>
-                          </div>
-                        ) : null}
-
-                        {players.filter((p: any) => p.isReady).length >= (room?.state.minPlayers || 3) && countdown < 0 ? (
-                          dealerId === room.sessionId ? (
-                            <button 
-                              onClick={() => room.send('startGame')}
-                              className="bg-transparent text-[#d4af37] border border-[#d4af37]/50 hover:bg-[#d4af37]/10 font-bold px-8 py-3 rounded-full uppercase tracking-widest transition-colors mt-2"
-                            >
-                              Iniciar Juego
-                            </button>
-                          ) : (
-                            <p className="text-[#d4af37]/70 animate-pulse uppercase tracking-widest text-sm md:text-base font-bold text-center">
-                              Esperando al anfitrión...
-                            </p>
-                          )
-                        ) : null}
-                      </>
-                   )}
+                  {/* Row 2: Players Status (Centered below) */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
+                    <p className="text-[#f3edd7]/60 text-[10px] md:text-[14px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
+                      Jugadores: <span className="text-[#c5a059] text-[11px] md:text-[16px]">{players.length}</span> <span className="opacity-40">/ 7</span>
+                    </p>
+                    <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
                   </div>
                 </div>
-              )}
+
+                {/* ── Pique Mínimo Config ── */}
+                <div className="w-full px-4 md:px-10">
+                  <div className="bg-[#071a0e]/80 border border-[#d4af37]/20 rounded-2xl p-4 md:p-5 flex flex-col items-center gap-2">
+                    <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a059]/70">Pique Mínimo</span>
+                    <span className="text-xl md:text-3xl font-black text-[#fdf0a6] tracking-tight">
+                      ${(minPique / 100).toLocaleString()}
+                    </span>
+                    <span className="text-[8px] md:text-[10px] text-[#8faa96] font-bold uppercase tracking-wider">
+                      Banda: ${minPique >= 1_000_000 ? '5,000' : '2,000'} por jugador
+                    </span>
+
+                    {/* Propuesta activa: mostrar votación */}
+                    {proposedPique > 0 ? (
+                      <div className="bg-[#0f2e1a]/90 border border-[#d4af37]/30 rounded-xl p-3 w-full flex flex-col items-center gap-2 mt-1">
+                        <span className="text-[9px] md:text-[11px] text-[#c5a059] uppercase tracking-wider font-bold">
+                          {players.find((p: any) => p.id === proposedPiqueBy)?.nickname || 'Jugador'} propone:
+                        </span>
+                        <span className="text-lg md:text-2xl font-black text-[#fdf0a6]">
+                          ${(proposedPique / 100).toLocaleString()}
+                        </span>
+                        <div className="flex items-center gap-3 text-[10px] md:text-xs text-[#8faa96] font-bold">
+                          <span className="text-emerald-400">✓ {piqueVotesFor}</span>
+                          <span className="text-red-400">✗ {piqueVotesAgainst}</span>
+                          <span className="opacity-50">/ {piqueVotersTotal}</span>
+                        </div>
+                        {room && room.sessionId !== proposedPiqueBy && !hasVotedPique && (
+                          <div className="flex gap-2 mt-1">
+                            <button
+                              onClick={() => { room.send('vote_pique', { approve: true }); setHasVotedPique(true); }}
+                              className="px-4 py-2 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-black text-[10px] md:text-xs uppercase tracking-wider border border-emerald-500/30 transition-all active:scale-95"
+                            >
+                              Aceptar
+                            </button>
+                            <button
+                              onClick={() => { room.send('vote_pique', { approve: false }); setHasVotedPique(true); }}
+                              className="px-4 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-white font-black text-[10px] md:text-xs uppercase tracking-wider border border-red-500/30 transition-all active:scale-95"
+                            >
+                              Rechazar
+                            </button>
+                          </div>
+                        )}
+                        {room && room.sessionId === proposedPiqueBy && (
+                          <span className="text-[9px] text-[#c5a059]/60 uppercase tracking-wider italic">Tu propuesta</span>
+                        )}
+                        {hasVotedPique && room?.sessionId !== proposedPiqueBy && (
+                          <span className="text-[9px] text-emerald-400/60 uppercase tracking-wider italic">Voto registrado</span>
+                        )}
+                      </div>
+                    ) : (
+                      /* Botón para proponer cambio */
+                      room && !showPiqueOptions ? (
+                        <button
+                          onClick={() => setShowPiqueOptions(true)}
+                          className="mt-1 px-4 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#c5a059] font-bold text-[10px] md:text-xs uppercase tracking-wider hover:border-[#d4af37]/50 transition-all active:scale-95"
+                        >
+                          Cambiar Pique
+                        </button>
+                      ) : room && showPiqueOptions ? (
+                        <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                          {[500_000, 1_000_000, 2_000_000, 5_000_000].map(amount => (
+                            <button
+                              key={amount}
+                              onClick={() => {
+                                room.send('propose_pique', { amount });
+                                setShowPiqueOptions(false);
+                              }}
+                              disabled={amount === minPique}
+                              className="px-3 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#fdf0a6] font-bold text-[10px] md:text-xs hover:border-[#d4af37]/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                            >
+                              ${(amount / 100).toLocaleString()}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setShowPiqueOptions(false)}
+                            className="px-3 py-1.5 rounded-xl text-[#8faa96] text-[10px] md:text-xs hover:text-white transition-all"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+
+                {/* Player Plates Grid - More Spacious */}
+                {players.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-14 w-full px-4 md:px-10 justify-items-center mt-4">
+                    {players.map(p => {
+                      const isMe = room?.sessionId === p.id;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`
+                          w-full flex items-center gap-4 md:gap-6 px-5 md:px-8 py-4 md:py-6 rounded-2xl md:rounded-3xl border transition-all duration-300
+                          ${p.isReady
+                              ? 'bg-[#0f2e1a]/90 border-[#d4af37]/30 shadow-[0_10px_30px_rgba(0,0,0,0.4)]'
+                              : 'bg-[#071a0e]/60 border-white/5 shadow-inner opacity-50'}
+                        `}
+                        >
+                          {/* LED Gem */}
+                          <div className={`
+                          w-3 h-3 md:w-5 md:h-5 rounded-full flex-shrink-0 border border-black/50
+                          ${p.isReady
+                              ? 'bg-gradient-to-br from-[#2ecc71] to-[#27ae60] shadow-[0_0_15px_rgba(46,204,113,0.8)]'
+                              : 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] shadow-[inset_0_1px_4px_rgba(0,0,0,0.8)]'} 
+                          ${isMe ? 'animate-pulse' : ''}
+                        `} />
+
+                          <div className="flex flex-col items-start overflow-hidden flex-1">
+                            <span className={`text-[#f3edd7] font-black tracking-tight truncate w-full text-left text-sm md:text-2xl`}>
+                              {p.nickname} {isMe ? <span className="text-[#c5a059] font-normal text-[10px] md:text-sm ml-2 tracking-[0.2em] uppercase opacity-70">(Tú)</span> : ''}
+                            </span>
+                            <span className="text-[#c5a059] font-mono font-bold tracking-widest text-[10px] md:text-lg mt-1 opacity-90">
+                              {formatCurrency(p.chips)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {room && (
+                  <div className="flex flex-col items-center w-full">
+                    {players.find(p => p.id === room?.sessionId)?.isReady ? (
+                      <button
+                        onClick={() => room.send('toggleReady', { isReady: false })}
+                        className="w-full max-w-sm h-16 md:h-20 bg-gradient-to-b from-[#e74c3c] via-[#c0392b] to-[#922b21] hover:from-[#f1948a] hover:via-[#e74c3c] hover:to-[#c0392b] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-12 landscape:text-xs shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#7b241c] tactile-button"
+                      >
+                        Anular Listo
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => room.send('toggleReady', { isReady: true })}
+                        className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8449] hover:from-[#82e0aa] hover:via-[#2ecc71] hover:to-[#27ae60] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#186a3b] tactile-button"
+                      >
+                        ¡Estoy Listo!
+                      </button>
+                    )}
+                    {/* Status Messages Below Button */}
+                    <div className="min-h-12 md:min-h-16 mt-2 md:mt-6 flex flex-col justify-center items-center landscape:mt-2">
+                      {players.length < (room?.state.minPlayers || 3) ? (
+                        <p className="text-[#a0a0b0] uppercase tracking-widest text-[10px] md:text-base font-bold text-center">
+                          Esperando al menos <span className="text-[#f3edd7]">{room?.state.minPlayers || 3} jugadores</span>...
+                        </p>
+                      ) : (
+                        <>
+                          {countdown > 0 && countdown <= 5 ? (
+                            /* ── Countdown de 5 segundos: indicador circular premium ── */
+                            <div className="flex flex-col items-center gap-4 w-full max-w-xs animate-in fade-in zoom-in duration-300">
+                              {/* Circular countdown */}
+                              <div className="relative w-24 h-24 md:w-28 md:h-28">
+                                {/* Track */}
+                                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.15)" strokeWidth="6" />
+                                  <circle
+                                    cx="50" cy="50" r="42"
+                                    fill="none"
+                                    stroke="url(#countdownGradient)"
+                                    strokeWidth="6"
+                                    strokeLinecap="round"
+                                    strokeDasharray={2 * Math.PI * 42}
+                                    strokeDashoffset={2 * Math.PI * 42 * (1 - countdown / 5)}
+                                    className="transition-all duration-1000 ease-linear"
+                                    style={{ filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.6))' }}
+                                  />
+                                  <defs>
+                                    <linearGradient id="countdownGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                      <stop offset="0%" stopColor="#d4af37" />
+                                      <stop offset="100%" stopColor="#fdf0a6" />
+                                    </linearGradient>
+                                  </defs>
+                                </svg>
+                                {/* Number */}
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span
+                                    key={countdown}
+                                    className="text-[#fdf0a6] text-4xl md:text-5xl font-black font-display italic drop-shadow-[0_0_20px_rgba(212,175,55,0.6)] animate-in zoom-in duration-200"
+                                  >
+                                    {countdown}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-[#c5a059] font-black uppercase tracking-[0.3em] text-[10px] md:text-xs">
+                                Iniciando partida
+                              </p>
+                            </div>
+                          ) : (
+                            /* ── Estado de espera cuando no hay countdown ── */
+                            (() => {
+                              const readyCount = players.filter((p: any) => p.isReady).length;
+                              const totalActive = players.length;
+                              if (readyCount < totalActive) {
+                                return (
+                                  <p className="text-[#d4af37]/80 uppercase tracking-widest text-sm md:text-base font-bold flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Esperando listos ({readyCount}/{totalActive})
+                                  </p>
+                                );
+                              }
+                              return null;
+                            })()
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : (
-          <Board 
-            room={room} 
-            phase={phase} 
-            players={players} 
-            pot={pot} 
+          <Board
+            room={room}
+            phase={phase}
+            players={players}
+            pot={pot}
             piquePot={gameState.piquePot || 0}
             myCards={myCards}
+            minPique={minPique}
+            currentMaxBet={gameState.currentMaxBet}
           />
         )}
-        
+
         {/* Voice Chat Component */}
         {room && (
-          <div className="fixed bottom-6 right-6 landscape:bottom-2 landscape:right-2 z-50 landscape:scale-75 origin-bottom-right">
-             <VoiceChat 
-                roomName={roomId} 
-                username={players.find(p => p.id === room?.sessionId)?.nickname || 'Jugador'} 
-             />
+          <div className="fixed bottom-24 right-4 landscape:bottom-16 landscape:right-2 z-50 landscape:scale-75 origin-bottom-right">
+            <VoiceChat
+              roomName={roomId}
+              username={players.find(p => p.id === room?.sessionId)?.nickname || 'Jugador'}
+            />
           </div>
         )}
       </main>

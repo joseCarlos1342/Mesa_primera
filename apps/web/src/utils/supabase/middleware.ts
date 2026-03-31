@@ -51,13 +51,45 @@ export async function updateSession(request: NextRequest) {
 
   // --- Caso 2: Autenticado ---
   if (user) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, last_device_id')
       .eq('id', user.id)
       .single()
 
-    const role = profile?.role || 'player'
+    let role: string
+    let lastDeviceId: string | null = null
+
+    if (profileError || !profile) {
+      // Fallback: last_device_id column might not exist yet (migration pending)
+      const { data: fallback } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      role = fallback?.role || 'player'
+    } else {
+      role = profile.role || 'player'
+      lastDeviceId = profile.last_device_id ?? null
+    }
+
+    // ── Single-session policy: compare device cookie vs DB ──
+    const sessionDeviceCookie = request.cookies.get('session_device_id')?.value
+    if (
+      lastDeviceId &&
+      sessionDeviceCookie &&
+      sessionDeviceCookie !== lastDeviceId
+    ) {
+      // This session is stale — another device logged in
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.pathname = '/login/player'
+      url.searchParams.set('kicked', 'true')
+      const redirectResponse = NextResponse.redirect(url)
+      // Clear the stale cookie
+      redirectResponse.cookies.delete('session_device_id')
+      return redirectResponse
+    }
 
     // 1. Protección de rutas administrativas
     if (isAdminPath && role !== 'admin') {
@@ -66,7 +98,14 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // 2. Redirección si está en páginas de Auth (Login/Register) o en la raíz
+    // 2. Admin no debe acceder a rutas de jugador
+    if (role === 'admin' && !isAdminPath && !isAuthPage && !isMfaPage && pathname !== '/') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+
+    // 3. Redirección si está en páginas de Auth (Login/Register) o en la raíz
     const isRootPage = pathname === '/'
     
     if (isAuthPage || isRootPage) {

@@ -17,48 +17,44 @@ describe('ActionControls', () => {
           room={mockRoom} 
           phase="LOBBY" 
           isMyTurn={false} 
-          playerChips={100} 
         />
       );
       expect(container).toBeEmptyDOMElement();
     });
   });
 
-  describe('PIQUE & GUERRA Phases', () => {
+  describe('PIQUE Phase', () => {
     it('Should not render action buttons if it is NOT my turn', () => {
       const { container } = render(
         <ActionControls 
           room={mockRoom} 
           phase="PIQUE" 
           isMyTurn={false} 
-          playerChips={100} 
         />
       );
       expect(container).toBeEmptyDOMElement();
     });
 
-    it('Should render PASO button and chips if it IS my turn', () => {
+    it('Should render IR and Paso buttons if it IS my turn', () => {
       render(
         <ActionControls 
           room={mockRoom} 
           phase="PIQUE" 
           isMyTurn={true} 
-          playerChips={5000} 
+          myChips={5000} 
         />
       );
       
       expect(screen.getByText('Paso')).toBeInTheDocument();
-      expect(screen.getByText(/1k/i)).toBeInTheDocument();
-      expect(screen.getByText(/2k/i)).toBeInTheDocument();
     });
 
-    it('Should call room.send("action", { action: "paso", amount: undefined, droppedCards: undefined }) when PASO is clicked', () => {
+    it('Should call room.send("action", { action: "paso" }) when PASO is clicked', () => {
       render(
         <ActionControls 
           room={mockRoom} 
           phase="PIQUE" 
           isMyTurn={true} 
-          playerChips={100} 
+          myChips={100} 
         />
       );
 
@@ -68,42 +64,65 @@ describe('ActionControls', () => {
       expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'paso', amount: undefined, droppedCards: undefined });
       expect(window.navigator.vibrate).toHaveBeenCalledWith(50);
     });
+  });
 
-    it('Should show VOY after selecting a chip and send correct payload', () => {
+  describe('Betting Phases (APUESTA_4_CARTAS / GUERRA / CANTICOS)', () => {
+    it('Should render Paso (check) when no active bet and it IS my turn', () => {
       render(
         <ActionControls 
           room={mockRoom} 
           phase="GUERRA" 
           isMyTurn={true} 
-          playerChips={5000} 
+          myChips={5000}
+          currentMaxBet={0}
+          myRoundBet={0}
         />
       );
 
-      // Select 1k chip
-      const chip1k = screen.getByText(/1k/i).closest('button');
-      fireEvent.click(chip1k!);
-
-      // VOY button should appear
-      const voyButton = screen.getAllByText('Voy')[0].closest('button'); // framer motion can cause multiple elements to be briefly present
-      expect(voyButton).toBeInTheDocument();
-
-      fireEvent.click(voyButton!);
-      expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'bet', amount: 1000, droppedCards: undefined });
+      expect(screen.getByText('Paso')).toBeInTheDocument();
     });
 
-    it('Should allow calling VOY without selecting chips during GUERRA', () => {
+    it('Should render Igualar button when there is an active bet', () => {
       render(
         <ActionControls 
           room={mockRoom} 
           phase="GUERRA" 
           isMyTurn={true} 
-          playerChips={5000} 
+          myChips={5000}
+          currentMaxBet={2000}
+          myRoundBet={0}
         />
       );
 
-      const voyButton = screen.getAllByText('Voy')[0].closest('button');
-      fireEvent.click(voyButton!);
-      expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'bet', amount: undefined, droppedCards: undefined });
+      expect(screen.getByText('Igualar')).toBeInTheDocument();
+    });
+
+    it('Should render Resto button when player cannot afford to call', () => {
+      render(
+        <ActionControls 
+          room={mockRoom} 
+          phase="GUERRA" 
+          isMyTurn={true} 
+          myChips={500}
+          currentMaxBet={2000}
+          myRoundBet={0}
+        />
+      );
+
+      expect(screen.getByText('Resto')).toBeInTheDocument();
+    });
+
+    it('Should return null when player is all-in', () => {
+      const { container } = render(
+        <ActionControls 
+          room={mockRoom} 
+          phase="GUERRA" 
+          isMyTurn={true} 
+          myChips={0}
+          isAllIn={true}
+        />
+      );
+      expect(container).toBeEmptyDOMElement();
     });
   });
 
@@ -116,7 +135,6 @@ describe('ActionControls', () => {
           room={mockRoom} 
           phase="DESCARTE" 
           isMyTurn={true} 
-          playerChips={100}
           selectedCards={selectedCards} 
         />
       );
@@ -133,7 +151,6 @@ describe('ActionControls', () => {
           room={mockRoom} 
           phase="DESCARTE" 
           isMyTurn={true} 
-          playerChips={100}
           selectedCards={['01-Oros']}
           onClearSelection={onClearSelection}
         />

@@ -10,7 +10,10 @@ export class Player extends Schema {
   @type("boolean") hasActed: boolean = false;
   @type("boolean") isReady: boolean = false;
   @type("boolean") isWaiting: boolean = false;
+  @type("boolean") isAllIn: boolean = false;
   @type("number") chips: number = 0;
+  /** Apuesta del jugador en la ronda de apuestas actual (se resetea por fase). */
+  @type("uint32") roundBet: number = 0;
   /** Posición de turno relativa a La Mano: 1 = La Mano, 2 = siguiente, etc. 0 = aún no asignado. */
   @type("uint8") turnOrder: number = 0;
 
@@ -26,6 +29,8 @@ export class Player extends Schema {
   pendingDiscardCards: string[] = [];
   /** Supabase auth UUID — used for all database operations (ledger, stats). */
   supabaseUserId: string = "";
+  /** Contribución total a pot principal (ANTE + apuestas). Server-only, para cálculo de side pots en showdown. */
+  totalMainBet: number = 0;
 }
 
 export class GameState extends Schema {
@@ -37,7 +42,7 @@ export class GameState extends Schema {
   @type("uint32") pot: number = 0;
   @type("uint32") piquePot: number = 0;
   @type("string") turnPlayerId: string = "";
-  @type("uint8") minPlayers: number = 1;
+  @type("uint8") minPlayers: number = 3;
   @type("uint8") maxPlayers: number = 7;
   @type("number") countdown: number = -1; // -1 significa inactivo
   @type("string") lastSeed: string = ""; // Seed del RNG para auditoría
@@ -48,4 +53,11 @@ export class GameState extends Schema {
   @type("boolean") isFirstGame: boolean = true; // Define si es la primera partida de la sesión para el Sorteo
   /** Última carta del mazo revelada boca arriba al finalizar el reparto; visible el resto de la partida */
   @type("string") bottomCard: string = "";
+  // ── Pique Mínimo y Votación ──
+  @type("uint32") minPique: number = 500_000; // $5,000 por defecto (en centavos)
+  @type("uint32") proposedPique: number = 0; // 0 = sin propuesta activa
+  @type("string") proposedPiqueBy: string = ""; // sessionId del proponente
+  @type("uint8") piqueVotesFor: number = 0;
+  @type("uint8") piqueVotesAgainst: number = 0;
+  @type("uint8") piqueVotersTotal: number = 0;
 }

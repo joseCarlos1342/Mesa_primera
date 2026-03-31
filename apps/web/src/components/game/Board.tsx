@@ -7,12 +7,12 @@ import { formatCurrency } from '@/utils/format'
 import { m, AnimatePresence } from 'framer-motion'
 import { PlayerBadge } from './PlayerBadge'
 import { ActionControls } from './ActionControls'
+import { ChipSelector } from './ChipSelector'
 import { GameAnnouncer } from './GameAnnouncer'
 import { Card } from './Card'
 import { RechargeButton } from './RechargeButton'
 import { ShowdownCinematic } from './ShowdownCinematic'
 import { useState, useEffect, useRef } from 'react'
-import { RotateCcw } from 'lucide-react'
 import { AnimationLayer } from './AnimationLayer'
 import { ShuffleAnimation } from './ShuffleAnimation'
 
@@ -24,9 +24,13 @@ interface BoardProps {
   players: any[];
   /** Cartas privadas del jugador local (recibidas por mensaje privado del servidor). */
   myCards?: string;
+  /** Pique mínimo configurado en la sala (en centavos). */
+  minPique?: number;
+  /** Apuesta máxima en la ronda de apuestas actual (synced). */
+  currentMaxBet?: number;
 }
 
-export function Board({ room, phase, pot, piquePot, players, myCards = "" }: BoardProps) {
+export function Board({ room, phase, pot, piquePot, players, myCards = "", minPique = 500_000, currentMaxBet = 0 }: BoardProps) {
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
   const [adminWatching, setAdminWatching] = useState(false);
@@ -179,10 +183,11 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
           points={undefined} /* Opponents don't show points, only for self */
           turnOrder={p?.turnOrder}
           isWaiting={p?.isWaiting}
+          isAllIn={p?.isAllIn}
         />
-        {/* Opponent's Cards / Placeholder */}
+        {/* Opponent's Cards: visible on mobile only during SORTEO_MANO, otherwise lg+ only */}
         {p ? (
-          <div className={`flex justify-center mt-1 md:mt-2 z-0 scale-[0.22] md:scale-60 landscape:scale-[0.18] md:landscape:scale-60 origin-top`}>
+          <div className={`${phase === 'SORTEO_MANO' ? 'flex' : 'hidden lg:flex'} justify-center mt-0.5 md:mt-2 z-0 scale-50 lg:scale-60 landscape:scale-50 lg:landscape:scale-60 origin-top`}>
             {isRevealPhase && opponentVisibleCards.length > 0
               ? opponentVisibleCards.map((cardStr: string, idx: number, arr: any[]) => {
                   const middle = (arr.length - 1) / 2;
@@ -282,25 +287,6 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
       {/* Decorative center ellipse */}
       <div className="absolute w-[85vw] h-[55vh] border-[1px] border-white/5 rounded-[50%] pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]" />
 
-      {/* ORIENTATION WARNING */}
-      <div className="fixed inset-0 z-[1000] bg-[#073926] flex flex-col items-center justify-center p-8 text-center md:hidden portrait:flex landscape:hidden">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
-        
-        <m.div
-          animate={{ rotate: 90 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="relative z-10 mb-8 w-24 h-24 flex items-center justify-center bg-[#0a180e]/80 rounded-3xl border border-[#d4af37]/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
-        >
-          <RotateCcw className="w-14 h-14 text-[#d4af37]" />
-        </m.div>
-        <h2 className="relative z-10 text-3xl font-black text-[#fdf0a6] mb-3 italic uppercase tracking-wider">Gira tu Dispositivo</h2>
-        <div className="relative z-10 h-px w-24 bg-[#d4af37]/30 mb-4" />
-        <p className="relative z-10 text-[#8faa96] text-base leading-relaxed max-w-xs">
-          Para jugar en <span className="text-[#d4af37] font-bold uppercase tracking-wider">Mesa Primera</span>, necesitas usar tu pantalla en horizontal.
-        </p>
-      </div>
-
       <GameAnnouncer phase={phase} />
 
       {/* Admin Spectator Banner */}
@@ -391,21 +377,21 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
       {/* TABLE CENTER - Refined side-by-side layout */}
       <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none mb-12 lg:mb-20">
         
-        <div className="flex flex-row items-center gap-4 md:gap-10 pointer-events-auto px-4 md:px-8 py-4 rounded-3xl">
+        <div className="flex flex-row items-center gap-2 md:gap-10 pointer-events-auto px-2 md:px-8 py-2 md:py-4 rounded-3xl">
           
           {/* Column 1: Stacked Pots */}
-          <div className="flex flex-col gap-2 shrink-0">
+          <div className="flex flex-col gap-1.5 md:gap-2 shrink-0">
             {/* Pozo Principal */}
-            <div className="flex flex-col items-center bg-[#0a180e]/95 px-4 md:px-6 py-1.5 md:py-2 rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[120px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-60">Pozo Principal</span>
-              <span className="text-[#4ade80] font-mono font-black text-sm md:text-xl">{formatCurrency(pot)}</span>
+            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2.5 md:px-6 py-1 md:py-2 rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[85px] md:min-w-[160px]">
+              <span className="text-[#fdf0a6] text-[6px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-60">Pozo Principal</span>
+              <span className="text-[#4ade80] font-mono font-black text-xs md:text-xl">{formatCurrency(pot)}</span>
             </div>
             
             {/* Pote del Pique - solo visible cuando > 0 */}
             {piquePot > 0 && (
-            <div className="flex flex-col items-center bg-[#0a180e]/95 px-4 md:px-6 py-1.5 md:py-2 rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[120px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-60">Pote del Pique</span>
-              <span className="text-[#4ade80] font-mono font-black text-sm md:text-xl">{formatCurrency(piquePot)}</span>
+            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2.5 md:px-6 py-1 md:py-2 rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[85px] md:min-w-[160px]">
+              <span className="text-[#fdf0a6] text-[6px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-60">Pote del Pique</span>
+              <span className="text-[#4ade80] font-mono font-black text-xs md:text-xl">{formatCurrency(piquePot)}</span>
             </div>
             )}
           </div>
@@ -414,18 +400,18 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
           <div className="flex flex-col items-center gap-0">
             <div id="deck-center" className="relative shrink-0">
                {/* Deck stack effect */}
-               <div className="w-10 h-14 md:w-16 md:h-24 bg-[#0a0a0a] rounded-lg absolute translate-x-1 translate-y-1 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
-               <div className="w-10 h-14 md:w-16 md:h-24 bg-[#1a1a1a] rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1 md:translate-y-1" />
+               <div className="w-7 h-10 md:w-16 md:h-24 bg-[#0a0a0a] rounded-lg absolute translate-x-1 translate-y-1 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
+               <div className="w-7 h-10 md:w-16 md:h-24 bg-[#1a1a1a] rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1 md:translate-y-1" />
                
                {/* Top Card */}
-               <div className="w-10 h-14 md:w-16 md:h-24 rounded-lg overflow-hidden border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
+               <div className="w-7 h-10 md:w-16 md:h-24 rounded-lg overflow-hidden border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
                   <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-lg" />
                   <div className="absolute inset-0 border border-white/10 rounded-lg pointer-events-none" />
                </div>
 
                {/* Bottom card — slides out to the right of the deck */}
                {room.state.bottomCard && (
-                 <div className="absolute top-1/2 -translate-y-1/2 left-[70%] z-[5] w-10 h-14 md:w-16 md:h-24 rounded-lg overflow-hidden border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] rotate-[8deg]">
+                 <div className="absolute top-1/2 -translate-y-1/2 left-[70%] z-[5] w-7 h-10 md:w-16 md:h-24 rounded-lg overflow-hidden border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] rotate-[8deg]">
                    <img
                      src={`/cards/${room.state.bottomCard.split('-')[0].padStart(2, '0')}-${({'O':'oros','C':'copas','E':'espadas','B':'bastos'} as Record<string,string>)[room.state.bottomCard.split('-')[1]] || room.state.bottomCard.split('-')[1]?.toLowerCase()}.png?v=3`}
                      alt=""
@@ -438,14 +424,14 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
           </div>
         </div>
       </div>
-      {/* UNIFIED PLAYER DASHBOARD - Sticky Bottom & More Compact */}
-      <div className="fixed bottom-0 left-0 w-full flex flex-col items-center z-50 pointer-events-none px-0 box-border gap-0 shrink-0">
+      {/* UNIFIED PLAYER DASHBOARD - Split Left / Center / Right */}
+      <div className="fixed bottom-0 left-0 w-full z-50 pointer-events-none">
         
         {me && (
           <>
             {/* Waiting indicator for spectators who joined mid-game */}
             {me.isWaiting && (
-              <div className="flex flex-col items-center gap-2 mb-4 pointer-events-auto">
+              <div className="flex items-center justify-center w-full mb-4 pointer-events-auto">
                 <div className="bg-[#0a180e]/90 border border-dashed border-[#c0a060]/40 rounded-2xl px-6 py-3 backdrop-blur-md">
                   <p className="text-[#c0a060] text-xs md:text-sm font-bold uppercase tracking-widest animate-pulse">
                     Esperando próxima partida...
@@ -454,154 +440,122 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
               </div>
             )}
 
-            {/* 🃏 MY CARDS - Fan positioned strictly above the dashboard bar */}
+            {/* 🎮 ACTIVE LAYOUT: Left (HUD+Chips) | Center (Cards) | Right (Actions) */}
             {!me.isWaiting && (
-            <div className="relative h-28 md:h-44 w-full max-w-[500px] mb-1 md:mb-2 pointer-events-auto">
-              <div className="relative w-full h-full flex justify-center items-end">
-                {myCards && myCards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
-                    const isSelected = selectedCards.includes(cardStr);
-                    const middle = (arr.length - 1) / 2;
-                    const angle = (idx - middle) * 8; 
-                    const offsetX = (idx - middle) * (typeof window !== 'undefined' && window.innerWidth < 1000 ? 35 : 70); 
-                    
-                    const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
-                    const handleCardClick = () => {
-                      if (!isDescarteTurn) return;
-                      setSelectedCards(prev => prev.includes(cardStr) ? prev.filter(c => c !== cardStr) : [...prev, cardStr]);
-                    };
-    
-                    return (
-                       <m.div 
-                         key={cardStr + '-' + idx}
-                         onClick={handleCardClick}
-                         initial={{ opacity: 0, y: 50 }}
-                         animate={{ opacity: 1, y: 0 }}
-                         style={{ 
-                           position: 'absolute',
-                           left: `calc(50% + ${offsetX}px)`,
-                           bottom: 0,
-                           transform: `translate(-50%, ${isSelected ? -65 : 0}px) scale(${isSelected ? 1.22 : 1.1}) rotate(${angle}deg)`,
-                           transformOrigin: 'bottom center',
-                           zIndex: isSelected ? 50 + idx : idx,
-                           transition: 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.35s ease'
-                         }}
-                         className={`
-                           ${isSelected ? 'drop-shadow-[0_0_20px_rgba(212,175,55,1)]' : 'drop-shadow-[0_15px_25px_rgba(0,0,0,0.8)]'}
-                           ${isDescarteTurn ? 'cursor-pointer' : ''}
-                         `}
-                       >
-                         <Card 
-                           suit={cardStr.split('-')[1] as any} 
-                           value={parseInt(cardStr.split('-')[0])} 
-                           isHidden={false}
-                           priority={true}
-                           className={`${isSelected ? 'border-2 border-[#d4af37] ring-2 ring-[#d4af37]/80 ring-offset-1 ring-offset-black' : 'border border-white/20'}`}
-                         />
-                       </m.div>
-                     )
-                })}
-              </div>
-            </div>
-            )}
+            <div className="flex flex-row items-end w-full">
 
-            {/* 🕹️ CONSOLIDATED CONTROLS BAR - Smaller & Stick to Bottom */}
-            {!me.isWaiting && (
-            <div className="flex flex-row items-center gap-2 md:gap-4 bg-[#0a180e]/95 p-1 md:p-1.5 rounded-t-2xl border-x border-t border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-15px_40px_rgba(0,0,0,0.8)] pointer-events-auto max-w-full md:max-w-none overflow-x-auto no-scrollbar">
-              
-              {/* HUD: Saldo & Puntos */}
-              <div id={`seat-${myId}`} className={`
-                flex flex-row items-center gap-2 md:gap-4 px-2 py-0.5 rounded-xl border-r border-white/10 shrink-0
-                ${isMyTurn ? 'bg-[#4ade80]/5' : ''}
-              `}>
-                <div className="flex flex-col">
-                  <span className="text-[8px] md:text-[9px] text-[#fdf0a6] uppercase tracking-[0.15em] font-black opacity-60 leading-none mb-1">Saldo</span>
-                  <span className="text-[#4ade80] font-mono font-black text-xs md:text-lg leading-none">{formatCurrency(me.chips || 0)}</span>
-                </div>
-                
-                {myCards && (
-                  <div className="flex flex-row items-center gap-3">
-                    <div className="w-px h-6 bg-white/10" />
-                    <div className="flex flex-col items-center">
-                      <span className="text-[8px] md:text-[9px] text-[#fdf0a6] uppercase tracking-[0.15em] font-black opacity-60 leading-none mb-1">Puntos</span>
-                      <span className="text-[#d4af37] font-mono font-black text-sm md:text-xl leading-none">
-                        {evaluateHand(myCards).points + (room.state.dealerId === myId ? 1 : 0)}
-                      </span>
-                    </div>
+              {/* ◀ LEFT COLUMN: Chips stacked above + HUD (Saldo/Puntos) at bottom-left */}
+              <div className="flex flex-col items-start shrink-0 pointer-events-auto z-[51]">
+                {/* CHIPS: Stacked above the HUD during betting phases */}
+                <AnimatePresence>
+                  {isMyTurn && (phase === 'PIQUE' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS') && (
+                    <m.div 
+                      className="mb-2"
+                      initial={{ scale: 0.9, opacity: 0, y: 10 }}
+                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                      exit={{ scale: 0.9, opacity: 0, y: 10 }}
+                    >
+                      <ChipSelector
+                        chipCounts={chipCounts}
+                        totalBet={totalBet}
+                        maxChips={me.chips || 0}
+                        onAdd={addChip}
+                        onRemove={removeChip}
+                      />
+                    </m.div>
+                  )}
+                </AnimatePresence>
+
+                {/* HUD: Saldo & Puntos */}
+                <div id={`seat-${myId}`} className={`
+                  flex flex-row items-center gap-4 md:gap-4 px-4 py-1 md:py-1.5 min-w-[340px] md:min-w-0
+                  bg-[#0a180e]/95 rounded-tr-2xl border-t border-r border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)]
+                  ${isMyTurn ? 'bg-[#4ade80]/5' : ''}
+                `}>
+                  <div className="flex flex-col">
+                    <span className="text-[8px] md:text-[9px] text-[#fdf0a6] uppercase tracking-[0.15em] font-black opacity-60 leading-none mb-1">Saldo</span>
+                    <span className="text-[#4ade80] font-mono font-black text-xs md:text-lg leading-none">{formatCurrency(me.chips || 0)}</span>
                   </div>
-                )}
-                
-                {/* Dealer Tag */}
-                {room.state.dealerId === myId && (
-                   <div className="ml-1 bg-[#d4af37] text-black text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">Mano</div>
-                )}
-                {room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
-                   <div className="ml-1 bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">{me.turnOrder}ª</div>
-                )}
+                  
+                  {myCards && (
+                    <div className="flex flex-row items-center gap-3">
+                      <div className="w-px h-6 bg-white/10" />
+                      <div className="flex flex-col items-center">
+                        <span className="text-[8px] md:text-[9px] text-[#fdf0a6] uppercase tracking-[0.15em] font-black opacity-60 leading-none mb-1">Puntos</span>
+                        <span className="text-[#d4af37] font-mono font-black text-sm md:text-xl leading-none">
+                          {evaluateHand(myCards).points + (room.state.dealerId === myId ? 1 : 0)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Dealer Tag */}
+                  {room.state.dealerId === myId && (
+                     <div className="ml-1 bg-[#d4af37] text-black text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">Mano</div>
+                  )}
+                  {room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
+                     <div className="ml-1 bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">{me.turnOrder}ª</div>
+                  )}
+                  {me.isAllIn && (
+                     <div className="ml-1 bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">Resto</div>
+                  )}
+                </div>
               </div>
 
-              {/* CHIPS: Only show in betting phases and on my turn */}
-              <AnimatePresence>
-                {isMyTurn && (phase === 'PIQUE' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS') && (
-                  <m.div 
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="flex flex-row items-center gap-1.5 shrink-0 px-2 border-r border-white/10"
-                  >
-                    <div className="flex flex-row gap-1">
-                      {[100000, 200000, 500000, 1000000, 2000000, 5000000].map(val => {
-                        const count = chipCounts[val] || 0;
-                        const canAfford = (me.chips || 0) >= totalBet + val;
-                        const visualVal = val / 100;
-                        let colorClass = "bg-white text-black border-gray-300";
-                        if (val === 200000) colorClass = "bg-[#e53935] text-white border-red-800";
-                        if (val === 500000) colorClass = "bg-[#43a047] text-white border-green-800";
-                        if (val === 1000000) colorClass = "bg-[#1e88e5] text-white border-blue-800";
-                        if (val === 2000000) colorClass = "bg-[#212121] text-white border-black";
-                        if (val === 5000000) colorClass = "bg-[#fbc02d] text-black border-yellow-700";
+              {/* 🃏 CENTER: My Cards (reduced 30% for mobile landscape) */}
+              <div className="flex-1 flex justify-center items-end pointer-events-auto min-w-0" style={{ transform: 'translateX(-2rem)' }}>
+                <div className="relative h-20 md:h-44 w-full max-w-[350px] md:max-w-[500px] mb-0.5 md:mb-2">
+                  <div className="relative w-full h-full flex justify-center items-end">
+                    {myCards && myCards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
+                        const isSelected = selectedCards.includes(cardStr);
+                        const middle = (arr.length - 1) / 2;
+                        const angle = (idx - middle) * 8; 
+                        const offsetX = (idx - middle) * (typeof window !== 'undefined' && window.innerWidth < 1000 ? 38 : 70); 
                         
+                        const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
+                        const handleCardClick = () => {
+                          if (!isDescarteTurn) return;
+                          setSelectedCards(prev => prev.includes(cardStr) ? prev.filter(c => c !== cardStr) : [...prev, cardStr]);
+                        };
+        
                         return (
-                          <div key={val} className="flex flex-col items-center gap-0.5">
-                            {count > 0 ? (
-                              <button onClick={() => removeChip(val)}
-                                className="w-5 h-4 md:w-6 md:h-5 flex items-center justify-center text-[#f87171] text-xs font-black hover:text-red-300 transition-colors bg-black/40 rounded-sm leading-none">−</button>
-                            ) : <div className="h-4 md:h-5" />}
-                            <button disabled={!canAfford} onClick={() => addChip(val)}
-                              className={`w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center font-black text-[7px] md:text-[9px] border-[1.5px] border-dashed transition-all ${colorClass} ${canAfford ? (count > 0 ? 'ring-2 ring-white scale-110 -translate-y-1 shadow-lg' : 'hover:-translate-y-0.5') : 'opacity-20 shadow-none'}`}>
-                              {visualVal >= 1000 ? `${visualVal/1000}k` : visualVal}
-                            </button>
-                            {count > 0 ? (
-                              <span className="text-[#fdf0a6] font-black text-[9px] leading-none">×{count}</span>
-                            ) : <div className="h-3" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {totalBet > 0 && (
-                      <div className="flex flex-col items-center gap-1 ml-1">
-                        <span className="text-[#4ade80] font-mono font-black text-[9px] leading-none">${(totalBet / 100).toLocaleString()}</span>
-                        <button 
-                          onClick={() => { 
-                            room.send('action', { action: 'voy', amount: totalBet }); 
-                            setChipCounts({});
-                          }}
-                          className="h-8 md:h-10 px-3 md:px-4 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black shadow-lg uppercase tracking-tight text-[10px] md:text-sm border-b-[3px] border-green-700">
-                          IR!
-                        </button>
-                        <button
-                          onClick={() => setChipCounts({})}
-                          className="text-[#f87171] text-[8px] font-bold hover:text-red-300 transition-colors uppercase tracking-tight leading-none">
-                          ✕ limpiar
-                        </button>
-                      </div>
-                    )}
+                           <m.div 
+                             key={cardStr + '-' + idx}
+                             onClick={handleCardClick}
+                             initial={{ opacity: 0, y: 50 }}
+                             animate={{ opacity: 1, y: 0 }}
+                             style={{ 
+                               position: 'absolute',
+                               left: `calc(50% + ${offsetX}px)`,
+                               bottom: 0,
+                               transform: `translate(-50%, ${isSelected ? -45 : 0}px) scale(${isSelected ? 0.85 : 0.77}) rotate(${angle}deg)`,
+                               transformOrigin: 'bottom center',
+                               zIndex: isSelected ? 50 + idx : idx,
+                               transition: 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.35s ease'
+                             }}
+                             className={`
+                               ${isSelected ? 'drop-shadow-[0_0_20px_rgba(212,175,55,1)]' : 'drop-shadow-[0_15px_25px_rgba(0,0,0,0.8)]'}
+                               ${isDescarteTurn ? 'cursor-pointer' : ''}
+                             `}
+                           >
+                             <Card 
+                               suit={cardStr.split('-')[1] as any} 
+                               value={parseInt(cardStr.split('-')[0])} 
+                               isHidden={false}
+                               priority={true}
+                               originX={0}
+                               originY={0}
+                               className={`${isSelected ? 'border-2 border-[#d4af37] ring-2 ring-[#d4af37]/80 ring-offset-1 ring-offset-black' : 'border border-white/20'}`}
+                             />
+                           </m.div>
+                         )
+                    })}
+                  </div>
+                </div>
+              </div>
 
-                  </m.div>
-                )}
-              </AnimatePresence>
-
-              {/* ACTION BUTTONS (Cantar/Paso) */}
-              <div className="flex shrink-0">
+              {/* ▶ RIGHT COLUMN: Action Buttons (Limpiar + IR + Botarse in same container) */}
+              <div className="shrink-0 pointer-events-auto z-[51]">
                 <ActionControls 
                   room={room} 
                   phase={phase} 
@@ -609,6 +563,17 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "" }: Boa
                   selectedCards={selectedCards}
                   onClearSelection={() => setSelectedCards([])}
                   handType={myCards ? evaluateHand(myCards).type : undefined}
+                  totalBet={totalBet}
+                  onBetConfirm={() => {
+                    room.send('action', { action: 'voy', amount: totalBet });
+                    setChipCounts({});
+                  }}
+                  onBetClear={() => setChipCounts({})}
+                  minPique={minPique}
+                  currentMaxBet={currentMaxBet}
+                  myRoundBet={me?.roundBet ?? 0}
+                  myChips={me?.chips ?? 0}
+                  isAllIn={me?.isAllIn ?? false}
                 />
               </div>
             </div>

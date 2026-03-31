@@ -2,7 +2,9 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { enforceRateLimiting } from '@/app/actions/anti-fraud'
+import { redis } from '@/utils/redis'
 import {
   registerPlayerSchema,
   loginPlayerSchema,
@@ -10,6 +12,41 @@ import {
   otpTokenSchema,
   flattenZodErrors,
 } from '@/lib/validations'
+import crypto from 'crypto'
+
+/**
+ * Genera un device ID seguro, lo guarda como cookie httpOnly,
+ * actualiza profiles.last_device_id y publica un evento Redis
+ * para forzar el logout de sesiones anteriores.
+ */
+async function enforceSessionPolicy(userId: string) {
+  const deviceId = crypto.randomUUID()
+
+  // 1. Set httpOnly cookie so middleware can compare later
+  const cookieStore = await cookies()
+  cookieStore.set('session_device_id', deviceId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30, // 30 days
+  })
+
+  // 2. Update DB with new device identifier
+  const supabase = await createClient()
+  await supabase
+    .from('profiles')
+    .update({ last_device_id: deviceId, is_online: true })
+    .eq('id', userId)
+
+  // 3. Publish kick event for old sessions (game-server subscribes)
+  try {
+    await redis.publish('session_kick', JSON.stringify({ userId, deviceId }))
+  } catch (e) {
+    // Non-critical: if Redis is down the middleware check still protects HTTP routes
+    console.warn('[SESSION_POLICY] Redis publish failed:', (e as Error).message)
+  }
+}
 
 function normalizePhone(phone: string): string {
   // Solo dígitos y el +
@@ -124,7 +161,7 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
 
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.verifyOtp({
+  const { data, error } = await supabase.auth.verifyOtp({
     phone,
     token: tokenParsed.data,
     type: 'sms',
@@ -132,6 +169,11 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Enforce single-session policy
+  if (data.user) {
+    await enforceSessionPolicy(data.user.id)
   }
 
   redirect('/')
@@ -181,6 +223,9 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
     await supabase.auth.signOut()
     return { error: 'Acceso denegado: Se requiere rol de administrador' }
   }
+
+  // Enforce single-session policy for admins too
+  await enforceSessionPolicy(data.user.id)
 
   redirect('/admin')
 }
@@ -232,6 +277,12 @@ export async function verifyAdminTotp(prevState: unknown, formData: FormData) {
   })
 
   if (verifyError) return { error: verifyError.message }
+
+  // Enforce single-session policy after successful MFA
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    await enforceSessionPolicy(user.id)
+  }
 
   redirect('/admin')
 }
