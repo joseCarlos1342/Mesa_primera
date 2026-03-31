@@ -41,8 +41,9 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
         .limit(20);
 
       if (data) {
-        setNotifications(data);
-        setUnreadCount(data.filter(n => !n.is_read).length);
+        const typedNotifications = data as AppNotification[];
+        setNotifications(typedNotifications);
+        setUnreadCount(typedNotifications.filter((notification) => !notification.is_read).length);
       }
     };
 
@@ -59,7 +60,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
           table: 'notifications',
           filter: `user_id=eq.${userId}`,
         },
-        (payload) => {
+        (payload: { new: AppNotification }) => {
           const newNotif = payload.new as AppNotification;
           setNotifications(prev => [newNotif, ...prev]);
           setUnreadCount(prev => prev + 1);

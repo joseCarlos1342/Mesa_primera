@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { UserPlus, MessageCircle, ShieldCheck, Loader2, UserX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFriendships, removeFriendship } from "@/app/actions/social-actions";
@@ -13,7 +13,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Toast, ToastType } from "@/components/ui/Toast";
 import { useSearchParams } from "next/navigation";
 
-export default function FriendsPage() {
+function FriendsContent() {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [data, setData] = useState<{ friends: any[], pendingIncoming: any[], pendingOutgoing: any[] }>({
@@ -312,5 +312,13 @@ export default function FriendsPage() {
         </footer>
       )}
     </div>
+  );
+}
+
+export default function FriendsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen pb-24 pt-6 md:pt-12 px-4 sm:px-6 max-w-2xl mx-auto" />}>
+      <FriendsContent />
+    </Suspense>
   );
 }

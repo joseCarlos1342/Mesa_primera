@@ -1,15 +1,11 @@
 "use client"
-import { useState, useEffect } from 'react'
-import { createClient } from '@/utils/supabase/client'
-import { createDepositRequest } from '@/app/actions/wallet'
+import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Upload, Landmark, MessageSquare, Image as ImageIcon, Copy, Check, ShieldCheck } from 'lucide-react'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 import { DepositForm } from '@/components/game/DepositForm'
 
-export default function DepositPage() {
+function DepositContent() {
   const searchParams = useSearchParams()
   const initialAmount = searchParams.get('amount') || ''
   const router = useRouter()
@@ -40,5 +36,13 @@ export default function DepositPage() {
         />
       </div>
     </div>
+  )
+}
+
+export default function DepositPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-transparent" />}>
+      <DepositContent />
+    </Suspense>
   )
 }
