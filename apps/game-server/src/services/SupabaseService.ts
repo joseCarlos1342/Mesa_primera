@@ -1,15 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || 'http://127.0.0.1:54321';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 let supabase: any = null;
 
 if (!supabaseKey) {
-  console.warn('[SupabaseService] SUPABASE_SERVICE_ROLE_KEY is missing. Database operations will silently fail.');
+  console.warn('[SupabaseService] No Supabase key found (SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY). Database operations will silently fail.');
 } else {
   try {
     supabase = createClient(supabaseUrl, supabaseKey);
+    console.log(`[SupabaseService] Initialized with ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon'} key → ${supabaseUrl}`);
   } catch (err) {
     console.error('[SupabaseService] Failed to init Supabase client', err);
   }
@@ -166,13 +167,26 @@ export class SupabaseService {
    * The `timeline` field contains the player-visible events (no per-step RNG).
    * The `admin_timeline` field contains per-action RNG seeds for admin auditing.
    */
-  static async saveReplay(gameId: string, seed: string, timeline: any[], players: any[], adminTimeline?: any[], potBreakdown?: Record<string, any>, finalHands?: Record<string, any>) {
-    if (!supabaseKey) return;
+  static async saveReplay(
+    gameId: string,
+    seed: string,
+    timeline: any[],
+    players: any[],
+    adminTimeline?: any[],
+    potBreakdown?: Record<string, any>,
+    finalHands?: Record<string, any>,
+    roomId?: string,
+    tableName?: string
+  ) {
+    if (!supabaseKey) {
+      console.warn('[SupabaseService] saveReplay skipped — no Supabase key configured');
+      return;
+    }
     try {
       // 1. Fetch or create a default table if missing (for foreign key constraint on games)
       let { data: table } = await supabase.from('tables').select('id').limit(1).single();
       if (!table) {
-        const { data: newTable, error: tableErr } = await supabase.from('tables').insert({ name: 'Default Table', game_type: 'Mesa' }).select().single();
+        const { data: newTable, error: tableErr } = await supabase.from('tables').insert({ name: tableName || 'Default Table', game_type: 'Mesa' }).select().single();
         if (tableErr || !newTable) throw new Error('Could not create default table for replay');
         table = newTable;
       }
@@ -182,9 +196,9 @@ export class SupabaseService {
       if (gameErr) throw gameErr;
 
       // 3. Build player-safe timeline (strip rng_state from each event)
-      const playerTimeline = timeline.map(({ rng_state, ...event }) => event);
+      const playerTimeline = timeline.map(({ rng_state, ...event }: any) => event);
 
-      // 4. Save the replay with both timelines
+      // 4. Save the replay with both timelines + room metadata
       const { error: replayErr } = await supabase.from('game_replays').insert({
         game_id: gameId,
         round_number: 1,
@@ -193,11 +207,13 @@ export class SupabaseService {
         admin_timeline: adminTimeline || timeline,
         players,
         pot_breakdown: potBreakdown || {},
-        final_hands: finalHands || {}
+        final_hands: finalHands || {},
+        room_id: roomId || null,
+        table_name: tableName || null
       });
 
       if (replayErr) throw replayErr;
-      console.log(`[SupabaseService] Replay saved successfully for game: ${gameId}`);
+      console.log(`[SupabaseService] Replay saved successfully for game: ${gameId} (room: ${roomId || 'unknown'})`);
     } catch (e) {
       console.error('[SupabaseService] Error saving replay:', e);
     }

@@ -1,11 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Bell, X, CheckCircle, Info, BellRing, UserPlus, Clock, Gamepad2, Trash2, ExternalLink } from 'lucide-react';
+import { Bell, CheckCircle, Info, BellRing, UserPlus, Gamepad2, Trash2, ExternalLink } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { formatCurrency } from '@/utils/format';
 import { deleteNotification, markNotificationAsRead } from '@/app/actions/social-actions';
 
 interface NotificationCenterProps {
@@ -154,11 +152,24 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
 
   const formatNotificationBody = (body: string) => {
     if (!body) return '';
-    // Identify amounts like $100000.000000000000 and format them
-    return body.replace(/\$(\d+)\.\d+/g, (match, amountStr) => {
-      const amount = parseInt(amountStr, 10);
-      return formatCurrency(amount);
+    // Format amounts like $100000.000000000000 or $50000 — amounts are already in COP pesos, NOT cents
+    return body.replace(/\$(\d+(?:\.\d+)?)/g, (_match, amountStr) => {
+      const amount = Math.round(parseFloat(amountStr));
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
     });
+  };
+
+  const formatNotifDate = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), 'dd/MM/yy HH:mm');
+    } catch {
+      return '';
+    }
   };
 
   return (
@@ -176,17 +187,45 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
       </button>
 
       {isOpen && (
-        <div className="fixed md:absolute top-24 md:top-20 inset-x-4 md:inset-auto md:right-0 w-auto md:w-[28rem] bg-black/80 backdrop-blur-3xl border-2 border-brand-gold/30 rounded-[2rem] shadow-[0_40px_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden z-[100] animate-in fade-in slide-in-from-top-4 duration-500">
-          {/* Header Panel */}
-          <div className="p-6 border-b-2 border-brand-gold/20 flex justify-between items-center bg-brand-gold/5">
-            <div className="flex items-center gap-3">
-                <BellRing className="w-5 h-5 text-brand-gold" />
-                <h3 className="text-sm font-display font-black text-brand-gold uppercase tracking-[0.2em] italic">Notificaciones</h3>
+        <div className="fixed md:absolute top-24 md:top-20 inset-x-3 md:inset-auto md:right-0 w-auto md:w-[26rem] flex flex-col overflow-hidden z-[100] animate-in fade-in slide-in-from-top-4 duration-300 rounded-2xl"
+          style={{
+            background: 'linear-gradient(160deg, #0f2a18 0%, #091910 100%)',
+            border: '1px solid rgba(212,175,55,0.35)',
+            boxShadow: '0 0 0 1px rgba(212,175,55,0.06), 0 32px 72px rgba(0,0,0,0.85)',
+          }}
+        >
+          {/* Top shimmer */}
+          <div className="absolute top-0 left-0 right-0 h-px pointer-events-none"
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent)' }}
+          />
+
+          {/* Header */}
+          <div className="px-5 py-4 flex flex-wrap gap-y-2 justify-between items-center"
+            style={{ borderBottom: '1px solid rgba(212,175,55,0.15)', background: 'rgba(212,175,55,0.04)' }}
+          >
+            <div className="flex items-center gap-2.5">
+              <BellRing className="w-4 h-4 flex-shrink-0" style={{ color: '#d4af37' }} />
+              <h3 className="text-xs font-black uppercase tracking-[0.22em] italic"
+                style={{ fontFamily: "'Playfair Display', serif", color: '#fdf0a6' }}
+              >
+                Notificaciones
+              </h3>
             </div>
             {unreadCount > 0 && (
-              <button 
-                onClick={markAllRead} 
-                className="text-[9px] font-black text-brand-gold hover:text-black hover:bg-brand-gold transition-all uppercase tracking-widest border-2 border-brand-gold/30 px-4 py-2 rounded-xl"
+              <button
+                onClick={markAllRead}
+                className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all flex-shrink-0"
+                style={{
+                  color: '#d4af37',
+                  border: '1px solid rgba(212,175,55,0.3)',
+                  background: 'rgba(212,175,55,0.06)',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(212,175,55,0.18)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(212,175,55,0.06)';
+                }}
               >
                 Limpiar todo
               </button>
@@ -194,69 +233,101 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
           </div>
           
           {/* Content area */}
-          <div className="max-h-[70vh] md:max-h-[32rem] overflow-y-auto custom-scrollbar p-3 space-y-2">
+          <div className="max-h-[70vh] md:max-h-[30rem] overflow-y-auto custom-scrollbar p-3 space-y-2">
             {notifications.length === 0 ? (
-              <div className="p-16 text-center space-y-6">
-                <div className="w-20 h-20 bg-brand-gold/5 rounded-full flex items-center justify-center mx-auto border-2 border-brand-gold/10 shadow-inner">
-                    <Bell className="w-10 h-10 text-brand-gold/20" />
+              <div className="p-12 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                  style={{ background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.12)' }}
+                >
+                  <Bell className="w-8 h-8" style={{ color: 'rgba(212,175,55,0.25)' }} />
                 </div>
-                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-text-secondary">Tu buzón está vacío</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'rgba(253,240,166,0.3)' }}>
+                  Tu buzón está vacío
+                </p>
               </div>
             ) : (
               notifications.map(n => (
-                <div 
-                  key={n.id} 
-                  className={`group relative p-6 rounded-[1.5rem] transition-all duration-300 border-2 ${!n.is_read ? 'bg-brand-gold/10 border-brand-gold/30 shadow-lg' : 'bg-black/20 border-white/5 hover:border-white/10'}`}
+                <div
+                  key={n.id}
+                  className="group relative rounded-xl transition-all duration-200"
+                  style={{
+                    background: !n.is_read
+                      ? 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.05) 100%)'
+                      : 'rgba(255,255,255,0.04)',
+                    border: !n.is_read
+                      ? '1px solid rgba(212,175,55,0.3)'
+                      : '1px solid rgba(255,255,255,0.07)',
+                  }}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-3">
-                      {n.type?.startsWith('friend') ? (
-                        <UserPlus className="w-4 h-4 text-brand-gold" />
-                      ) : n.type === 'game_invite' ? (
-                        <Gamepad2 className="w-4 h-4 text-brand-gold" />
-                      ) : n.type?.startsWith('deposit') ? (
-                        <CheckCircle className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <Info className="w-4 h-4 text-brand-gold" />
-                      )}
-                      <h4 className={`text-base font-black uppercase italic tracking-tight transition-colors ${!n.is_read ? 'text-brand-gold' : 'text-text-premium group-hover:text-brand-gold'}`}>
-                        {n.title}
-                      </h4>
+                  <div className="p-4">
+                    {/* Top row: icon + title + timestamp */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {n.type?.startsWith('friend') ? (
+                          <UserPlus className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d4af37' }} />
+                        ) : n.type === 'game_invite' ? (
+                          <Gamepad2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d4af37' }} />
+                        ) : n.type?.startsWith('deposit') ? (
+                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0 text-emerald-400" />
+                        ) : (
+                          <Info className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d4af37' }} />
+                        )}
+                        <h4 className="text-xs font-black uppercase italic truncate"
+                          style={{ color: !n.is_read ? '#fdf0a6' : 'rgba(253,240,166,0.65)' }}
+                        >
+                          {n.title}
+                        </h4>
+                      </div>
+                      {/* Timestamp — fixed width, no overflow */}
+                      <time className="text-[10px] font-mono flex-shrink-0 tabular-nums"
+                        style={{ color: 'rgba(212,175,55,0.5)' }}
+                        dateTime={n.created_at}
+                      >
+                        {formatNotifDate(n.created_at)}
+                      </time>
                     </div>
-                    <span className="text-[9px] font-black text-text-secondary uppercase tracking-[0.2em] whitespace-nowrap ml-4 mt-1 opacity-60 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })}
-                    </span>
-                  </div>
-                  <p className="text-sm font-medium text-text-secondary leading-relaxed group-hover:text-text-premium transition-colors mb-4">
-                    {formatNotificationBody(n.body)}
-                  </p>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-white/5">
-                    <button 
-                      onClick={() => handleNavigate(n)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-brand-gold/10 hover:bg-brand-gold text-brand-gold hover:text-black py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+
+                    {/* Body */}
+                    <p className="text-xs leading-relaxed mb-3 pl-5"
+                      style={{ color: 'rgba(253,240,166,0.6)' }}
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Ir
-                    </button>
-                    <button 
-                      onClick={(e) => handleDelete(e, n.id)}
-                      disabled={isDeleting === n.id}
-                      className="flex-1 flex items-center justify-center gap-2 bg-brand-red/10 hover:bg-brand-red text-brand-red hover:text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      {isDeleting === n.id ? '...' : 'Borrar'}
-                    </button>
+                      {formatNotificationBody(n.body)}
+                    </p>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 pl-5">
+                      <button
+                        onClick={() => handleNavigate(n)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                        style={{ background: 'rgba(212,175,55,0.1)', color: '#d4af37', border: '1px solid rgba(212,175,55,0.2)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(212,175,55,0.22)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(212,175,55,0.1)')}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Ir
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(e, n.id)}
+                        disabled={isDeleting === n.id}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40"
+                        style={{ background: 'rgba(239,68,68,0.08)', color: 'rgb(248,113,113)', border: '1px solid rgba(239,68,68,0.18)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.2)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        {isDeleting === n.id ? '...' : 'Borrar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
             )}
           </div>
 
-          <div className="p-4 border-t-2 border-brand-gold/10 bg-black/40 text-center">
-            <span className="text-[9px] font-black tracking-[0.3em] text-text-secondary uppercase opacity-40">Mesa Primera Exclusive Notifications</span>
+          <div className="px-4 py-3 text-center" style={{ borderTop: '1px solid rgba(212,175,55,0.1)' }}>
+            <span className="text-[9px] font-black tracking-[0.25em] uppercase" style={{ color: 'rgba(212,175,55,0.3)' }}>
+              Mesa Primera · Notificaciones
+            </span>
           </div>
         </div>
       )}

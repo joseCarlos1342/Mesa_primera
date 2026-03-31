@@ -11,6 +11,16 @@ export type PlayerReplay = {
   is_winner: boolean;
 };
 
+export type MesaReplaySummary = {
+  room_id: string;
+  table_name: string;
+  first_played_at: string;
+  last_played_at: string;
+  game_count: number;
+  players: { userId: string; nickname: string }[];
+  total_net_result: number;
+};
+
 export type AdminReplay = {
   game_id: string;
   played_at: string;
@@ -58,6 +68,43 @@ export async function getPlayerReplays(limit = 50): Promise<PlayerReplay[]> {
 
   if (error) {
     console.error("[getPlayerReplays] Error:", error);
+    return [];
+  }
+
+  return (data || []) as PlayerReplay[];
+}
+
+export async function getPlayerMesaReplays(limit = 50): Promise<MesaReplaySummary[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase.rpc("get_player_replays_by_mesa", {
+    p_user_id: user.id,
+    p_limit: limit,
+  });
+
+  if (error) {
+    console.error("[getPlayerMesaReplays] Error:", error);
+    return [];
+  }
+
+  return (data || []) as MesaReplaySummary[];
+}
+
+export async function getPlayerReplaysForRoom(roomId: string, limit = 100): Promise<PlayerReplay[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase.rpc("get_player_replays_for_room", {
+    p_user_id: user.id,
+    p_room_id: roomId,
+    p_limit: limit,
+  });
+
+  if (error) {
+    console.error("[getPlayerReplaysForRoom] Error:", error);
     return [];
   }
 

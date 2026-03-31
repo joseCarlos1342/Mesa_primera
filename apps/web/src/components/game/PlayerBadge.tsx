@@ -14,9 +14,10 @@ interface PlayerBadgeProps {
   /** Posición de turno: 1 = La Mano (ya indicado por isDealer), 2+ = próximos en recibir la mano */
   turnOrder?: number;
   isWaiting?: boolean;
+  isAllIn?: boolean;
 }
 
-export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points, turnOrder, isWaiting = false }: PlayerBadgeProps) {
+export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points, turnOrder, isWaiting = false, isAllIn = false }: PlayerBadgeProps) {
   const isMuted = true; // Placeholder for actual voice chat state if available
 
   // Determine avatar rendering
@@ -61,7 +62,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
 
        {/* Horizontal Pill Container */}
        <div className={`
-         relative z-20 flex items-center gap-2 md:gap-3 px-2 md:px-3 py-1 md:py-1.5
+         relative z-20 flex items-center gap-1 md:gap-3 px-1.5 md:px-3 py-0.5 md:py-1.5
          bg-gradient-to-r from-[#112a1a] via-[#0a180e] to-[#112a1a] 
          rounded-full border 
          ${isWaiting ? 'border-[#c0a060]/30 border-dashed' : isActive ? 'border-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.5)]' : 'border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.6)]'}
@@ -72,7 +73,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
          {!hideAvatar && (
             <div className={`
               relative rounded-full flex-shrink-0 flex items-center justify-center
-              w-8 h-8 md:w-10 md:h-10 
+              w-6 h-6 md:w-10 md:h-10 
               bg-gradient-to-br from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c]
               p-[2px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]
             `}>
@@ -84,10 +85,10 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
 
          {/* Info Column (Name & Balance) */}
          <div className="flex flex-col items-start pr-2">
-            <span className="text-[#e2c161] text-[9px] md:text-[11px] font-bold tracking-wider uppercase truncate max-w-[80px] md:max-w-[100px]">
+            <span className="text-[#e2c161] text-[7px] md:text-[11px] font-bold tracking-wider uppercase truncate max-w-[60px] md:max-w-[100px]">
               {player.nickname || 'VACÍO'}
             </span>
-            <span className="text-[#c1a052] text-[8px] md:text-[9px] font-mono font-bold opacity-90 flex items-center">
+            <span className="text-[#c1a052] text-[7px] md:text-[9px] font-mono font-bold opacity-90 flex items-center">
               {player.chips != null ? formatCurrency(player.chips) : '$0'}
               {points != null && (
                 <span className="ml-2 pl-2 border-l border-white/20 text-[#d4af37] font-sans font-black">
@@ -108,6 +109,13 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
          {!isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
             <div className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
               {turnOrder}ª
+            </div>
+         )}
+
+         {/* All-in (Resto) badge */}
+         {isAllIn && !isWaiting && (
+            <div className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[6px] md:text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+              Resto
             </div>
          )}
 

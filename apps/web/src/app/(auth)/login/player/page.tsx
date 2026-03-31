@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { loginWithPhone } from '../../auth-actions'
 import Link from 'next/link'
 import { LogIn } from 'lucide-react'
@@ -10,6 +11,8 @@ export default function PlayerLoginPage() {
   const [state, formAction, isPending] = useActionState(loginWithPhone, null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [phoneTouched, setPhoneTouched] = useState(false)
+  const searchParams = useSearchParams()
+  const wasKicked = searchParams.get('kicked') === 'true'
 
   function validatePhone(value: string) {
     const result = phoneSchema.safeParse(value.trim())
@@ -49,6 +52,12 @@ export default function PlayerLoginPage() {
             <h2 className="text-3xl font-bold text-text-premium">Bienvenido</h2>
             <p className="text-text-secondary text-base">Ingresa para entrar a la mesa</p>
           </div>
+
+          {wasKicked && (
+            <div className="mb-8 p-5 bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl text-amber-400 text-sm font-bold text-center animate-shake">
+              Se ha iniciado sesión en otro dispositivo. Tu sesión anterior ha expirado.
+            </div>
+          )}
 
           {(state as any)?.error && (
             <div className="mb-8 p-5 bg-brand-red/10 border-2 border-brand-red/30 rounded-2xl text-brand-red text-sm font-bold text-center animate-shake">
