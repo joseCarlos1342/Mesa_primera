@@ -78,20 +78,84 @@ function isMissingPhoneAuthUser(errorMessage: string): boolean {
     normalized.includes('can only use shouldcreateuser: true')
 }
 
-async function provisionMissingPhoneAuthUser(phone: string) {
+function isOtpProviderDisabled(errorMessage: string): boolean {
+  const normalized = errorMessage.toLowerCase()
+
+  return normalized.includes('signups not allowed for otp') || normalized.includes('otp_disabled')
+}
+
+async function getPhoneProfileCandidate(phone: string) {
   const { createAdminClient } = await import('@/utils/supabase/server')
   const adminSupabase = await createAdminClient()
 
-  const { data: profile, error: profileError } = await adminSupabase
+  const { data, error } = await adminSupabase
     .from('profiles')
-    .select('id, username, full_name, avatar_url, role, is_banned')
+    .select('id, username, full_name, avatar_url, role, is_banned, phone')
     .eq('phone', phone)
     .maybeSingle()
 
-  if (profileError) {
-    console.error('[AUTH_RECOVERY] No fue posible consultar perfil por teléfono (%s): %s', phone, profileError.message)
-    return { recovered: false as const, reason: 'lookup_failed' as const }
+  if (error) {
+    console.error('[AUTH_RECOVERY] No fue posible consultar perfil por teléfono (%s): %s', phone, error.message)
+    return null
   }
+
+  return data as (ProfileSeedCandidate & { phone?: string | null }) | null
+}
+
+async function signInPhoneUserWithoutOtp(phone: string) {
+  const { createAdminClient } = await import('@/utils/supabase/server')
+  const adminSupabase = await createAdminClient()
+  const supabase = await createClient()
+
+  const adminAuth = adminSupabase.auth.admin as typeof adminSupabase.auth.admin & {
+    generateLink: (params: { type: string; phone: string }) => Promise<{
+      data: { properties?: { token_hash?: string } } | null
+      error: { message: string } | null
+    }>
+  }
+
+  const { data: linkData, error: linkError } = await adminAuth.generateLink({
+    type: 'login_otp',
+    phone,
+  })
+
+  if (linkError || !linkData?.properties?.token_hash) {
+    if (linkError) {
+      console.error('[AUTH_RECOVERY] No fue posible generar login OTP interno para %s: %s', phone, linkError.message)
+    }
+    return null
+  }
+
+  const verifyOtpWithHash = supabase.auth.verifyOtp as (params: {
+    phone: string
+    token: string
+    type: string
+  }) => Promise<{
+    data: { user: { id: string } | null }
+    error: { message: string } | null
+  }>
+
+  const { data, error } = await verifyOtpWithHash({
+    phone,
+    token: linkData.properties.token_hash,
+    type: 'hash',
+  })
+
+  if (error || !data.user) {
+    if (error) {
+      console.error('[AUTH_RECOVERY] No fue posible abrir sesión interna para %s: %s', phone, error.message)
+    }
+    return null
+  }
+
+  await enforceSessionPolicy(data.user.id)
+  return data.user.id
+}
+
+async function provisionMissingPhoneAuthUser(phone: string) {
+  const { createAdminClient } = await import('@/utils/supabase/server')
+  const adminSupabase = await createAdminClient()
+  const profile = await getPhoneProfileCandidate(phone)
 
   if (!profile) {
     return { recovered: false as const, reason: 'profile_not_found' as const }
@@ -150,6 +214,62 @@ async function provisionMissingPhoneAuthUser(phone: string) {
   return { recovered: true as const, reason: 'created' as const }
 }
 
+async function createPlayerWithPhoneForHackathon(input: {
+  phone: string
+  fullName: string
+  nickname: string
+  avatarId: string
+}) {
+  const { createAdminClient } = await import('@/utils/supabase/server')
+  const adminSupabase = await createAdminClient()
+
+  const adminAuth = adminSupabase.auth.admin as typeof adminSupabase.auth.admin & {
+    createUser: (params: {
+      phone: string
+      phone_confirm: boolean
+      user_metadata?: Record<string, unknown>
+      app_metadata?: Record<string, unknown>
+    }) => Promise<{
+      data: { user?: { id: string } | null } | null
+      error: { message: string } | null
+    }>
+  }
+
+  const { data, error } = await adminAuth.createUser({
+    phone: input.phone,
+    phone_confirm: true,
+    user_metadata: {
+      username: input.nickname,
+      full_name: input.fullName,
+      avatar_url: input.avatarId,
+      role: 'player',
+    },
+    app_metadata: {
+      role: 'player',
+    },
+  })
+
+  if (error || !data?.user?.id) {
+    return { userId: null, error: error?.message ?? 'No fue posible crear el usuario por teléfono' }
+  }
+
+  const { error: profileUpdateError } = await adminSupabase
+    .from('profiles')
+    .update({
+      username: input.nickname,
+      full_name: input.fullName,
+      avatar_url: input.avatarId,
+      phone: input.phone,
+    })
+    .eq('id', data.user.id)
+
+  if (profileUpdateError) {
+    console.warn('[AUTH_RECOVERY] Usuario creado pero no fue posible completar perfil %s: %s', input.phone, profileUpdateError.message)
+  }
+
+  return { userId: data.user.id, error: null }
+}
+
 /**
  * Inicia el proceso de REGISTRO para un nuevo jugador.
  */
@@ -185,6 +305,29 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
 
   if (error) {
     console.error('[AUTH_ERROR] Error en registro (%s): %s', phone, error.message, error)
+
+    if (isOtpProviderDisabled(error.message)) {
+      const existingProfile = await getPhoneProfileCandidate(phone)
+      if (existingProfile) {
+        return { error: 'Ese número ya existe. Ingresa desde la pantalla de login.' }
+      }
+
+      const created = await createPlayerWithPhoneForHackathon({
+        phone,
+        fullName: parsed.data.fullName,
+        nickname: parsed.data.nickname,
+        avatarId,
+      })
+
+      if (created.userId) {
+        const signedInUserId = await signInPhoneUserWithoutOtp(phone)
+        if (signedInUserId) {
+          redirect('/')
+        }
+      }
+
+      return { error: created.error ?? 'No fue posible crear el jugador por teléfono en modo hackathon.' }
+    }
 
     if (error.message.includes('saving new user')) {
       return { error: 'Error al crear el perfil. Es posible que el nombre de usuario (apodo) o el teléfono ya estén registrados por otra persona.' }
@@ -234,6 +377,21 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
       })
 
       error = retry.error
+    }
+  }
+
+  if (error && isOtpProviderDisabled(error.message)) {
+    const candidate = await getPhoneProfileCandidate(phone)
+
+    if (candidate?.is_banned) {
+      return { error: 'Tu cuenta se encuentra bloqueada. Contacta soporte.' }
+    }
+
+    if (candidate) {
+      const signedInUserId = await signInPhoneUserWithoutOtp(phone)
+      if (signedInUserId) {
+        redirect('/')
+      }
     }
   }
 
