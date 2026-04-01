@@ -146,7 +146,9 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
   }, [userId, isOpen, view, activeTicketId, isAdmin]);
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:2568';
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL
+      || (typeof window !== 'undefined' && (window as any).__MESA_PRIMERA_RUNTIME_ENV__?.NEXT_PUBLIC_SOCKET_URL)
+      || 'http://localhost:2568';
     const s = io(`${socketUrl}/support`, {
       withCredentials: true,
     });
