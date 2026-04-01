@@ -15,7 +15,7 @@ WORKDIR /app/apps/game-server
 # Build step
 RUN npx tsc
 
-EXPOSE 2567
+EXPOSE 2567 2568
 
 # Start the built server
 CMD ["node", "dist/index.js"]
