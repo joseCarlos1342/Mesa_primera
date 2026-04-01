@@ -10,8 +10,16 @@
 
 ### 🏁 Estado para la Hackatón
 **URLs de Producción para Evaluación:**
-*   **Acceso Jugador (PWA):** [Abrir App](https://mesa-primera-web.vercel.app/login/player)
-*   **Acceso Admin (Dashboard):** [Abrir Panel](https://mesa-primera-web.vercel.app/login/admin)
+*   **Acceso Jugador (PWA):** [Abrir App](https://primerariveradalos4ases.com/login/player)
+*   **Acceso Admin (Dashboard):** [Abrir Panel](https://primerariveradalos4ases.com/login/admin)
+
+**Usuarios de Prueba (Hackatón):**
+*   `570000000002` = `123456`
+*   `570000000003` = `123456`
+*   `570000000004` = `123456`
+
+> Nota: En el formulario de login del jugador se ingresa el número sin prefijo `+57`.
+> Ejemplo: para `570000000002`, ingresar `0000000002`.
 
 Para facilitar la evaluación por parte del jurado, se han aplicado las siguientes configuraciones temporales:
 
