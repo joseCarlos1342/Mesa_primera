@@ -4,7 +4,7 @@ import { Bell, CheckCircle, Info, BellRing, UserPlus, Gamepad2, Trash2, External
 import { createClient } from '@/utils/supabase/client';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { deleteNotification, markNotificationAsRead } from '@/app/actions/social-actions';
+import { deleteNotification } from '@/app/actions/social-actions';
 
 interface NotificationCenterProps {
   userId: string;
@@ -33,7 +33,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
 
     // 1. Fetch initial notifications
     const fetchNotifications = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
@@ -70,7 +70,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
             const audio = new Audio('/sounds/notification.mp3');
             audio.volume = 0.5;
             audio.play().catch(() => {});
-          } catch (e) {}
+          } catch { /* audio play not critical */ }
         }
       )
       .subscribe();
@@ -78,7 +78,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, supabase]);
 
   const markAllRead = async () => {
     const { error } = await supabase
@@ -90,14 +90,6 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     if (!error) {
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
-    }
-  };
-
-  const markAsReadLocal = async (id: string) => {
-    const res = await markNotificationAsRead(id);
-    if (res.success) {
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
     }
   };
 
@@ -136,10 +128,11 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
       case 'friend_removed':
         router.push('/friends');
         break;
-      case 'direct_message':
+      case 'direct_message': {
         const friendId = n.data?.senderId || n.data?.chatWith;
         router.push(friendId ? `/friends?chat=${friendId}` : '/friends');
         break;
+      }
       case 'deposit_success':
       case 'withdraw_success':
       case 'wallet_update':

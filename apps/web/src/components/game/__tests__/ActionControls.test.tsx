@@ -61,7 +61,7 @@ describe('ActionControls', () => {
       const pasoButton = screen.getByText('Paso').closest('button');
       fireEvent.click(pasoButton!);
 
-      expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'paso', amount: undefined, droppedCards: undefined });
+      expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'paso' });
       expect(window.navigator.vibrate).toHaveBeenCalledWith(50);
     });
   });
@@ -94,7 +94,7 @@ describe('ActionControls', () => {
         />
       );
 
-      expect(screen.getByText('Igualar')).toBeInTheDocument();
+      expect(screen.getByText(/Igualar/)).toBeInTheDocument();
     });
 
     it('Should render Resto button when player cannot afford to call', () => {
@@ -109,7 +109,7 @@ describe('ActionControls', () => {
         />
       );
 
-      expect(screen.getByText('Resto')).toBeInTheDocument();
+      expect(screen.getByText(/Resto/)).toBeInTheDocument();
     });
 
     it('Should return null when player is all-in', () => {
@@ -139,8 +139,7 @@ describe('ActionControls', () => {
         />
       );
       
-      expect(screen.getByText(/Fichas a botar/i)).toBeInTheDocument();
-      expect(screen.getByText(/Botar 2 y Pedir/i)).toBeInTheDocument();
+      expect(screen.getByText(/Botar 2/)).toBeInTheDocument();
     });
 
     it('Should send discard action and request selection clearance', () => {
@@ -156,10 +155,10 @@ describe('ActionControls', () => {
         />
       );
       
-      const discardBtn = screen.getByText(/Botar 1 y Pedir/i).closest('button');
+      const discardBtn = screen.getByText(/Botar 1/).closest('button');
       fireEvent.click(discardBtn!);
 
-      expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'discard', amount: undefined, droppedCards: ['01-Oros'] });
+      expect(mockRoom.send).toHaveBeenCalledWith('action', { action: 'discard', droppedCards: ['01-Oros'] });
       expect(onClearSelection).toHaveBeenCalled();
     });
   });

@@ -27,6 +27,7 @@ describe('Auth Actions', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    // @ts-expect-error -- NODE_ENV is read-only but needs to be overridden for tests
     process.env.NODE_ENV = 'test'; // Ensure we don't hit the DEV bypass
     mockSignInWithOtp = jest.fn().mockResolvedValue({ error: null })
     const mockSupabase = {
@@ -40,7 +41,7 @@ describe('Auth Actions', () => {
   describe('registerPlayer', () => {
     it('debe llamar a signInWithOtp con la metadata correcta y redirigir', async () => {
       const formData = new FormData()
-      formData.append('phone', '+573205802918')
+      formData.append('phone', '3205802918')
       formData.append('fullName', 'Jose Carlos')
       formData.append('nickname', 'Chepe')
       formData.append('avatarId', 'as-oros')
@@ -70,7 +71,7 @@ describe('Auth Actions', () => {
   describe('loginWithPhone', () => {
     it('debe llamar a signInWithOtp solo con el telefono y redirigir', async () => {
       const formData = new FormData()
-      formData.append('phone', '+573205802918')
+      formData.append('phone', '3205802918')
 
       try {
         await loginWithPhone({}, formData)
@@ -88,12 +89,12 @@ describe('Auth Actions', () => {
     })
 
     it('debe devolver un error si signInWithOtp falla', async () => {
-      mockSignInWithOtp.mockResolvedValueOnce({ 
+      (mockSignInWithOtp as jest.Mock).mockResolvedValueOnce({ 
         error: { message: 'Error de prueba de SMS' } 
       })
 
       const formData = new FormData()
-      formData.append('phone', '+573205802918')
+      formData.append('phone', '3205802918')
 
       const result = await loginWithPhone({}, formData)
 

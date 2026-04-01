@@ -1,7 +1,6 @@
 import { getPendingWithdrawals } from '@/app/actions/withdrawals'
-import { processTransaction } from '@/app/actions/admin-wallet'
 import { formatCurrency } from '@/utils/format'
-import { ArrowLeft, User, CheckCircle2, XCircle, Clock, Wallet, AlertCircle } from 'lucide-react'
+import { ArrowLeft, User, CheckCircle2, Clock, Wallet, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { WithdrawalActions } from './WithdrawalActions'
 export default async function AdminWithdrawalsPage() {

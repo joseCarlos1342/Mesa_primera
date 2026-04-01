@@ -183,7 +183,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
              const audio = new Audio('/sounds/notification.mp3');
              audio.volume = 0.5;
              audio.play().catch(() => {});
-           } catch (e) {}
+           } catch { /* audio play not critical */ }
         }
       }
     });

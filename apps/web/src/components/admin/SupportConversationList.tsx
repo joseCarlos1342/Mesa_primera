@@ -17,7 +17,7 @@ interface Conversation {
   isResolved?: boolean;
 }
 
-export function SupportConversationList({ initialConversations, adminId }: { initialConversations: Conversation[], adminId: string }) {
+export function SupportConversationList({ initialConversations, adminId: _adminId }: { initialConversations: Conversation[], adminId: string }) {
   // Map initial conversations to ensure isResolved is set from latest message
   // Also ensures ticketId is tracked.
   const [conversations, setConversations] = useState<Conversation[]>(
@@ -60,7 +60,7 @@ export function SupportConversationList({ initialConversations, adminId }: { ini
             const audio = new Audio('/sounds/notification.mp3');
             audio.volume = 0.5;
             audio.play().catch(() => {});
-          } catch (e) {}
+          } catch { /* audio play not critical */ }
 
           return [updated[index], ...updated.filter((_, i) => i !== index)];
         } else {
@@ -79,7 +79,7 @@ export function SupportConversationList({ initialConversations, adminId }: { ini
             const audio = new Audio('/sounds/notification.mp3');
             audio.volume = 0.5;
             audio.play().catch(() => {});
-          } catch (e) {}
+          } catch { /* audio play not critical */ }
 
           return [newConv, ...prev];
         }

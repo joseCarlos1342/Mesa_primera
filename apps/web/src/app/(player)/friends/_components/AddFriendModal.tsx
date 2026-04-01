@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, UserPlus, ShieldCheck, Loader2, X, User } from "lucide-react";
+import { Search, UserPlus, Loader2, X, User } from "lucide-react";
 import { searchUsers, sendFriendRequest } from "@/app/actions/social-actions";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAvatarSvg } from "@/utils/avatars";

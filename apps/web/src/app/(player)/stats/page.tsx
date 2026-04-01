@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, Users, Star, Crown, ChevronRight } from 'lucide-react'
+import { Star, Crown } from 'lucide-react'
 import { StatsTabs } from './_components/StatsTabs'
 import { StatsDashboard } from './_components/stats-dashboard'
 import { Leaderboard } from './_components/Leaderboard'

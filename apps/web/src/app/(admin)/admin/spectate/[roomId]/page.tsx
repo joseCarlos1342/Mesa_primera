@@ -15,7 +15,7 @@ const VoiceChat = dynamic(
 
 export default function SpectatePage() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   const roomId = params.roomId as string;
 
   const [room, setRoom] = useState<Room | null>(null);

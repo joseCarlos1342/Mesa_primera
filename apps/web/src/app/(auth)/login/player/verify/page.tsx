@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { useActionState, Suspense, useEffect, useRef } from 'react'
 import { verifyOtp } from '../../../auth-actions'
-import Image from 'next/image'
+
 
 function VerifyContent() {
   const searchParams = useSearchParams()

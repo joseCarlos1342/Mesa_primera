@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { Menu, ShoppingCart, LogOut, Settings, HelpCircle, X, Mic, Headphones } from 'lucide-react'
+import { Menu, ShoppingCart, LogOut, HelpCircle, X, Mic, Headphones } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 

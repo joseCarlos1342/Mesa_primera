@@ -1,14 +1,14 @@
 "use client";
 
 import { Suspense, useState, useEffect, useCallback } from "react";
-import { UserPlus, MessageCircle, ShieldCheck, Loader2, UserX } from "lucide-react";
+import { UserPlus, Loader2, UserX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFriendships, removeFriendship } from "@/app/actions/social-actions";
 import { FriendsList } from "./_components/FriendsList";
 import { FriendRequests } from "./_components/FriendRequests";
 import { AddFriendModal } from "./_components/AddFriendModal";
 import { DirectChat } from "./_components/DirectChat";
-import { usePresence, UserStatus } from "@/hooks/usePresence";
+import { usePresence } from "@/hooks/usePresence";
 import { createClient } from "@/utils/supabase/client";
 import { Toast, ToastType } from "@/components/ui/Toast";
 import { useSearchParams } from "next/navigation";
@@ -57,7 +57,7 @@ function FriendsContent() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchData]);
+  }, [fetchData, supabase]);
 
   // Handle auto-opening chat from URL params
   useEffect(() => {

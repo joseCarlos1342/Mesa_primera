@@ -82,7 +82,7 @@ export default function AdminAlertsPage() {
       setLoading(false);
     }
     load();
-  }, [filter]);
+  }, [filter, supabase]);
 
   // Realtime subscription
   useEffect(() => {
@@ -108,7 +108,7 @@ export default function AdminAlertsPage() {
               const audio = new Audio('/sounds/alert.mp3');
               audio.volume = 0.5;
               audio.play().catch(() => {});
-            } catch {}
+            } catch { /* audio play not critical */ }
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as unknown as HelpRequest;
             setRequests(prev =>
@@ -120,7 +120,7 @@ export default function AdminAlertsPage() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [supabase]);
 
   async function updateStatus(id: string, status: 'attending' | 'resolved' | 'dismissed') {
     setUpdating(id);

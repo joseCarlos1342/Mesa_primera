@@ -5,8 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { client } from '@/lib/colyseus'
 import { createClient } from '@/utils/supabase/client'
 import { Room } from '@colyseus/sdk'
-import { Loader2, ArrowLeft, Users, Gamepad2, BookOpen, AlertCircle, RotateCcw } from 'lucide-react'
-import Link from 'next/link'
+import { Loader2, ArrowLeft, Users, AlertCircle, RotateCcw } from 'lucide-react'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { RulesModal } from '@/components/game/RulesModal'
 import { ReconnectOverlay } from '@/components/game/ReconnectOverlay'
@@ -59,7 +58,7 @@ export default function GameRoomPage() {
 
   // Destructure early to avoid ReferenceError in hooks
   const { 
-    players, phase, pot, dealerId, countdown, minPique, 
+    players, phase, pot, dealerId: _dealerId, countdown, minPique, 
     proposedPique, proposedPiqueBy, piqueVotesFor, piqueVotesAgainst, piqueVotersTotal 
   } = gameState;
 
@@ -341,7 +340,7 @@ export default function GameRoomPage() {
         activeRoom.leave(false);
       }
     }
-  }, [roomId]) // solo lo ejecutamos una vez, por eso hasAttemptedJoin
+  }, [roomId, router]) // solo lo ejecutamos una vez, por eso hasAttemptedJoin
 
   if (loading) {
     return (

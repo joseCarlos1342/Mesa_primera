@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { requestWithdrawal } from '@/app/actions/withdrawals'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Wallet, Landmark, ShieldAlert, Banknote, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Landmark, ShieldAlert, Banknote, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 
 export default function WithdrawPage() {

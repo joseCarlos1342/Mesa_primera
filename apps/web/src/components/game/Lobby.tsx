@@ -5,15 +5,15 @@ import { client } from '@/lib/colyseus'
 import { createClient } from '@/utils/supabase/client'
 import { RoomAvailable, Room } from '@colyseus/sdk'
 import { useRouter } from 'next/navigation'
-import { Plus, Users, Zap, Trophy, Shield, RefreshCcw, AlertCircle, Film } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, Users, Zap, Trophy, Shield, RefreshCcw, Film } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { DepositModal } from '@/components/game/DepositModal'
 import Link from 'next/link'
 
 export function Lobby() {
   const [rooms, setRooms] = useState<RoomAvailable[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [_loading, setLoading] = useState(true)
+  const [_error, setError] = useState<string | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
   const [creating, setCreating] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -172,7 +172,7 @@ export function Lobby() {
       if (room.connection?.transport?.close) {
         room.connection.transport.close();
       } else {
-        try { (room.connection as any).close(); } catch (e) { }
+        try { (room.connection as any).close(); } catch { /* ignore */ }
       }
 
       router.push(`/play/${room.roomId}`)
@@ -468,7 +468,7 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
         if (newRoom.connection?.transport?.close) {
           newRoom.connection.transport.close();
         } else {
-          try { (newRoom.connection as any).close(); } catch (e) { }
+          try { (newRoom.connection as any).close(); } catch { /* ignore */ }
         }
 
         onJoin(newRoom.roomId);

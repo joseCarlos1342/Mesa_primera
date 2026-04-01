@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Send, X, Loader2, User, ChevronLeft, MessageCircle } from "lucide-react";
 import { sendDirectMessage, getDirectMessages } from "@/app/actions/social-actions";
 import { createClient } from "@/utils/supabase/client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { getAvatarSvg } from "@/utils/avatars";
 
 interface DirectChatProps {
@@ -56,7 +56,7 @@ export function DirectChat({ friend, onClose }: DirectChatProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [friend.profile.id]);
+  }, [friend.profile.id, supabase]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -140,7 +140,7 @@ export function DirectChat({ friend, onClose }: DirectChatProps) {
             </div>
           </div>
         ) : (
-          messages.map((msg, i) => {
+          messages.map((msg, _i) => {
             const isMe = currentUserId ? msg.sender_id === currentUserId : msg.sender_id !== friend.profile.id;
             return (
               <motion.div 

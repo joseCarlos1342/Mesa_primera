@@ -1,6 +1,6 @@
 "use client"
 
-import { m, AnimatePresence } from 'framer-motion'
+import { m } from 'framer-motion'
 import { getAvatarSvg } from '@/utils/avatars'
 import { formatCurrency } from '@/utils/format'
 
@@ -18,7 +18,7 @@ interface PlayerBadgeProps {
 }
 
 export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points, turnOrder, isWaiting = false, isAllIn = false }: PlayerBadgeProps) {
-  const isMuted = true; // Placeholder for actual voice chat state if available
+  const _isMuted = true; // Placeholder for actual voice chat state if available
 
   // Determine avatar rendering
   let avatarContent = null;

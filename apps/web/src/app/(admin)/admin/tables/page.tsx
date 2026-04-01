@@ -1,5 +1,5 @@
 import { getActiveGames, getTablesList, deleteTable, getTableFinancials } from "@/app/actions/admin-tables";
-import { Gamepad2, AlertCircle, Play, Pause, Trash2, Settings2, Plus, Users as UsersIcon, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
+import { Gamepad2, AlertCircle, Play, Pause, Trash2, Settings2, Users as UsersIcon, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import { TableControls } from "@/components/admin/TableControls";
 import { PlayerControls } from "@/components/admin/PlayerControls";

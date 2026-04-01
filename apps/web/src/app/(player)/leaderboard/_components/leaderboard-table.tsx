@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { getAvatarSvg } from "@/utils/avatars";
 import { User } from "lucide-react";
 
