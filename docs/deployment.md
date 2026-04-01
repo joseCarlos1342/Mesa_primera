@@ -35,7 +35,9 @@ Esta guía detalla los pasos para desplegar **Mesa de Primera** utilizando una a
 3. Añade las variables de entorno:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `GAME_SERVER_URL`: `http://tu_ip_de_vps:2567`
+   - `GAME_SERVER_URL`: `https://vps23830.cubepath.net`
+   - `NEXT_PUBLIC_GAME_SERVER_URL`: `https://vps23830.cubepath.net`
+   - `NEXT_PUBLIC_SOCKET_URL`: `https://vps23830.cubepath.net`
    - `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
    - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
 4. Despliega.
