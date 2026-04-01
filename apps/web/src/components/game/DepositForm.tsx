@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { createDepositRequest } from '@/app/actions/wallet'
-import { Upload, Landmark, MessageSquare, Image as ImageIcon, Copy, Check, ShieldCheck, DollarSign } from 'lucide-react'
+import { Upload, Landmark, Copy, Check, ShieldCheck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { depositAmountSchema, observationsSchema, validateImageFile } from '@/lib/validations'
 

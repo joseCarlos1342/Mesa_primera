@@ -1,9 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
-import { createDepositRequest } from '@/app/actions/wallet'
-import { X, Upload, DollarSign, Image as ImageIcon, Copy, Check, MessageSquare } from 'lucide-react'
+import { X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DepositModalProps {

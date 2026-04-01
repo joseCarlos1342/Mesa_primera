@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { Trophy, Medal, Target, TrendingUp, User } from "lucide-react";
-import Image from "next/image";
 import { getAvatarSvg } from "@/utils/avatars";
 
 interface LeaderboardProps {

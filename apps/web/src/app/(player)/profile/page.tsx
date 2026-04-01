@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Phone, Tag, Camera, Save, ArrowLeft, Loader2, Trophy, Medal, Star, ShieldCheck, LogOut } from 'lucide-react';
+import { User, Mail, Phone, Tag, Camera, Save, Loader2, Trophy, Medal, Star, ShieldCheck, LogOut } from 'lucide-react';
 import { getAvatarSvg } from '@/utils/avatars';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getMyStats, PlayerStats } from '@/app/actions/stats';

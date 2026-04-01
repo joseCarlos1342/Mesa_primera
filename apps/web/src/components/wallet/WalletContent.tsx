@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingCart, ArrowUpWideNarrow, Landmark, Wallet, Plus, ArrowUpRight, TrendingUp, Gamepad2, Play } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ArrowUpWideNarrow, Landmark, Plus, ArrowUpRight, TrendingUp, Gamepad2, Play } from 'lucide-react'
 import { useState } from 'react'
 import { TransactionModal } from './TransactionModal'
 

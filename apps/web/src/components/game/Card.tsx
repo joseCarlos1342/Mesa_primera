@@ -14,7 +14,7 @@ interface CardProps {
   priority?: boolean;
 }
 
-export function Card({ suit, value, isHidden = false, className = '', delay = 0, originX = 0, originY = -200, priority = false }: CardProps) {
+export function Card({ suit, value, isHidden = false, className = '', delay = 0, originX = 0, originY = -200 }: CardProps) {
   const [imgError, setImgError] = useState(false);
 
   const getCardImage = () => {

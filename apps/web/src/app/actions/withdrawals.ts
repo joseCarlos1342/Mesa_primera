@@ -51,12 +51,12 @@ export async function getPendingWithdrawals() {
   const userIds = requests.map(r => r.user_id).filter(Boolean) as string[]
 
   // 2. Fetch profiles and wallets separately
-  const { data: profiles, error: profilesError } = await supabase
+  const { data: profiles } = await supabase
     .from('profiles')
     .select('id, username')
     .in('id', userIds)
 
-  const { data: wallets, error: walletsError } = await supabase
+  const { data: wallets } = await supabase
     .from('wallets')
     .select('user_id, balance_cents')
     .in('user_id', userIds)

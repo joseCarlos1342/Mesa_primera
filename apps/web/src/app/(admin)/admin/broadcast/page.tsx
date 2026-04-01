@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { 
-  MessageSquare, 
   Send, 
   ArrowLeft, 
   AlertCircle, 

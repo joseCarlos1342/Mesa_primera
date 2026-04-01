@@ -1,5 +1,5 @@
 import { getLedgerEntries, getUsersWithBalances } from "@/app/actions/admin-ledger";
-import { BookOpen, Search, ArrowUpRight, ArrowDownLeft, ShieldCheck, Users, Eye, Wallet } from "lucide-react";
+import { BookOpen, ArrowUpRight, ArrowDownLeft, ShieldCheck, Users, Eye, Wallet } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
 

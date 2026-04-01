@@ -5,6 +5,13 @@
     "build": {
       "dependsOn": ["^build"],
       "env": [
+        "NODE_ENV",
+        "REDIS_URL",
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SOCKET_URL",
+        "HACKATHON_AUTH_BYPASS",
+        "ADMIN_INVITE_TOKEN",
         "LIVEKIT_URL",
         "LIVEKIT_API_KEY",
         "LIVEKIT_API_SECRET",

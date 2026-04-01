@@ -1,4 +1,4 @@
-import { Users, ShieldAlert, Smartphone, Clock, Ban } from "lucide-react";
+import { Users, Smartphone, Clock, Ban } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import { UserBanControl } from "@/components/admin/UserBanControl";
 import { UserBalanceControl } from "@/components/admin/UserBalanceControl";

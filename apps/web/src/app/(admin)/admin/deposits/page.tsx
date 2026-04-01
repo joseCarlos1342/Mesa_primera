@@ -1,6 +1,6 @@
-import { getPendingDeposits, processTransaction } from '@/app/actions/admin-wallet'
+import { getPendingDeposits } from '@/app/actions/admin-wallet'
 import { formatCurrency } from '@/utils/format'
-import { ArrowLeft, User, ExternalLink, CheckCircle2, XCircle, MessageSquare, Image as ImageIcon, Wallet, Clock, AlertCircle } from 'lucide-react'
+import { ArrowLeft, User, ExternalLink, CheckCircle2, MessageSquare, Image as ImageIcon, Wallet, Clock, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { DepositActions } from './DepositActions'

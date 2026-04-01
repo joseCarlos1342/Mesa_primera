@@ -1,7 +1,6 @@
 "use client"
 
 import { Room } from '@colyseus/sdk'
-import { getAvatarSvg } from '@/utils/avatars'
 import { evaluateHand } from '@/utils/handEvaluation'
 import { formatCurrency } from '@/utils/format'
 import { m, AnimatePresence } from 'framer-motion'
@@ -10,7 +9,6 @@ import { ActionControls } from './ActionControls'
 import { ChipSelector } from './ChipSelector'
 import { GameAnnouncer } from './GameAnnouncer'
 import { Card } from './Card'
-import { RechargeButton } from './RechargeButton'
 import { ShowdownCinematic } from './ShowdownCinematic'
 import { useState, useEffect, useRef } from 'react'
 import { AnimationLayer } from './AnimationLayer'
@@ -34,6 +32,14 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
   const [adminWatching, setAdminWatching] = useState(false);
+  const prevPlayersRef = useRef<any[]>([]);
+  const prevMyCardsRef = useRef<string>("");
+
+  const myId = room?.sessionId ?? "";
+  const currentPhase = room?.state?.phase ?? phase;
+  const isMyTurn = room ? room.state.turnPlayerId === myId : false;
+  const me = players.find(p => p.id === myId);
+  const getPlayerIndex = (id: string) => players.findIndex(p => p.id === id);
 
   const totalBet = Object.entries(chipCounts).reduce((sum, [denom, count]) => sum + Number(denom) * count, 0);
 
@@ -44,48 +50,13 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   const removeChip = (val: number) => {
     setChipCounts(prev => {
       const newCount = (prev[val] || 0) - 1;
-      if (newCount <= 0) { const { [val]: _removed, ...rest } = prev; return rest; }
+      if (newCount <= 0) { const { [val]: _, ...rest } = prev; return rest; }
       return { ...prev, [val]: newCount };
     });
   };
 
   // Intro shows only during the STARTING phase (server-controlled timing)
   const showIntro = phase === 'STARTING';
-  
-  if (!room) return null;
-
-  const myId = room.sessionId;
-  const currentPhase = room.state.phase; // Renamed to avoid shadowing prop 'phase'
-  const isMyTurn = room.state.turnPlayerId === myId;
-  
-  const me = players.find(p => p.id === myId);
-  const getPlayerIndex = (id: string) => players.findIndex(p => p.id === id);
-
-  // Define 6 fixed elliptical seat positions for opponents (slots for 7 players total)
-  // - On Mobile Landscape (landscape without md/lg): All 6 avatars align at the top edge
-  // - On Desktop/Tablet: Placed higher and closer to the far edges of the screen
-  const opponentSeats = [
-    // Seat 1: Far Left (Moved up)
-    "top-[35%] left-[2%] landscape:top-[4%] landscape:left-[2%] md:landscape:top-[30%] md:landscape:left-[2%] lg:top-[25%] lg:left-[3%]",
-    // Seat 2: Top-Left (Moved up)
-    "top-[10%] left-[12%] landscape:top-[2%] landscape:left-[21%] md:landscape:top-[8%] md:landscape:left-[10%] lg:top-[4%] lg:left-[15%]",
-    // Seat 3: Top-Center-Left (Moved to the very top edge)
-    "top-[2%] left-[32%] landscape:top-[2%] landscape:left-[40%] md:landscape:top-[2%] md:landscape:left-[30%] lg:top-[2%] lg:left-[34%]",
-    // Seat 4: Top-Center-Right (Moved to the very top edge)
-    "top-[2%] right-[32%] landscape:top-[2%] landscape:right-[40%] md:landscape:top-[2%] md:landscape:right-[30%] lg:top-[2%] lg:right-[34%]",
-    // Seat 5: Top-Right (Moved up)
-    "top-[10%] right-[12%] landscape:top-[2%] landscape:right-[21%] md:landscape:top-[8%] md:landscape:right-[10%] lg:top-[4%] lg:right-[15%]",
-    // Seat 6: Far Right (Moved up)
-    "top-[35%] right-[2%] landscape:top-[4%] landscape:right-[2%] md:landscape:top-[30%] md:landscape:right-[2%] lg:top-[25%] lg:right-[3%]"
-  ];
-
-  // We show 7 slots regardless of player count
-  const allSlots = Array.from({ length: 7 });
-  // Find my index in the 0-6 range to place others relative to me
-  const mySlotIdx = 0; // In this UI logic, 'me' is always at the bottom, and others rotate around
-
-  const prevPlayersRef = useRef<any[]>([]);
-  const prevMyCardsRef = useRef<string>("");
 
   useEffect(() => {
     const myId = room?.sessionId;
@@ -151,7 +122,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
     // Save copy of current state
     prevPlayersRef.current = players.map(p => ({ ...p }));
     prevMyCardsRef.current = myCards;
-  }, [players, myCards]);
+  }, [players, myCards, currentPhase, room?.sessionId]);
 
   // Listen for admin spectator presence
   useEffect(() => {
@@ -159,6 +130,18 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
     const handler = (msg: { active: boolean }) => setAdminWatching(msg.active);
     room.onMessage("admin:status", handler);
   }, [room]);
+
+  if (!room) return null;
+
+  // Define 6 fixed elliptical seat positions for opponents (slots for 7 players total)
+  const opponentSeats = [
+    "top-[35%] left-[2%] landscape:top-[4%] landscape:left-[2%] md:landscape:top-[30%] md:landscape:left-[2%] lg:top-[25%] lg:left-[3%]",
+    "top-[10%] left-[12%] landscape:top-[2%] landscape:left-[21%] md:landscape:top-[8%] md:landscape:left-[10%] lg:top-[4%] lg:left-[15%]",
+    "top-[2%] left-[32%] landscape:top-[2%] landscape:left-[40%] md:landscape:top-[2%] md:landscape:left-[30%] lg:top-[2%] lg:left-[34%]",
+    "top-[2%] right-[32%] landscape:top-[2%] landscape:right-[40%] md:landscape:top-[2%] md:landscape:right-[30%] lg:top-[2%] lg:right-[34%]",
+    "top-[10%] right-[12%] landscape:top-[2%] landscape:right-[21%] md:landscape:top-[8%] md:landscape:right-[10%] lg:top-[4%] lg:right-[15%]",
+    "top-[35%] right-[2%] landscape:top-[4%] landscape:right-[2%] md:landscape:top-[30%] md:landscape:right-[2%] lg:top-[25%] lg:right-[3%]"
+  ];
 
   const renderPlayerAtSeat = (p: any, seatIndex: number) => {
     const seatClass = opponentSeats[seatIndex];
@@ -194,7 +177,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   const angle = (idx - middle) * 10;
                   const playerIdx = getPlayerIndex(p.id);
                   const dealDelay = phase === 'SORTEO_MANO' ? (playerIdx * 0.4) + (idx * 2) : (playerIdx * 0.4) + (idx * 0.2);
-                  let transX = isLeftSide ? 30 : -30;
+                  const transX = isLeftSide ? 30 : -30;
                   
                   return (
                     <m.div 
@@ -241,7 +224,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   : Array.from({ length: opponentCardCount }).map((_, idx) => {
                     const middle = (opponentCardCount - 1) / 2;
                     const angle = (idx - middle) * 10;
-                    let transX = isLeftSide ? 30 : -30;
+                    const transX = isLeftSide ? 30 : -30;
                     
                     return (
                       <m.div 

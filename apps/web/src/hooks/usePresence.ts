@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { RealtimeChannel, RealtimePresenceState } from "@supabase/supabase-js";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 export type UserStatus = 'online' | 'offline' | 'in-game';
 
 // Global state to share between all usePresence hooks
 let globalStatusMap: Record<string, UserStatus> = {};
-let subscribers = new Set<(state: Record<string, UserStatus>) => void>();
+const subscribers = new Set<(state: Record<string, UserStatus>) => void>();
 let globalChannel: RealtimeChannel | null = null;
 
-export function usePresence(friends: any[]) {
+export function usePresence(_friends: any[]) {
   const [onlineUsers, setOnlineUsers] = useState<Record<string, UserStatus>>(globalStatusMap);
   const supabase = createClient();
 
@@ -48,11 +48,11 @@ export function usePresence(friends: any[]) {
           globalStatusMap = statusMap;
           subscribers.forEach(fn => fn(statusMap));
         })
-        .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string; newPresences: any[] }) => {
-          // console.log('Join event', key, newPresences);
+        .on('presence', { event: 'join' }, () => {
+          // Join events handled by sync
         })
-        .on('presence', { event: 'leave' }, ({ key, leftPresences }: { key: string; leftPresences: any[] }) => {
-          // console.log('Leave event', key, leftPresences);
+        .on('presence', { event: 'leave' }, () => {
+          // Leave events handled by sync
         })
         .subscribe(async (status: string) => {
           if (status === 'SUBSCRIBED') {

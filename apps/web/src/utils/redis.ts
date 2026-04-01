@@ -107,7 +107,7 @@ export async function getClientIp() {
     
     if (realIp) return realIp
     return '127.0.0.1' // Fallback
-  } catch (e) {
+  } catch {
     return '127.0.0.1'
   }
 }

@@ -1,5 +1,5 @@
 "use client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { useEffect } from "react";
 

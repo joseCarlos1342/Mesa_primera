@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Settings, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film } from "lucide-react";
 import Link from "next/link";
 import { getAdminDashboardStats } from "@/app/actions/admin-dashboard";
 import { formatCurrency } from "@/utils/format";

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy, Target, Zap, TrendingUp, Award, Flame, Star, Crown } from "lucide-react";
+import { Trophy, Target, TrendingUp, Flame, Star, Crown } from "lucide-react";
 
 interface PlayerStats {
   games_played: number;

@@ -89,7 +89,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       setLoading(false);
     }
     fetchData();
-  }, [gameId]);
+  }, [gameId, supabase]);
 
   // Autoplay timer
   useEffect(() => {

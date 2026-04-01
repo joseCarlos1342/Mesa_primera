@@ -51,7 +51,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     .eq("status", "pending");
 
   // Fetch active users (via RPC from auth.users)
-  const { data: activeUsersCount, error: activeUsersError } = await supabase
+  const { data: activeUsersCount } = await supabase
     .rpc("get_active_users_count");
 
   // Fetch active games

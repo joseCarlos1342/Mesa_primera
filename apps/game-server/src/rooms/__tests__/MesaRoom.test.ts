@@ -41,11 +41,11 @@ describe('MesaRoom via Colyseus Testing', () => {
 
     expect(room.state.phase).toBe('LOBBY');
 
-    // Join 4 players
-    const client1 = await colyseus.connectTo(room, { userId: 'u1', username: 'P1', avatarUrl: '' });
-    const client2 = await colyseus.connectTo(room, { userId: 'u2', username: 'P2', avatarUrl: '' });
-    const client3 = await colyseus.connectTo(room, { userId: 'u3', username: 'P3', avatarUrl: '' });
-    const client4 = await colyseus.connectTo(room, { userId: 'u4', username: 'P4', avatarUrl: '' });
+    // Join 4 players (must pass chips >= MIN_BALANCE_CENTS = 5_000_000)
+    const client1 = await colyseus.connectTo(room, { userId: 'u1', username: 'P1', avatarUrl: '', chips: 10_000_000 });
+    const client2 = await colyseus.connectTo(room, { userId: 'u2', username: 'P2', avatarUrl: '', chips: 10_000_000 });
+    const client3 = await colyseus.connectTo(room, { userId: 'u3', username: 'P3', avatarUrl: '', chips: 10_000_000 });
+    const client4 = await colyseus.connectTo(room, { userId: 'u4', username: 'P4', avatarUrl: '', chips: 10_000_000 });
 
     // Wait for internal state propagation
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -65,15 +65,15 @@ describe('MesaRoom via Colyseus Testing', () => {
     createdRoom.createDeck();
     createdRoom.shuffleDeck();
     
-    expect(createdRoom.state.tableCards.length).toBe(28); // 7 numbers * 4 suits
+    expect(createdRoom.deck.length).toBe(28); // 7 numbers * 4 suits
     
     // Collect specific deck array
-    const deck1 = Array.from(createdRoom.state.tableCards);
+    const deck1 = [...createdRoom.deck];
     
     // Re-shuffle
     createdRoom.createDeck();
     createdRoom.shuffleDeck();
-    const deck2 = Array.from(createdRoom.state.tableCards);
+    const deck2 = [...createdRoom.deck];
     
     // The chances of 28 cards returning exactly the same shuffle are incredibly low
     expect(deck1).not.toEqual(deck2);

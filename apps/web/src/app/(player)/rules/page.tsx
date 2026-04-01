@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { BookOpen, ShieldCheck, HelpCircle, AlertCircle, Sparkles, Gavel, Coins, MessageSquare } from 'lucide-react'
+import { BookOpen, HelpCircle, Sparkles, Gavel, Coins } from 'lucide-react'
 
 export default function RulesPage() {
   const sections = [
