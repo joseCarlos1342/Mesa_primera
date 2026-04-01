@@ -4,6 +4,7 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { SupportChat } from "@/components/SupportChat";
 import { BottomNav } from "@/components/navigation/BottomNav";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { PresenceTracker } from "@/components/PresenceTracker";
 import { createClient } from "@/utils/supabase/server";
 import { getAvatarSvg } from "@/utils/avatars";
@@ -87,6 +88,7 @@ export default async function PlayerLayout({
       </main>
 
       <BottomNav />
+      <PWAInstallPrompt />
       {user && <PresenceTracker />}
       {user && <SupportChat userId={user.id} />}
     </div>
