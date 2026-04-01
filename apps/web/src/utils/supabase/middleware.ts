@@ -51,7 +51,7 @@ export async function updateSession(request: NextRequest) {
   const isMfaPage = pathname === '/login/admin/mfa'
 
   // PREVENT REDIRECT FOR STATIC FILES
-  const isStaticFile = pathname.match(/\.(json|png|jpg|jpeg|gif|webp|svg|ico)$/)
+  const isStaticFile = pathname.match(/\.(json|xml|txt|png|jpg|jpeg|gif|webp|svg|ico)$/)
   if (isStaticFile) {
     return supabaseResponse
   }
