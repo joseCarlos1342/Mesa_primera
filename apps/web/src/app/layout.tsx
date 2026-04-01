@@ -91,6 +91,8 @@ export default function RootLayout({
   const runtimePublicSupabaseEnv = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
+    NEXT_PUBLIC_GAME_SERVER_URL: process.env.NEXT_PUBLIC_GAME_SERVER_URL ?? process.env.GAME_SERVER_URL ?? "",
+    NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.SOCKET_URL ?? "",
   };
   const runtimeSupabaseEnvScript = `window.__MESA_PRIMERA_RUNTIME_ENV__=${JSON.stringify(runtimePublicSupabaseEnv).replace(/</g, "\\u003c")};`;
 
