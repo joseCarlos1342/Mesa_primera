@@ -9,7 +9,7 @@ export default function RulesPage() {
       title: 'Reglas Básicas',
       subtitle: 'El Corazón del Juego',
       icon: BookOpen,
-      content: 'Mesa Primera es un juego de cartas tradicional. El objetivo es acumular puntos capturando cartas de la mesa que sumen 15 o mediante combinaciones especiales.',
+      content: 'Primera Riverada los 4 Ases es un juego de cartas tradicional. El objetivo es acumular puntos capturando cartas de la mesa que sumen 15 o mediante combinaciones especiales.',
       color: 'text-brand-gold',
       accent: 'bg-brand-gold/10'
     },
@@ -41,7 +41,7 @@ export default function RulesPage() {
           className="inline-flex items-center gap-3 px-5 py-2 bg-brand-gold/10 border border-brand-gold/20 rounded-full mb-1"
         >
           <Sparkles className="w-5 h-5 text-brand-gold" />
-          <span className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em] whitespace-nowrap">Manual Mesa Primera</span>
+          <span className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em] whitespace-nowrap">Manual Primera Riverada</span>
         </motion.div>
         
         <div className="space-y-1 overflow-visible">
@@ -134,7 +134,7 @@ export default function RulesPage() {
       {/* Scroll Tip */}
       <footer className="text-center pt-2 pb-8 opacity-30">
         <p className="text-[10px] font-black text-[#f3edd7] uppercase tracking-[0.5em]">
-          Estatutos Oficiales • Mesa Primera v3.1
+          Estatutos Oficiales • Primera Riverada v3.1
         </p>
       </footer>
     </div>

@@ -87,7 +87,7 @@ export function PWAInstallPrompt() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">
-                Instalar Mesa Primera
+                Instalar 4 Ases
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 Juega sin barra del navegador a pantalla completa

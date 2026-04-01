@@ -400,7 +400,7 @@ export default function GameRoomPage() {
           <h2 className="relative z-10 text-3xl font-black text-[#fdf0a6] mb-3 italic uppercase tracking-wider">Gira tu Dispositivo</h2>
           <div className="relative z-10 h-px w-24 bg-[#d4af37]/30 mb-4" />
           <p className="relative z-10 text-[#8faa96] text-base leading-relaxed max-w-xs">
-            Para jugar en <span className="text-[#d4af37] font-bold uppercase tracking-wider">Mesa Primera</span>, necesitas usar tu pantalla en horizontal.
+            Para jugar en <span className="text-[#d4af37] font-bold uppercase tracking-wider">Primera Riverada</span>, necesitas usar tu pantalla en horizontal.
           </p>
         </div>
       )}
