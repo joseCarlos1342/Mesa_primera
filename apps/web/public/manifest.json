@@ -1,7 +1,7 @@
 {
-  "name": "Mesa Primera",
-  "short_name": "Mesa Primera",
-  "description": "Juego de cartas multijugador online",
+  "name": "Primera Riverada los 4 Ases",
+  "short_name": "4 Ases",
+  "description": "Club privado de cartas multijugador online. Juega a la Primera en tiempo real.",
   "start_url": "/lobby",
   "display": "standalone",
   "orientation": "portrait",

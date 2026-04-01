@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams } from 'next/navigation'
-import { useActionState, Suspense, useEffect, useRef } from 'react'
+import { useActionState, Suspense } from 'react'
 import { verifyOtp } from '../../../auth-actions'
 
 
@@ -9,31 +9,6 @@ function VerifyContent() {
   const searchParams = useSearchParams()
   const phone = searchParams.get('phone') || ''
   const [state, formAction, isPending] = useActionState(verifyOtp, null)
-  const formRef = useRef<HTMLFormElement>(null)
-
-  const TEST_PHONES = [
-    '+573205802918',
-    '+573229122479',
-    '+573125822841'
-  ]
-
-  const isTestPhone = TEST_PHONES.includes(phone)
-  const isDev = process.env.NODE_ENV === 'development'
-
-  // Auto-submit in DEV for test users
-  useEffect(() => {
-    if (isDev && isTestPhone && formRef.current) {
-      const timer = setTimeout(() => {
-        const tokenInput = formRef.current?.querySelector('input[name="token"]') as HTMLInputElement
-        const submitBtn = formRef.current?.querySelector('button[type="submit"]') as HTMLButtonElement
-        if (tokenInput && submitBtn) {
-          tokenInput.value = '123456'
-          submitBtn.click()
-        }
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [isDev, isTestPhone])
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-hidden">
@@ -75,7 +50,7 @@ function VerifyContent() {
             </div>
           )}
 
-          <form action={formAction} ref={formRef} className="space-y-10">
+          <form action={formAction} className="space-y-10">
             <input type="hidden" name="phone" value={phone} />
             
             <div className="group relative">

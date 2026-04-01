@@ -320,7 +320,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
 
           <div className="px-4 py-3 text-center" style={{ borderTop: '1px solid rgba(212,175,55,0.1)' }}>
             <span className="text-[9px] font-black tracking-[0.25em] uppercase" style={{ color: 'rgba(212,175,55,0.3)' }}>
-              Mesa Primera · Notificaciones
+              Primera Riverada · Notificaciones
             </span>
           </div>
         </div>

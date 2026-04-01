@@ -1,7 +1,25 @@
-import { type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
+const CANONICAL_HOST = 'primerariveradalos4ases.com'
+const REDIRECT_HOSTS = new Set([
+  'www.primerariveradalos4ases.com',
+  'mesa-primera-web.vercel.app',
+])
+
 export async function proxy(request: NextRequest) {
+  const { hostname } = request.nextUrl
+  const shouldRedirect =
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    REDIRECT_HOSTS.has(hostname)
+
+  if (shouldRedirect) {
+    const canonicalUrl = request.nextUrl.clone()
+    canonicalUrl.protocol = 'https'
+    canonicalUrl.hostname = CANONICAL_HOST
+    return NextResponse.redirect(canonicalUrl, 308)
+  }
+
   return await updateSession(request)
 }
 

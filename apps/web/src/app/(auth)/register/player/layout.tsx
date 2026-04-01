@@ -3,7 +3,7 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Registrarse",
   description:
-    "Crea tu cuenta en Mesa Primera y comienza a jugar hoy mismo. Únete al club privado de cartas más exclusivo de habla hispana.",
+    "Crea tu cuenta en Primera Riverada los 4 Ases y comienza a jugar hoy. Únete al club privado de cartas más exclusivo.",
   alternates: {
     canonical: "/register/player",
   },

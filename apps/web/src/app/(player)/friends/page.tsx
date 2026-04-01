@@ -107,7 +107,7 @@ function FriendsContent() {
             Amigos
           </h1>
           <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em] opacity-60">
-            Mesa Primera • Elite Club
+            Primera Riverada • Elite Club
           </p>
         </div>
         

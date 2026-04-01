@@ -80,7 +80,7 @@ export default function PlayerRegisterPage() {
         {/* Logo Section */}
         <div className="text-center mb-10">
           <h1 className="text-5xl md:text-7xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
-            MESA PRIMERA
+            PRIMERA RIVERADA
           </h1>
         </div>
 

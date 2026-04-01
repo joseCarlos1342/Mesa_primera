@@ -94,7 +94,7 @@ export default function AdminBroadcastPage() {
                   Sistema de <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Broadcast</span>
                 </h1>
                 <p className="text-slate-400 text-base md:text-lg max-w-2xl font-medium leading-relaxed">
-                  Lanza notificaciones globales instantáneas. Tu mensaje llegará a todos los rincones de <span className="text-white font-bold italic">Mesa Primera</span> con un solo clic.
+                  Lanza notificaciones globales instantáneas. Tu mensaje llegará a todos los rincones de <span className="text-white font-bold italic">Primera Riverada</span> con un solo clic.
                 </p>
               </div>
               <div className="hidden md:flex flex-none items-center justify-center w-24 h-24 rounded-3xl bg-indigo-600/10 border border-indigo-500/20 shadow-[0_0_50px_rgba(99,102,241,0.1)] relative">
@@ -276,7 +276,7 @@ export default function AdminBroadcastPage() {
                       </div>
                       <div>
                         <p className={`text-[10px] font-black uppercase tracking-widest ${selectedType.color}`}>{selectedType.label}</p>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Mesa Primera Official</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Primera Riverada Official</p>
                       </div>
                     </div>
                     <span className="text-[10px] font-bold text-slate-500 font-mono">AHORA</span>

@@ -339,7 +339,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
               )}
               <div className={`w-3 h-3 rounded-full ${isResolved ? 'bg-slate-600' : 'bg-brand-gold animate-pulse shadow-[0_0_15px_rgba(202,171,114,0.6)]'}`} />
               <div className="flex flex-col">
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] leading-none opacity-60">Mesa Primera</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.3em] leading-none opacity-60">Primera Riverada</span>
                 <span className="text-[13px] font-display font-black mt-1 uppercase italic tracking-wider">
                   {view === 'list' ? 'Centro de Ayuda' : isResolved ? 'Consulta Cerrada' : 'Consulta con el Host'}
                 </span>

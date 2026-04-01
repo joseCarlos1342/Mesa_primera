@@ -3,7 +3,7 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Iniciar Sesión",
   description:
-    "Accede a tu cuenta de Mesa Primera. Ingresa con tu número de celular y únete a la mejor comunidad de juego de cartas online.",
+    "Accede a tu cuenta de Primera Riverada los 4 Ases. Ingresa con tu número de celular y vuelve a la mesa.",
   alternates: {
     canonical: "/login/player",
   },

@@ -19,25 +19,28 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mesaprimera.com"),
+  metadataBase: new URL("https://primerariveradalos4ases.com"),
   title: {
-    default: "Mesa Primera | Juego de Cartas Multijugador",
-    template: "%s | Mesa Primera",
+    default: "Primera Riverada los 4 Ases | Juego de Cartas Online",
+    template: "%s | Primera Riverada los 4 Ases",
   },
   description:
-    "Disfruta de Mesa Primera, el mejor juego de cartas multijugador online. Juega con amigos, compite en torneos y demuestra tu habilidad.",
+    "Juega a la Primera online con amigos. Club privado de cartas multijugador en tiempo real. Partidas seguras, billetera digital y fair play garantizado.",
   keywords: [
-    "Mesa Primera",
-    "juego de cartas",
-    "multijugador",
-    "casino online",
-    "cartas online",
-    "amigos",
-    "solitario",
+    "Primera Riverada los 4 Ases",
+    "primera riverada",
+    "juego de primera",
+    "juego de cartas online",
+    "cartas multijugador",
+    "primera cartas",
+    "jugar a la primera",
+    "club de cartas",
+    "cartas en línea",
+    "mesa de cartas",
   ],
-  authors: [{ name: "Mesa Primera Team" }],
-  creator: "Mesa Primera Team",
-  publisher: "Mesa Primera Team",
+  authors: [{ name: "Primera Riverada los 4 Ases" }],
+  creator: "Primera Riverada los 4 Ases",
+  publisher: "Primera Riverada los 4 Ases",
   formatDetection: {
     email: false,
     address: false,
@@ -45,26 +48,26 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    locale: "es_ES",
-    url: "https://mesaprimera.com",
-    siteName: "Mesa Primera",
-    title: "Mesa Primera | Juego de Cartas Multijugador",
+    locale: "es_CO",
+    url: "https://primerariveradalos4ases.com",
+    siteName: "Primera Riverada los 4 Ases",
+    title: "Primera Riverada los 4 Ases | Juego de Cartas Online",
     description:
-      "Juega a Mesa Primera con amigos. El juego de cartas más emocionante y social.",
+      "Juega a la Primera online con amigos. Club privado de cartas en tiempo real con billetera digital.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Mesa Primera - Mesa de Juego",
+        alt: "Primera Riverada los 4 Ases - Mesa de Juego",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mesa Primera | Juego de Cartas Multijugador",
+    title: "Primera Riverada los 4 Ases | Juego de Cartas Online",
     description:
-      "Juega a Mesa Primera con amigos. El juego de cartas más emocionante y social.",
+      "Juega a la Primera online con amigos. Club privado de cartas en tiempo real.",
     images: ["/og-image.png"],
   },
   manifest: "/manifest.json",
@@ -99,14 +102,30 @@ export default function RootLayout({
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "Mesa Primera",
-    "url": "https://mesaprimera.com",
-    "logo": "https://mesaprimera.com/logo.png",
+    "name": "Primera Riverada los 4 Ases",
+    "url": "https://primerariveradalos4ases.com",
+    "logo": "https://primerariveradalos4ases.com/icons/icon-512x512.png",
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer service",
-      "email": "admin@mesaprimera.com",
+      "availableLanguage": "es",
     },
+  };
+
+  const webAppJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Primera Riverada los 4 Ases",
+    "url": "https://primerariveradalos4ases.com",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "COP",
+    },
+    "inLanguage": "es",
+    "description": "Club privado de cartas multijugador online. Juega a la Primera en tiempo real con amigos.",
   };
 
   return (
@@ -114,7 +133,7 @@ export default function RootLayout({
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Mesa Primera" />
+        <meta name="apple-mobile-web-app-title" content="4 Ases" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#10b981" />
@@ -127,6 +146,12 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(webAppJsonLd),
           }}
         />
       </head>
