@@ -35,6 +35,22 @@ if (redisClient && process.env.NODE_ENV !== 'production') {
   globalForRedis.redis = redisClient
 }
 
+// In-memory fallback rate limiter (per-process; used when Redis is unavailable)
+const _memFallback = new Map<string, { count: number; resetAt: number }>()
+
+function _checkMemFallback(key: string, limit: number, windowSecs: number) {
+  const now = Date.now()
+  const entry = _memFallback.get(key)
+  const count = (!entry || entry.resetAt < now) ? 1 : entry.count + 1
+  _memFallback.set(key, { count, resetAt: (!entry || entry.resetAt < now) ? now + windowSecs * 1000 : entry.resetAt })
+  return {
+    success: count <= limit,
+    limit,
+    remaining: Math.max(0, limit - count),
+    reset: windowSecs,
+  }
+}
+
 export const redis = {
   async publish(channel: string, message: string) {
     if (!redisClient) {
@@ -53,12 +69,8 @@ export const redis = {
  */
 export async function checkRateLimit(key: string, limit: number, windowSecs: number) {
   if (!redisClient) {
-    return {
-      success: true,
-      limit,
-      remaining: limit,
-      reset: windowSecs
-    }
+    // No Redis configured — use in-memory fallback (per-process, not distributed)
+    return _checkMemFallback(key, limit, windowSecs)
   }
 
   try {
@@ -74,13 +86,8 @@ export async function checkRateLimit(key: string, limit: number, windowSecs: num
       reset: windowSecs
     }
   } catch (e: any) {
-    console.warn('[REDIS_BYPASS] Redis error in rate limit:', e.message)
-    return {
-      success: true,
-      limit,
-      remaining: limit,
-      reset: windowSecs
-    }
+    console.warn('[REDIS_FALLBACK] Redis error in rate limit — using memory fallback:', e.message)
+    return _checkMemFallback(key, limit, windowSecs)
   }
 }
 

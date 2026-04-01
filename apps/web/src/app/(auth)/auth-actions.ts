@@ -307,6 +307,10 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
     console.error('[AUTH_ERROR] Error en registro (%s): %s', phone, error.message, error)
 
     if (isOtpProviderDisabled(error.message)) {
+      if (process.env.HACKATHON_AUTH_BYPASS !== 'true') {
+        return { error: 'El servicio de SMS no está disponible en este momento. Por favor, inténtalo más tarde.' }
+      }
+
       const existingProfile = await getPhoneProfileCandidate(phone)
       if (existingProfile) {
         return { error: 'Ese número ya existe. Ingresa desde la pantalla de login.' }
@@ -326,7 +330,7 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
         }
       }
 
-      return { error: created.error ?? 'No fue posible crear el jugador por teléfono en modo hackathon.' }
+      return { error: created.error ?? 'No fue posible crear el jugador.' }
     }
 
     if (error.message.includes('saving new user')) {
@@ -381,6 +385,10 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
   }
 
   if (error && isOtpProviderDisabled(error.message)) {
+    if (process.env.HACKATHON_AUTH_BYPASS !== 'true') {
+      return { error: 'El servicio de SMS no está disponible en este momento. Por favor, inténtalo más tarde.' }
+    }
+
     const candidate = await getPhoneProfileCandidate(phone)
 
     if (candidate?.is_banned) {
@@ -399,7 +407,7 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
     console.error('[AUTH_ERROR] Error en login (%s): %s', phone, error.message)
 
     if (isMissingPhoneAuthUser(error.message)) {
-      return { error: 'Usuario no encontrado. Por favor, regístrate primero.' }
+      return { error: 'Si el número está registrado, recibirás un SMS. De lo contrario, regístrate primero.' }
     }
     if (error.message.includes('saving new user')) {
       return { error: 'Error interno del servidor de base de datos. Por favor contacta soporte.' }
@@ -542,6 +550,13 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
  * Registro para nuevos administradores (opcional para el flujo actual).
  */
 export async function registerAdmin(prevState: unknown, formData: FormData) {
+  const inviteToken = (formData.get('inviteToken') as string ?? '').trim()
+  const expectedToken = process.env.ADMIN_INVITE_TOKEN
+
+  if (!expectedToken || inviteToken !== expectedToken) {
+    return { error: 'Token de invitación inválido o no configurado.' }
+  }
+
   const supabase = await createClient()
   const email = formData.get('email') as string
   const password = formData.get('password') as string
