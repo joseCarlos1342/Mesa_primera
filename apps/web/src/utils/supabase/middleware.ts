@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isPublicSeoPage = pathname === '/primera-riverada-los-4-ases'
   const isAdminPath = pathname.startsWith('/admin')
   const isMfaPage = pathname === '/login/admin/mfa'
 
@@ -56,7 +57,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // --- Caso 1: No Autenticado ---
-  if (!user && !isAuthPage) {
+  if (!user && !isAuthPage && !isPublicSeoPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login/player'
     return NextResponse.redirect(url)
