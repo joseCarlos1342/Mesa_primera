@@ -23,8 +23,6 @@
   html {
     /* Scale base font size for seniors */
     font-size: 18px;
-    overflow-x: hidden;
-    scrollbar-gutter: stable;
   }
 
   body {
