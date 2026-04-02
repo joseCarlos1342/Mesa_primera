@@ -46,6 +46,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private piquePassPlayerIds = new Set<string>();
   /** Bandera para evitar doble rotación si la Mano Definitiva ya rotó durante la partida */
   private dealerRotatedThisGame = false;
+  /** Contador de reinicios consecutivos del pique para evitar bucle infinito */
+  private piqueRestartCount = 0;
+  private static readonly MAX_PIQUE_RESTARTS = 10;
   /** Redis subscriber for single-session kick events */
   private redisSub?: Redis;
 
@@ -164,6 +167,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           console.log(`[MesaRoom] Acción inválida '${action}' de ${player.nickname} en fase PIQUE. Rechazada.`);
           return;
         }
+
+        // Guard contra doble procesamiento (race condition con async handler)
+        if (player.hasActed) {
+          console.warn(`[MesaRoom] ${player.nickname} ya actuó en esta ronda de PIQUE. Ignorando duplicado.`);
+          return;
+        }
+
+        // Reiniciar contador de restarts cuando un jugador actúa
+        this.piqueRestartCount = 0;
 
         player.hasActed = true;
 
@@ -823,6 +835,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.lastSeed = seed;
 
     this.dealerRotatedThisGame = false;
+    this.piqueRestartCount = 0;
     this.currentGameId = crypto.randomUUID();
     this.currentTimeline = [];
     this.rngCounter = 0;
@@ -956,7 +969,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // Reset folds and deduct ante (Casa) — skip if restarting pique
     let antePlayerCount = 0;
     for (const [, p] of this.state.players) {
-      p.isFolded = !p.connected;
+      p.isFolded = !p.connected || p.isWaiting;
       if (!p.isFolded && !skipAnte) {
         const anteAmount = Math.min(10, p.chips);
         if (anteAmount <= 0) continue;
@@ -1029,9 +1042,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
 
   private advanceTurnPhase2(startFromId?: string) {
-    // If only 1 active player remains, no need for them to act — auto-restart pique
+    // If only 1 active SEATED player remains, no need for them to act — auto-restart pique
+    // IMPORTANT: Exclude isWaiting players — they are spectators and cannot act
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
-      .filter(p => !p.isFolded && p.connected);
+      .filter(p => !p.isFolded && p.connected && !p.isWaiting);
     if (activePlayers.length < 2) {
       this.restartPique();
       return;
@@ -1053,9 +1067,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         return;
       }
     }
-    // No one left to act — check if at least 2 players went "voy"
+    // No one left to act — check if at least 2 SEATED players went "voy"
     const activeInPique = Array.from(this.state.players.values() as IterableIterator<Player>)
-      .filter(p => !p.isFolded && p.connected);
+      .filter(p => !p.isFolded && p.connected && !p.isWaiting);
 
     if (activeInPique.length < 2) {
       this.restartPique();
@@ -1073,11 +1087,62 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * - NO vuelve a cobrar el ante (ya fue pagado)
    */
   private restartPique() {
-    console.log(`[MesaRoom] Menos de 2 jugadores fueron voy en PIQUE. Reiniciando mano...`);
+    this.piqueRestartCount++;
+    console.log(`[MesaRoom] Menos de 2 jugadores fueron voy en PIQUE. Reinicio #${this.piqueRestartCount}...`);
+
+    // ── GUARD: Prevenir bucle infinito de reinicios ──
+    const seatedConnected = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => p.connected && !p.isWaiting);
+
+    if (seatedConnected.length < 2 || this.piqueRestartCount > MesaRoom.MAX_PIQUE_RESTARTS) {
+      console.log(`[MesaRoom] Abortando pique: ${seatedConnected.length} jugadores sentados, ${this.piqueRestartCount} reinicios. Volviendo a LOBBY.`);
+
+      // Devolver pot al único jugador que quede (si existe)
+      if (seatedConnected.length === 1 && this.state.pot > 0) {
+        const soloPlayer = seatedConnected[0];
+        soloPlayer.chips += this.state.pot;
+        if (soloPlayer.supabaseUserId) {
+          SupabaseService.awardPot(soloPlayer.supabaseUserId, this.state.pot, 0, this.currentGameId).catch(console.error);
+        }
+        this.state.lastAction = `${soloPlayer.nickname} recupera el pozo por falta de jugadores.`;
+      }
+
+      // Devolver piquePot si hay
+      if (this.state.piquePot > 0) {
+        const voyP = seatedConnected.find(p => !p.isFolded);
+        if (voyP) {
+          voyP.chips += this.state.piquePot;
+          if (voyP.supabaseUserId) {
+            SupabaseService.awardPot(voyP.supabaseUserId, this.state.piquePot, 0, this.currentGameId).catch(console.error);
+          }
+        }
+      }
+
+      this.state.pot = 0;
+      this.state.piquePot = 0;
+      this.state.turnPlayerId = "";
+      this.state.activeManoId = "";
+      this.state.showdownTimer = 0;
+      this.piqueRestartCount = 0;
+
+      Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => {
+        p.isReady = false;
+        p.hasActed = false;
+        p.isFolded = false;
+        p.revealedCards = "";
+      });
+      this.state.players.forEach((p: Player, sessionId: string) => {
+        this.setPlayerCards(sessionId, "");
+      });
+
+      this.promoteWaitingPlayers();
+      this.state.phase = "LOBBY";
+      return;
+    }
 
     // Identificar al único jugador que fue "voy" (si lo hay)
     const voyPlayer = Array.from(this.state.players.values() as IterableIterator<Player>)
-      .find(p => !p.isFolded && p.connected);
+      .find(p => !p.isFolded && p.connected && !p.isWaiting);
 
     // Devolver apuestas del pique al que fue "voy"
     if (this.state.piquePot > 0 && voyPlayer) {
