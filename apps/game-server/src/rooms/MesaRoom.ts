@@ -1332,10 +1332,21 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * o pasar para seguir jugando por el pote principal.
    */
   private startPhaseCantarJuego() {
-    this.state.phase = "CANTAR_JUEGO";
-    console.log(`[MesaRoom] Iniciando Fase: Cantar Juego`);
     this.juegoCallers = [];
     this.state.players.forEach((p: Player) => p.hasActed = false);
+
+    // Si ningún jugador activo tiene juego, saltar la fase directamente
+    const anyoneHasJuego = Array.from(this.state.players.entries())
+      .some(([, p]) => !p.isFolded && p.connected && !p.isWaiting && evaluateHand(p.cards).type !== 'NINGUNA');
+
+    if (!anyoneHasJuego) {
+      console.log(`[MesaRoom] Nadie tiene juego — saltando CANTAR_JUEGO directamente a apuestas`);
+      this.resolvePique();
+      return;
+    }
+
+    this.state.phase = "CANTAR_JUEGO";
+    console.log(`[MesaRoom] Iniciando Fase: Cantar Juego`);
     this.advanceTurnCantarJuego(this.state.activeManoId);
   }
 
@@ -1363,14 +1374,20 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const p = this.state.players.get(id);
 
       if (p && p.connected && !p.isFolded && !p.hasActed) {
-        // Encontrado jugador que debe actuar — siempre esperar acción explícita
-        this.state.turnPlayerId = id;
-
-        // Informar al cliente si tiene o no juego para mostrar UI adecuada
         const hand = evaluateHand(p.cards);
+
+        // Auto-pasar jugadores sin juego (no tienen opción real)
+        if (hand.type === 'NINGUNA') {
+          p.hasActed = true;
+          this.state.lastAction = `${p.nickname} pasa`;
+          continue;
+        }
+
+        // Jugador con juego — esperar acción explícita (cantar o pasar)
+        this.state.turnPlayerId = id;
         const client = this.clientMap.get(id);
         if (client) {
-          client.send("cantar-juego-turn", { hasJuego: hand.type !== 'NINGUNA', handType: hand.type });
+          client.send("cantar-juego-turn", { hasJuego: true, handType: hand.type });
         }
         return;
       }
