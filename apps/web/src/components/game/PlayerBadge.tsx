@@ -62,7 +62,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
 
        {/* Horizontal Pill Container */}
        <div className={`
-         relative z-20 flex items-center gap-1 md:gap-3 px-1.5 md:px-3 py-0.5 md:py-1.5
+         relative z-20 flex items-center gap-0.5 md:gap-3 px-1 md:px-3 py-0.5 md:py-1.5
          bg-gradient-to-r from-[#112a1a] via-[#0a180e] to-[#112a1a] 
          rounded-full border 
          ${isWaiting ? 'border-[#c0a060]/30 border-dashed' : isActive ? 'border-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.5)]' : 'border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.6)]'}
@@ -73,9 +73,9 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
          {!hideAvatar && (
             <div className={`
               relative rounded-full flex-shrink-0 flex items-center justify-center
-              w-6 h-6 md:w-10 md:h-10 
+              w-5 h-5 md:w-10 md:h-10 
               bg-gradient-to-br from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c]
-              p-[2px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]
+              p-[1.5px] md:p-[2px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]
             `}>
               <div className="w-full h-full rounded-full overflow-hidden bg-[#111] border border-black/20">
                 {avatarContent}
@@ -83,45 +83,60 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
             </div>
          )}
 
-         {/* Info Column (Name & Balance) */}
-         <div className="flex flex-col items-start pr-2">
-            <span className="text-[#e2c161] text-[7px] md:text-[11px] font-bold tracking-wider uppercase truncate max-w-[60px] md:max-w-[100px]">
+         {/* Info Column (Name & Balance + badges on mobile) */}
+         <div className="flex flex-col items-start pr-1 md:pr-2">
+            <span className="text-[#e2c161] text-[6px] md:text-[11px] font-bold tracking-wider uppercase truncate max-w-[50px] md:max-w-[100px]">
               {player.nickname || 'VACÍO'}
             </span>
-            <span className="text-[#c1a052] text-[7px] md:text-[9px] font-mono font-bold opacity-90 flex items-center">
+            <span className="text-[#c1a052] text-[6px] md:text-[9px] font-mono font-bold opacity-90 flex items-center">
               {player.chips != null ? formatCurrency(player.chips) : '$0'}
-              {points != null && (
-                <span className="ml-2 pl-2 border-l border-white/20 text-[#d4af37] font-sans font-black">
-                  {points} PTS
+            </span>
+            {/* Badges inline on mobile to save vertical space */}
+            <div className="flex items-center gap-0.5 md:hidden mt-0.5">
+              {isDealer && !isWaiting && (
+                <span className="bg-[#d4af37] text-black text-[5px] font-black px-1 py-[1px] rounded-full shadow-sm border border-white/20 uppercase tracking-tighter leading-none">
+                  Mano
                 </span>
               )}
-            </span>
+              {!isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
+                <span className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[5px] font-black px-1 py-[1px] rounded-full uppercase tracking-tighter leading-none">
+                  {turnOrder}ª
+                </span>
+              )}
+              {isAllIn && !isWaiting && (
+                <span className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[5px] font-black px-1 py-[1px] rounded-full uppercase tracking-tighter leading-none">
+                  Resto
+                </span>
+              )}
+              {isWaiting && (
+                <span className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[5px] font-black px-1 py-[1px] rounded-full uppercase tracking-tighter animate-pulse leading-none">
+                  Espera
+                </span>
+              )}
+            </div>
          </div>
 
-         {/* Dealer Icon (Compact) */}
+         {/* Desktop-only badges (hidden on mobile, shown inline above) */}
          {isDealer && !isWaiting && (
-            <div className="bg-[#d4af37] text-black text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white/20 uppercase tracking-tighter">
+            <div className="hidden md:block bg-[#d4af37] text-black text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white/20 uppercase tracking-tighter">
               Mano
             </div>
          )}
 
-         {/* Turno de Mano: "2ª", "3ª"... para que todos sepan quién sigue después */}
          {!isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
-            <div className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+            <div className="hidden md:block bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
               {turnOrder}ª
             </div>
          )}
 
-         {/* All-in (Resto) badge */}
          {isAllIn && !isWaiting && (
-            <div className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[6px] md:text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+            <div className="hidden md:block bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[6px] md:text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
               Resto
             </div>
          )}
 
-         {/* Waiting badge */}
          {isWaiting && (
-            <div className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[6px] md:text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
+            <div className="hidden md:block bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[6px] md:text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
               Espera
             </div>
          )}

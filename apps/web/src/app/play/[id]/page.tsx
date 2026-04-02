@@ -348,7 +348,7 @@ export default function GameRoomPage() {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
         <Loader2 className="h-10 w-10 animate-spin text-[#d4af37] mb-4 relative z-10" />
-        <h2 className="text-lg font-black tracking-[0.3em] text-[#fdf0a6]/70 uppercase relative z-10">Conectando a la mesa...</h2>
+        <h2 className="text-lg font-black tracking-[0.3em] text-[#fdf0a6]/70 uppercase relative z-10 text-center px-6">Conectando a la mesa...</h2>
       </div>
     )
   }
@@ -447,20 +447,20 @@ export default function GameRoomPage() {
           </div>
         )}
         {phase === 'LOBBY' ? (
-          <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center px-2 py-4 md:p-8">
+          <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center px-2 pt-14 pb-4 md:p-8 md:pt-20">
             {/* Atmospheric Background Effects */}
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 pointer-events-none mix-blend-multiply" />
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#d4af37]/5 rounded-full blur-[150px] pointer-events-none" />
 
             {/* Main Panel */}
-            <div className="relative z-10 w-full max-w-5xl bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/25 rounded-3xl md:rounded-[3rem] p-4 md:p-14 landscape:p-4 shadow-[0_40px_100px_rgba(0,0,0,0.6),_0_0_60px_rgba(212,175,55,0.04)] flex flex-col items-center max-h-[92vh] landscape:max-h-[85vh] overflow-hidden custom-scrollbar space-y-0">
-              <div className="w-full flex flex-col items-center overflow-y-auto overflow-x-hidden custom-scrollbar space-y-6 md:space-y-12 py-4 md:py-2 px-1">
+            <div className="relative z-10 w-full max-w-5xl bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/25 rounded-2xl md:rounded-[3rem] p-3 md:p-14 landscape:p-3 shadow-[0_40px_100px_rgba(0,0,0,0.6),_0_0_60px_rgba(212,175,55,0.04)] flex flex-col items-center max-h-[85vh] landscape:max-h-[80vh] overflow-hidden custom-scrollbar space-y-0">
+              <div className="w-full flex flex-col items-center overflow-y-auto overflow-x-hidden custom-scrollbar space-y-4 md:space-y-12 py-2 md:py-2 px-1">
 
-                <div className="flex flex-col items-center gap-3 md:gap-6">
+                <div className="flex flex-col items-center gap-2 md:gap-6">
                   {/* Row 1: Icon + Title */}
-                  <div className="flex flex-row items-center gap-3 md:gap-5">
-                    <Users className="w-8 h-8 md:w-16 landscape:w-8 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] flex-shrink-0" />
-                    <h2 className="text-3xl md:text-6xl landscape:text-3xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium">
+                  <div className="flex flex-row items-center gap-2 md:gap-5">
+                    <Users className="w-6 h-6 md:w-16 landscape:w-8 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] flex-shrink-0" />
+                    <h2 className="text-2xl md:text-6xl landscape:text-2xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium">
                       Sala de Espera
                     </h2>
                   </div>
@@ -476,8 +476,8 @@ export default function GameRoomPage() {
                 </div>
 
                 {/* ── Pique Mínimo Config ── */}
-                <div className="w-full px-4 md:px-10">
-                  <div className="bg-[#071a0e]/80 border border-[#d4af37]/20 rounded-2xl p-4 md:p-5 flex flex-col items-center gap-2">
+                <div className="w-full px-2 md:px-10">
+                  <div className="bg-[#071a0e]/80 border border-[#d4af37]/20 rounded-xl p-3 md:p-5 flex flex-col items-center gap-1.5">
                     <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a059]/70">Pique Mínimo</span>
                     <span className="text-xl md:text-3xl font-black text-[#fdf0a6] tracking-tight">
                       ${(minPique / 100).toLocaleString()}
@@ -561,14 +561,14 @@ export default function GameRoomPage() {
 
                 {/* Player Plates Grid - More Spacious */}
                 {players.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-14 w-full px-4 md:px-10 justify-items-center mt-4">
+                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-14 w-full px-2 md:px-10 justify-items-center mt-2">
                     {players.map(p => {
                       const isMe = room?.sessionId === p.id;
                       return (
                         <div
                           key={p.id}
                           className={`
-                          w-full flex items-center gap-4 md:gap-6 px-5 md:px-8 py-4 md:py-6 rounded-2xl md:rounded-3xl border transition-all duration-300
+                          w-full flex items-center gap-3 md:gap-6 px-3 md:px-8 py-3 md:py-6 rounded-xl md:rounded-3xl border transition-all duration-300
                           ${p.isReady
                               ? 'bg-[#0f2e1a]/90 border-[#d4af37]/30 shadow-[0_10px_30px_rgba(0,0,0,0.4)]'
                               : 'bg-[#071a0e]/60 border-white/5 shadow-inner opacity-50'}

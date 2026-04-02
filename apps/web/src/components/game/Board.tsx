@@ -135,12 +135,12 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
 
   // Define 6 fixed elliptical seat positions for opponents (slots for 7 players total)
   const opponentSeats = [
-    "top-[35%] left-[2%] landscape:top-[4%] landscape:left-[2%] md:landscape:top-[30%] md:landscape:left-[2%] lg:top-[25%] lg:left-[3%]",
-    "top-[10%] left-[12%] landscape:top-[2%] landscape:left-[21%] md:landscape:top-[8%] md:landscape:left-[10%] lg:top-[4%] lg:left-[15%]",
-    "top-[2%] left-[32%] landscape:top-[2%] landscape:left-[40%] md:landscape:top-[2%] md:landscape:left-[30%] lg:top-[2%] lg:left-[34%]",
-    "top-[2%] right-[32%] landscape:top-[2%] landscape:right-[40%] md:landscape:top-[2%] md:landscape:right-[30%] lg:top-[2%] lg:right-[34%]",
-    "top-[10%] right-[12%] landscape:top-[2%] landscape:right-[21%] md:landscape:top-[8%] md:landscape:right-[10%] lg:top-[4%] lg:right-[15%]",
-    "top-[35%] right-[2%] landscape:top-[4%] landscape:right-[2%] md:landscape:top-[30%] md:landscape:right-[2%] lg:top-[25%] lg:right-[3%]"
+    "top-[38%] left-[0%] landscape:top-[6%] landscape:left-[0%] md:landscape:top-[30%] md:landscape:left-[2%] lg:top-[25%] lg:left-[3%]",
+    "top-[12%] left-[10%] landscape:top-[2%] landscape:left-[18%] md:landscape:top-[8%] md:landscape:left-[10%] lg:top-[4%] lg:left-[15%]",
+    "top-[2%] left-[30%] landscape:top-[2%] landscape:left-[38%] md:landscape:top-[2%] md:landscape:left-[30%] lg:top-[2%] lg:left-[34%]",
+    "top-[2%] right-[30%] landscape:top-[2%] landscape:right-[38%] md:landscape:top-[2%] md:landscape:right-[30%] lg:top-[2%] lg:right-[34%]",
+    "top-[12%] right-[10%] landscape:top-[2%] landscape:right-[18%] md:landscape:top-[8%] md:landscape:right-[10%] lg:top-[4%] lg:right-[15%]",
+    "top-[38%] right-[0%] landscape:top-[6%] landscape:right-[0%] md:landscape:top-[30%] md:landscape:right-[2%] lg:top-[25%] lg:right-[3%]"
   ];
 
   const renderPlayerAtSeat = (p: any, seatIndex: number) => {
@@ -363,18 +363,18 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
         <div className="flex flex-row items-center gap-2 md:gap-10 pointer-events-auto px-2 md:px-8 py-2 md:py-4 rounded-3xl">
           
           {/* Column 1: Stacked Pots */}
-          <div className="flex flex-col gap-1.5 md:gap-2 shrink-0">
+          <div className="flex flex-col gap-1 md:gap-2 shrink-0">
             {/* Pozo Principal */}
-            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2.5 md:px-6 py-1 md:py-2 rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[85px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[6px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-60">Pozo Principal</span>
-              <span className="text-[#4ade80] font-mono font-black text-xs md:text-xl">{formatCurrency(pot)}</span>
+            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2 md:px-6 py-0.5 md:py-2 rounded-lg md:rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[70px] md:min-w-[160px]">
+              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Pozo Principal</span>
+              <span className="text-[#4ade80] font-mono font-black text-[10px] md:text-xl">{formatCurrency(pot)}</span>
             </div>
             
             {/* Pote del Pique - solo visible cuando > 0 */}
             {piquePot > 0 && (
-            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2.5 md:px-6 py-1 md:py-2 rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[85px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[6px] md:text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-60">Pote del Pique</span>
-              <span className="text-[#4ade80] font-mono font-black text-xs md:text-xl">{formatCurrency(piquePot)}</span>
+            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2 md:px-6 py-0.5 md:py-2 rounded-lg md:rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[70px] md:min-w-[160px]">
+              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Pote del Pique</span>
+              <span className="text-[#4ade80] font-mono font-black text-[10px] md:text-xl">{formatCurrency(piquePot)}</span>
             </div>
             )}
           </div>
@@ -383,18 +383,18 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           <div className="flex flex-col items-center gap-0">
             <div id="deck-center" className="relative shrink-0">
                {/* Deck stack effect */}
-               <div className="w-7 h-10 md:w-16 md:h-24 bg-[#0a0a0a] rounded-lg absolute translate-x-1 translate-y-1 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
-               <div className="w-7 h-10 md:w-16 md:h-24 bg-[#1a1a1a] rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1 md:translate-y-1" />
+               <div className="w-6 h-9 md:w-16 md:h-24 bg-[#0a0a0a] rounded-md md:rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
+               <div className="w-6 h-9 md:w-16 md:h-24 bg-[#1a1a1a] rounded-md md:rounded-lg absolute translate-x-[1px] translate-y-[1px] md:translate-x-1 md:translate-y-1" />
                
                {/* Top Card */}
-               <div className="w-7 h-10 md:w-16 md:h-24 rounded-lg overflow-hidden border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
-                  <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-lg" />
-                  <div className="absolute inset-0 border border-white/10 rounded-lg pointer-events-none" />
+               <div className="w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border-[1.5px] md:border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
+                  <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-md md:rounded-lg" />
+                  <div className="absolute inset-0 border border-white/10 rounded-md md:rounded-lg pointer-events-none" />
                </div>
 
                {/* Bottom card — slides out to the right of the deck */}
                {room.state.bottomCard && (
-                 <div className="absolute top-1/2 -translate-y-1/2 left-[70%] z-[5] w-7 h-10 md:w-16 md:h-24 rounded-lg overflow-hidden border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] rotate-[8deg]">
+                 <div className="absolute top-1/2 -translate-y-1/2 left-[70%] z-[5] w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] rotate-[8deg]">
                    <img
                      src={`/cards/${room.state.bottomCard.split('-')[0].padStart(2, '0')}-${({'O':'oros','C':'copas','E':'espadas','B':'bastos'} as Record<string,string>)[room.state.bottomCard.split('-')[1]] || room.state.bottomCard.split('-')[1]?.toLowerCase()}.png?v=3`}
                      alt=""

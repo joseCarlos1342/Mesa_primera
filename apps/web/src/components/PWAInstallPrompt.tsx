@@ -71,7 +71,7 @@ export function PWAInstallPrompt() {
   return (
     <>
       {/* Install banner */}
-      <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md animate-in slide-in-from-bottom-6 duration-500">
+      <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-md animate-in slide-in-from-bottom-6 duration-500">
         <div className="relative rounded-2xl border border-emerald-500/30 bg-gray-900/95 backdrop-blur-xl p-4 shadow-2xl shadow-emerald-500/10">
           <button
             onClick={handleDismiss}

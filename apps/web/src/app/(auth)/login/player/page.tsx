@@ -35,10 +35,10 @@ function PlayerLoginContent() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
-      <div className="w-full max-w-sm z-10 animate-in fade-in zoom-in-95 duration-1000">
+      <div className="w-full max-w-sm z-10 animate-in fade-in zoom-in-95 duration-1000 px-4">
         {/* Logo Section */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
+          <h1 className="text-[2.6rem] sm:text-6xl md:text-7xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] leading-[1.1]">
             PRIMERA RIVERADA
           </h1>
         </div>

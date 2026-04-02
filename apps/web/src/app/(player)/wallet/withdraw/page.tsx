@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { requestWithdrawal } from '@/app/actions/withdrawals'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Landmark, ShieldAlert, Banknote, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Landmark, ShieldAlert, Banknote, ShieldCheck } from 'lucide-react'
+import Link from 'next/link'
 
 export default function WithdrawPage() {
   const [amount, setAmount] = useState('')
@@ -38,6 +39,10 @@ export default function WithdrawPage() {
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-6"
         >
+          <Link href="/wallet" className="group relative w-14 h-14 md:w-16 md:h-16 bg-black/40 backdrop-blur-xl border-2 border-[#c0a060]/30 rounded-2xl flex items-center justify-center transition-all active:scale-95 shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden hover:border-[#c0a060]/60">
+            <div className="absolute inset-0 bg-[#c0a060]/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ArrowLeft className="w-6 h-6 md:w-8 md:h-8 text-[#c0a060] relative z-10 group-hover:-translate-x-1 transition-transform" />
+          </Link>
           <div className="space-y-1 pt-1">
             <h1 className="text-3xl md:text-4xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium whitespace-nowrap">
               Retirar <span className="ml-[0.1em]">Saldo</span>
