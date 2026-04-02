@@ -1074,9 +1074,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    const startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
-    if (startSeatIdx === -1 && !startFromId) {
-      return this.startPhase3CompletarMano();
+    let startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
+    // Guard: si el ID no se encuentra en seatOrder, usar activeManoId o avanzar fase
+    if (startSeatIdx === -1) {
+      if (startFromId) {
+        startSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
+      }
+      if (startSeatIdx === -1) {
+        return this.startPhase3CompletarMano();
+      }
     }
     const total = this.seatOrder.length;
     const loopStart = startFromId ? 0 : 1;
@@ -1336,10 +1342,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private advanceTurnCantarJuego(startFromId?: string) {
     // Buscar quién tiene el turno. Siempre empezamos buscando desde startFromId (La Mano al inicio de la fase)
     const currentTurnId = this.state.turnPlayerId;
-    const startSeatIdx = this.seatOrder.indexOf(startFromId || currentTurnId);
-    
-    if (startSeatIdx === -1 && !startFromId) {
-      return this.resolvePique();
+    let startSeatIdx = this.seatOrder.indexOf(startFromId || currentTurnId);
+
+    // Guard: si startFromId no se encuentra en seatOrder, usar activeManoId o índice 0
+    if (startSeatIdx === -1) {
+      if (startFromId) {
+        startSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
+      }
+      if (startSeatIdx === -1) {
+        return this.resolvePique();
+      }
     }
     const total = this.seatOrder.length;
     // Si startFromId está presente, incluimos ese índice en la búsqueda (loopStart = 0)
@@ -1349,23 +1361,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const idx = (startSeatIdx + i) % total;
       const id = this.seatOrder[idx];
       const p = this.state.players.get(id);
-      
+
       if (p && p.connected && !p.isFolded && !p.hasActed) {
-        // Encontrado jugador que debe actuar
+        // Encontrado jugador que debe actuar — siempre esperar acción explícita
         this.state.turnPlayerId = id;
-        
-        // Auto-pasar jugadores sin juego válido después de 1.5s
+
+        // Informar al cliente si tiene o no juego para mostrar UI adecuada
         const hand = evaluateHand(p.cards);
-        if (hand.type === 'NINGUNA') {
-          this.clock.setTimeout(() => {
-            // Verificar que el jugador no haya actuado (por si el servidor ya avanzó)
-            // Y que sigamos en la fase correcta y sea su turno
-            if (!p.hasActed && this.state.phase === "CANTAR_JUEGO" && this.state.turnPlayerId === id) {
-              p.hasActed = true;
-              this.state.lastAction = `${p.nickname} pasa`;
-              this.advanceTurnCantarJuego();
-            }
-          }, 1500);
+        const client = this.clientMap.get(id);
+        if (client) {
+          client.send("cantar-juego-turn", { hasJuego: hand.type !== 'NINGUNA', handType: hand.type });
         }
         return;
       }
@@ -1630,11 +1635,17 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    const startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
+    let startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
+    // Guard: si el ID no se encuentra en seatOrder, intentar con activeManoId
     if (startSeatIdx === -1) {
-      if (nextPhaseCallback) nextPhaseCallback();
-      else this.startPhase6Showdown();
-      return;
+      if (startFromId) {
+        startSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
+      }
+      if (startSeatIdx === -1) {
+        if (nextPhaseCallback) nextPhaseCallback();
+        else this.startPhase6Showdown();
+        return;
+      }
     }
     const total = this.seatOrder.length;
     const loopStart = startFromId ? 0 : 1;
@@ -1655,9 +1666,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   private advanceTurnPhaseDescarte(startFromId?: string) {
-    const startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
+    let startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
+    // Guard: si el ID no se encuentra en seatOrder, intentar con activeManoId
     if (startSeatIdx === -1) {
-      return this.startPhaseReemplazoDescarte();
+      if (startFromId) {
+        startSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
+      }
+      if (startSeatIdx === -1) {
+        return this.startPhaseReemplazoDescarte();
+      }
     }
     const total = this.seatOrder.length;
     const loopStart = startFromId ? 0 : 1;
