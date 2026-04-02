@@ -400,6 +400,8 @@ export async function registerAdmin(prevState: unknown, formData: FormData) {
 
 export async function verifyAdminTotp(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
+  // Hydrate session from cookies before MFA calls
+  await supabase.auth.getUser()
   const code = formData.get('code') as string
 
   const { data: factors } = await supabase.auth.mfa.listFactors()
@@ -432,6 +434,8 @@ export async function verifyAdminTotp(prevState: unknown, formData: FormData) {
 
 export async function enrollAdminTotp() {
   const supabase = await createClient()
+  // Hydrate session from cookies before MFA calls
+  await supabase.auth.getUser()
   const { data, error } = await supabase.auth.mfa.enroll({
     factorType: 'totp',
   })
@@ -451,6 +455,8 @@ export async function enrollAdminTotp() {
  */
 export async function verifyAdminTotpSetup(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
+  // Hydrate session from cookies before MFA calls
+  await supabase.auth.getUser()
   const factorId = formData.get('factorId') as string
   const code = formData.get('code') as string
 
