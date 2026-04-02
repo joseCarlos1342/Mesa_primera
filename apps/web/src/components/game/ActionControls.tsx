@@ -45,6 +45,10 @@ export function ActionControls({
   const isPique = phase === 'PIQUE';
   const isBetBelowMin = isPique && totalBet > 0 && totalBet < minPique;
 
+  // Pique obligatorio: La Mano ya fijó el monto y yo no soy La Mano
+  const piqueFixed = isPique && currentMaxBet > 0;
+  const canAffordPique = piqueFixed && myChips >= currentMaxBet;
+
   // For 4-card phases: determine call amount and affordability
   const callAmount = is4CardBetting ? Math.max(0, currentMaxBet - myRoundBet) : 0;
   const canAffordCall = myChips >= callAmount;
@@ -68,15 +72,41 @@ export function ActionControls({
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
         className="flex flex-row items-center gap-1 z-[60] pointer-events-auto shrink-0 bg-[#0a180e]/95 rounded-tl-2xl border-t border-l border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] px-2 py-1 md:p-2"
       >
-        {/* ── PIQUE: Limpiar + IR (unchanged logic) ── */}
-        {showPiqueBet && (
+        {/* ── PIQUE: Monto fijo impuesto por La Mano ── */}
+        {piqueFixed && canAffordPique && (
+          <button
+            onClick={() => {
+              if (navigator.vibrate) navigator.vibrate(50);
+              room.send('action', { action: 'voy', amount: currentMaxBet });
+              onClearSelection?.();
+            }}
+            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
+          >
+            VOY ${(currentMaxBet / 100).toLocaleString()}
+          </button>
+        )}
+        {piqueFixed && !canAffordPique && myChips > 0 && (
+          <button
+            onClick={() => {
+              if (navigator.vibrate) navigator.vibrate(50);
+              room.send('action', { action: 'voy', amount: myChips });
+              onClearSelection?.();
+            }}
+            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
+          >
+            Resto ${(myChips / 100).toLocaleString()}
+          </button>
+        )}
+
+        {/* ── PIQUE: Limpiar + IR (selección libre, solo La Mano o si no hay pique fijado) ── */}
+        {showPiqueBet && !piqueFixed && (
           <button
             onClick={onBetClear}
             className="h-7 md:h-10 px-2 md:px-3 bg-gradient-to-b from-[#6b7280] to-[#374151] text-white rounded-lg font-black text-[8px] md:text-xs shadow border-b-2 border-b-[#1f2937] active:scale-95 transition-all uppercase tracking-wider">
             Limpiar
           </button>
         )}
-        {showPiqueBet && (
+        {showPiqueBet && !piqueFixed && (
           <button 
             onClick={onBetConfirm}
             disabled={isBetBelowMin}
@@ -88,7 +118,7 @@ export function ActionControls({
             IR! ${(totalBet / 100).toLocaleString()}
           </button>
         )}
-        {isPique && isBetBelowMin && (
+        {isPique && isBetBelowMin && !piqueFixed && (
           <span className="text-[7px] md:text-[9px] text-red-400 font-bold uppercase tracking-wider whitespace-nowrap">
             Mín: ${(minPique / 100).toLocaleString()}
           </span>
