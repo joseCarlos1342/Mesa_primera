@@ -696,12 +696,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       newPlayer.cards = oldPlayer.cards;
       newPlayer.cardCount = oldPlayer.cardCount;
       newPlayer.revealedCards = oldPlayer.revealedCards;
-      newPlayer.isReady = oldPlayer.isReady;
-      newPlayer.hasActed = oldPlayer.hasActed;
-      newPlayer.isFolded = oldPlayer.isFolded;
+      // Si la sala fue reseteada (LOBBY), el jugador debe estar listo de nuevo
+      newPlayer.isReady = this.state.phase === "LOBBY" ? false : oldPlayer.isReady;
+      newPlayer.hasActed = this.state.phase === "LOBBY" ? false : oldPlayer.hasActed;
+      newPlayer.isFolded = this.state.phase === "LOBBY" ? false : oldPlayer.isFolded;
       newPlayer.connected = true;
       newPlayer.deviceId = oldPlayer.deviceId;
       newPlayer.supabaseUserId = oldPlayer.supabaseUserId;
+
+      // Si reconecta en LOBBY, actualizar chips con el saldo actual de opciones
+      if (this.state.phase === "LOBBY" && options.chips) {
+        newPlayer.chips = options.chips;
+      }
 
       this.state.players.delete(oldSessionId);
       this.state.players.set(client.sessionId, newPlayer);
@@ -719,8 +725,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         this.state.turnPlayerId = client.sessionId;
       }
 
-      // Re-enviar las cartas privadas al cliente reconectado
-      this.sendPrivateCards(client.sessionId);
+      // Re-enviar las cartas privadas al cliente reconectado (solo si hay partida activa)
+      if (this.state.phase !== "LOBBY") {
+        this.sendPrivateCards(client.sessionId);
+      }
 
       this.updateLobbyMetadata();
       this.checkStartCountdown();
@@ -808,6 +816,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
     }
 
+    // Si TODOS los jugadores están desconectados, resetear la sala a estado limpio
+    const anyoneConnected = Array.from(this.state.players.values()).some((p: Player) => p.connected);
+    if (!anyoneConnected && this.state.players.size > 0) {
+      console.log(`[MesaRoom] Todos los jugadores se desconectaron. Reseteando sala a estado limpio.`);
+      this.resetRoomState();
+    }
+
     this.checkStartCountdown();
 
     if (consented) {
@@ -872,9 +887,56 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Si nadie queda en la mesa, limpiar por si acaso
     if (this.state.players.size === 0) {
-      this.state.phase = "LOBBY";
-      this.state.countdown = -1;
-      this.stopCountdown();
+      this.resetRoomState();
+    }
+  }
+
+  /**
+   * Resetea el estado completo de la sala: fase, pot, isFirstGame, etc.
+   * Se usa cuando todos los jugadores se desconectan o cuando la sala se vacía.
+   */
+  private resetRoomState() {
+    console.log(`[MesaRoom] Reseteando estado completo de la sala.`);
+
+    // Refundar apuestas pendientes si hay partida en curso
+    if (this.state.phase !== "LOBBY") {
+      const tableName = (this as any).metadata?.tableName || 'Mesa VIP';
+      for (const [, player] of this.state.players) {
+        const p = player as Player;
+        if (!p.supabaseUserId || p.totalMainBet <= 0) continue;
+        console.log(`[MesaRoom] Refunding ${p.nickname}: $${p.totalMainBet} (reset room)`);
+        SupabaseService.refundPlayer(
+          p.supabaseUserId,
+          p.totalMainBet,
+          this.currentGameId,
+          { roomId: this.roomId, tableName, reason: 'Reembolso: todos los jugadores se desconectaron' }
+        ).catch(err => console.error(`[MesaRoom] Refund failed for ${p.nickname}:`, err));
+      }
+    }
+
+    this.state.phase = "LOBBY";
+    this.state.countdown = -1;
+    this.state.isFirstGame = true;
+    this.state.pot = 0;
+    this.state.piquePot = 0;
+    this.state.bottomCard = "";
+    this.state.activeManoId = "";
+    this.state.showdownTimer = 0;
+    this.state.lastAction = "";
+    this.state.turnPlayerId = "";
+    this.stopCountdown();
+
+    // Resetear estado de cada jugador fantasma para la próxima sesión
+    for (const [sessionId, player] of this.state.players) {
+      const p = player as Player;
+      p.isReady = false;
+      p.isFolded = false;
+      p.hasActed = false;
+      p.roundBet = 0;
+      p.isAllIn = false;
+      p.totalMainBet = 0;
+      p.revealedCards = "";
+      this.setPlayerCards(sessionId, "");
     }
   }
 
