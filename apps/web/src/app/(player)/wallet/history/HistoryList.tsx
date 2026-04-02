@@ -15,6 +15,9 @@ export function HistoryList({ transactions }: { transactions: any[] }) {
     setIsModalOpen(true)
   }
 
+  const bovedaTx = transactions.filter((tx: any) => tx.type === 'deposit' || tx.type === 'withdrawal')
+  const juegoTx = transactions.filter((tx: any) => tx.type !== 'deposit' && tx.type !== 'withdrawal')
+
   if (transactions.length === 0) {
     return (
       <div className="text-center py-16 bg-black/40 border-2 border-dashed border-brand-gold/10 rounded-[2.5rem]">
@@ -28,19 +31,61 @@ export function HistoryList({ transactions }: { transactions: any[] }) {
 
   return (
     <>
-      <div className="space-y-3">
-        {transactions.map((tx: any, idx: number) => (
-          <motion.div
-            key={tx.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: idx * 0.03 }}
-            className="group bg-black/40 backdrop-blur-xl border border-brand-gold/10 rounded-[2rem] overflow-hidden shadow-lg transition-all hover:bg-black/60 hover:border-brand-gold/30"
-          >
-            <div
-              onClick={() => handleTxClick(tx)}
-              className="p-5 flex items-center justify-between gap-4 cursor-pointer active:scale-[0.98]"
-            >
+      {/* Bóveda Section */}
+      <section className="space-y-3">
+        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold px-1">Bóveda</h2>
+        {bovedaTx.length > 0 ? (
+          <div className="space-y-3">
+            {bovedaTx.map((tx: any, idx: number) => (
+              <TransactionItem key={tx.id} tx={tx} idx={idx} onTxClick={handleTxClick} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-black/20 border border-dashed border-white/5 rounded-[2rem]">
+            <p className="text-text-secondary text-[10px] font-black uppercase tracking-[.3em] opacity-40">Sin depósitos ni retiros</p>
+          </div>
+        )}
+      </section>
+
+      {/* Juego Section */}
+      <section className="space-y-3 mt-8">
+        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400 px-1 flex items-center gap-2">
+          <Gamepad2 className="w-3.5 h-3.5" /> Juego
+        </h2>
+        {juegoTx.length > 0 ? (
+          <div className="space-y-3">
+            {juegoTx.map((tx: any, idx: number) => (
+              <TransactionItem key={tx.id} tx={tx} idx={idx} onTxClick={handleTxClick} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-black/20 border border-dashed border-white/5 rounded-[2rem]">
+            <p className="text-text-secondary text-[10px] font-black uppercase tracking-[.3em] opacity-40">Sin movimientos de juego</p>
+          </div>
+        )}
+      </section>
+
+      <TransactionModal
+        transaction={selectedTx}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
+  )
+}
+
+function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxClick: (tx: any) => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: idx * 0.03 }}
+      className="group bg-black/40 backdrop-blur-xl border border-brand-gold/10 rounded-[2rem] overflow-hidden shadow-lg transition-all hover:bg-black/60 hover:border-brand-gold/30"
+    >
+      <div
+        onClick={() => onTxClick(tx)}
+        className="p-5 flex items-center justify-between gap-4 cursor-pointer active:scale-[0.98]"
+      >
               <div className="flex items-center gap-4 min-w-0 flex-1">
                 <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-inner ${
                   tx.type === 'deposit'
@@ -106,14 +151,5 @@ export function HistoryList({ transactions }: { transactions: any[] }) {
               </Link>
             )}
           </motion.div>
-        ))}
-      </div>
-
-      <TransactionModal
-        transaction={selectedTx}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
-    </>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Wallet, Play, Users, TrendingUp, ShoppingCart, ArrowUpWideNarrow } from 'lucide-react'
+import { Wallet, Play, Users, TrendingUp, ShoppingCart, ArrowUpWideNarrow, Gamepad2, Plus, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getWalletData } from '@/app/actions/wallet'
@@ -85,8 +85,8 @@ export function PlayerDashboard() {
       {/* Recent Activity Section */}
       <section className="space-y-6 pt-4">
         <div className="flex justify-between items-center px-2">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">Historial de Bóveda</h3>
-          <Link href="/wallet" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-brand-gold transition-colors">Ver todo →</Link>
+          <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">Actividad Reciente</h3>
+          <Link href="/wallet/history" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-brand-gold transition-colors">Ver todo →</Link>
         </div>
         
         <div className="space-y-4">
@@ -102,14 +102,30 @@ export function PlayerDashboard() {
                 <div className="flex items-center gap-4 min-w-0 flex-1">
                   <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-inner ${
                     tx.type === 'deposit' 
-                      ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20' 
+                      ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20'
+                      : tx.type === 'win'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : tx.type === 'refund'
+                      ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                      : tx.type === 'bet' || tx.type === 'rake'
+                      ? 'bg-red-500/10 text-red-400 border border-red-500/20'
                       : 'bg-white/5 text-text-secondary border border-white/10'
                   }`}>
-                    {tx.type === 'deposit' ? <ShoppingCart className="w-5 h-5" /> : <ArrowUpWideNarrow className="w-5 h-5" />}
+                    {tx.type === 'deposit' ? <Plus className="w-5 h-5" /> :
+                     tx.type === 'win' ? <TrendingUp className="w-5 h-5" /> :
+                     tx.type === 'refund' ? <RotateCcw className="w-5 h-5" /> :
+                     tx.type === 'bet' || tx.type === 'rake' ? <Gamepad2 className="w-5 h-5" /> :
+                     <ArrowUpWideNarrow className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
                     <p className="font-display font-black text-sm md:text-base italic uppercase tracking-tight text-text-premium truncate group-hover:text-brand-gold transition-all">
-                      {tx.type === 'deposit' ? 'Depósito' : 'Retiro'}
+                      {tx.type === 'deposit' ? 'Depósito' :
+                       tx.type === 'withdrawal' ? 'Retiro' :
+                       tx.type === 'win' ? 'Ganancia' :
+                       tx.type === 'bet' ? 'Apuesta' :
+                       tx.type === 'rake' ? 'Comisión' :
+                       tx.type === 'refund' ? 'Reembolso' :
+                       tx.type}
                     </p>
                     <p className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 truncate">
                       {new Date(tx.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} • {new Date(tx.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
@@ -118,8 +134,10 @@ export function PlayerDashboard() {
                 </div>
                 
                 <div className="shrink-0 text-right space-y-1">
-                  <span className={`block text-lg md:text-xl font-display font-black italic tracking-tighter ${tx.type === 'deposit' ? 'text-brand-gold' : 'text-text-premium'}`}>
-                    {tx.type === 'deposit' ? '+' : '-'}${(Math.abs(tx.amount_cents || 0) / 100).toLocaleString()}
+                  <span className={`block text-lg md:text-xl font-display font-black italic tracking-tighter ${
+                    tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? 'text-brand-gold' : 'text-text-premium'
+                  }`}>
+                    {tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? '+' : '-'}${(Math.abs(tx.amount_cents || 0) / 100).toLocaleString()}
                   </span>
                   <div className="flex justify-end">
                     <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${
