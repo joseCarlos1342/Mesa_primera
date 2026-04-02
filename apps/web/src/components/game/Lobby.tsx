@@ -291,37 +291,41 @@ export function Lobby() {
             </motion.div>
           </div>
 
-          {/* 3. Balance Section - Prominent and Large */}
+          {/* 3. Balance Section - Compact */}
           {userProfile && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="flex flex-col md:flex-row items-center gap-6 md:gap-10 px-8 md:px-12 py-6 rounded-[3rem] bg-black/40 backdrop-blur-3xl border-2 border-brand-gold/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group transition-all hover:border-brand-gold/30"
+              className="flex flex-col items-center gap-4 px-6 md:px-10 py-5 rounded-[2rem] bg-black/40 backdrop-blur-xl border-2 border-brand-gold/10 shadow-[0_15px_40px_rgba(0,0,0,0.5)] group transition-all hover:border-brand-gold/30 w-full max-w-md mx-auto"
             >
               <div className="flex flex-col items-center justify-center text-center">
-                <span className="text-xs md:text-sm font-black uppercase tracking-[0.4em] text-brand-gold group-hover:text-brand-gold-light transition-colors mb-2">Mi Balance</span>
-                <span className="text-6xl md:text-7xl font-black text-text-premium tracking-tighter leading-none flex items-center drop-shadow-premium">
-                  <span className="text-brand-gold mr-2 opacity-90">$</span>
+                <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-brand-gold group-hover:text-brand-gold-light transition-colors mb-1">Mi Balance</span>
+                <span className="text-4xl md:text-5xl font-black text-text-premium tracking-tighter leading-none flex items-center drop-shadow-premium">
+                  <span className="text-brand-gold mr-1.5 opacity-90">$</span>
                   {userProfile.balance?.toLocaleString() || '0'}
                 </span>
               </div>
-              <button
-                onClick={() => setShowDeposit(true)}
-                className="w-14 h-14 md:w-18 md:h-18 rounded-2xl bg-accent-gold-shimmer flex items-center justify-center shadow-xl hover:scale-105 transition-all active:translate-y-1 active:shadow-inner group/btn relative overflow-hidden border-b-4 border-black/30"
-                title="Cargar Saldo"
-              >
-                <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
-                <Plus className="w-7 h-7 md:w-9 md:h-9 text-slate-950 stroke-[4] relative z-10" />
-              </button>
-              <Link
-                href="/replays"
-                className="w-14 h-14 md:w-18 md:h-18 rounded-2xl bg-purple-600 flex items-center justify-center shadow-xl hover:scale-105 transition-all active:translate-y-1 active:shadow-inner group/btn relative overflow-hidden border-b-4 border-purple-900/50"
-                title="Repeticiones"
-              >
-                <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
-                <Film className="w-7 h-7 md:w-9 md:h-9 text-white stroke-[2.5] relative z-10" />
-              </Link>
+              <div className="flex flex-col gap-3 w-full">
+                <button
+                  onClick={() => setShowDeposit(true)}
+                  className="w-full h-12 rounded-xl bg-accent-gold-shimmer flex items-center justify-center gap-3 shadow-lg hover:scale-[1.02] transition-all active:translate-y-0.5 active:shadow-inner group/btn relative overflow-hidden border-b-4 border-black/30"
+                  title="Cargar Saldo"
+                >
+                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
+                  <Plus className="w-5 h-5 text-slate-950 stroke-[3] relative z-10" />
+                  <span className="text-xs font-black text-slate-950 uppercase tracking-widest relative z-10">Recargar</span>
+                </button>
+                <Link
+                  href="/replays"
+                  className="w-full h-12 rounded-xl bg-purple-600 flex items-center justify-center gap-3 shadow-lg hover:scale-[1.02] transition-all active:translate-y-0.5 active:shadow-inner group/btn relative overflow-hidden border-b-4 border-purple-900/50"
+                  title="Repeticiones"
+                >
+                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
+                  <Film className="w-5 h-5 text-white stroke-[2.5] relative z-10" />
+                  <span className="text-xs font-black text-white uppercase tracking-widest relative z-10">Repeticiones</span>
+                </Link>
+              </div>
             </motion.div>
           )}
 

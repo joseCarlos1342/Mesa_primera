@@ -45,7 +45,7 @@ export default function RulesPage() {
         </motion.div>
         
         <div className="space-y-1 overflow-visible">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-black italic text-brand-gold uppercase tracking-tighter leading-none pr-1 drop-shadow-premium">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-black italic text-brand-gold uppercase tracking-tighter leading-none text-center drop-shadow-premium">
             Reglamento
           </h1>
         </div>

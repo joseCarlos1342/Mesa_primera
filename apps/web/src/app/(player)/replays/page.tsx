@@ -1,7 +1,7 @@
 import { getPlayerMesaReplays } from "@/app/actions/replays";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
-import { Film, Users, ArrowLeft, Clock, ChevronRight, Hash } from "lucide-react";
+import { Film, Users, Clock, ChevronRight, Hash } from "lucide-react";
 
 export default async function PlayerReplaysPage() {
   const mesas = await getPlayerMesaReplays(100);
@@ -10,13 +10,6 @@ export default async function PlayerReplaysPage() {
     <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <Link
-          href="/lobby"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-bold uppercase tracking-widest mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver al Lobby
-        </Link>
         <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter text-(--accent-gold) flex items-center gap-3">
           <Film className="w-8 h-8" />
           MIS GRABACIONES

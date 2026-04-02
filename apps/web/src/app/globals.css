@@ -141,4 +141,12 @@ body {
   .word-spacing-premium {
     word-spacing: 0.25em;
   }
+
+  /* Safe-area utilities for fixed elements */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
 }
