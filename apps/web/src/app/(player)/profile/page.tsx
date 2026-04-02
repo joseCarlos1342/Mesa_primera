@@ -207,7 +207,7 @@ export default function ProfilePage() {
       {/* Header */}
       <header className="flex flex-col items-center justify-center relative w-full max-w-4xl mx-auto space-y-4 px-2 text-center">
         <div className="overflow-visible w-full px-4">
-          <h1 className="text-3xl xs:text-5xl md:text-6xl lg:text-7xl font-display font-black italic text-brand-gold uppercase tracking-tighter leading-none pr-2 drop-shadow-premium">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black italic text-brand-gold uppercase tracking-tighter leading-none drop-shadow-premium">
             Mi Perfil
           </h1>
         </div>
@@ -220,10 +220,10 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto grid lg:grid-cols-12 gap-8 md:gap-12 w-full h-full overflow-hidden">
+      <div className="max-w-4xl mx-auto flex flex-col lg:grid lg:grid-cols-12 gap-6 md:gap-10 w-full h-full">
         {/* Left Column: Avatar & Loyalty */}
         <aside className="lg:col-span-5 space-y-10 w-full overflow-visible">
-          <div className="relative bg-black/40 backdrop-blur-3xl border-brand-gold/10 border-2 rounded-[3.5rem] p-8 md:p-12 flex flex-col items-center text-center shadow-2xl overflow-hidden group hover:border-brand-gold/30 transition-all duration-500 w-full">
+          <div className="relative bg-black/40 backdrop-blur-xl border-brand-gold/10 border-2 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-8 md:p-12 flex flex-col items-center text-center overflow-hidden group hover:border-brand-gold/30 transition-all duration-500 w-full max-w-full shadow-[0_15px_40px_rgba(0,0,0,0.5)]">
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-48 h-48 bg-brand-gold/5 rounded-full blur-3xl -mr-24 -mt-24 group-hover:bg-brand-gold/10 transition-colors duration-1000" />
             
@@ -237,7 +237,7 @@ export default function ProfilePage() {
                 className="absolute inset-[-14px] border-2 border-transparent border-t-brand-gold rounded-full opacity-60 shadow-[0_0_20px_rgba(202,171,114,0.4)]" 
               />
               
-              <div className="relative w-full h-full rounded-full bg-slate-950 border-4 border-brand-gold/10 flex items-center justify-center overflow-hidden shadow-2xl transition-all duration-500 group-hover:border-brand-gold/30">
+              <div className="relative w-full h-full rounded-full bg-slate-950 border-4 border-brand-gold/10 flex items-center justify-center overflow-hidden  transition-all duration-500 group-hover:border-brand-gold/30">
                 {formData.avatar_url ? (
                   getAvatarSvg(formData.avatar_url) ? (
                     <div className="w-full h-full scale-[1.4]">
@@ -312,7 +312,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Mini Stats Card */}
-          <div className="bg-black/40 backdrop-blur-3xl border-2 border-brand-gold/10 rounded-[3rem] p-6 sm:p-10 grid grid-cols-3 gap-4 sm:gap-6 shadow-2xl hover:bg-black/60 transition-colors duration-500 w-full overflow-hidden">
+          <div className="bg-black/40 backdrop-blur-xl border-2 border-brand-gold/10 rounded-[2rem] sm:rounded-[3rem] p-4 sm:p-8 grid grid-cols-3 gap-2 sm:gap-6 hover:bg-black/60 transition-colors duration-500 w-full max-w-full overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.5)]">
              <div className="text-center space-y-2">
                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-brand-gold mx-auto opacity-40" />
                <p className="text-xl sm:text-2xl font-display font-black text-[#f3edd7] leading-none">{stats?.games_played || 0}</p>
@@ -333,7 +333,7 @@ export default function ProfilePage() {
 
         {/* Right Column: Settings Form */}
         <main className="lg:col-span-7 w-full">
-          <div className="bg-black/40 backdrop-blur-3xl border-brand-gold/10 border-2 rounded-[4rem] p-8 sm:p-10 lg:p-14 shadow-2xl relative h-full hover:bg-black/60 transition-colors duration-500 overflow-hidden w-full">
+          <div className="bg-black/40 backdrop-blur-xl border-brand-gold/10 border-2 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-8 lg:p-12 relative h-full hover:bg-black/60 transition-colors duration-500 overflow-hidden w-full max-w-full shadow-[0_15px_40px_rgba(0,0,0,0.5)]">
             <header className="mb-10 sm:mb-12 flex items-center gap-6">
                <div className="p-4 bg-brand-gold/10 border border-brand-gold/20 rounded-[1.5rem] shadow-xl flex-shrink-0">
                   <Tag className="w-6 h-6 sm:w-7 sm:h-7 text-brand-gold" />
@@ -411,11 +411,11 @@ export default function ProfilePage() {
                   <label className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold/60 ml-3">
                     Seguridad Biométrica
                   </label>
-                  <div className="flex items-center justify-between bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 px-6 sm:px-8 w-full">
+                  <div className="flex items-center justify-between gap-2 bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 px-4 sm:px-8 w-full max-w-full">
                     <div className="flex items-center gap-4">
                       <Fingerprint className="w-6 h-6 text-brand-gold" />
                       <div>
-                        <p className="text-sm sm:text-base font-bold text-white">
+                        <p className="text-xs sm:text-base font-bold text-white leading-tight">
                           Bloqueo con Huella / Face ID
                         </p>
                         <p className="text-[11px] text-white/40 mt-0.5">
@@ -454,7 +454,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <div className="flex flex-row gap-4 pt-10 w-full max-w-md mx-auto sm:max-w-none">
+              <div className="flex flex-col sm:flex-row gap-4 pt-10 w-full">
                 <button
                   type="submit"
                   disabled={saving}
@@ -497,7 +497,7 @@ export default function ProfilePage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-slate-950 border-2 border-brand-gold/30 rounded-3xl p-8 sm:p-10 w-full max-w-md shadow-2xl space-y-6"
+              className="relative bg-slate-950 border-2 border-brand-gold/30 rounded-3xl p-8 sm:p-10 w-full max-w-md  space-y-6"
             >
               <button
                 type="button"
