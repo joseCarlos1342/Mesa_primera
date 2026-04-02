@@ -431,7 +431,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
               <div className="flex flex-col items-start shrink-0 pointer-events-auto z-[51]">
                 {/* CHIPS: Stacked above the HUD during betting phases */}
                 <AnimatePresence>
-                  {isMyTurn && (phase === 'PIQUE' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS') && (
+                  {isMyTurn && (phase === 'PIQUE' || phase === 'PIQUE_2' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS') && (
                     <m.div 
                       className="mb-2"
                       initial={{ scale: 0.9, opacity: 0, y: 10 }}
@@ -545,7 +545,6 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   isMyTurn={isMyTurn} 
                   selectedCards={selectedCards}
                   onClearSelection={() => setSelectedCards([])}
-                  handType={myCards ? evaluateHand(myCards).type : undefined}
                   totalBet={totalBet}
                   onBetConfirm={() => {
                     room.send('action', { action: 'voy', amount: totalBet });
@@ -567,7 +566,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
 
       {/* SHOWDOWN / Pique Showdown Cinematic Overlay */}
       <AnimatePresence>
-        {(phase === 'SHOWDOWN' || (phase === 'CANTAR_JUEGO' && (room.state.showdownTimer ?? 0) > 0)) && (
+        {(phase === 'SHOWDOWN' || (phase === 'SHOWDOWN_WAIT' && (room.state.showdownTimer ?? 0) > 0)) && (
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
