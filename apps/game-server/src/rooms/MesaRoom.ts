@@ -1334,24 +1334,33 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   private advanceTurnCantarJuego(startFromId?: string) {
-    const startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
+    // Buscar quién tiene el turno. Siempre empezamos buscando desde startFromId (La Mano al inicio de la fase)
+    const currentTurnId = this.state.turnPlayerId;
+    const startSeatIdx = this.seatOrder.indexOf(startFromId || currentTurnId);
+    
     if (startSeatIdx === -1 && !startFromId) {
       return this.resolvePique();
     }
     const total = this.seatOrder.length;
+    // Si startFromId está presente, incluimos ese índice en la búsqueda (loopStart = 0)
     const loopStart = startFromId ? 0 : 1;
 
     for (let i = loopStart; i <= total; i++) {
       const idx = (startSeatIdx + i) % total;
       const id = this.seatOrder[idx];
       const p = this.state.players.get(id);
+      
       if (p && p.connected && !p.isFolded && !p.hasActed) {
+        // Encontrado jugador que debe actuar
         this.state.turnPlayerId = id;
+        
         // Auto-pasar jugadores sin juego válido después de 1.5s
         const hand = evaluateHand(p.cards);
         if (hand.type === 'NINGUNA') {
           this.clock.setTimeout(() => {
-            if (!p.hasActed) {
+            // Verificar que el jugador no haya actuado (por si el servidor ya avanzó)
+            // Y que sigamos en la fase correcta y sea su turno
+            if (!p.hasActed && this.state.phase === "CANTAR_JUEGO" && this.state.turnPlayerId === id) {
               p.hasActed = true;
               this.state.lastAction = `${p.nickname} pasa`;
               this.advanceTurnCantarJuego();
