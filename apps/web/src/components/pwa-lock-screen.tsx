@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface PwaLockScreenProps {
   onUnlock: () => Promise<boolean>
@@ -9,6 +10,16 @@ interface PwaLockScreenProps {
 export function PwaLockScreen({ onUnlock }: PwaLockScreenProps) {
   const [error, setError] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Wait for client-side mount & block body scroll
+  useEffect(() => {
+    setMounted(true)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
 
   async function handleUnlock() {
     setError(false)
@@ -23,8 +34,10 @@ export function PwaLockScreen({ onUnlock }: PwaLockScreenProps) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-9999 flex flex-col items-center justify-center bg-slate-950/98 backdrop-blur-xl">
+  const content = (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 99999 }}
+      className="flex flex-col items-center justify-center bg-slate-950/98 backdrop-blur-xl">
       {/* Decorative background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.08)_0%,transparent_60%)]" />
@@ -81,4 +94,7 @@ export function PwaLockScreen({ onUnlock }: PwaLockScreenProps) {
       </div>
     </div>
   )
+
+  if (!mounted) return null
+  return createPortal(content, document.body)
 }
