@@ -188,15 +188,35 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           this.attemptManoRotation(client.sessionId, "Mano pasa en Pique");
           if (player.id === this.state.activeManoId) this.transferMano();
         } else if (action === "voy") {
-          const betAmount = message.amount || 10;
+          const betAmount = message.amount || this.state.minPique;
           const actualBet = Math.min(betAmount, player.chips);
-          // ── Validar pique mínimo ──
-          if (actualBet > 0 && actualBet < this.state.minPique) {
-            player.hasActed = false;
-            this.currentTimeline.pop();
-            client.send("error", { message: `El pique mínimo es $${(this.state.minPique / 100).toLocaleString()}` });
-            return;
+
+          // ── Privilegio de La Mano: fija el precio del pique ──
+          if (player.id === this.state.activeManoId) {
+            // La Mano debe respetar el pique mínimo de la mesa
+            if (actualBet > 0 && actualBet < this.state.minPique) {
+              player.hasActed = false;
+              this.currentTimeline.pop();
+              client.send("error", { message: `El pique mínimo es $${(this.state.minPique / 100).toLocaleString()}` });
+              return;
+            }
+            // La Mano impone el monto obligatorio para todos los demás
+            if (actualBet > 0) {
+              this.state.currentMaxBet = actualBet;
+              console.log(`[MesaRoom] La Mano (${player.nickname}) fija el pique en $${actualBet}`);
+            }
+          } else {
+            // ── Los demás DEBEN igualar exactamente lo que picó La Mano ──
+            const requiredBet = this.state.currentMaxBet > 0 ? this.state.currentMaxBet : this.state.minPique;
+            // Permitir all-in si no le alcanzan las fichas
+            if (actualBet > 0 && actualBet < requiredBet && actualBet !== player.chips) {
+              player.hasActed = false;
+              this.currentTimeline.pop();
+              client.send("error", { message: `Debes apostar $${(requiredBet / 100).toLocaleString()} (lo que picó La Mano)` });
+              return;
+            }
           }
+
           if (actualBet <= 0) {
             player.isFolded = true;
             this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
@@ -953,6 +973,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Limpiar registro de jugadores que pasaron para el cobro de banda
     this.piquePassPlayerIds.clear();
+
+    // Resetear apuesta máxima del pique (La Mano la fijará al apostar)
+    this.state.currentMaxBet = 0;
 
     // Recoger cartas, barajar de nuevo
     this.createDeck();
