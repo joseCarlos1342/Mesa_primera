@@ -41,7 +41,7 @@ export default async function PlayerLayout({
       </div>
 
       {/* Premium Header */}
-      <header className="sticky top-0 z-50 w-full px-4 py-4 md:px-8 md:py-3 flex items-center justify-between bg-black/60 backdrop-blur-2xl border-b-2 border-brand-gold/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] pt-safe">
+      <header className="sticky top-0 z-50 w-full px-5 py-3 sm:px-6 md:px-10 md:py-3 flex items-center justify-between bg-black/60 backdrop-blur-2xl border-b-2 border-brand-gold/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] pt-safe">
         <div className="flex items-center gap-4">
           <Link href="/profile" className="flex items-center gap-3 bg-white/5 border border-white/10 pl-2 pr-4 py-1.5 rounded-full hover:bg-white/10 transition-colors active:scale-95 group">
             <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border border-brand-gold/30 overflow-hidden relative shadow-xl">
@@ -79,7 +79,7 @@ export default async function PlayerLayout({
             {user && <NotificationCenter userId={user.id} />}
             <SignOutButton 
               variant="danger" 
-              className="h-12 w-12 md:h-16 md:w-auto px-0 sm:px-6 flex items-center justify-center min-w-[3rem]" 
+              className="h-10 w-10 md:h-12 md:w-auto px-0 sm:px-5 flex items-center justify-center min-w-[2.5rem]" 
             />
           </div>
         </div>

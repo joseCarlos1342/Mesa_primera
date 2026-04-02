@@ -122,12 +122,45 @@ export async function getReplayDetail(gameId: string): Promise<ReplayDetail | nu
     .eq("game_id", gameId)
     .single();
 
-  if (error) {
-    console.error("[getReplayDetail] Error:", error);
-    return null;
+  if (error || !data) {
+    console.error("[getReplayDetail] Supabase error, trying game server fallback:", error?.message);
+    return fetchReplayFromGameServer(gameId);
   }
 
   return data as ReplayDetail;
+}
+
+/**
+ * Fallback: obtener replay desde el API del game server (filesystem VPS)
+ * cuando Supabase no tiene el registro.
+ */
+async function fetchReplayFromGameServer(gameId: string): Promise<ReplayDetail | null> {
+  const gameServerUrl = process.env.GAME_SERVER_URL || process.env.NEXT_PUBLIC_GAME_SERVER_URL;
+  if (!gameServerUrl) return null;
+
+  try {
+    const res = await fetch(`${gameServerUrl}/api/replays/${gameId}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.ok || !json.data) return null;
+    const d = json.data;
+    return {
+      id: d.game_id,
+      game_id: d.game_id,
+      created_at: d.created_at,
+      players: d.players,
+      timeline: d.timeline,
+      admin_timeline: d.admin_timeline,
+      pot_breakdown: d.pot_breakdown,
+      final_hands: d.final_hands,
+      rng_seed: d.rng_seed,
+    } as ReplayDetail;
+  } catch (e) {
+    console.error("[fetchReplayFromGameServer] Error:", e);
+    return null;
+  }
 }
 
 // ─── Admin Actions ──────────────────────────────────────────

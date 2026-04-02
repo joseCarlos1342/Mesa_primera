@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { ReplayFileService, type ReplayData } from './ReplayFileService';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -9,11 +10,33 @@ if (!supabaseKey) {
   console.warn('[SupabaseService] No Supabase key found (SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY). Database operations will silently fail.');
 } else {
   try {
-    supabase = createClient(supabaseUrl, supabaseKey);
+    supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
     console.log(`[SupabaseService] Initialized with ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon'} key → ${supabaseUrl}`);
   } catch (err) {
     console.error('[SupabaseService] Failed to init Supabase client', err);
   }
+}
+
+/** Cached table ID to avoid refetching on every saveReplay/createGameSession call */
+let cachedTableId: string | null = null;
+
+async function getOrCreateTableId(tableName: string): Promise<string> {
+  if (cachedTableId) return cachedTableId;
+  const { data: table } = await supabase.from('tables').select('id').limit(1).single();
+  if (table) {
+    cachedTableId = table.id;
+    return table.id;
+  }
+  const { data: newTable, error: tableErr } = await supabase
+    .from('tables')
+    .insert({ name: tableName, game_type: 'Mesa' })
+    .select()
+    .single();
+  if (tableErr || !newTable) throw new Error(`Could not create default table: ${tableErr?.message}`);
+  cachedTableId = newTable.id;
+  return newTable.id;
 }
 
 export class SupabaseService {
@@ -164,13 +187,13 @@ export class SupabaseService {
 
   /**
    * Saves a replay of the game hand timeline and RNG seed.
-   * The `timeline` field contains the player-visible events (no per-step RNG).
-   * The `admin_timeline` field contains per-action RNG seeds for admin auditing.
+   * Writes to both the VPS filesystem (primary) and Supabase (for querying).
+   * If one storage fails, the other still persists the data.
    */
   static async saveReplay(
     gameId: string,
     seed: string,
-    timeline: any[],
+    playerTimeline: any[],
     players: any[],
     adminTimeline?: any[],
     potBreakdown?: Record<string, any>,
@@ -178,44 +201,61 @@ export class SupabaseService {
     roomId?: string,
     tableName?: string
   ) {
+    const replayData: ReplayData = {
+      game_id: gameId,
+      round_number: 1,
+      rng_seed: seed,
+      timeline: playerTimeline,
+      admin_timeline: adminTimeline || playerTimeline,
+      players,
+      pot_breakdown: potBreakdown || {},
+      final_hands: finalHands || {},
+      room_id: roomId || null,
+      table_name: tableName || null,
+      created_at: new Date().toISOString(),
+    };
+
+    // 1. Siempre guardar en filesystem (VPS) — es la fuente primaria de almacenamiento
+    const fileSaved = ReplayFileService.save(replayData);
+    if (!fileSaved) {
+      console.error(`[SupabaseService] CRITICAL: Failed to save replay to filesystem for game: ${gameId}`);
+    }
+
+    // 2. Guardar en Supabase para consultas y RLS
     if (!supabaseKey) {
-      console.warn('[SupabaseService] saveReplay skipped — no Supabase key configured');
+      console.warn(`[SupabaseService] saveReplay: Supabase skipped (no key), filesystem ${fileSaved ? 'OK' : 'FAILED'} — game: ${gameId}`);
       return;
     }
+
     try {
-      // 1. Fetch or create a default table if missing (for foreign key constraint on games)
-      let { data: table } = await supabase.from('tables').select('id').limit(1).single();
-      if (!table) {
-        const { data: newTable, error: tableErr } = await supabase.from('tables').insert({ name: tableName || 'Default Table', game_type: 'Mesa' }).select().single();
-        if (tableErr || !newTable) throw new Error('Could not create default table for replay');
-        table = newTable;
+      const tableId = await getOrCreateTableId(tableName || 'Default Table');
+
+      // Upsert game record (necesario para INNER JOIN en admin replays)
+      const { error: gameErr } = await supabase.from('games').upsert(
+        { id: gameId, table_id: tableId, status: 'finished' }
+      );
+      if (gameErr) {
+        console.error(`[SupabaseService] games upsert failed (non-fatal):`, gameErr.message);
       }
 
-      // 2. Insert dummy game record (since MesaRoom doesn't create full game sessions yet but Replays need a game_id)
-      const { error: gameErr } = await supabase.from('games').upsert({ id: gameId, table_id: table.id, status: 'finished' });
-      if (gameErr) throw gameErr;
-
-      // 3. Build player-safe timeline (strip rng_state from each event)
-      const playerTimeline = timeline.map(({ rng_state, ...event }: any) => event);
-
-      // 4. Save the replay with both timelines + room metadata
+      // Insertar la grabación
       const { error: replayErr } = await supabase.from('game_replays').insert({
         game_id: gameId,
         round_number: 1,
         rng_seed: seed,
         timeline: playerTimeline,
-        admin_timeline: adminTimeline || timeline,
+        admin_timeline: adminTimeline || playerTimeline,
         players,
         pot_breakdown: potBreakdown || {},
         final_hands: finalHands || {},
         room_id: roomId || null,
-        table_name: tableName || null
+        table_name: tableName || null,
       });
 
       if (replayErr) throw replayErr;
-      console.log(`[SupabaseService] Replay saved successfully for game: ${gameId} (room: ${roomId || 'unknown'})`);
-    } catch (e) {
-      console.error('[SupabaseService] Error saving replay:', e);
+      console.log(`[SupabaseService] Replay saved: game=${gameId}, room=${roomId || 'unknown'}, fs=${fileSaved}`);
+    } catch (e: any) {
+      console.error(`[SupabaseService] Supabase replay save failed (filesystem ${fileSaved ? 'has backup' : 'ALSO FAILED'}):`, e?.message || e);
     }
   }
 
@@ -225,14 +265,8 @@ export class SupabaseService {
   static async createGameSession(gameId: string, tableName: string) {
     if (!supabaseKey) return;
     try {
-      let { data: table } = await supabase.from('tables').select('id').limit(1).single();
-      if (!table) {
-        const { data: newTable, error: tableErr } = await supabase.from('tables').insert({ name: tableName, game_type: 'Mesa' }).select().single();
-        if (tableErr || !newTable) throw new Error('Could not create default table for game session');
-        table = newTable;
-      }
-
-      const { error: gameErr } = await supabase.from('games').upsert({ id: gameId, table_id: table.id, status: 'in_progress' });
+      const tableId = await getOrCreateTableId(tableName);
+      const { error: gameErr } = await supabase.from('games').upsert({ id: gameId, table_id: tableId, status: 'in_progress' });
       if (gameErr) throw gameErr;
     } catch (e) {
       console.error('[SupabaseService] Error creating game session:', e);
