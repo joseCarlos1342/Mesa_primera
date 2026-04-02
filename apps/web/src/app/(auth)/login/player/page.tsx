@@ -35,10 +35,10 @@ function PlayerLoginContent() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
-      <div className="w-full max-w-md z-10 animate-in fade-in zoom-in-95 duration-1000 px-4">
+      <div className="w-full max-w-xl z-10 animate-in fade-in zoom-in-95 duration-1000">
         {/* Logo Section */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] leading-[1.1]">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
             PRIMERA RIVERADA
           </h1>
         </div>
@@ -71,7 +71,7 @@ function PlayerLoginContent() {
                 Tu Número de Celular
               </label>
               <div className="relative flex items-center">
-                <span className="absolute left-6 text-brand-gold font-mono font-black text-xl md:text-2xl tracking-tighter pointer-events-none">
+                <span className="absolute left-5 text-brand-gold font-mono font-black text-lg md:text-2xl tracking-tighter pointer-events-none">
                   +57
                 </span>
                 <input
@@ -90,7 +90,7 @@ function PlayerLoginContent() {
                     setPhoneTouched(true)
                     validatePhone(e.target.value)
                   }}
-                  className={`w-full h-20 pl-20 pr-6 bg-black/50 border-2 rounded-2xl text-xl md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:ring-4 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner
+                  className={`w-full h-20 pl-16 pr-6 bg-black/50 border-2 rounded-2xl text-lg md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:ring-4 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner
                     ${displayPhoneError
                       ? 'border-red-500/60 focus:border-red-500/80 focus:ring-red-500/10'
                       : phoneIsValid

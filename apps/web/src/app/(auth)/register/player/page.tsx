@@ -167,7 +167,7 @@ export default function PlayerRegisterPage() {
                 Número de Celular
               </label>
               <div className="relative flex items-center">
-                <span className="absolute left-6 text-brand-gold font-mono font-black text-xl md:text-2xl tracking-tighter pointer-events-none">
+                <span className="absolute left-5 text-brand-gold font-mono font-black text-lg md:text-2xl tracking-tighter pointer-events-none">
                   +57
                 </span>
                 <input
@@ -183,7 +183,7 @@ export default function PlayerRegisterPage() {
                     if (touched.phone) validateField('phone', digits)
                   }}
                   onBlur={e => validateField('phone', e.target.value)}
-                  className={`w-full h-14 pl-20 pr-10 bg-black/50 border-2 rounded-2xl text-xl md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:ring-4 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner ${inputBorder(displayError('phone'), isValid('phone'))}`}
+                  className={`w-full h-14 pl-16 pr-8 bg-black/50 border-2 rounded-2xl text-lg md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:ring-4 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner ${inputBorder(displayError('phone'), isValid('phone'))}`}
                 />
                 {isValid('phone') && (
                   <span className="absolute right-5 text-green-400 text-xl font-black pointer-events-none">✓</span>
