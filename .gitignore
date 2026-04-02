@@ -29,6 +29,9 @@ out/
 build
 dist
 
+# Replay storage (local dev)
+replays/
+
 
 # Debug
 npm-debug.log*

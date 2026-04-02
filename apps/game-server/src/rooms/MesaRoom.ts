@@ -898,6 +898,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private resetRoomState() {
     console.log(`[MesaRoom] Reseteando estado completo de la sala.`);
 
+    // Grabar la partida antes de resetear (si hubo actividad)
+    if (this.state.phase !== "LOBBY") {
+      this.saveCurrentReplay('all_players_disconnected');
+    }
+
     // Refundar apuestas pendientes si hay partida en curso
     if (this.state.phase !== "LOBBY") {
       const tableName = (this as any).metadata?.tableName || 'Mesa VIP';
@@ -1035,7 +1040,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.rngCounter = 0;
     this.currentTimeline.push({ event: 'start', seed, time: Date.now() });
 
-    SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP");
+    SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP")
+      .catch(err => console.error('[MesaRoom] createGameSession failed:', err));
 
     // Resetear el estado de los jugadores para la nueva ronda
     Array.from(this.state.players.entries()).forEach(([sessionId, p]) => {
@@ -1300,6 +1306,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (seatedConnected.length < 2 || this.piqueRestartCount > MesaRoom.MAX_PIQUE_RESTARTS) {
       console.log(`[MesaRoom] Abortando pique: ${seatedConnected.length} jugadores sentados, ${this.piqueRestartCount} reinicios. Volviendo a LOBBY.`);
+
+      // Grabar la partida antes de abortar
+      const soloWinner = seatedConnected.length === 1 ? seatedConnected[0] : undefined;
+      this.saveCurrentReplay(
+        'pique_abort',
+        soloWinner?.id,
+        soloWinner && this.state.pot > 0 ? this.state.pot : 0,
+        0
+      );
 
       // Devolver pot al único jugador que quede (si existe)
       if (seatedConnected.length === 1 && this.state.pot > 0) {
@@ -1800,6 +1815,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     console.log(`[MesaRoom] Jugadores restantes para pot principal: ${remaining.length}`);
 
     if (remaining.length === 0) {
+      this.saveCurrentReplay('pique_all_folded');
       this.state.pot = 0;
       this.state.piquePot = 0;
       this.promoteWaitingPlayers();
@@ -1811,6 +1827,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (remaining.length === 1) {
       // Solo queda 1 jugador → devolver su apuesta del pot principal
       const soloPlayer = remaining[0];
+      this.saveCurrentReplay('solo_player_after_pique', soloPlayer.id, this.state.pot, 0);
+
       if (this.state.pot > 0) {
         soloPlayer.chips += this.state.pot;
         this.state.lastAction = `${soloPlayer.nickname} recupera su apuesta ($${this.state.pot})`;
@@ -2066,6 +2084,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       .filter(p => !p.isFolded && p.connected);
 
     if (activePlayers.length === 0) {
+      this.saveCurrentReplay('showdown_no_players');
       this.state.pot = 0;
       this.state.piquePot = 0;
       this.promoteWaitingPlayers();
@@ -2440,6 +2459,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }, 1000);
     } else {
       console.log(`[MesaRoom] Fin de mano prematuro, pero no hay un ganador claro. Se aborta partida.`);
+      this.saveCurrentReplay('no_winner_abort');
       Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => p.isReady = false);
       this.state.pot = 0;
       this.state.piquePot = 0;
@@ -2556,6 +2576,79 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       .substring(0, 16);
   }
 
+  /**
+   * Guarda la grabación de la partida actual en filesystem y Supabase.
+   * Método centralizado que puede invocarse desde cualquier ruta de finalización
+   * (showdown, fold-out, desconexión, pique abort, dispose, etc.).
+   *
+   * @param outcome - Razón por la que terminó la partida (para el timeline)
+   * @param winnerId - ID del ganador si lo hay (null para empates/abortos)
+   * @param payout - Cantidad pagada al ganador (0 si fue reembolso)
+   * @param rake - Rake cobrado (0 si no hubo)
+   */
+  private saveCurrentReplay(outcome: string, winnerId?: string, payout: number = 0, rake: number = 0) {
+    // No grabar si no hay timeline (la partida nunca empezó realmente)
+    if (this.currentTimeline.length === 0) return;
+
+    // Agregar evento de fin si no existe ya uno
+    const lastEvent = this.currentTimeline[this.currentTimeline.length - 1];
+    if (!lastEvent || lastEvent.event !== 'end') {
+      this.currentTimeline.push({
+        event: 'end',
+        outcome,
+        winner: winnerId || null,
+        pot: this.state.pot + this.state.piquePot,
+        payout,
+        rake,
+        time: Date.now(),
+        rng_state: this.getRngState(),
+      });
+    }
+
+    const playersSnapshot = Array.from(this.state.players.values()).map((p: Player) => ({
+      userId: p.supabaseUserId || p.id,
+      nickname: p.nickname,
+      cards: p.cards,
+      chips: p.chips,
+    }));
+
+    const potBreakdown = {
+      totalPot: this.state.pot + this.state.piquePot,
+      mainPot: this.state.pot,
+      piquePot: this.state.piquePot,
+      payout,
+      rake,
+    };
+
+    const finalHands: Record<string, any> = {};
+    Array.from(this.state.players.values()).forEach((p: Player) => {
+      if (p.cards) {
+        const hand = evaluateHand(p.cards);
+        finalHands[p.supabaseUserId || p.id] = {
+          cards: p.cards,
+          handType: hand.type,
+          handPoints: hand.points,
+          nickname: p.nickname,
+        };
+      }
+    });
+
+    const adminTimeline = [...this.currentTimeline];
+    const playerTimeline = this.currentTimeline.map(({ rng_state, ...event }) => event);
+
+    SupabaseService.saveReplay(
+      this.currentGameId,
+      this.state.lastSeed,
+      playerTimeline,
+      playersSnapshot,
+      adminTimeline,
+      potBreakdown,
+      finalHands,
+      this.roomId,
+      this.metadata?.tableName || 'Mesa VIP'
+    ).catch(err => console.error(`[MesaRoom] saveReplay error (${outcome}):`, err));
+  }
+
   // ── Pique Fijo: helpers de votación ──
 
   private clearPiqueProposal() {
@@ -2642,6 +2735,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   onDispose() {
+    // ── Grabar partida en curso antes de cerrar la sala ──
+    if (this.state.phase !== "LOBBY") {
+      this.saveCurrentReplay('room_disposed');
+    }
+
     // ── Settlement: refund unsettled bets if a game was in progress ──
     if (this.state.phase !== "LOBBY") {
       console.log(`[MesaRoom] Room disposing during active game (phase: ${this.state.phase}). Refunding unsettled bets...`);
