@@ -12,6 +12,7 @@ import {
 import { PwaLockScreen } from '@/components/pwa-lock-screen'
 
 const APP_LOCK_KEY = 'mesa_primera_app_lock_enabled'
+const CREDENTIAL_ID_KEY = 'mesa_primera_lock_credential_id'
 const LAST_ACTIVE_KEY = 'mesa_primera_last_active'
 const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes
 const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const
@@ -36,6 +37,17 @@ export const useAppLock = () => useContext(AppLockContext)
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+function bufferToBase64(buf: ArrayBuffer): string {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+}
+
+function base64ToBuffer(b64: string): ArrayBuffer {
+  const binary = atob(b64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes.buffer as ArrayBuffer
+}
+
 async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   if (
     typeof window === 'undefined' ||
@@ -51,7 +63,11 @@ async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   }
 }
 
-async function requestDeviceVerification(): Promise<boolean> {
+/**
+ * Enrollment: creates a new platform credential and returns its rawId (base64).
+ * Only called once when enabling biometric lock.
+ */
+async function enrollCredential(): Promise<string | null> {
   try {
     const challenge = crypto.getRandomValues(new Uint8Array(32))
     const credential = (await navigator.credentials.create({
@@ -63,7 +79,10 @@ async function requestDeviceVerification(): Promise<boolean> {
           name: 'lock-check',
           displayName: 'Verificación',
         },
-        pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+        pubKeyCredParams: [
+          { alg: -7, type: 'public-key' },   // ES256
+          { alg: -257, type: 'public-key' },  // RS256 (fallback for some Android devices)
+        ],
         authenticatorSelection: {
           authenticatorAttachment: 'platform',
           userVerification: 'required',
@@ -73,7 +92,34 @@ async function requestDeviceVerification(): Promise<boolean> {
         excludeCredentials: [],
       },
     })) as PublicKeyCredential | null
-    return !!credential
+    if (!credential) return null
+    return bufferToBase64(credential.rawId)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Verification: uses navigator.credentials.get() with the stored credential.
+ * Shows a simple biometric prompt on mobile (no passkey-creation sheet).
+ */
+async function verifyWithCredential(credentialIdB64: string): Promise<boolean> {
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32))
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: challenge.buffer as ArrayBuffer,
+        rpId: window.location.hostname,
+        allowCredentials: [{
+          id: base64ToBuffer(credentialIdB64),
+          type: 'public-key',
+          transports: ['internal'],
+        }],
+        userVerification: 'required',
+        timeout: 60000,
+      },
+    })
+    return !!assertion
   } catch {
     return false
   }
@@ -159,18 +205,20 @@ export function AppLockProvider({
 
   // ── Enroll ──
   const enroll = useCallback(async (): Promise<boolean> => {
-    const ok = await requestDeviceVerification()
-    if (ok) {
+    const credentialId = await enrollCredential()
+    if (credentialId) {
       localStorage.setItem(APP_LOCK_KEY, 'true')
+      localStorage.setItem(CREDENTIAL_ID_KEY, credentialId)
       stampActivity()
       setIsEnabled(true)
     }
-    return ok
+    return !!credentialId
   }, [])
 
   // ── Disable ──
   const disable = useCallback(() => {
     localStorage.removeItem(APP_LOCK_KEY)
+    localStorage.removeItem(CREDENTIAL_ID_KEY)
     localStorage.removeItem(LAST_ACTIVE_KEY)
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
     setIsEnabled(false)
@@ -179,7 +227,19 @@ export function AppLockProvider({
 
   // ── Unlock ──
   const handleUnlock = useCallback(async () => {
-    const ok = await requestDeviceVerification()
+    const credentialId = localStorage.getItem(CREDENTIAL_ID_KEY)
+    if (!credentialId) {
+      // No stored credential — re-enroll silently
+      const newId = await enrollCredential()
+      if (newId) {
+        localStorage.setItem(CREDENTIAL_ID_KEY, newId)
+        stampActivity()
+        setIsLocked(false)
+        return true
+      }
+      return false
+    }
+    const ok = await verifyWithCredential(credentialId)
     if (ok) {
       stampActivity()
       setIsLocked(false)

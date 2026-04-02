@@ -493,7 +493,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                         const isSelected = selectedCards.includes(cardStr);
                         const middle = (arr.length - 1) / 2;
                         const angle = (idx - middle) * 8; 
-                        const offsetX = (idx - middle) * (typeof window !== 'undefined' && window.innerWidth < 1000 ? 38 : 70); 
+                        const offsetX = (idx - middle) * (typeof window !== 'undefined' && window.innerWidth < 1000 ? 55 : 70); 
                         
                         const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
                         const handleCardClick = () => {
