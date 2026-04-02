@@ -187,6 +187,9 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
                 setAmount(e.target.value)
                 if (e.target.value) validateAmount(e.target.value)
               }}
+              onKeyDown={(e) => {
+                if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault()
+              }}
               onBlur={(e) => validateAmount(e.target.value)}
               placeholder="0"
               required
@@ -206,6 +209,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
           {!fieldErrors.amount && !amountFormatted && (
             <p className="text-[#f3edd7]/20 text-[10px] font-bold ml-6 uppercase tracking-widest">Mínimo $10.000 — Máximo $50.000.000 COP</p>
           )}
+          <p className="text-[#c0a060]/40 text-[10px] font-medium ml-6">Por favor, escribe el número sin puntos ni comas</p>
         </div>
 
         {/* Upload Section */}

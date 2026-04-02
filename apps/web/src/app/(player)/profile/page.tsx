@@ -3,20 +3,28 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Phone, Tag, Camera, Save, Loader2, Trophy, Medal, Star, ShieldCheck, LogOut } from 'lucide-react';
+import { User, Mail, Phone, Tag, Camera, Save, Loader2, Trophy, Medal, Star, ShieldCheck, LogOut, X, Fingerprint } from 'lucide-react';
 import { getAvatarSvg } from '@/utils/avatars';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getMyStats, PlayerStats } from '@/app/actions/stats';
 import { Toast, ToastType } from '@/components/ui/Toast';
+import { useAppLock } from '@/components/providers/AppLockProvider';
+import { useRef } from 'react';
 
 export default function ProfilePage() {
   const supabase = createClient();
   const router = useRouter();
+  const { isEnabled: lockEnabled, isSupported: lockSupported, enroll: enrollLock, disable: disableLock } = useAppLock();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const originalPhone = useRef('');
+  const [otpModal, setOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [pendingPhone, setPendingPhone] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     full_name: '',
@@ -44,10 +52,12 @@ export default function ProfilePage() {
       ]);
 
       if (profileRes.data) {
+        const loadedPhone = profileRes.data.phone || '';
+        originalPhone.current = loadedPhone;
         setFormData({
           username: profileRes.data.username || '',
           full_name: profileRes.data.full_name || '',
-          phone: profileRes.data.phone || '',
+          phone: loadedPhone,
           avatar_url: profileRes.data.avatar_url || '',
         });
       }
@@ -58,17 +68,49 @@ export default function ProfilePage() {
     loadData();
   }, [supabase, router]);
 
+  // Normalize phone to E.164 (+57...)
+  function normalizePhone(raw: string): string {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.startsWith('57') && digits.length === 12) return '+' + digits;
+    if (digits.length === 10) return '+57' + digits;
+    return raw.startsWith('+') ? raw : '+' + digits;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    
+
+    const phoneChanged = formData.phone.trim() !== originalPhone.current.trim();
+
+    if (phoneChanged) {
+      // Start OTP flow for phone change
+      const newPhone = normalizePhone(formData.phone);
+      setSaving(true);
+      const { error } = await supabase.auth.updateUser({ phone: newPhone });
+      setSaving(false);
+      if (error) {
+        showToast('Error al enviar código: ' + error.message, 'error');
+        return;
+      }
+      setPendingPhone(newPhone);
+      setOtpCode('');
+      setOtpModal(true);
+      return;
+    }
+
+    // No phone change — save directly
+    await saveProfile();
+  };
+
+  const saveProfile = async (phoneOverride?: string) => {
+    if (!user) return;
     setSaving(true);
     const { error } = await supabase
       .from('profiles')
       .update({
         username: formData.username,
         full_name: formData.full_name,
-        phone: formData.phone,
+        phone: phoneOverride ?? formData.phone,
         avatar_url: formData.avatar_url,
         updated_at: new Date().toISOString(),
       })
@@ -77,10 +119,33 @@ export default function ProfilePage() {
     if (error) {
       showToast('Error al actualizar: ' + error.message, 'error');
     } else {
+      if (phoneOverride) {
+        originalPhone.current = phoneOverride;
+        setFormData((prev) => ({ ...prev, phone: phoneOverride }));
+      }
       showToast('¡Perfil actualizado con éxito!', 'success');
       router.refresh();
     }
     setSaving(false);
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpCode.length !== 6) return;
+    setOtpLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      phone: pendingPhone,
+      token: otpCode,
+      type: 'phone_change',
+    });
+    if (error) {
+      setOtpLoading(false);
+      showToast('Código incorrecto. Intenta de nuevo.', 'error');
+      return;
+    }
+    // OTP verified — now save entire profile including new phone
+    setOtpModal(false);
+    setOtpLoading(false);
+    await saveProfile(pendingPhone);
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -340,6 +405,55 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {/* Biometric App Lock */}
+              {lockSupported && (
+                <div className="space-y-4 border-t border-brand-gold/10 pt-10 w-full">
+                  <label className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold/60 ml-3">
+                    Seguridad Biométrica
+                  </label>
+                  <div className="flex items-center justify-between bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 px-6 sm:px-8 w-full">
+                    <div className="flex items-center gap-4">
+                      <Fingerprint className="w-6 h-6 text-brand-gold" />
+                      <div>
+                        <p className="text-sm sm:text-base font-bold text-white">
+                          Bloqueo con Huella / Face ID
+                        </p>
+                        <p className="text-[11px] text-white/40 mt-0.5">
+                          Pide verificación al abrir la app
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (lockEnabled) {
+                          disableLock();
+                          showToast('Bloqueo biométrico desactivado', 'success');
+                        } else {
+                          const ok = await enrollLock();
+                          if (ok) {
+                            showToast('¡Bloqueo biométrico activado!', 'success');
+                          } else {
+                            showToast('No se pudo activar. Intenta de nuevo.', 'error');
+                          }
+                        }
+                      }}
+                      className={`relative w-14 h-8 rounded-full transition-colors duration-300 shrink-0 ${
+                        lockEnabled
+                          ? 'bg-brand-gold shadow-[0_0_12px_rgba(212,175,55,0.4)]'
+                          : 'bg-slate-700'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                          lockEnabled ? 'translate-x-6' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-row gap-4 pt-10 w-full max-w-md mx-auto sm:max-w-none">
                 <button
                   type="submit"
@@ -370,6 +484,72 @@ export default function ProfilePage() {
           </div>
         </main>
       </div>
+
+      <AnimatePresence>
+        {otpModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-slate-950 border-2 border-brand-gold/30 rounded-3xl p-8 sm:p-10 w-full max-w-md shadow-2xl space-y-6"
+            >
+              <button
+                type="button"
+                onClick={() => { setOtpModal(false); setOtpCode(''); }}
+                className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center space-y-2">
+                <div className="w-14 h-14 bg-brand-gold/10 border-2 border-brand-gold/20 rounded-2xl flex items-center justify-center mx-auto">
+                  <ShieldCheck className="w-7 h-7 text-brand-gold" />
+                </div>
+                <h3 className="text-xl font-display font-black text-[#f3edd7] uppercase italic tracking-tight">Verificar Número</h3>
+                <p className="text-sm text-[#f3edd7]/50">
+                  Enviamos un código de 6 dígitos a <span className="text-brand-gold font-bold">{pendingPhone}</span>
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  className="w-full h-16 bg-black/60 border-2 border-brand-gold/20 rounded-2xl text-center text-3xl font-display font-black text-[#f3edd7] tracking-[0.5em] placeholder:text-slate-800 focus:outline-none focus:border-brand-gold/50 transition-all"
+                  autoFocus
+                />
+
+                <button
+                  type="button"
+                  disabled={otpCode.length !== 6 || otpLoading}
+                  onClick={handleVerifyOtp}
+                  className="w-full h-14 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-wider text-xs rounded-xl transition-all duration-200 border-b-4 border-brand-gold-dark active:border-b-0 active:translate-y-1 shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {otpLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-black" />
+                  ) : (
+                    <span className="italic">Verificar Código</span>
+                  )}
+                </button>
+
+                <p className="text-[10px] text-center text-[#f3edd7]/30 font-medium">
+                  Si no recibes el código, revisa que el número sea correcto e intenta de nuevo.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {toast && (

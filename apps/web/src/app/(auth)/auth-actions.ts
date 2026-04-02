@@ -184,6 +184,12 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
   const phone = normalizePhone(parsed.data.phone)
 
+  // Verificar si el teléfono ya está registrado antes de enviar OTP
+  const { data: phoneExists } = await supabase.rpc('check_phone_exists', { p_phone: phone })
+  if (phoneExists) {
+    return { fieldErrors: { phone: ['Este número ya está registrado. Por favor, inicia sesión.'] } }
+  }
+
   const { error } = await supabase.auth.signInWithOtp({
     phone,
     options: {
@@ -437,6 +443,42 @@ export async function enrollAdminTotp() {
     qrCode: data.totp.qr_code,
     secret: data.totp.secret,
   }
+}
+
+/**
+ * Completa la configuración inicial de TOTP para un administrador.
+ * Recibe el factorId y el código generado por la app autenticadora.
+ */
+export async function verifyAdminTotpSetup(prevState: unknown, formData: FormData) {
+  const supabase = await createClient()
+  const factorId = formData.get('factorId') as string
+  const code = formData.get('code') as string
+
+  if (!factorId || !code) {
+    return { error: 'Factor ID y código son requeridos.' }
+  }
+
+  const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+    factorId,
+  })
+
+  if (challengeError) return { error: challengeError.message }
+
+  const { error: verifyError } = await supabase.auth.mfa.verify({
+    factorId,
+    challengeId: challenge.id,
+    code,
+  })
+
+  if (verifyError) return { error: 'Código inválido. Asegúrate de ingresar el código actual de tu app.' }
+
+  // Enforce single-session policy after successful MFA setup
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    await enforceSessionPolicy(user.id)
+  }
+
+  redirect('/admin')
 }
 
 export async function signOut(redirectTo: string = '/login/player') {
