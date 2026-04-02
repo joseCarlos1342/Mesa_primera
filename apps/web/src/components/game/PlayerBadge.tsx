@@ -93,52 +93,52 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
             </span>
          </div>
 
-         {/* Desktop-only badges (hidden on mobile, shown inline above) */}
-         {isDealer && !isWaiting && (
-            <div className="hidden md:block bg-[#d4af37] text-black text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white/20 uppercase tracking-tighter">
+         {/* In-pill badges: only for own player (enemies use below-pill badges) */}
+         {isMe && isDealer && !isWaiting && (
+            <div className="bg-[#d4af37] text-black text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white/20 uppercase tracking-tighter">
               Mano
             </div>
          )}
 
-         {!isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
-            <div className="hidden md:block bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+         {isMe && !isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
+            <div className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
               {turnOrder}ª
             </div>
          )}
 
-         {isAllIn && !isWaiting && (
-            <div className="hidden md:block bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[6px] md:text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+         {isMe && isAllIn && !isWaiting && (
+            <div className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
               Resto
             </div>
          )}
 
-         {isWaiting && (
-            <div className="hidden md:block bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[6px] md:text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
+         {isMe && isWaiting && (
+            <div className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
               Espera
             </div>
          )}
        </div>
 
-       {/* Mobile badges BELOW the pill (avoids expanding pill width) */}
+       {/* Badges BELOW the pill for enemies (avoids expanding pill width at any screen size) */}
        {!isMe && (
-         <div className="flex items-center justify-center gap-0.5 md:hidden mt-0.5">
+         <div className="flex items-center justify-center gap-0.5 md:gap-1 mt-0.5">
            {isDealer && !isWaiting && (
-             <span className="bg-[#d4af37] text-black text-[5px] font-black px-1 py-[1px] rounded-full shadow-sm border border-white/20 uppercase tracking-tighter leading-none">
+             <span className="bg-[#d4af37] text-black text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full shadow-sm border border-white/20 uppercase tracking-tighter leading-none">
                Mano
              </span>
            )}
            {!isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
-             <span className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[5px] font-black px-1 py-[1px] rounded-full uppercase tracking-tighter leading-none">
+             <span className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter leading-none">
                {turnOrder}ª
              </span>
            )}
            {isAllIn && !isWaiting && (
-             <span className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[5px] font-black px-1 py-[1px] rounded-full uppercase tracking-tighter leading-none">
+             <span className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter leading-none">
                Resto
              </span>
            )}
            {isWaiting && (
-             <span className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[5px] font-black px-1 py-[1px] rounded-full uppercase tracking-tighter animate-pulse leading-none">
+             <span className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter animate-pulse leading-none">
                Espera
              </span>
            )}
