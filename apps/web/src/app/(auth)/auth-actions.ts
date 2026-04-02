@@ -348,7 +348,7 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
     redirect('/login/admin/mfa')
   }
 
-  // Verificar que sea admin
+  // Verificar que sea admin (antes de redirigir a MFA setup)
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
@@ -363,7 +363,8 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
   // Enforce single-session policy for admins too
   await enforceSessionPolicy(data.user.id)
 
-  redirect('/admin')
+  // Admin sin TOTP configurado → forzar configuración de 2FA
+  redirect('/login/admin/mfa/setup')
 }
 
 /**
