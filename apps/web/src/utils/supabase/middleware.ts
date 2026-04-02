@@ -33,7 +33,10 @@ export async function updateSession(request: NextRequest) {
             request,
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              maxAge: 604800, // 7 days – match Supabase inactivity_timeout
+            })
           )
         },
       },
@@ -49,6 +52,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicSeoPage = pathname === '/primera-riverada-los-4-ases'
   const isAdminPath = pathname.startsWith('/admin')
   const isMfaPage = pathname === '/login/admin/mfa'
+  const isMfaSetupPage = pathname === '/login/admin/mfa/setup'
 
   // PREVENT REDIRECT FOR STATIC FILES
   const isStaticFile = pathname.match(/\.(json|xml|txt|png|jpg|jpeg|gif|webp|svg|ico)$/)
@@ -112,8 +116,31 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    // 1.5 Enforce MFA for admin users accessing admin routes
+    if (role === 'admin' && (isAdminPath || pathname === '/')) {
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+
+      if (aalData) {
+        const { currentLevel, nextLevel } = aalData
+
+        // Admin has NO TOTP factor enrolled → force setup
+        if (nextLevel === 'aal1' && !isMfaSetupPage) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/login/admin/mfa/setup'
+          return NextResponse.redirect(url)
+        }
+
+        // Admin has TOTP enrolled but hasn't verified this session → force verify
+        if (nextLevel === 'aal2' && currentLevel !== 'aal2' && !isMfaPage) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/login/admin/mfa'
+          return NextResponse.redirect(url)
+        }
+      }
+    }
+
     // 2. Admin no debe acceder a rutas de jugador
-    if (role === 'admin' && !isAdminPath && !isAuthPage && !isMfaPage && pathname !== '/') {
+    if (role === 'admin' && !isAdminPath && !isAuthPage && !isMfaPage && !isMfaSetupPage && pathname !== '/') {
       const url = request.nextUrl.clone()
       url.pathname = '/admin'
       return NextResponse.redirect(url)

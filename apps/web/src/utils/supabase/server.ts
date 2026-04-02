@@ -17,7 +17,10 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                maxAge: 604800, // 7 days – match Supabase inactivity_timeout
+              })
             )
           } catch {
             // The `setAll` method was called from a Server Component.

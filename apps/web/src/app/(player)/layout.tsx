@@ -6,6 +6,7 @@ import { SupportChat } from "@/components/SupportChat";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { PresenceTracker } from "@/components/PresenceTracker";
+import { PlayerAppLockWrapper } from "@/components/providers/PlayerAppLockWrapper";
 import { createClient } from "@/utils/supabase/server";
 import { getAvatarSvg } from "@/utils/avatars";
 
@@ -28,6 +29,7 @@ export default async function PlayerLayout({
   }
 
   return (
+    <PlayerAppLockWrapper userId={user?.id ?? ''}>
     <div className="player-layout min-h-screen bg-slate-950 text-text-premium relative flex flex-col font-sans selection:bg-brand-gold/30">
       {/* Premium Casino Background Overlay */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -92,5 +94,6 @@ export default async function PlayerLayout({
       {user && <PresenceTracker />}
       {user && <SupportChat userId={user.id} />}
     </div>
+    </PlayerAppLockWrapper>
   );
 }
