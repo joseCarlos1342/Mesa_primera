@@ -39,14 +39,26 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
   const supabase = createClient()
 
   useEffect(() => {
-    if (transaction?.proof_url) {
-      const { data: { publicUrl: url } } = supabase.storage
-        .from('deposits')
-        .getPublicUrl(transaction.proof_url)
-      setPublicUrl(url)
-    } else {
-      setPublicUrl(null)
+    async function resolveUrl() {
+      if (transaction?.proof_url) {
+        // Try signed URL first (works for private buckets)
+        const { data, error } = await supabase.storage
+          .from('deposits')
+          .createSignedUrl(transaction.proof_url, 3600)
+        if (!error && data?.signedUrl) {
+          setPublicUrl(data.signedUrl)
+        } else {
+          // Fallback to public URL
+          const { data: { publicUrl: url } } = supabase.storage
+            .from('deposits')
+            .getPublicUrl(transaction.proof_url)
+          setPublicUrl(url)
+        }
+      } else {
+        setPublicUrl(null)
+      }
     }
+    resolveUrl()
   }, [transaction, supabase.storage])
 
   if (!transaction) return null

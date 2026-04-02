@@ -1,11 +1,13 @@
-import { Menu, ShoppingCart, LogOut, HelpCircle, X, Mic, Headphones } from 'lucide-react'
+import { Menu, ShoppingCart, LogOut, HelpCircle, X, Mic, Headphones, Maximize, Minimize } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useFullscreen } from '@/hooks/useFullscreen'
 
 export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const { isFullscreen, toggle: toggleFullscreen, isSupported: fsSupported } = useFullscreen()
 
   // Cierra el menú si se hace click fuera
   useEffect(() => {
@@ -24,17 +26,17 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <>
-    <header className="absolute top-0 left-0 w-full flex h-14 md:h-16 items-center justify-between px-4 md:px-6 bg-transparent pointer-events-none z-50 landscape:h-12 md:landscape:h-16">
+    <header className="absolute top-0 left-0 w-full flex h-14 md:h-16 items-center justify-between px-3 md:px-6 bg-transparent pointer-events-none z-50 landscape:h-10 md:landscape:h-16 pt-[env(safe-area-inset-top,0px)]">
       {/* Top Left: Hamburger Menu */}
       <div className="relative" ref={menuRef}>
         <button 
           onClick={() => setIsMenuOpen(!isMenuOpen)} 
-          className="p-2 -ml-2 rounded-md hover:bg-[#d4af37]/10 transition-colors relative z-50 pointer-events-auto"
+          className="p-2 rounded-lg hover:bg-[#d4af37]/10 transition-colors relative z-50 pointer-events-auto"
         >
           {isMenuOpen ? (
-            <X className="w-8 h-8 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+            <X className="w-6 h-6 md:w-8 md:h-8 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
           ) : (
-            <Menu className="w-8 h-8 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+            <Menu className="w-6 h-6 md:w-8 md:h-8 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
           )}
         </button>
 
@@ -46,10 +48,10 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-14 left-0 w-64 bg-[#0d211a]/95 backdrop-blur-xl border border-[#c0a060]/30 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(192,160,96,0.15)] overflow-hidden flex flex-col py-2 pointer-events-auto"
+              className="absolute top-12 left-0 w-56 md:w-64 bg-[#0d211a]/95 backdrop-blur-xl border border-[#c0a060]/30 rounded-xl md:rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(192,160,96,0.15)] overflow-hidden flex flex-col py-1 pointer-events-auto"
             >
-              <div className="px-4 py-3 border-b border-[#c0a060]/15">
-                <p className="text-[#c0a060]/70 text-xs font-black tracking-widest uppercase">Opciones de Mesa</p>
+              <div className="px-4 py-2 border-b border-[#c0a060]/15">
+                <p className="text-[#c0a060]/70 text-[10px] font-black tracking-widest uppercase">Opciones de Mesa</p>
               </div>
               
               <button 
@@ -57,9 +59,9 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
                   setIsMenuOpen(false);
                   window.dispatchEvent(new CustomEvent('open-player-audio-modal'));
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#1b4d3e]/60 transition-colors text-[#f3edd7]/70 group"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#1b4d3e]/60 transition-colors text-[#f3edd7]/70 group text-sm"
               >
-                <Mic className="w-5 h-5 group-hover:text-[#c0a060] transition-colors" />
+                <Mic className="w-4 h-4 group-hover:text-[#c0a060] transition-colors" />
                 <span className="font-medium group-hover:text-[#f3edd7] transition-colors">Audio de Jugadores</span>
               </button>
 
@@ -68,9 +70,9 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
                   setIsMenuOpen(false);
                   window.dispatchEvent(new CustomEvent('open-rules-modal'));
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#1b4d3e]/60 transition-colors text-[#f3edd7]/70 group"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#1b4d3e]/60 transition-colors text-[#f3edd7]/70 group text-sm"
               >
-                <HelpCircle className="w-5 h-5 group-hover:text-[#c0a060] transition-colors" />
+                <HelpCircle className="w-4 h-4 group-hover:text-[#c0a060] transition-colors" />
                 <span className="font-medium group-hover:text-[#f3edd7] transition-colors">Reglas del Juego</span>
               </button>
 
@@ -79,22 +81,41 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
                   setIsMenuOpen(false);
                   window.dispatchEvent(new CustomEvent('open-table-help'));
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#c0a060]/10 transition-colors text-[#c0a060] group"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#c0a060]/10 transition-colors text-[#c0a060] group text-sm"
               >
-                <Headphones className="w-5 h-5 group-hover:text-[#e2b044] transition-colors" />
+                <Headphones className="w-4 h-4 group-hover:text-[#e2b044] transition-colors" />
                 <span className="font-bold group-hover:text-[#e2b044] transition-colors">Llamar al Admin</span>
               </button>
+
+              {fsSupported && (
+                <button 
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    toggleFullscreen();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#1b4d3e]/60 transition-colors text-[#f3edd7]/70 group text-sm"
+                >
+                  {isFullscreen ? (
+                    <Minimize className="w-4 h-4 group-hover:text-[#c0a060] transition-colors" />
+                  ) : (
+                    <Maximize className="w-4 h-4 group-hover:text-[#c0a060] transition-colors" />
+                  )}
+                  <span className="font-medium group-hover:text-[#f3edd7] transition-colors">
+                    {isFullscreen ? 'Salir Pantalla Completa' : 'Pantalla Completa'}
+                  </span>
+                </button>
+              )}
               
-              <div className="my-1 border-t border-[#c0a060]/10" />
+              <div className="my-0.5 border-t border-[#c0a060]/10" />
 
               <button 
                 onClick={() => {
                   setIsMenuOpen(false);
                   setShowExitConfirm(true);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-500/10 transition-colors text-red-400 group"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-red-500/10 transition-colors text-red-400 group text-sm"
               >
-                <LogOut className="w-5 h-5 group-hover:text-red-400 transition-colors" />
+                <LogOut className="w-4 h-4 group-hover:text-red-400 transition-colors" />
                 <span className="font-bold tracking-wide group-hover:text-red-400 transition-colors uppercase">Abandonar Partida</span>
               </button>
             </motion.div>

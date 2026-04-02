@@ -120,16 +120,16 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
 
       {/* Activity History */}
       <section className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-gold/5 rounded-xl flex items-center justify-center border border-brand-gold/10 shadow-inner">
+        <div className="flex items-center justify-between gap-4 px-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-brand-gold/5 rounded-xl flex items-center justify-center border border-brand-gold/10 shadow-inner shrink-0">
               <ArrowUpWideNarrow className="w-5 h-5 text-brand-gold/60" />
             </div>
-            <h3 className="text-xl font-display font-black text-white uppercase tracking-tight italic">Actividad</h3>
+            <h3 className="text-lg sm:text-xl font-display font-black text-white uppercase tracking-tight italic truncate">Actividad</h3>
           </div>
-          <Link href="/wallet/history" className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold hover:text-brand-gold-light transition-colors flex items-center gap-2 group/btn">
+          <Link href="/wallet/history" className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold hover:text-brand-gold-light transition-colors flex items-center gap-1.5 group/btn shrink-0 whitespace-nowrap">
             Ver Todo
-            <ArrowUpRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1" />
+            <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1" />
           </Link>
         </div>
 
