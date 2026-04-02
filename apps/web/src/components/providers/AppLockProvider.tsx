@@ -5,23 +5,22 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { PwaLockScreen } from '@/components/pwa-lock-screen'
 
 const APP_LOCK_KEY = 'mesa_primera_app_lock_enabled'
+const LAST_ACTIVE_KEY = 'mesa_primera_last_active'
+const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes
+const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const
 
 interface AppLockContextValue {
-  /** Whether the user has opted-in to biometric lock */
   isEnabled: boolean
-  /** Whether the app is currently locked */
   isLocked: boolean
-  /** Whether the device supports platform biometric/PIN */
   isSupported: boolean
-  /** Test biometric and enable lock if successful */
   enroll: () => Promise<boolean>
-  /** Disable the lock */
   disable: () => void
 }
 
@@ -52,19 +51,9 @@ async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   }
 }
 
-/**
- * Request a device-level biometric/PIN verification.
- * We create a temporary credential and immediately verify it – this triggers
- * the native fingerprint / FaceID / PIN prompt without storing passkeys
- * in cloud keychain managers.
- *
- * Uses the same approach that banking apps use for "app lock".
- */
 async function requestDeviceVerification(): Promise<boolean> {
   try {
-    // Create a throw-away credential scoped to this origin
     const challenge = crypto.getRandomValues(new Uint8Array(32))
-
     const credential = (await navigator.credentials.create({
       publicKey: {
         challenge: challenge.buffer as ArrayBuffer,
@@ -78,17 +67,20 @@ async function requestDeviceVerification(): Promise<boolean> {
         authenticatorSelection: {
           authenticatorAttachment: 'platform',
           userVerification: 'required',
-          residentKey: 'discouraged', // don't save as a passkey
+          residentKey: 'discouraged',
         },
         timeout: 60000,
-        excludeCredentials: [], // allow re-creation
+        excludeCredentials: [],
       },
     })) as PublicKeyCredential | null
-
     return !!credential
   } catch {
     return false
   }
+}
+
+function stampActivity() {
+  localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()))
 }
 
 // ─── Provider ───────────────────────────────────────────────────────────────
@@ -103,14 +95,15 @@ export function AppLockProvider({
   const [isEnabled, setIsEnabled] = useState(false)
   const [isLocked, setIsLocked] = useState(false)
   const [ready, setReady] = useState(false)
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Check support & load preference on mount
+  // ── Init: check support, lock on open if enabled ──
   useEffect(() => {
     isPlatformAuthenticatorAvailable().then((supported) => {
       setIsSupported(supported)
       const stored = localStorage.getItem(APP_LOCK_KEY) === 'true'
       setIsEnabled(stored)
-      // If biometric lock is enabled, lock immediately on page load
+      // Lock on app open: always lock when loading fresh, or if inactive > 5 min
       if (stored && supported) {
         setIsLocked(true)
       }
@@ -118,23 +111,17 @@ export function AppLockProvider({
     })
   }, [])
 
-  // ── Visibility change: re-lock when app returns from background ──
+  // ── Visibility: lock when app comes back from background ──
   useEffect(() => {
     if (!isEnabled) return
 
-    let hiddenSince: number | null = null
-
     function handleVisibility() {
       if (document.hidden) {
-        hiddenSince = Date.now()
-      } else if (hiddenSince !== null) {
-        // Re-lock if the app was in background for more than 3 seconds
-        // (avoids locking on quick tab switches)
-        const elapsed = Date.now() - hiddenSince
-        hiddenSince = null
-        if (elapsed > 3000) {
-          setIsLocked(true)
-        }
+        // Stamp current time when going to background
+        stampActivity()
+      } else {
+        // Came back — always lock (user closed/minimized the app)
+        setIsLocked(true)
       }
     }
 
@@ -142,31 +129,64 @@ export function AppLockProvider({
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [isEnabled])
 
-  // ── Enroll: verify biometric works and enable lock ──
+  // ── Inactivity timer: lock after 5 min without interaction ──
+  useEffect(() => {
+    if (!isEnabled || isLocked) return
+
+    function resetTimer() {
+      stampActivity()
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
+      inactivityTimer.current = setTimeout(() => {
+        setIsLocked(true)
+      }, INACTIVITY_MS)
+    }
+
+    // Start initial timer
+    resetTimer()
+
+    // Reset on any user interaction
+    for (const evt of INTERACTION_EVENTS) {
+      document.addEventListener(evt, resetTimer, { passive: true })
+    }
+
+    return () => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
+      for (const evt of INTERACTION_EVENTS) {
+        document.removeEventListener(evt, resetTimer)
+      }
+    }
+  }, [isEnabled, isLocked])
+
+  // ── Enroll ──
   const enroll = useCallback(async (): Promise<boolean> => {
     const ok = await requestDeviceVerification()
     if (ok) {
       localStorage.setItem(APP_LOCK_KEY, 'true')
+      stampActivity()
       setIsEnabled(true)
     }
     return ok
   }, [])
 
-  // ── Disable lock ──
+  // ── Disable ──
   const disable = useCallback(() => {
     localStorage.removeItem(APP_LOCK_KEY)
+    localStorage.removeItem(LAST_ACTIVE_KEY)
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
     setIsEnabled(false)
     setIsLocked(false)
   }, [])
 
-  // ── Handle unlock attempt from LockScreen ──
+  // ── Unlock ──
   const handleUnlock = useCallback(async () => {
     const ok = await requestDeviceVerification()
-    if (ok) setIsLocked(false)
+    if (ok) {
+      stampActivity()
+      setIsLocked(false)
+    }
     return ok
   }, [])
 
-  // Don't render anything until we've checked localStorage
   if (!ready) return null
 
   return (
