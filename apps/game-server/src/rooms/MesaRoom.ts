@@ -1107,7 +1107,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     for (const [, p] of this.state.players) {
       p.isFolded = !p.connected || p.isWaiting;
       if (!p.isFolded && !skipAnte) {
-        const anteAmount = Math.min(10, p.chips);
+        const anteAmount = Math.min(1_000_000, p.chips);
         if (anteAmount <= 0) continue;
         // Persist ante to DB
         if (p.supabaseUserId) {
@@ -1128,7 +1128,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
     }
     if (!skipAnte) {
-      this.state.lastAction = `Entrada obligatoria: $10 × ${antePlayerCount} jugadores = $${this.state.pot} al pozo`;
+      this.state.lastAction = `Entrada obligatoria: $${(1_000_000/100).toLocaleString()} × ${antePlayerCount} jugadores = $${(this.state.pot/100).toLocaleString()} al pozo`;
     }
 
     this.clock.setTimeout(() => {
