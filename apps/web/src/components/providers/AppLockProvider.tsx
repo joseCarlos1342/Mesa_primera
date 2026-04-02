@@ -5,25 +5,23 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { PwaLockScreen } from '@/components/pwa-lock-screen'
 
 const APP_LOCK_KEY = 'mesa_primera_app_lock_enabled'
-const CREDENTIAL_ID_KEY = 'mesa_primera_credential_id'
 
 interface AppLockContextValue {
   /** Whether the user has opted-in to biometric lock */
   isEnabled: boolean
   /** Whether the app is currently locked */
   isLocked: boolean
-  /** Whether the device supports WebAuthn */
+  /** Whether the device supports platform biometric/PIN */
   isSupported: boolean
-  /** Enroll: register a new credential (fingerprint / face / PIN) */
+  /** Test biometric and enable lock if successful */
   enroll: () => Promise<boolean>
-  /** Remove the stored credential and disable lock */
+  /** Disable the lock */
   disable: () => void
 }
 
@@ -39,16 +37,14 @@ export const useAppLock = () => useContext(AppLockContext)
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function isWebAuthnSupported(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    !!window.PublicKeyCredential &&
-    typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function'
-  )
-}
-
 async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
-  if (!isWebAuthnSupported()) return false
+  if (
+    typeof window === 'undefined' ||
+    !window.PublicKeyCredential ||
+    typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== 'function'
+  ) {
+    return false
+  }
   try {
     return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
   } catch {
@@ -56,32 +52,48 @@ async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   }
 }
 
-/** Generate a random challenge */
-function randomChallenge(): ArrayBuffer {
-  const arr = new Uint8Array(32)
-  crypto.getRandomValues(arr)
-  return arr.buffer as ArrayBuffer
-}
+/**
+ * Request a device-level biometric/PIN verification.
+ * We create a temporary credential and immediately verify it – this triggers
+ * the native fingerprint / FaceID / PIN prompt without storing passkeys
+ * in cloud keychain managers.
+ *
+ * Uses the same approach that banking apps use for "app lock".
+ */
+async function requestDeviceVerification(): Promise<boolean> {
+  try {
+    // Create a throw-away credential scoped to this origin
+    const challenge = crypto.getRandomValues(new Uint8Array(32))
 
-/** Convert ArrayBuffer to base64 string for storage */
-function bufferToBase64(buffer: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-}
+    const credential = (await navigator.credentials.create({
+      publicKey: {
+        challenge: challenge.buffer as ArrayBuffer,
+        rp: { name: 'Mesa Primera Lock', id: window.location.hostname },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(16)),
+          name: 'lock-check',
+          displayName: 'Verificación',
+        },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required',
+          residentKey: 'discouraged', // don't save as a passkey
+        },
+        timeout: 60000,
+        excludeCredentials: [], // allow re-creation
+      },
+    })) as PublicKeyCredential | null
 
-/** Convert base64 string back to ArrayBuffer */
-function base64ToBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
+    return !!credential
+  } catch {
+    return false
   }
-  return bytes.buffer as ArrayBuffer
 }
 
 // ─── Provider ───────────────────────────────────────────────────────────────
 
 export function AppLockProvider({
-  userId,
   children,
 }: {
   userId: string
@@ -90,25 +102,39 @@ export function AppLockProvider({
   const [isSupported, setIsSupported] = useState(false)
   const [isEnabled, setIsEnabled] = useState(false)
   const [isLocked, setIsLocked] = useState(false)
-  const wasHidden = useRef(false)
+  const [ready, setReady] = useState(false)
 
   // Check support & load preference on mount
   useEffect(() => {
-    isPlatformAuthenticatorAvailable().then(setIsSupported)
-    const stored = localStorage.getItem(APP_LOCK_KEY)
-    setIsEnabled(stored === 'true')
+    isPlatformAuthenticatorAvailable().then((supported) => {
+      setIsSupported(supported)
+      const stored = localStorage.getItem(APP_LOCK_KEY) === 'true'
+      setIsEnabled(stored)
+      // If biometric lock is enabled, lock immediately on page load
+      if (stored && supported) {
+        setIsLocked(true)
+      }
+      setReady(true)
+    })
   }, [])
 
-  // ── Visibility change: lock when app goes to background, unlock when returns ──
+  // ── Visibility change: re-lock when app returns from background ──
   useEffect(() => {
     if (!isEnabled) return
 
+    let hiddenSince: number | null = null
+
     function handleVisibility() {
       if (document.hidden) {
-        wasHidden.current = true
-      } else if (wasHidden.current) {
-        wasHidden.current = false
-        setIsLocked(true)
+        hiddenSince = Date.now()
+      } else if (hiddenSince !== null) {
+        // Re-lock if the app was in background for more than 3 seconds
+        // (avoids locking on quick tab switches)
+        const elapsed = Date.now() - hiddenSince
+        hiddenSince = null
+        if (elapsed > 3000) {
+          setIsLocked(true)
+        }
       }
     }
 
@@ -116,85 +142,32 @@ export function AppLockProvider({
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [isEnabled])
 
-  // ── Enroll: create a platform credential ──
+  // ── Enroll: verify biometric works and enable lock ──
   const enroll = useCallback(async (): Promise<boolean> => {
-    try {
-      const credential = (await navigator.credentials.create({
-        publicKey: {
-          challenge: randomChallenge(),
-          rp: {
-            name: 'Mesa Primera',
-          },
-          user: {
-            id: new TextEncoder().encode(userId),
-            name: `player-${userId.slice(0, 8)}`,
-            displayName: 'Mesa Primera Player',
-          },
-          pubKeyCredParams: [
-            { alg: -7, type: 'public-key' },   // ES256
-            { alg: -257, type: 'public-key' },  // RS256
-          ],
-          authenticatorSelection: {
-            authenticatorAttachment: 'platform', // force biometric / device PIN
-            userVerification: 'required',
-            residentKey: 'preferred',
-          },
-          timeout: 60000,
-        },
-      })) as PublicKeyCredential | null
-
-      if (!credential) return false
-
-      localStorage.setItem(CREDENTIAL_ID_KEY, bufferToBase64(credential.rawId))
+    const ok = await requestDeviceVerification()
+    if (ok) {
       localStorage.setItem(APP_LOCK_KEY, 'true')
       setIsEnabled(true)
-      return true
-    } catch {
-      return false
     }
-  }, [userId])
-
-  // ── Verify: request the platform authenticator ──
-  const verify = useCallback(async (): Promise<boolean> => {
-    const storedId = localStorage.getItem(CREDENTIAL_ID_KEY)
-    if (!storedId) return false
-
-    try {
-      const assertion = await navigator.credentials.get({
-        publicKey: {
-          challenge: randomChallenge(),
-          allowCredentials: [
-            {
-              id: base64ToBuffer(storedId),
-              type: 'public-key',
-              transports: ['internal'],
-            },
-          ],
-          userVerification: 'required',
-          timeout: 60000,
-        },
-      })
-
-      return !!assertion
-    } catch {
-      return false
-    }
+    return ok
   }, [])
 
   // ── Disable lock ──
   const disable = useCallback(() => {
     localStorage.removeItem(APP_LOCK_KEY)
-    localStorage.removeItem(CREDENTIAL_ID_KEY)
     setIsEnabled(false)
     setIsLocked(false)
   }, [])
 
   // ── Handle unlock attempt from LockScreen ──
   const handleUnlock = useCallback(async () => {
-    const ok = await verify()
+    const ok = await requestDeviceVerification()
     if (ok) setIsLocked(false)
     return ok
-  }, [verify])
+  }, [])
+
+  // Don't render anything until we've checked localStorage
+  if (!ready) return null
 
   return (
     <AppLockContext.Provider value={{ isEnabled, isLocked, isSupported, enroll, disable }}>
