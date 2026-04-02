@@ -238,5 +238,48 @@ export class SupabaseService {
       console.error('[SupabaseService] Error creating game session:', e);
     }
   }
+
+  /**
+   * Refunds a player's unsettled bets when a room closes mid-game.
+   * Records a 'refund' credit in the immutable ledger.
+   */
+  static async refundPlayer(
+    userId: string,
+    amount: number,
+    gameId?: string,
+    meta?: { roomId?: string; tableName?: string; reason?: string }
+  ) {
+    if (!supabaseKey) return { success: true };
+    if (amount <= 0) return { success: true };
+    try {
+      const { data, error } = await supabase.rpc('process_ledger_entry', {
+        p_user_id: userId,
+        p_amount_cents: amount,
+        p_type: 'refund',
+        p_direction: 'credit',
+        p_game_id: gameId || null,
+        p_table_id: null,
+        p_description: meta?.reason || 'Reembolso por cierre de sala',
+        p_reference_id: `refund-${gameId}-${Date.now()}`,
+        p_metadata: {
+          room_id: meta?.roomId || null,
+          table_name: meta?.tableName || null,
+          reason: meta?.reason || 'room_disposed'
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        console.warn(`[SupabaseService] Refund failed: ${data.error}`);
+        return { success: false, error: data.error };
+      }
+
+      console.log(`[SupabaseService] Refund issued: user=${userId}, amount=${amount}, balance_after=${data?.balance_after}`);
+      return { success: true, balance_after: data?.balance_after };
+    } catch (e) {
+      console.error('[SupabaseService] Error refunding player:', e);
+      return { success: false, error: String(e) };
+    }
+  }
 }
 
