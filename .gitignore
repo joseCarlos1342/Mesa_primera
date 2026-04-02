@@ -78,6 +78,18 @@ test-*.js
 test-*.ts
 native-test.ts
 simulate-game.ts
+
+# Internal documentation (business logic, sprints, deployment, anti-collusion)
+docs/
+plan_primera.md
+CHANGELOG.md
+
+# Redis dumps
+dump.rdb
+
+# Dev scripts
+dev.sh
+skills-lock.json
 *-debug.*
 
 # Common cli assets
