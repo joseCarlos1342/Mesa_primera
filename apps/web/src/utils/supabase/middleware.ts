@@ -151,6 +151,10 @@ export async function updateSession(request: NextRequest) {
     
     if (isAuthPage || isRootPage) {
       if (role === 'admin') {
+        // Permitir que admins permanezcan en páginas MFA sin redirigir
+        if (isMfaPage || isMfaSetupPage) {
+          return supabaseResponse
+        }
         // Un admin logueado NO debe estar en páginas de auth genéricas o en el lobby del player
         // Si no está ya en /admin, lo mandamos para allá
         if (!isAdminPath || isAuthPage) {
