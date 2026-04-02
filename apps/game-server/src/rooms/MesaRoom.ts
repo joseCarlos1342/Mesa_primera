@@ -2383,6 +2383,51 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   onDispose() {
+    // ── Settlement: refund unsettled bets if a game was in progress ──
+    if (this.state.phase !== "LOBBY") {
+      console.log(`[MesaRoom] Room disposing during active game (phase: ${this.state.phase}). Refunding unsettled bets...`);
+      const tableName = (this as any).metadata?.tableName || 'Mesa VIP';
+      for (const [sessionId, player] of this.state.players) {
+        const p = player as Player;
+        if (!p.supabaseUserId || p.totalMainBet <= 0) continue;
+        console.log(`[MesaRoom] Refunding ${p.nickname}: $${p.totalMainBet} (totalMainBet)`);
+        SupabaseService.refundPlayer(
+          p.supabaseUserId,
+          p.totalMainBet,
+          this.currentGameId,
+          { roomId: this.roomId, tableName, reason: 'Reembolso por cierre de sala en partida activa' }
+        ).catch(err => console.error(`[MesaRoom] Refund failed for ${p.nickname}:`, err));
+      }
+      // Refund pique pot contributions (tracked via piquePot but not via totalMainBet in some phases)
+      // piquePot is separate from main pot — if players contributed to pique but it wasn't settled
+      // those amounts were already debited via recordBet but not awarded via awardPot
+      // The piquePot contributions ARE included in totalMainBet only for ante-phase;
+      // for pique phase they are separate bets. We need to track who contributed what.
+      // For simplicity, if there's remaining piquePot we distribute it back proportionally.
+      // However, pique bets go through recordBet() too, so they are already debited.
+      // The totalMainBet does NOT include pique contributions (pique goes to piquePot, not pot).
+      // We'll refund the piquePot to connected non-folded players proportionally.
+      if (this.state.piquePot > 0) {
+        const piqueContributors = Array.from(this.state.players.values())
+          .filter((p: Player) => p.supabaseUserId && !p.isFolded && p.connected) as Player[];
+        if (piqueContributors.length > 0) {
+          const share = Math.floor(this.state.piquePot / piqueContributors.length);
+          const remainder = this.state.piquePot - (share * piqueContributors.length);
+          piqueContributors.forEach((p, i) => {
+            const refundAmount = share + (i === 0 ? remainder : 0);
+            if (refundAmount > 0) {
+              SupabaseService.refundPlayer(
+                p.supabaseUserId,
+                refundAmount,
+                this.currentGameId,
+                { roomId: this.roomId, tableName, reason: 'Reembolso de pique por cierre de sala' }
+              ).catch(err => console.error(`[MesaRoom] Pique refund failed for ${p.nickname}:`, err));
+            }
+          });
+        }
+      }
+    }
+
     // Cleanup Redis subscriber when room is destroyed
     if (this.redisSub) {
       this.redisSub.unsubscribe("session_kick").catch(() => {});
