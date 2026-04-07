@@ -54,11 +54,11 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const { data: activeUsersCount } = await supabase
     .rpc("get_active_users_count");
 
-  // Fetch active games
+  // Fetch active games (status values in DB: waiting, in_progress, finished)
   const { count: activeGamesCount } = await supabase
     .from("games")
     .select("*", { count: "exact", head: true })
-    .eq("status", "in_progress");
+    .in("status", ["waiting", "in_progress"]);
 
   // Financial Integrity Check
   // 1. Sum of all user balances
@@ -104,7 +104,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       ledgerIntegrityStatus = "CRÍTICO";
   }
 
-  // Volume 24h (total bits moved in deposits + bets)
+  // Volume 24h (total amount moved in deposits + bets)
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const { data: recentLedger } = await supabase
     .from("ledger")

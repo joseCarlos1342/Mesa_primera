@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { logAdminAction } from "./admin-audit";
 
 export type AdminUserView = {
   id: string;
@@ -74,35 +75,55 @@ export async function adjustUserBalance(userId: string, deltaCents: number, reas
   const supabase = await createClient();
   const adminId = await ensureAdmin(supabase);
 
-  const { data: wallet, error: walletError } = await supabase
-    .from('wallets')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
+  if (deltaCents === 0) throw new Error("El monto debe ser diferente de cero");
+  if (!reason.trim()) throw new Error("El motivo del ajuste es obligatorio");
 
-  if (walletError || !wallet) throw new Error("Wallet no encontrada");
+  const direction = deltaCents > 0 ? 'credit' : 'debit';
+  const amountCents = Math.abs(deltaCents);
 
-  const newBalance = Number(wallet.balance_cents) + deltaCents;
-  if (newBalance < 0) throw new Error("Saldo resultante no puede ser negativo");
-
-  const { error: updateError } = await supabase
-    .from('wallets')
-    .update({ balance_cents: newBalance })
-    .eq('id', wallet.id)
-
-  if (updateError) throw updateError;
-
-  await supabase.from('ledger').insert({
-    user_id: userId,
-    amount_cents: Math.abs(deltaCents),
-    type: 'admin_adjustment',
-    direction: deltaCents >= 0 ? 'credit' : 'debit',
-    balance_after_cents: newBalance,
-    metadata: { reason, admin_id: adminId }
+  const { data, error } = await supabase.rpc('process_ledger_entry', {
+    p_user_id: userId,
+    p_amount_cents: amountCents,
+    p_type: 'adjustment',
+    p_direction: direction,
+    p_description: `Ajuste administrativo: ${reason.trim()}`,
+    p_approved_by: adminId,
+    p_metadata: { reason: reason.trim(), admin_id: adminId },
   });
 
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+
+  // Notify the user about the balance adjustment
+  const formattedAmount = new Intl.NumberFormat('es-CO', {
+    style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(amountCents / 100);
+
+  await supabase.from('notifications').insert({
+    user_id: userId,
+    type: 'balance_adjustment',
+    title: direction === 'credit' ? 'Saldo Acreditado' : 'Saldo Debitado',
+    body: direction === 'credit'
+      ? `Se acreditaron ${formattedAmount} a tu cuenta. Motivo: ${reason.trim()}`
+      : `Se debitaron ${formattedAmount} de tu cuenta. Motivo: ${reason.trim()}`,
+    data: {
+      amount_cents: amountCents,
+      direction,
+      balance_after: data?.balance_after,
+    },
+  });
+
+  // Registrar en audit log
+  await logAdminAction(adminId, 'balance_adjusted', 'user', userId, {
+    delta_cents: deltaCents,
+    direction,
+    amount_cents: amountCents,
+    balance_after: data?.balance_after,
+    reason: reason.trim(),
+  })
+
   revalidatePath('/admin/users');
-  return { success: true };
+  return { success: true, balance_after: data?.balance_after };
 }
 
 export async function toggleBanStatus(userId: string, is_banned: boolean, ban_reason?: string) {
@@ -127,6 +148,18 @@ export async function toggleBanStatus(userId: string, is_banned: boolean, ban_re
     .eq("id", userId);
 
   if (error) throw error;
+
+  // Registrar en audit log
+  await logAdminAction(
+    adminId,
+    is_banned ? 'user_banned' : 'user_unbanned',
+    'user',
+    userId,
+    {
+      is_banned,
+      ban_reason: ban_reason || null,
+    }
+  )
   
   revalidatePath('/admin/users');
   return { success: true };

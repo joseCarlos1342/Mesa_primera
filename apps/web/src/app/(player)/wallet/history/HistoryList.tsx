@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowUpWideNarrow, Plus, TrendingUp, Gamepad2, Play, Landmark } from 'lucide-react'
+import { ArrowUpWideNarrow, Plus, ArrowDownLeft, ArrowUpRight, Landmark } from 'lucide-react'
 import { useState } from 'react'
 import { TransactionModal } from '@/components/wallet/TransactionModal'
 
@@ -14,9 +14,6 @@ export function HistoryList({ transactions }: { transactions: any[] }) {
     setSelectedTx(tx)
     setIsModalOpen(true)
   }
-
-  const bovedaTx = transactions.filter((tx: any) => tx.type === 'deposit' || tx.type === 'withdrawal')
-  const juegoTx = transactions.filter((tx: any) => tx.type !== 'deposit' && tx.type !== 'withdrawal')
 
   if (transactions.length === 0) {
     return (
@@ -31,38 +28,14 @@ export function HistoryList({ transactions }: { transactions: any[] }) {
 
   return (
     <>
-      {/* Bóveda Section */}
+      {/* Registro de Bóveda */}
       <section className="space-y-3">
-        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold px-1">Bóveda</h2>
-        {bovedaTx.length > 0 ? (
-          <div className="space-y-3">
-            {bovedaTx.map((tx: any, idx: number) => (
-              <TransactionItem key={tx.id} tx={tx} idx={idx} onTxClick={handleTxClick} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-black/20 border border-dashed border-white/5 rounded-[2rem]">
-            <p className="text-text-secondary text-[10px] font-black uppercase tracking-[.3em] opacity-40">Sin depósitos ni retiros</p>
-          </div>
-        )}
-      </section>
-
-      {/* Juego Section */}
-      <section className="space-y-3 mt-8">
-        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400 px-1 flex items-center gap-2">
-          <Gamepad2 className="w-3.5 h-3.5" /> Juego
-        </h2>
-        {juegoTx.length > 0 ? (
-          <div className="space-y-3">
-            {juegoTx.map((tx: any, idx: number) => (
-              <TransactionItem key={tx.id} tx={tx} idx={idx} onTxClick={handleTxClick} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-black/20 border border-dashed border-white/5 rounded-[2rem]">
-            <p className="text-text-secondary text-[10px] font-black uppercase tracking-[.3em] opacity-40">Sin movimientos de juego</p>
-          </div>
-        )}
+        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold px-1">Registro de Bóveda</h2>
+        <div className="space-y-3">
+          {transactions.map((tx: any, idx: number) => (
+            <TransactionItem key={tx.id} tx={tx} idx={idx} onTxClick={handleTxClick} />
+          ))}
+        </div>
       </section>
 
       <TransactionModal
@@ -90,27 +63,23 @@ function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxCli
                 <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-inner ${
                   tx.type === 'deposit'
                     ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20'
-                    : tx.type === 'win'
+                    : tx.type === 'refund'
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : tx.type === 'rake'
-                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                    : tx.type === 'bet'
+                    : tx.type === 'withdrawal'
                     ? 'bg-red-500/10 text-red-400 border border-red-500/20'
                     : 'bg-white/5 text-text-secondary border border-brand-gold/10'
                 }`}>
                   {tx.type === 'deposit' ? <Plus className="w-5 h-5" /> :
-                   tx.type === 'win' ? <TrendingUp className="w-5 h-5" /> :
-                   tx.type === 'bet' || tx.type === 'rake' ? <Gamepad2 className="w-5 h-5" /> :
+                   tx.type === 'refund' ? <ArrowDownLeft className="w-5 h-5" /> :
+                   tx.type === 'withdrawal' ? <ArrowUpRight className="w-5 h-5" /> :
                    <ArrowUpWideNarrow className="w-5 h-5" />}
                 </div>
                 <div className="min-w-0">
                   <p className="font-display font-black text-sm md:text-base italic uppercase tracking-tight text-text-premium truncate group-hover:text-brand-gold transition-all [word-spacing:0.2em]">
                     {tx.type === 'deposit' ? 'Depósito' :
                      tx.type === 'withdrawal' ? 'Retiro' :
-                     tx.type === 'win' ? 'Ganancia' :
-                     tx.type === 'bet' ? 'Apuesta' :
-                     tx.type === 'rake' ? 'Comisión' :
                      tx.type === 'refund' ? 'Reembolso' :
+                     tx.type === 'adjustment' || tx.type === 'admin_adjustment' ? 'Ajuste' :
                      tx.type}
                   </p>
                   <p className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 truncate">
@@ -121,10 +90,10 @@ function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxCli
 
               <div className="shrink-0 text-right space-y-1">
                 <p className={`font-display font-black text-lg md:text-xl italic tracking-tighter ${
-                  tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund'
+                  tx.direction === 'credit'
                     ? 'text-brand-gold' : 'text-text-premium'
                 }`}>
-                  {tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? '+' : '-'}${Math.abs((tx.amount_cents || 0) / 100).toLocaleString()}
+                  {tx.direction === 'credit' ? '+' : '-'}${Math.abs((tx.amount_cents || 0) / 100).toLocaleString()}
                 </p>
                 <div className="flex justify-end">
                   <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${
@@ -138,18 +107,6 @@ function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxCli
               </div>
             </div>
 
-            {tx.game_id && (tx.type === 'win' || tx.type === 'bet' || tx.type === 'rake') && (
-              <Link
-                href={`/replays/${tx.game_id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center gap-2 px-5 py-3 border-t border-brand-gold/10 bg-brand-gold/5 hover:bg-brand-gold/10 transition-all"
-              >
-                <Play className="w-3.5 h-3.5 text-brand-gold" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold">
-                  Ver Repetición
-                </span>
-              </Link>
-            )}
           </motion.div>
   )
 }

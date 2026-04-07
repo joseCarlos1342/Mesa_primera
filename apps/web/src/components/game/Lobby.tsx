@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Users, Zap, Trophy, Shield, RefreshCcw, Film } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { DepositModal } from '@/components/game/DepositModal'
+import { CustomMesaModal } from '@/components/game/CustomMesaModal'
 import Link from 'next/link'
 
 export function Lobby() {
@@ -22,6 +23,7 @@ export function Lobby() {
   const lobbyRoomRef = useRef<Room | null>(null)
 
   const [showDeposit, setShowDeposit] = useState(false)
+  const [showCustomMesa, setShowCustomMesa] = useState(false)
 
   const connectToLobby = useCallback(async () => {
     setLoading(true)
@@ -200,6 +202,48 @@ export function Lobby() {
     }
   }
 
+  const createCustomMesa = async (options: {
+    tableName: string
+    maxPlayers: number
+    minEntry: number
+    minPique: number
+    disabledChips: number[]
+    isCustom: boolean
+  }) => {
+    if (creating) return
+    setCreating(true)
+    setError(null)
+    try {
+      const nick = localStorage.getItem('nickname') || 'Jugador';
+      const deviceId = localStorage.getItem('deviceId') || 'dev_' + Math.random().toString(36).substring(2, 15);
+      const avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
+
+      const room = await client.create("mesa", {
+        ...options,
+        nickname: nick,
+        deviceId,
+        avatarUrl,
+        chips: userProfile?.balance_cents || 0,
+      })
+
+      sessionStorage.setItem(`reconnectionToken_${room.roomId}`, room.reconnectionToken);
+      sessionStorage.setItem(`nickname_${room.roomId}`, nick);
+
+      if (room.connection?.transport?.close) {
+        room.connection.transport.close();
+      } else {
+        try { (room.connection as any).close(); } catch { /* ignore */ }
+      }
+
+      setShowCustomMesa(false)
+      router.push(`/play/${room.roomId}`)
+    } catch (e: any) {
+      console.error("Custom mesa creation error:", e)
+      setError("Error al crear la mesa personalizada.")
+      setCreating(false)
+    }
+  }
+
   const fixedTableNames = ["Mesa #1", "Mesa #2"];
   const fixedTablesToShow = fixedTableNames.map((name, idx) => {
     const existing = rooms.find(r => (r.metadata as any)?.tableName === name);
@@ -329,16 +373,24 @@ export function Lobby() {
             </motion.div>
           )}
 
-          {/* Floating Admin Actions - Offset to not interfere with main flow */}
+          {/* Floating Admin Actions */}
           {isAdmin && (
-            <div className="absolute top-8 right-8">
+            <div className="absolute top-8 right-8 flex flex-col gap-3">
               <button
                 onClick={createTable}
                 disabled={creating}
-                className="group relative h-20 w-20 bg-brand-gold text-slate-950 rounded-[2.5rem] font-black flex items-center justify-center transition-all hover:scale-105 active:translate-y-1 active:shadow-inner disabled:opacity-50 shadow-premium border-b-4 border-black/30"
-                title="Nueva Mesa"
+                className="group relative h-16 w-16 bg-brand-gold text-slate-950 rounded-[2rem] font-black flex items-center justify-center transition-all hover:scale-105 active:translate-y-1 active:shadow-inner disabled:opacity-50 shadow-premium border-b-4 border-black/30"
+                title="Nueva Mesa Normal"
               >
-                <Plus className="w-8 h-8 transition-transform group-hover:rotate-90" />
+                <Plus className="w-7 h-7 transition-transform group-hover:rotate-90" />
+              </button>
+              <button
+                onClick={() => setShowCustomMesa(true)}
+                disabled={creating}
+                className="group relative h-16 w-16 bg-gradient-to-br from-[#d4af37] to-[#8b6914] text-white rounded-[2rem] font-black flex items-center justify-center transition-all hover:scale-105 active:translate-y-1 disabled:opacity-50 shadow-premium border-b-4 border-black/30 text-[10px] uppercase tracking-wider leading-tight text-center"
+                title="Mesa Personalizada"
+              >
+                VIP
               </button>
             </div>
           )}
@@ -421,6 +473,13 @@ export function Lobby() {
           isOpen={showDeposit}
           onClose={() => setShowDeposit(false)}
         />
+
+        <CustomMesaModal
+          isOpen={showCustomMesa}
+          onClose={() => setShowCustomMesa(false)}
+          onCreateMesa={createCustomMesa}
+          creating={creating}
+        />
       </div>
     </div>
   )
@@ -439,10 +498,11 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
   const isPlaceholder = room.metadata?.isPlaceholder;
 
   const handleAction = async () => {
-    // VALIDACIÓN DE SALDO MÍNIMO ($50,000)
+    // VALIDACIÓN DE SALDO MÍNIMO (usa min entry de la sala o $50,000 por defecto)
     const balance = userProfile?.balance_cents || 0;
-    if (balance < 5000000) {
-      alert("Fondos insuficientes. Se requiere un saldo mínimo de $50,000 para entrar a una mesa. Por favor, recargue su cuenta.");
+    const requiredMin = isPlaceholder ? 5_000_000 : roomMinEntry;
+    if (balance < requiredMin) {
+      alert(`Fondos insuficientes. Se requiere un saldo mínimo de $${(requiredMin / 100).toLocaleString()} para entrar a esta mesa. Por favor, recargue su cuenta.`);
       return;
     }
 
@@ -487,6 +547,10 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
 
   const tableName = (room.metadata as any)?.tableName || "Mesa VIP";
   const displayTitle = tableName.toUpperCase().replace(/MESA\s*/i, "").trim();
+  const meta = room.metadata as any;
+  const isCustom = meta?.isCustom === true;
+  const roomMinEntry = meta?.minEntry || 5_000_000;
+  const roomMinPique = meta?.minPique || 500_000;
 
   return (
     <div className={`group relative bg-black/40 backdrop-blur-3xl p-5 md:p-14 rounded-[2.5rem] md:rounded-[4.5rem] transition-all hover:bg-black/60 flex flex-col justify-between shadow-[0_30px_70px_rgba(0,0,0,0.6)] overflow-hidden border-2 md:aspect-auto md:min-h-[480px] w-full max-w-full ${isFixed ? 'border-brand-gold/20 hover:border-brand-gold/40 shadow-brand-gold/5' : 'border-white/5 hover:border-brand-gold/10 shadow-white/5'
@@ -547,6 +611,23 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
             }`}>
             {displayTitle}
           </h3>
+
+          {/* Custom mesa rules */}
+          {isCustom && !isPlaceholder && (
+            <div className="flex flex-wrap gap-2 mt-2 justify-center md:justify-start">
+              <span className="px-3 py-1 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] text-[10px] font-black uppercase tracking-wider">
+                Entrada: ${(roomMinEntry / 100).toLocaleString()}
+              </span>
+              <span className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider">
+                Pique: ${(roomMinPique / 100).toLocaleString()}
+              </span>
+              {meta?.disabledChips?.length > 0 && (
+                <span className="px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider">
+                  {6 - meta.disabledChips.length} fichas
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

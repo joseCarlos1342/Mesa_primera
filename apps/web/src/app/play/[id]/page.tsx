@@ -68,6 +68,7 @@ export default function GameRoomPage() {
   const [showPiqueOptions, setShowPiqueOptions] = useState(false)
   const [hasVotedPique, setHasVotedPique] = useState(false)
   const [bandaEvent, setBandaEvent] = useState<any>(null)
+  const [disabledChips, setDisabledChips] = useState<number[]>([])
 
   const hasAttemptedJoin = useRef(false)
   /** Marca si el jugador abandonó intencionalmente (evita auto-reconexión) */
@@ -285,6 +286,11 @@ export default function GameRoomPage() {
         // Cartas privadas: solo el dueño recibe sus cartas reales
         joinedRoom.onMessage("private-cards", (cards: string[]) => {
           setMyCards(cards.join(','));
+        })
+
+        // Configuración de la sala (chips deshabilitados, etc.)
+        joinedRoom.onMessage("room-config", (config: { disabledChips?: number[] }) => {
+          setDisabledChips(config.disabledChips || []);
         })
 
         // Reset voto local cuando cambia la propuesta de pique
@@ -696,6 +702,7 @@ export default function GameRoomPage() {
             myCards={myCards}
             minPique={minPique}
             currentMaxBet={gameState.currentMaxBet}
+            disabledChips={disabledChips}
           />
         )}
 

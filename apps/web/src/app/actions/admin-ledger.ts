@@ -78,10 +78,10 @@ export async function getUsersWithBalances(): Promise<UserWithBalance[]> {
   const { data: wallets, error } = await supabase
     .from("wallets")
     .select(`
-      user_id, balance,
+      user_id, balance_cents,
       profile:profiles(full_name, username)
     `)
-    .order("balance", { ascending: false });
+    .order("balance_cents", { ascending: false });
 
   if (error) throw error;
 
@@ -118,7 +118,7 @@ export async function getUsersWithBalances(): Promise<UserWithBalance[]> {
       id: w.user_id,
       display_name: (profile as any)?.full_name || (profile as any)?.username || 'Desconocido',
       username: (profile as any)?.username || null,
-      balance: w.balance || 0,
+      balance: w.balance_cents || 0,
       total_credits: totalCredits,
       total_debits: totalDebits,
       last_activity: lastEntry?.created_at || null,

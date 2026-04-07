@@ -71,7 +71,7 @@ export function CreateTableModal() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Mínimo Bet (Bits)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Mínimo Bet ($)</label>
                 <input 
                   type="number" 
                   required
