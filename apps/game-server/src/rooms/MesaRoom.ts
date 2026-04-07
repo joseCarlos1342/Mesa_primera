@@ -49,6 +49,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   /** Contador de reinicios consecutivos del pique para evitar bucle infinito */
   private piqueRestartCount = 0;
   private static readonly MAX_PIQUE_RESTARTS = 10;
+  /** Contador de veces que cada jugador se botó en PIQUE (persistente entre reinicios) */
+  private piqueFoldCount = new Map<string, number>();
   /** Redis subscriber for single-session kick events */
   private redisSub?: Redis;
 
@@ -184,7 +186,48 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         if (action === "paso") {
           player.isFolded = true;
           this.piquePassPlayerIds.add(client.sessionId);
-          this.state.lastAction = `${player.nickname} pasa en el Pique`;
+
+          // ── Doble-botada: lógica especial al botarse por 2ª vez ──
+          const prevFolds = this.piqueFoldCount.get(client.sessionId) || 0;
+          const newFolds = prevFolds + 1;
+          this.piqueFoldCount.set(client.sessionId, newFolds);
+
+          if (newFolds >= 2) {
+            // Verificar si "lleva juego" (2 cartas del mismo palo → potencial Segunda)
+            const playerCards = player.cards ? player.cards.split(',').filter(Boolean) : [];
+            const suits = playerCards.map(c => c.split('-')[1]);
+            const llevaJuego = suits.length >= 2 && suits.every(s => s === suits[0]);
+
+            if (llevaJuego) {
+              // Mostrar cartas públicamente (lleva juego y se bota)
+              player.revealedCards = player.cards;
+              this.state.lastAction = `${player.nickname} lleva juego y se bota (muestra cartas)`;
+              this.broadcast("pique-fold-reveal", { playerId: client.sessionId, llevaJuego: true, cards: player.cards });
+            } else {
+              this.state.lastAction = `${player.nickname} se bota (sin juego)`;
+            }
+
+            // Recoger cartas, barajarlas y ponerlas encima del naipe
+            const foldedCards = playerCards.slice();
+            for (let i = foldedCards.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [foldedCards[i], foldedCards[j]] = [foldedCards[j], foldedCards[i]];
+            }
+            for (const card of foldedCards) {
+              this.deck.push(card);
+            }
+            this.setPlayerCards(client.sessionId, "");
+
+            // Si se mostraron, limpiar después de 3 segundos
+            if (llevaJuego) {
+              this.clock.setTimeout(() => {
+                player.revealedCards = "";
+              }, 3000);
+            }
+          } else {
+            this.state.lastAction = `${player.nickname} pasa en el Pique`;
+          }
+
           this.attemptManoRotation(client.sessionId, "Mano pasa en Pique");
           if (player.id === this.state.activeManoId) this.transferMano();
         } else if (action === "voy") {
@@ -918,6 +961,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     this.dealerRotatedThisGame = false;
     this.piqueRestartCount = 0;
+    this.piqueFoldCount.clear();
     this.currentGameId = crypto.randomUUID();
     this.currentTimeline = [];
     this.rngCounter = 0;

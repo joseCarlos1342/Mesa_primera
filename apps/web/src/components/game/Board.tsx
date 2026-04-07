@@ -151,9 +151,9 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
     // Determine card fan direction based on seat
     const isLeftSide = seatIndex < 3;
 
-    // For opponents: use revealedCards during SORTEO/SHOWDOWN, cardCount for backs otherwise
+    // For opponents: use revealedCards during SORTEO/SHOWDOWN or when explicitly set (e.g. pique fold reveal), cardCount for backs otherwise
     const isRevealPhase = phase === 'SORTEO_MANO' || phase === 'SHOWDOWN';
-    const opponentVisibleCards = isRevealPhase && p?.revealedCards
+    const opponentVisibleCards = (isRevealPhase || p?.revealedCards) && p?.revealedCards
       ? p.revealedCards.split(',').filter(Boolean)
       : [];
     const opponentCardCount = p?.cardCount || 0;
@@ -568,7 +568,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
 
       {/* SHOWDOWN / Pique Showdown Cinematic Overlay */}
       <AnimatePresence>
-        {(phase === 'SHOWDOWN' || (phase === 'SHOWDOWN_WAIT' && (room.state.showdownTimer ?? 0) > 0)) && (
+        {phase === 'SHOWDOWN' && (
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
