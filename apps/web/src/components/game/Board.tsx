@@ -13,6 +13,7 @@ import { ShowdownCinematic } from './ShowdownCinematic'
 import { useState, useEffect, useRef } from 'react'
 import { AnimationLayer } from './AnimationLayer'
 import { ShuffleAnimation } from './ShuffleAnimation'
+import { useCardPreloader } from '@/hooks/useCardPreloader'
 
 interface BoardProps {
   room: Room | null;
@@ -29,6 +30,7 @@ interface BoardProps {
 }
 
 export function Board({ room, phase, pot, piquePot, players, myCards = "", minPique = 500_000, currentMaxBet = 0 }: BoardProps) {
+  useCardPreloader();
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
   const [adminWatching, setAdminWatching] = useState(false);
