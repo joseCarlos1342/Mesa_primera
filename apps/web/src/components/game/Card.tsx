@@ -16,6 +16,7 @@ interface CardProps {
 
 export function Card({ suit, value, isHidden = false, className = '', delay = 0, originX = 0, originY = -200 }: CardProps) {
   const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   const getCardImage = () => {
     if (!suit || !value) return '';
@@ -63,7 +64,10 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
             <img
               src={getCardImage()}
               alt={`${value} de ${suit}`}
-              className="w-full h-full object-fill"
+              className={`w-full h-full object-fill transition-opacity duration-150 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading="eager"
+              decoding="async"
+              onLoad={() => setImgLoaded(true)}
               onError={() => setImgError(true)}
             />
           )
