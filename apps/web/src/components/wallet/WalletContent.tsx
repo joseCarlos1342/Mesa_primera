@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowUpWideNarrow, Landmark, Plus, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
+import { ArrowUpWideNarrow, Landmark, Plus, ArrowUpRight, ArrowDownLeft, ArrowRightLeft } from 'lucide-react'
 import { useState } from 'react'
 import { TransactionModal } from './TransactionModal'
+import { TransferModal } from './TransferModal'
 
 interface WalletContentProps {
   wallet: any;
@@ -14,6 +15,7 @@ interface WalletContentProps {
 export function WalletContent({ wallet, transactions }: WalletContentProps) {
   const [selectedTx, setSelectedTx] = useState<any | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showTransfer, setShowTransfer] = useState(false)
 
   const handleTxClick = (tx: any) => {
     setSelectedTx(tx)
@@ -47,16 +49,26 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
             </h2>
           </div>
 
-          <div className="w-full pt-4">
-            <Link href="/wallet/withdraw" className="block w-full">
+          <div className="w-full pt-4 flex gap-3">
+            <Link href="/wallet/withdraw" className="block flex-1">
               <button className="group relative w-full h-16 bg-brand-gold rounded-2xl transition-all duration-200 shadow-[inset_0_-8px_0_#8b6b2e,0_15px_30px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_-6px_0_#8b6b2e,0_10px_20px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[inset_0_-2px_0_#8b6b2e,0_4px_8px_rgba(0,0,0,0.2)] overflow-hidden">
-                <span className="relative z-10 flex items-center justify-center gap-3 text-black font-black uppercase tracking-[0.2em] text-xs">
+                <span className="relative z-10 flex items-center justify-center gap-2 text-black font-black uppercase tracking-[0.15em] text-[10px] sm:text-xs">
                   <ArrowUpWideNarrow className="w-5 h-5" />
-                  <span>Retirar Saldo</span>
+                  <span>Retirar</span>
                 </span>
                 <div className="absolute inset-0 bg-white/20 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out"></div>
               </button>
             </Link>
+            <button
+              onClick={() => setShowTransfer(true)}
+              className="group relative flex-1 h-16 bg-cyan-500/20 hover:bg-cyan-500/30 rounded-2xl transition-all duration-200 border-2 border-cyan-500/30 hover:border-cyan-500/50 active:scale-[0.97] overflow-hidden"
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2 text-cyan-400 font-black uppercase tracking-[0.15em] text-[10px] sm:text-xs">
+                <ArrowRightLeft className="w-5 h-5" />
+                <span>Transferir</span>
+              </span>
+              <div className="absolute inset-0 bg-cyan-400/10 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out"></div>
+            </button>
           </div>
         </div>
       </motion.section>
@@ -162,11 +174,14 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                       : tx.type === 'withdrawal'
                       ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                      : tx.type === 'transfer'
+                      ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                       : 'bg-white/5 text-text-secondary border border-brand-gold/10'
                   }`}>
                     {tx.type === 'deposit' ? <Plus className="w-5 h-5" /> :
                      tx.type === 'refund' ? <ArrowDownLeft className="w-5 h-5" /> :
                      tx.type === 'withdrawal' ? <ArrowUpRight className="w-5 h-5" /> :
+                     tx.type === 'transfer' ? <ArrowRightLeft className="w-5 h-5" /> :
                      <ArrowUpWideNarrow className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
@@ -174,6 +189,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                       {tx.type === 'deposit' ? 'Depósito' :
                        tx.type === 'withdrawal' ? 'Retiro' :
                        tx.type === 'refund' ? 'Reembolso' :
+                       tx.type === 'transfer' ? (tx.direction === 'debit' ? 'Transferencia Enviada' : 'Transferencia Recibida') :
                        tx.type === 'adjustment' || tx.type === 'admin_adjustment' ? 'Ajuste' :
                        tx.type}
                     </p>
@@ -211,6 +227,11 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
         transaction={selectedTx}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+      <TransferModal
+        isOpen={showTransfer}
+        onClose={() => setShowTransfer(false)}
+        currentBalance={balance}
       />
     </div>
   )

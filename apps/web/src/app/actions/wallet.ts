@@ -27,12 +27,12 @@ export async function getWalletData() {
     return { wallet: newWallet, transactions: [] }
   }
 
-  // 2. Get Realized Ledger Entries (solo bóveda: depósitos, retiros, reembolsos, ajustes)
+  // 2. Get Realized Ledger Entries (bóveda: depósitos, retiros, reembolsos, ajustes, transferencias)
   const { data: ledger, error: ledgerError } = await supabase
     .from('ledger')
     .select('*')
     .eq('user_id', user.id)
-    .in('type', ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment'])
+    .in('type', ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment', 'transfer'])
     .order('created_at', { ascending: false })
     .limit(20)
 
@@ -97,7 +97,7 @@ export async function getWalletHistory() {
     .from('ledger')
     .select('*')
     .eq('user_id', user.id)
-    .in('type', ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment'])
+    .in('type', ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment', 'transfer'])
     .order('created_at', { ascending: false })
     .limit(100)
 

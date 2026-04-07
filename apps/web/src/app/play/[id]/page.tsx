@@ -24,6 +24,7 @@ const VoiceChat = dynamic(
 )
 import { DepositModal } from '@/components/game/DepositModal'
 import { TableHelpModal } from '@/components/game/TableHelpModal'
+import { GameTransferModal } from '@/components/game/TransferModal'
 import { PermissionsGate } from '@/components/game/PermissionsGate'
 
 export default function GameRoomPage() {
@@ -37,6 +38,7 @@ export default function GameRoomPage() {
   const [showRules, setShowRules] = useState(false)
   const [showDeposit, setShowDeposit] = useState(false)
   const [showTableHelp, setShowTableHelp] = useState(false)
+  const [showTransfer, setShowTransfer] = useState(false)
   const [isReconnecting, setIsReconnecting] = useState(false)
 
   // Game State
@@ -88,7 +90,15 @@ export default function GameRoomPage() {
 
     const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches)
     mql.addEventListener('change', handler)
-    return () => mql.removeEventListener('change', handler)
+    return () => {
+      mql.removeEventListener('change', handler)
+      // Al desmontar la página de juego, desbloquear orientación landscape
+      const so = window.screen.orientation as ScreenOrientation & { unlock?: () => void }
+      try { so?.unlock?.() } catch {}
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {})
+      }
+    }
   }, [])
 
   // Si el jugador rota a portrait estando "Listo" en LOBBY, auto-cancelar su ready
@@ -113,15 +123,18 @@ export default function GameRoomPage() {
     const handleOpenDeposit = () => setShowDeposit(true)
     const handleOpenRules = () => setShowRules(true)
     const handleOpenTableHelp = () => setShowTableHelp(true)
+    const handleOpenTransfer = () => setShowTransfer(true)
 
     window.addEventListener('open-recharge-modal', handleOpenDeposit)
     window.addEventListener('open-rules-modal', handleOpenRules)
     window.addEventListener('open-table-help', handleOpenTableHelp)
+    window.addEventListener('open-transfer-modal', handleOpenTransfer)
 
     return () => {
       window.removeEventListener('open-recharge-modal', handleOpenDeposit)
       window.removeEventListener('open-rules-modal', handleOpenRules)
       window.removeEventListener('open-table-help', handleOpenTableHelp)
+      window.removeEventListener('open-transfer-modal', handleOpenTransfer)
     }
   }, [])
 
@@ -659,11 +672,16 @@ export default function GameRoomPage() {
                     )}
                     {/* Status Messages Below Button */}
                     <div className="min-h-12 md:min-h-16 mt-2 md:mt-6 flex flex-col justify-center items-center landscape:mt-2">
-                      {players.length < (room?.state.minPlayers || 3) ? (
-                        <p className="text-[#a0a0b0] uppercase tracking-widest text-[10px] md:text-base font-bold text-center">
-                          Esperando al menos <span className="text-[#f3edd7]">{room?.state.minPlayers || 3} jugadores</span>...
-                        </p>
-                      ) : (
+                      {(() => {
+                        const isFirst = room?.state.isFirstGame ?? true;
+                        const requiredMin = isFirst ? (room?.state.minPlayers || 3) : 2;
+                        return players.length < requiredMin ? (
+                          <p className="text-[#a0a0b0] uppercase tracking-widest text-[10px] md:text-base font-bold text-center">
+                            Esperando al menos <span className="text-[#f3edd7]">{requiredMin} jugadores</span>...
+                          </p>
+                        ) : null;
+                      })()}
+                      {players.length >= (room?.state.isFirstGame ? (room?.state.minPlayers || 3) : 2) && (
                         <>
                           {countdown > 0 && countdown <= 5 ? (
                             /* ── Countdown de 5 segundos: indicador circular premium ── */
@@ -760,6 +778,12 @@ export default function GameRoomPage() {
       <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
       <ReconnectOverlay isVisible={isReconnecting} />
       <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
+      <GameTransferModal
+        isOpen={showTransfer}
+        onClose={() => setShowTransfer(false)}
+        room={room}
+        myChips={players.find(p => p.id === room?.sessionId)?.chips ?? 0}
+      />
         {room && supabaseUserId && (
           <TableHelpModal
             isOpen={showTableHelp}
