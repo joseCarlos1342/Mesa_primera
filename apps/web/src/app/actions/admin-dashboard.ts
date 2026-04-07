@@ -17,6 +17,11 @@ export type AdminDashboardStats = {
   volume24h: number;
   pendingSupport: number;
   pendingAlerts: number;
+  vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO";
+  vaultCoverage: number;
+  vaultBalance: number;
+  vaultTotalDeposits: number;
+  vaultTotalWithdrawals: number;
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
@@ -155,6 +160,29 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     }
   });
 
+  // Vault Status (Bóveda: deposits vs withdrawals coverage)
+  let vaultCoverage = 100;
+  let vaultBalance = 0;
+  let vaultTotalDeposits = 0;
+  let vaultTotalWithdrawals = 0;
+  let vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO" = "OPERATIVO";
+
+  const { data: vaultData, error: vaultError } = await supabase.rpc("get_vault_status");
+  if (!vaultError && vaultData) {
+    vaultTotalDeposits = vaultData.total_deposits ?? 0;
+    vaultTotalWithdrawals = vaultData.total_withdrawals ?? 0;
+    vaultBalance = vaultData.vault_balance ?? 0;
+    vaultCoverage = vaultData.coverage ?? 100;
+  }
+
+  if (vaultCoverage >= 100) {
+    vaultStatus = "OPERATIVO";
+  } else if (vaultCoverage >= 90) {
+    vaultStatus = "ALERTA";
+  } else {
+    vaultStatus = "CRÍTICO";
+  }
+
   return {
     activeUsers: activeUsersCount || 0,
     totalLedgerBalance,
@@ -168,6 +196,11 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     ledgerIntegrityDiff,
     volume24h,
     pendingSupport: pendingSupportCount || 0,
-    pendingAlerts: pendingAlertsCount || 0
+    pendingAlerts: pendingAlertsCount || 0,
+    vaultStatus,
+    vaultCoverage,
+    vaultBalance,
+    vaultTotalDeposits,
+    vaultTotalWithdrawals,
   };
 }

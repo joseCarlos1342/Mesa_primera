@@ -109,6 +109,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const player = this.state.players.get(client.sessionId);
       if (!player || player.isWaiting) return;
 
+      // Bloquear "Listo" si el saldo es menor al pique mínimo
+      if (message.isReady && player.chips < this.state.minPique) {
+        const formatted = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(this.state.minPique / 100);
+        client.send("insufficient-balance", { required: this.state.minPique, current: player.chips, message: `Tu saldo es insuficiente para el pique mínimo (${formatted}). Recarga tu cuenta para seguir jugando.` });
+        return;
+      }
+
       player.isReady = message.isReady;
 
       this.checkStartCountdown();
@@ -969,6 +976,24 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     });
   }
 
+  /**
+   * Notifica a los jugadores cuyo saldo es menor al pique mínimo que deben recargar.
+   * Se llama cada vez que la partida vuelve a LOBBY.
+   */
+  private notifyInsufficientBalance() {
+    const minRequired = this.state.minPique;
+    this.state.players.forEach((p: Player, sessionId: string) => {
+      if (!p.connected) return;
+      if (p.chips < minRequired) {
+        const formatted = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(minRequired / 100);
+        const client = this.clientMap.get(sessionId);
+        if (client) {
+          client.send("insufficient-balance", { required: minRequired, current: p.chips, message: `Tu saldo es insuficiente para el pique mínimo (${formatted}). Recarga tu cuenta para seguir jugando.` });
+        }
+      }
+    });
+  }
+
   private checkStartCountdown() {
     if (this.state.phase !== "LOBBY") return;
 
@@ -1338,6 +1363,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
       this.promoteWaitingPlayers();
       this.state.phase = "LOBBY";
+      this.notifyInsufficientBalance();
       return;
     }
 
@@ -1552,6 +1578,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.piquePot = 0;
       this.promoteWaitingPlayers();
       this.state.phase = "LOBBY";
+      this.notifyInsufficientBalance();
       Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => p.isReady = false);
       return;
     }
@@ -1582,6 +1609,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         this.state.showdownTimer = 0;
         this.promoteWaitingPlayers();
         this.state.phase = "LOBBY";
+        this.notifyInsufficientBalance();
 
         // Rotar La Mano solo si no rotó ya durante esta partida
         if (!this.dealerRotatedThisGame) {
@@ -1913,6 +1941,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.piquePot = 0;
       this.promoteWaitingPlayers();
       this.state.phase = "LOBBY";
+      this.notifyInsufficientBalance();
       return;
     }
 
@@ -2153,6 +2182,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.showdownTimer = 0;
     this.promoteWaitingPlayers();
     this.state.phase = "LOBBY";
+    this.notifyInsufficientBalance();
 
     // Limpiar cartas reveladas de todos los jugadores
     this.state.players.forEach((p: Player, sessionId: string) => {
@@ -2242,6 +2272,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.showdownTimer = 0;
     this.promoteWaitingPlayers();
     this.state.phase = "LOBBY";
+    this.notifyInsufficientBalance();
     this.state.players.forEach((p: Player) => { p.revealedCards = ""; });
 
     // Rotar La Mano solo si no rotó ya durante esta partida
@@ -2272,6 +2303,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.pot = 0;
     this.state.piquePot = 0;
     this.state.phase = "LOBBY";
+    this.notifyInsufficientBalance();
   }
 
   private endHandEarly() {
@@ -2296,6 +2328,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.piquePot = 0;
       this.promoteWaitingPlayers();
       this.state.phase = "LOBBY";
+      this.notifyInsufficientBalance();
     }
   }
 
