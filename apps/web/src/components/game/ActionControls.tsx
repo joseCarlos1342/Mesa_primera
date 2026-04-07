@@ -122,24 +122,24 @@ export function ActionControls({
           </span>
         )}
 
-        {/* ── 4-CARD PHASES: Igualar / Raise / Resto ── */}
-        {/* Igualar (Call) — visible when there's an active bet and player can afford it */}
-        {is4CardBetting && hasActiveBet && canAffordCall && callAmount > 0 && (
+        {/* ── 4-CARD PHASES: IR handles both Igualar and Raise ── */}
+        {/* IR (Igualar) — when there's an active bet, no chips selected, and player can afford it */}
+        {is4CardBetting && hasActiveBet && canAffordCall && callAmount > 0 && !showRaiseBet && (
           <button
             onClick={() => send('igualar')}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#60a5fa] to-[#2563eb] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#1e40af] active:scale-95 transition-all uppercase tracking-wider"
+            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-green-700 active:scale-95 transition-all uppercase tracking-wider"
           >
-            Igualar ${(callAmount / 100).toLocaleString()}
+            IR ${(callAmount / 100).toLocaleString()}
           </button>
         )}
 
-        {/* Resto (All-in) — visible when there's an active bet and player can't afford to call */}
-        {is4CardBetting && hasActiveBet && !canAffordCall && myChips > 0 && (
+        {/* IR (Resto) — when there's an active bet and player can't afford to call */}
+        {is4CardBetting && hasActiveBet && !canAffordCall && myChips > 0 && !showRaiseBet && (
           <button
             onClick={() => send('resto')}
             className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
           >
-            Resto ${(myChips / 100).toLocaleString()}
+            IR Resto ${(myChips / 100).toLocaleString()}
           </button>
         )}
 
@@ -160,22 +160,29 @@ export function ActionControls({
           </>
         )}
 
-        {/* ── DESCARTE: confirm card discard (or keep all) ── */}
-        {phase === 'DESCARTE' && (
+        {/* ── DESCARTE: only show Botar button when cards are selected ── */}
+        {phase === 'DESCARTE' && selectedCards.length > 0 && (
           <button
             onClick={() => send('discard', { droppedCards: selectedCards })}
             className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
           >
-            {selectedCards.length > 0 ? `Botar ${selectedCards.length}` : 'Quedar'}
+            Botar {selectedCards.length}
           </button>
         )}
 
         {/* ── PASO — contextual label & style ── */}
         <button
-          onClick={() => send('paso')}
+          onClick={() => {
+            if (phase === 'DESCARTE') {
+              // En DESCARTE, Paso = mantener todas las cartas (no botarse)
+              send('discard', { droppedCards: [] });
+            } else {
+              send('paso');
+            }
+          }}
           className={`h-7 md:h-10 px-3 md:px-6 rounded-lg font-black text-[9px] md:text-sm shadow border-b-2 active:scale-95 transition-all uppercase tracking-widest ${
-            // Check style (green/neutral) when no active bet in 4-card phases
-            (is4CardBetting && !hasActiveBet)
+            // Check style (green/neutral) when no active bet in 4-card phases or DESCARTE
+            ((is4CardBetting && !hasActiveBet) || phase === 'DESCARTE')
               ? 'bg-gradient-to-b from-[#6b7280] to-[#4b5563] text-white border-b-[#374151]'
               // Fold/Stay style (red) otherwise
               : 'bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white border-b-[#7f1d1d]'
