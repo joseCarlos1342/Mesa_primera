@@ -1405,7 +1405,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const soloPlayer = remaining[0];
       if (this.state.pot > 0) {
         soloPlayer.chips += this.state.pot;
-        this.state.lastAction = `${soloPlayer.nickname} recupera su apuesta ($${this.state.pot})`;
+        this.state.lastAction = `${soloPlayer.nickname} recupera su apuesta ($${(this.state.pot / 100).toLocaleString()})`;
         console.log(`[MesaRoom] Devolviendo $${this.state.pot} a ${soloPlayer.nickname} (único jugador restante)`);
 
         // Revertir la apuesta en el ledger
