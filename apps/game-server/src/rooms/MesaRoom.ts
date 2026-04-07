@@ -200,8 +200,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
             if (llevaJuego) {
               // Mostrar cartas públicamente (lleva juego y se bota)
+              // El jugador controlará cuándo cerrar con "dismiss-reveal"
               player.revealedCards = player.cards;
               this.state.lastAction = `${player.nickname} lleva juego y se bota (muestra cartas)`;
+              this.state.phase = "PIQUE_REVEAL";
+              this.state.turnPlayerId = client.sessionId;
               this.broadcast("pique-fold-reveal", { playerId: client.sessionId, llevaJuego: true, cards: player.cards });
             } else {
               this.state.lastAction = `${player.nickname} se bota (sin juego)`;
@@ -218,11 +221,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             }
             this.setPlayerCards(client.sessionId, "");
 
-            // Si se mostraron, limpiar después de 3 segundos
             if (llevaJuego) {
-              this.clock.setTimeout(() => {
-                player.revealedCards = "";
-              }, 3000);
+              // No avanzar turno aquí — esperar a que el jugador cierre el reveal
+              return;
             }
           } else {
             this.state.lastAction = `${player.nickname} pasa en el Pique`;
@@ -308,13 +309,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (player.id === this.state.activeManoId) this.transferMano();
         }
         this.advanceTurnPhaseDescarte();
-      } else if (this.state.phase === "APUESTA_4_CARTAS" || this.state.phase === "GUERRA" || this.state.phase === "CANTICOS") {
+      } else if (this.state.phase === "APUESTA_4_CARTAS" || this.state.phase === "GUERRA" || this.state.phase === "CANTICOS" || this.state.phase === "GUERRA_JUEGO") {
         const { action, amount } = message;
         const phase = this.state.phase;
         const advanceNext = () => this.advanceTurnBetting(
           undefined,
           phase === "APUESTA_4_CARTAS" ? () => this.startPhaseDescarte()
             : phase === "GUERRA" ? () => this.startPhase4Canticos()
+            : phase === "CANTICOS" ? () => this.startPhaseDeclararJuego()
             : () => this.startPhase6Showdown()
         );
 
@@ -467,6 +469,44 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           advanceNext();
         }
       }
+    });
+
+    this.onMessage("dismiss-reveal", (client) => {
+      if (this.state.phase !== "PIQUE_REVEAL") return;
+      // Cualquier jugador en la mesa puede cerrar la demostración
+      const revealedPlayer = Array.from(this.state.players.values() as IterableIterator<Player>)
+        .find(p => p.revealedCards && p.isFolded);
+      if (revealedPlayer) {
+        revealedPlayer.revealedCards = "";
+      }
+      // Restaurar la fase PIQUE y continuar el turno
+      this.state.phase = "PIQUE";
+      this.advanceTurnPhase2();
+    });
+
+    this.onMessage("declarar-juego", (client, message) => {
+      if (this.state.phase !== "DECLARAR_JUEGO") return;
+      if (this.state.turnPlayerId !== client.sessionId) return;
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+
+      const { tiene } = message; // true = "Tengo Juego", false = "No Tengo Juego"
+
+      player.hasActed = true;
+      this.currentTimeline.push({ event: 'declarar_juego', player: client.sessionId, tiene, time: Date.now(), rng_state: this.getRngState() });
+
+      if (tiene) {
+        const hand = evaluateHand(player.cards);
+        this.state.lastAction = `${player.nickname} declara: ¡Tengo ${hand.type}!`;
+        console.log(`[MesaRoom] ${player.nickname} declara tener juego (${hand.type}, ${hand.points} pts)`);
+      } else {
+        player.isFolded = true;
+        this.state.lastAction = `${player.nickname} declara: No tengo juego`;
+        this.attemptManoRotation(client.sessionId, "Mano declara no tener juego");
+        if (player.id === this.state.activeManoId) this.transferMano();
+      }
+
+      this.advanceTurnDeclarar();
     });
 
     this.onMessage("show-muck", (client, message) => {
@@ -1696,10 +1736,105 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   /**
    * Fase 4: Cánticos
    * Ronda de declaraciones y apuestas finales antes del Showdown.
+   * Cuando todos pasan (check), se activa DECLARAR_JUEGO para que
+   * cada jugador declare si lleva juego o no.
    */
   private startPhase4Canticos() {
     this.state.phase = "CANTICOS";
     console.log(`[MesaRoom] Iniciando Fase 4: Cánticos`);
+    this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
+    this.state.currentMaxBet = 0;
+    this.state.highestBetPlayerId = "";
+    this.advanceTurnBetting(this.state.activeManoId, () => this.startPhaseDeclararJuego());
+  }
+
+  /**
+   * Fase de Declaración de Juego.
+   * Después de que todos pasan en CANTICOS, cada jugador declara:
+   * - "Tengo Juego" → sigue compitiendo (puede seguir apostando)
+   * - "No Tengo Juego" → se foldea
+   * Luego los que tienen juego pueden apostar entre sí hasta que
+   * decidan parar, momento en el que se van al showdown.
+   */
+  private startPhaseDeclararJuego() {
+    const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected && !p.isWaiting);
+
+    // Si solo queda 1 jugador o menos, ir directo al showdown
+    if (activePlayers.length <= 1) {
+      this.startPhase6Showdown();
+      return;
+    }
+
+    // Si hubo apuestas en CANTICOS (alguien subió), ir directo al showdown
+    // porque ya se resolvió con dinero
+    if (this.state.currentMaxBet > 0) {
+      this.startPhase6Showdown();
+      return;
+    }
+
+    this.state.phase = "DECLARAR_JUEGO";
+    console.log(`[MesaRoom] Iniciando Declaración de Juego`);
+    this.state.players.forEach((p: Player) => { p.hasActed = false; });
+    // Iniciar desde La Mano
+    this.advanceTurnDeclarar(this.state.activeManoId);
+  }
+
+  /**
+   * Avanza el turno en la fase DECLARAR_JUEGO.
+   * Busca el siguiente jugador activo que aún no ha declarado.
+   * Cuando todos declararon, evalúa si se necesita ronda de apuestas adicional.
+   */
+  private advanceTurnDeclarar(startFromId?: string) {
+    const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected && !p.isWaiting);
+
+    if (activePlayers.length <= 1) {
+      this.startPhase6Showdown();
+      return;
+    }
+
+    let startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
+    if (startSeatIdx === -1) {
+      startSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
+      if (startSeatIdx === -1) {
+        this.startPhase6Showdown();
+        return;
+      }
+    }
+    const total = this.seatOrder.length;
+    const loopStart = startFromId ? 0 : 1;
+
+    for (let i = loopStart; i <= total; i++) {
+      const idx = (startSeatIdx + i) % total;
+      const id = this.seatOrder[idx];
+      const p = this.state.players.get(id);
+      if (p && p.connected && !p.isFolded && !p.hasActed && !p.isWaiting) {
+        this.state.turnPlayerId = id;
+        return;
+      }
+    }
+
+    // Todos declararon — verificar cuántos tienen juego
+    const withGame = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected && !p.isWaiting);
+
+    if (withGame.length <= 1) {
+      this.startPhase6Showdown();
+      return;
+    }
+
+    // 2+ jugadores con juego → ronda de apuestas final (GUERRA_JUEGO)
+    this.startPhaseGuerraJuego();
+  }
+
+  /**
+   * Ronda de apuestas entre jugadores que declararon tener juego.
+   * Cuando termina → Showdown directo.
+   */
+  private startPhaseGuerraJuego() {
+    this.state.phase = "GUERRA_JUEGO";
+    console.log(`[MesaRoom] Iniciando Guerra de Juego — apuestas entre jugadores con juego`);
     this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
     this.state.currentMaxBet = 0;
     this.state.highestBetPlayerId = "";

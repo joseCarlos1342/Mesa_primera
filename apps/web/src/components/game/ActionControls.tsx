@@ -28,8 +28,8 @@ interface ActionControlsProps {
 }
 
 const EMPTY_CARDS: string[] = [];
-const ACTIVE_PHASES = ['PIQUE', 'APUESTA_4_CARTAS', 'DESCARTE', 'GUERRA', 'CANTICOS'];
-const BETTING_PHASES_4CARDS = ['APUESTA_4_CARTAS', 'GUERRA', 'CANTICOS'];
+const ACTIVE_PHASES = ['PIQUE', 'APUESTA_4_CARTAS', 'DESCARTE', 'GUERRA', 'CANTICOS', 'GUERRA_JUEGO'];
+const BETTING_PHASES_4CARDS = ['APUESTA_4_CARTAS', 'GUERRA', 'CANTICOS', 'GUERRA_JUEGO'];
 
 export function ActionControls({
   room, phase, isMyTurn, selectedCards = EMPTY_CARDS, onClearSelection,
