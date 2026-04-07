@@ -11,13 +11,14 @@ interface TransactionModalProps {
   onClose: () => void
 }
 
-const VAULT_TYPES = ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment']
+const VAULT_TYPES = ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment', 'transfer']
 
 function getTypeLabel(type: string) {
   switch (type) {
     case 'deposit': return 'Depósito de Fondos'
     case 'withdrawal': return 'Retiro de Saldo'
     case 'refund': return 'Reembolso'
+    case 'transfer': return 'Transferencia entre Jugadores'
     case 'adjustment':
     case 'admin_adjustment': return 'Ajuste de Saldo'
     default: return type
@@ -135,7 +136,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
                 <DetailItem icon={Calendar} label="Fecha" value={new Date(transaction.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} />
                 <DetailItem icon={Hash} label="ID de Transacción" value={transaction.id.slice(0, 16) + '...'} />
                 <DetailItem icon={Landmark} label="Tipo" value={getTypeLabel(transaction.type)} />
-                <DetailItem icon={Info} label="Canal" value={transaction.type === 'deposit' ? 'Transferencia Directa' : transaction.type === 'withdrawal' ? 'Retiro Bancario' : 'Sistema'} />
+                <DetailItem icon={Info} label="Canal" value={transaction.type === 'deposit' ? 'Transferencia Directa' : transaction.type === 'withdrawal' ? 'Retiro Bancario' : transaction.type === 'transfer' ? 'P2P' : 'Sistema'} />
               </div>
 
               {/* Description */}

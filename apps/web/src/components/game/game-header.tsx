@@ -1,4 +1,4 @@
-import { Menu, ShoppingCart, LogOut, HelpCircle, X, Mic, Headphones, Maximize, Minimize } from 'lucide-react'
+import { Menu, ShoppingCart, LogOut, HelpCircle, X, Mic, Headphones, Maximize, Minimize, ArrowRightLeft } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useFullscreen } from '@/hooks/useFullscreen'
@@ -85,6 +85,17 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
               >
                 <Headphones className="w-4 h-4 group-hover:text-[#e2b044] transition-colors" />
                 <span className="font-bold group-hover:text-[#e2b044] transition-colors">Llamar al Admin</span>
+              </button>
+
+              <button 
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  window.dispatchEvent(new CustomEvent('open-transfer-modal'));
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-cyan-500/10 transition-colors text-cyan-400 group text-sm"
+              >
+                <ArrowRightLeft className="w-4 h-4 group-hover:text-cyan-300 transition-colors" />
+                <span className="font-bold group-hover:text-cyan-300 transition-colors">Transferir Saldo</span>
               </button>
 
               {fsSupported && (
