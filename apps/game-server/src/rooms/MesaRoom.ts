@@ -1893,10 +1893,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    // Revelar cartas de todos los jugadores activos para el showdown
-    activePlayers.forEach(p => {
+    // Revelar cartas selectivamente:
+    // - Si algún jugador lleva juego (Segunda, Chivo, Primera), solo mostrar esos mazos.
+    // - Si nadie lleva juego (todos NINGUNA), mostrar todos los mazos.
+    const playersWithGame = activePlayers.filter(p => {
+      const hand = evaluateHand(p.cards);
+      return hand.type !== 'NINGUNA';
+    });
+    const playersToReveal = playersWithGame.length > 0 ? playersWithGame : activePlayers;
+    playersToReveal.forEach(p => {
       p.revealedCards = p.cards;
     });
+    console.log(`[MesaRoom] Showdown: ${playersWithGame.length} con juego de ${activePlayers.length} activos → revelando ${playersToReveal.length} mazos`);
 
     // Calculate side pots
     const sidePots = this.calculateSidePots(activePlayers);
