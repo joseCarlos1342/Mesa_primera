@@ -315,5 +315,42 @@ export class SupabaseService {
       return { success: false, error: String(e) };
     }
   }
+
+  /**
+   * Transfers balance between two players atomically via the transfer_between_players RPC.
+   * Creates two immutable ledger entries (debit sender + credit recipient) in one transaction.
+   */
+  static async transferBetweenPlayers(
+    senderId: string,
+    recipientId: string,
+    amountCents: number,
+    meta?: { roomId?: string; tableName?: string }
+  ): Promise<{ success: boolean; error?: string; senderBalanceAfter?: number; recipientBalanceAfter?: number; recipientName?: string }> {
+    if (!supabaseKey) return { success: false, error: 'Supabase no configurado' };
+    try {
+      const { data, error } = await supabase.rpc('transfer_between_players', {
+        p_recipient_id: recipientId,
+        p_amount_cents: amountCents,
+        p_description: meta?.roomId ? `Transferencia en mesa (sala: ${meta.roomId})` : null,
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        console.warn(`[SupabaseService] Transfer rejected: ${data.error}`);
+        return { success: false, error: data.error };
+      }
+
+      console.log(`[SupabaseService] Transfer completed: ${senderId} → ${recipientId}, amount=${amountCents}, sender_after=${data?.sender_balance_after}, recipient_after=${data?.recipient_balance_after}`);
+      return {
+        success: true,
+        senderBalanceAfter: data?.sender_balance_after,
+        recipientBalanceAfter: data?.recipient_balance_after,
+        recipientName: data?.recipient_name,
+      };
+    } catch (e) {
+      console.error('[SupabaseService] Error transferring between players:', e);
+      return { success: false, error: String(e) };
+    }
+  }
 }
 
