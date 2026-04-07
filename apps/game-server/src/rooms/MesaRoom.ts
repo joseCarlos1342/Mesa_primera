@@ -235,7 +235,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             }
             player.chips -= actualBet;
             this.state.piquePot += actualBet;
-            this.state.lastAction = `${player.nickname} va $${actualBet} para Pique`;
+            this.state.lastAction = `${player.nickname} va $${(actualBet / 100).toLocaleString()} para Pique`;
           }
         }
 
@@ -1198,7 +1198,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       if (voyPlayer.supabaseUserId) {
         SupabaseService.awardPot(voyPlayer.supabaseUserId, this.state.piquePot, 0, this.currentGameId).catch(console.error);
       }
-      this.state.lastAction = `${voyPlayer.nickname} recupera su apuesta del Pique ($${this.state.piquePot})`;
+      this.state.lastAction = `${voyPlayer.nickname} recupera su apuesta del Pique ($${(this.state.piquePot / 100).toLocaleString()})`;
     }
     this.state.piquePot = 0;
 

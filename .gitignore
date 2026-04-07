@@ -59,6 +59,7 @@ _agents/
 _agent/
 .gemini/
 .claude/
+.github/agents/
 
 # Supabase local state (keys/secrets may leak)
 supabase/.temp/
