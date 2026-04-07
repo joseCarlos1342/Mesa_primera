@@ -86,7 +86,7 @@ export async function getActiveGames(): Promise<AdminGameView[]> {
       tables(id, name, game_type, min_bet, max_players, created_by),
       players:game_participants(id, user_id, seat_number, joined_at, left_at)
     `)
-    .in("status", ["waiting", "playing", "paused"])
+    .in("status", ["waiting", "in_progress"])
     .order("started_at", { ascending: false });
 
   if (error) throw error;
@@ -198,7 +198,7 @@ export async function deleteTable(tableId: string) {
     .from("games")
     .select("id")
     .eq("table_id", tableId)
-    .in("status", ["waiting", "playing", "paused"]);
+    .in("status", ["waiting", "in_progress"]);
 
   if (activeGames && activeGames.length > 0) {
     throw new Error("No se puede eliminar una mesa con juegos activos.");

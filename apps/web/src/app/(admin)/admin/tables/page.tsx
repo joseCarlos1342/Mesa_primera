@@ -9,11 +9,19 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AdminTablesPage() {
-  const [games, tables, financials] = await Promise.all([
-     getActiveGames(),
-     getTablesList(),
-     getTableFinancials()
-  ]);
+  let games: Awaited<ReturnType<typeof getActiveGames>> = [];
+  let tables: Awaited<ReturnType<typeof getTablesList>> = [];
+  let financials: Awaited<ReturnType<typeof getTableFinancials>> = [];
+
+  try {
+    [games, tables, financials] = await Promise.all([
+      getActiveGames(),
+      getTablesList(),
+      getTableFinancials()
+    ]);
+  } catch (err: any) {
+    console.error("[AdminTablesPage] Error cargando datos:", err);
+  }
 
   return (
     <div className="min-h-full space-y-12 animate-in fade-in duration-700">

@@ -2,9 +2,13 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logAdminAction } from './admin-audit'
 
 export async function processTransaction(requestId: string, status: 'completed' | 'failed') {
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
 
   const { data, error } = await supabase.rpc('process_admin_transaction', {
     p_request_id: requestId,
@@ -19,6 +23,13 @@ export async function processTransaction(requestId: string, status: 'completed' 
   if (data && data.error) {
     return { error: data.error };
   }
+
+  // Registrar en audit log
+  const actionType = status === 'completed' ? 'transaction_approved' : 'transaction_rejected'
+  await logAdminAction(user.id, actionType, 'transaction_request', requestId, {
+    status,
+    result: data,
+  })
 
   revalidatePath('/admin/deposits');
   revalidatePath('/admin/withdrawals');

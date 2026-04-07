@@ -1,10 +1,24 @@
-import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film, ScrollText } from "lucide-react";
 import Link from "next/link";
 import { getAdminDashboardStats } from "@/app/actions/admin-dashboard";
 import { formatCurrency } from "@/utils/format";
 
 export default async function AdminPage() {
-  const statsData = await getAdminDashboardStats();
+  let statsData: Awaited<ReturnType<typeof getAdminDashboardStats>>;
+  try {
+    statsData = await getAdminDashboardStats();
+  } catch (err: any) {
+    console.error("[AdminPage] Error cargando estadísticas:", err);
+    return (
+      <div className="min-h-full flex items-center justify-center animate-in fade-in duration-700">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-3xl p-10 max-w-lg text-center">
+          <LayoutDashboard className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-black text-red-400 mb-2">Error al cargar el Dashboard</h2>
+          <p className="text-slate-400 text-sm">{err?.message || "Error desconocido"}</p>
+        </div>
+      </div>
+    );
+  }
 
   const stats = [
     { 
@@ -46,7 +60,7 @@ export default async function AdminPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
             Sistema Operativo
           </div>
-          <h1 className="text-5xl font-black italic tracking-tight leading-tight bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-black italic tracking-tight leading-tight bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent pr-2">
             CENTRO DE MANDO
           </h1>
           <p className="text-slate-500 font-medium mt-1">Gestión administrativa y control de boveda.</p>
@@ -242,6 +256,25 @@ export default async function AdminPage() {
           </div>
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
             <Film className="w-20 h-20" />
+          </div>
+        </Link>
+
+        <Link href="/admin/audit" className="group relative overflow-hidden bg-gradient-to-br from-amber-500/10 to-transparent backdrop-blur-2xl border border-amber-500/20 p-6 rounded-[2rem] hover:scale-[1.02] transition-all hover:border-amber-500/40 shadow-2xl">
+          <div className="relative z-10 flex gap-4 items-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
+              <ScrollText className="w-6 h-6 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight text-white">Auditoría</h3>
+            </div>
+          </div>
+          <div className="relative z-10">
+             <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-white">Admin Log</span>
+             </div>
+          </div>
+          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+            <ScrollText className="w-20 h-20" />
           </div>
         </Link>
       </div>

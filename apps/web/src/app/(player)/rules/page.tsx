@@ -22,7 +22,7 @@ export default function RulesPage() {
       accent: 'bg-brand-green/10'
     },
     {
-      title: 'Apuestas y Bits',
+      title: 'Apuestas y Saldo',
       subtitle: 'Gestión de Fondos',
       icon: Coins,
       content: 'Cada mesa tiene un monto de entrada (Buy-in). Asegúrate de tener saldo suficiente antes de unirte. Los retiros se procesan en un plazo de 24hs hábiles.',

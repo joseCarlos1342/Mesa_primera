@@ -14,6 +14,14 @@ export interface MesaMetadata {
   maxPlayers: number;
   activePlayers: number;
   totalReservedSeats: number;
+  /** Mínimo de saldo para entrar a la mesa (en centavos). 0 = usa el default global. */
+  minEntry: number;
+  /** Pique mínimo configurado por el admin (en centavos). */
+  minPique: number;
+  /** Fichas deshabilitadas (denominaciones en centavos). Lista vacía = todas habilitadas. */
+  disabledChips: number[];
+  /** Si fue creada como mesa personalizada por el admin. */
+  isCustom: boolean;
 }
 
 export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }> {
@@ -57,13 +65,26 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   onCreate(options: any) {
     this.setState(new GameState());
 
+    // Configuración personalizada del admin
+    const customMinPique = options.minPique ? Number(options.minPique) : 500_000;
+    const customMinEntry = options.minEntry ? Number(options.minEntry) : MIN_BALANCE_CENTS;
+    const disabledChips: number[] = Array.isArray(options.disabledChips) ? options.disabledChips : [];
+    const isCustom = !!options.isCustom;
+
+    // Aplicar pique mínimo personalizado al estado
+    this.state.minPique = customMinPique;
+
     // Configurar metadatos para el Lobby
     this.setMetadata({
       tableName: options.tableName || "Mesa VIP",
       minPlayers: (this.state as any).minPlayers,
       maxPlayers: (this.state as any).maxPlayers,
       activePlayers: 0,
-      totalReservedSeats: 0
+      totalReservedSeats: 0,
+      minEntry: customMinEntry,
+      minPique: customMinPique,
+      disabledChips,
+      isCustom,
     });
 
     // Inicializar baraja de 28 cartas
@@ -679,15 +700,26 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         this.sendPrivateCards(client.sessionId);
       }
 
+      // Re-enviar configuración de la sala al cliente reconectado
+      const meta = this.metadata as MesaMetadata;
+      client.send("room-config", {
+        disabledChips: meta?.disabledChips || [],
+        minEntry: meta?.minEntry || MIN_BALANCE_CENTS,
+        minPique: meta?.minPique || 500_000,
+        isCustom: meta?.isCustom || false,
+      });
+
       this.updateLobbyMetadata();
       this.checkStartCountdown();
       return;
     }
 
-    // ── Validación de saldo mínimo ──
+    // ── Validación de saldo mínimo (usa minEntry personalizado si existe) ──
     const chips = options.chips || 0;
-    if (chips < MIN_BALANCE_CENTS) {
-      throw new Error("Fondos insuficientes. Se requiere un saldo mínimo de $50,000 para entrar a una mesa. Por favor, recargue su cuenta.");
+    const roomMinEntry = (this.metadata as MesaMetadata)?.minEntry || MIN_BALANCE_CENTS;
+    if (chips < roomMinEntry) {
+      const formatted = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(roomMinEntry / 100);
+      throw new Error(`Fondos insuficientes. Se requiere un saldo mínimo de ${formatted} para entrar a esta mesa. Por favor, recargue su cuenta.`);
     }
 
     console.log(`[MesaRoom] Cliente unido: ${client.sessionId} -> ${requestedNickname}`);
@@ -720,6 +752,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (this.state.players.size === 1 || !currentDealer || !currentDealer.connected) {
       this.state.dealerId = client.sessionId;
     }
+
+    // Enviar configuración de la sala al cliente (chips deshabilitados, min entry, etc.)
+    const meta = this.metadata as MesaMetadata;
+    client.send("room-config", {
+      disabledChips: meta?.disabledChips || [],
+      minEntry: meta?.minEntry || MIN_BALANCE_CENTS,
+      minPique: meta?.minPique || 500_000,
+      isCustom: meta?.isCustom || false,
+    });
 
     // Cancelar/revalidar countdown en caso de que un nuevo jugador descuadre el "todos listos"
     this.checkStartCountdown();

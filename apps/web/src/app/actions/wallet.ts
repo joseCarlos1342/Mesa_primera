@@ -27,11 +27,12 @@ export async function getWalletData() {
     return { wallet: newWallet, transactions: [] }
   }
 
-  // 2. Get Realized Ledger Entries
+  // 2. Get Realized Ledger Entries (solo bóveda: depósitos, retiros, reembolsos, ajustes)
   const { data: ledger, error: ledgerError } = await supabase
     .from('ledger')
     .select('*')
     .eq('user_id', user.id)
+    .in('type', ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment'])
     .order('created_at', { ascending: false })
     .limit(20)
 
@@ -53,7 +54,7 @@ export async function getWalletData() {
 
   if (ledgerError) return { error: ledgerError.message }
 
-  // 5. Merge and Normalize Activity
+  // 5. Merge and Normalize Activity (solo bóveda para el jugador)
   const activities: any[] = [
     ...(ledger || []).map(tx => ({
       id: tx.id,
@@ -63,8 +64,6 @@ export async function getWalletData() {
       balance_after_cents: tx.balance_after_cents,
       status: 'completed',
       created_at: tx.created_at,
-      game_id: tx.game_id || null,
-      metadata: tx.metadata || null,
       description: tx.description || null
     })),
     ...(depositRequests || []).filter(dr => dr.status !== 'completed').map(dr => ({
@@ -98,6 +97,7 @@ export async function getWalletHistory() {
     .from('ledger')
     .select('*')
     .eq('user_id', user.id)
+    .in('type', ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment'])
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -124,8 +124,6 @@ export async function getWalletHistory() {
       balance_after_cents: tx.balance_after_cents,
       status: 'completed',
       created_at: tx.created_at,
-      game_id: tx.game_id || null,
-      metadata: tx.metadata || null,
       description: tx.description || null
     })),
     ...(depositRequests || []).filter(dr => dr.status !== 'completed').map(dr => ({

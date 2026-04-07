@@ -20,6 +20,7 @@ interface ChipSelectorProps {
   maxChips: number;
   onAdd: (val: number) => void;
   onRemove: (val: number) => void;
+  disabledChips?: number[];
 }
 
 function formatDenom(val: number) {
@@ -27,7 +28,8 @@ function formatDenom(val: number) {
   return v >= 1000 ? `${v / 1000}k` : String(v);
 }
 
-export function ChipSelector({ chipCounts, totalBet, maxChips, onAdd, onRemove }: ChipSelectorProps) {
+export function ChipSelector({ chipCounts, totalBet, maxChips, onAdd, onRemove, disabledChips = [] }: ChipSelectorProps) {
+  const availableDenoms = CHIP_DENOMS.filter(d => !disabledChips.includes(d));
   const [activeChip, setActiveChip] = useState<number | null>(null);
 
   const handleChipTap = (val: number) => {
@@ -101,7 +103,7 @@ export function ChipSelector({ chipCounts, totalBet, maxChips, onAdd, onRemove }
 
       {/* Chip row */}
       <div className="flex flex-row gap-0.5 md:gap-1 px-1.5 pb-0.5">
-        {CHIP_DENOMS.map(val => {
+        {availableDenoms.map(val => {
           const count = chipCounts[val] || 0;
           const canAfford = maxChips >= totalBet + val;
           const isActive = activeChip === val;
