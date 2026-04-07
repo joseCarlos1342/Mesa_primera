@@ -62,7 +62,7 @@ export default async function AdminAuditPage() {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div>
-            <h1 className="text-4xl font-black italic tracking-tighter bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent flex items-center gap-4">
+            <h1 className="text-4xl font-black italic tracking-tighter bg-linear-to-br from-white to-slate-500 bg-clip-text text-transparent flex items-center gap-4">
               <ScrollText className="w-10 h-10 text-amber-400" />
               REGISTRO DE AUDITORÍA
             </h1>
@@ -139,7 +139,7 @@ export default async function AdminAuditPage() {
                           {Object.entries(details).slice(0, 4).map(([key, val]) => (
                             <div key={key} className="flex items-center gap-2 text-[10px]">
                               <span className="font-black text-slate-500 uppercase tracking-wider">{key.replace(/_/g, ' ')}:</span>
-                              <span className="text-slate-300 font-mono truncate max-w-[200px]">
+                              <span className="text-slate-300 font-mono truncate max-w-50">
                                 {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                               </span>
                             </div>

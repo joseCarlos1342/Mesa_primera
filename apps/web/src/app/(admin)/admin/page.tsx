@@ -259,7 +259,7 @@ export default async function AdminPage() {
           </div>
         </Link>
 
-        <Link href="/admin/audit" className="group relative overflow-hidden bg-gradient-to-br from-amber-500/10 to-transparent backdrop-blur-2xl border border-amber-500/20 p-6 rounded-[2rem] hover:scale-[1.02] transition-all hover:border-amber-500/40 shadow-2xl">
+        <Link href="/admin/audit" className="group relative overflow-hidden bg-linear-to-br from-amber-500/10 to-transparent backdrop-blur-2xl border border-amber-500/20 p-6 rounded-4xl hover:scale-[1.02] transition-all hover:border-amber-500/40 shadow-2xl">
           <div className="relative z-10 flex gap-4 items-center mb-4">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
               <ScrollText className="w-6 h-6 text-amber-400" />

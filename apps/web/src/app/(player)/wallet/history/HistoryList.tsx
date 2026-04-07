@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowUpWideNarrow, Plus, ArrowDownLeft, ArrowUpRight, Landmark } from 'lucide-react'
 import { useState } from 'react'
