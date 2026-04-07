@@ -364,16 +364,16 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           
           {/* Column 1: Stacked Pots */}
           <div className="flex flex-col gap-1 md:gap-2 shrink-0">
-            {/* Pozo Principal */}
+            {/* Apuesta Principal */}
             <div className="flex flex-col items-center bg-[#0a180e]/95 px-2 md:px-6 py-0.5 md:py-2 rounded-lg md:rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[70px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Pozo Principal</span>
+              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Apuesta Principal</span>
               <span className="text-[#4ade80] font-mono font-black text-[10px] md:text-xl">{formatCurrency(pot)}</span>
             </div>
             
-            {/* Pote del Pique - solo visible cuando > 0 */}
+            {/* Apuesta Pique - solo visible cuando > 0 */}
             {piquePot > 0 && (
             <div className="flex flex-col items-center bg-[#0a180e]/95 px-2 md:px-6 py-0.5 md:py-2 rounded-lg md:rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[70px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Pote del Pique</span>
+              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Apuesta Pique</span>
               <span className="text-[#4ade80] font-mono font-black text-[10px] md:text-xl">{formatCurrency(piquePot)}</span>
             </div>
             )}
@@ -431,7 +431,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
               <div className="flex flex-col items-start shrink-0 pointer-events-auto z-[51]">
                 {/* CHIPS: Stacked above the HUD during betting phases */}
                 <AnimatePresence>
-                  {isMyTurn && (phase === 'PIQUE' || phase === 'PIQUE_2' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS') && (
+                  {isMyTurn && (phase === 'PIQUE' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS') && (
                     <m.div 
                       className="mb-2"
                       initial={{ scale: 0.9, opacity: 0, y: 10 }}

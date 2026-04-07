@@ -28,7 +28,7 @@ interface ActionControlsProps {
 }
 
 const EMPTY_CARDS: string[] = [];
-const ACTIVE_PHASES = ['PIQUE', 'PIQUE_2', 'APUESTA_4_CARTAS', 'DESCARTE', 'GUERRA', 'CANTICOS'];
+const ACTIVE_PHASES = ['PIQUE', 'APUESTA_4_CARTAS', 'DESCARTE', 'GUERRA', 'CANTICOS'];
 const BETTING_PHASES_4CARDS = ['APUESTA_4_CARTAS', 'GUERRA', 'CANTICOS'];
 
 export function ActionControls({
@@ -41,7 +41,6 @@ export function ActionControls({
 
   const is4CardBetting = BETTING_PHASES_4CARDS.includes(phase);
   const isPique = phase === 'PIQUE';
-  const isPique2 = phase === 'PIQUE_2';
   const isBetBelowMin = isPique && totalBet > 0 && totalBet < minPique;
 
   // Pique obligatorio: La Mano ya fijó el monto y yo no soy La Mano
@@ -55,12 +54,6 @@ export function ActionControls({
   // Show IR/Limpiar for pique always when chips selected, for 4-card only as raise
   const showPiqueBet = isPique && totalBet > 0;
   const showRaiseBet = is4CardBetting && totalBet > 0;
-
-  // PIQUE_2: betting controls similar to 4-card phases
-  const pique2CallAmount = isPique2 ? Math.max(0, currentMaxBet - myRoundBet) : 0;
-  const pique2CanAffordCall = myChips >= pique2CallAmount;
-  const pique2HasActiveBet = isPique2 && currentMaxBet > 0 && myRoundBet < currentMaxBet;
-  const showPique2Bet = isPique2 && totalBet > 0;
 
   const send = (action: string, extra?: object) => {
     if (navigator.vibrate) navigator.vibrate(50);
@@ -177,45 +170,12 @@ export function ActionControls({
           </button>
         )}
 
-        {/* ── PIQUE_2: Igualar / Raise / Resto ── */}
-        {isPique2 && pique2HasActiveBet && pique2CanAffordCall && pique2CallAmount > 0 && (
-          <button
-            onClick={() => send('igualar')}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#60a5fa] to-[#2563eb] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#1e40af] active:scale-95 transition-all uppercase tracking-wider"
-          >
-            Igualar ${(pique2CallAmount / 100).toLocaleString()}
-          </button>
-        )}
-        {isPique2 && pique2HasActiveBet && !pique2CanAffordCall && myChips > 0 && (
-          <button
-            onClick={() => send('resto')}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
-          >
-            Resto ${(myChips / 100).toLocaleString()}
-          </button>
-        )}
-        {showPique2Bet && (
-          <>
-            <button
-              onClick={onBetClear}
-              className="h-7 md:h-10 px-2 md:px-3 bg-gradient-to-b from-[#6b7280] to-[#374151] text-white rounded-lg font-black text-[8px] md:text-xs shadow border-b-2 border-b-[#1f2937] active:scale-95 transition-all uppercase tracking-wider">
-              Limpiar
-            </button>
-            <button
-              onClick={onBetConfirm}
-              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
-            >
-              IR! ${(totalBet / 100).toLocaleString()}
-            </button>
-          </>
-        )}
-
         {/* ── PASO — contextual label & style ── */}
         <button
           onClick={() => send('paso')}
           className={`h-7 md:h-10 px-3 md:px-6 rounded-lg font-black text-[9px] md:text-sm shadow border-b-2 active:scale-95 transition-all uppercase tracking-widest ${
-            // Check style (green/neutral) when no active bet in 4-card phases or pique_2
-            (is4CardBetting && !hasActiveBet) || (isPique2 && !pique2HasActiveBet)
+            // Check style (green/neutral) when no active bet in 4-card phases
+            (is4CardBetting && !hasActiveBet)
               ? 'bg-gradient-to-b from-[#6b7280] to-[#4b5563] text-white border-b-[#374151]'
               // Fold/Stay style (red) otherwise
               : 'bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white border-b-[#7f1d1d]'

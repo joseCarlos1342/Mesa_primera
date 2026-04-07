@@ -44,8 +44,6 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private piqueProposerId: string = "";
   /** Jugadores que dijeron "paso" en la ronda de PIQUE actual (para cobro de Banda). */
   private piquePassPlayerIds = new Set<string>();
-  /** Jugadores que dijeron "paso" en la ronda 1 de PIQUE (para detectar doble-paso). */
-  private piquePassRound1 = new Set<string>();
   /** Bandera para evitar doble rotación si la Mano Definitiva ya rotó durante la partida */
   private dealerRotatedThisGame = false;
   /** Contador de reinicios consecutivos del pique para evitar bucle infinito */
@@ -242,143 +240,6 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         }
 
         this.advanceTurnPhase2();
-      } else if (this.state.phase === "PIQUE_2") {
-        const { action, amount } = message; // "paso", "voy", "igualar"
-
-        if (!["paso", "voy", "igualar", "resto"].includes(action)) {
-          console.log(`[MesaRoom] Acción inválida '${action}' de ${player.nickname} en fase PIQUE_2. Rechazada.`);
-          return;
-        }
-
-        this.currentTimeline.push({ event: 'action', phase: 'PIQUE_2', player: client.sessionId, action, amount, time: Date.now(), rng_state: this.getRngState() });
-
-        if (action === "paso") {
-          if (this.state.currentMaxBet === 0 || player.roundBet >= this.state.currentMaxBet) {
-            // Check: nadie ha apostado o ya igualamos
-            player.hasActed = true;
-            this.state.lastAction = `${player.nickname} pasa`;
-          } else {
-            // Hay apuesta activa y no hemos igualado → fold
-            player.isFolded = true;
-            player.hasActed = true;
-            this.state.lastAction = `${player.nickname} se bota`;
-            this.attemptManoRotation(client.sessionId, "Mano se bota en Pique R2");
-            if (player.id === this.state.activeManoId) this.transferMano();
-          }
-          this.advanceTurnPique2();
-
-        } else if (action === "voy") {
-          const betIncrement = amount || 0;
-          if (betIncrement <= 0) {
-            console.log(`[MesaRoom] ${player.nickname} intentó IR con monto inválido en PIQUE_2.`);
-            return;
-          }
-          if (player.roundBet + betIncrement <= this.state.currentMaxBet) {
-            client.send("error", { message: `La apuesta debe superar $${(this.state.currentMaxBet / 100).toLocaleString()}` });
-            return;
-          }
-          const actualBet = Math.min(betIncrement, player.chips);
-          if (actualBet <= 0) {
-            player.isFolded = true;
-            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
-            if (player.id === this.state.activeManoId) this.transferMano();
-          } else {
-            if (player.supabaseUserId) {
-              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, undefined, { roomId: this.roomId, tableName: (this as any).metadata?.tableName, phase: 'PIQUE_2' });
-              if (result && !result.success && result.isBalanceError) {
-                player.isFolded = true;
-                this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
-                if (player.id === this.state.activeManoId) this.transferMano();
-                this.advanceTurnPique2();
-                return;
-              }
-            }
-            player.chips -= actualBet;
-            player.roundBet += actualBet;
-            this.state.piquePot += actualBet;
-            this.state.currentMaxBet = player.roundBet;
-            this.state.highestBetPlayerId = client.sessionId;
-            // Reabrir la ronda: los demás deben igualar o pasar
-            this.state.players.forEach((p: Player, id: string) => {
-              if (id !== client.sessionId && !p.isFolded && !p.isAllIn && p.connected) {
-                p.hasActed = false;
-              }
-            });
-            this.state.lastAction = `${player.nickname} va $${(actualBet / 100).toLocaleString()} en Pique R2`;
-            if (actualBet === player.chips) {
-              player.isAllIn = true;
-              this.state.lastAction = `${player.nickname} va resto $${(actualBet / 100).toLocaleString()} en Pique R2`;
-            }
-          }
-          player.hasActed = true;
-          this.advanceTurnPique2();
-
-        } else if (action === "igualar") {
-          const callAmount = Math.max(0, this.state.currentMaxBet - player.roundBet);
-          if (callAmount <= 0) {
-            player.hasActed = true;
-            this.state.lastAction = `${player.nickname} pasa (ya igualado)`;
-            this.advanceTurnPique2();
-            return;
-          }
-          const actualBet = Math.min(callAmount, player.chips);
-          if (player.supabaseUserId) {
-            const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, undefined, { roomId: this.roomId, tableName: (this as any).metadata?.tableName, phase: 'PIQUE_2' });
-            if (result && !result.success && result.isBalanceError) {
-              player.isFolded = true;
-              this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
-              if (player.id === this.state.activeManoId) this.transferMano();
-              this.advanceTurnPique2();
-              return;
-            }
-          }
-          player.chips -= actualBet;
-          player.roundBet += actualBet;
-          this.state.piquePot += actualBet;
-          if (actualBet < callAmount) {
-            player.isAllIn = true;
-            this.state.lastAction = `${player.nickname} iguala resto $${(actualBet / 100).toLocaleString()} en Pique R2`;
-          } else {
-            this.state.lastAction = `${player.nickname} iguala $${(actualBet / 100).toLocaleString()} en Pique R2`;
-          }
-          player.hasActed = true;
-          this.advanceTurnPique2();
-
-        } else if (action === "resto") {
-          const actualBet = player.chips;
-          if (actualBet <= 0) {
-            player.isFolded = true;
-            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
-            if (player.id === this.state.activeManoId) this.transferMano();
-          } else {
-            if (player.supabaseUserId) {
-              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, undefined, { roomId: this.roomId, tableName: (this as any).metadata?.tableName, phase: 'PIQUE_2' });
-              if (result && !result.success && result.isBalanceError) {
-                player.isFolded = true;
-                this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
-                if (player.id === this.state.activeManoId) this.transferMano();
-                this.advanceTurnPique2();
-                return;
-              }
-            }
-            player.chips -= actualBet;
-            player.roundBet += actualBet;
-            this.state.piquePot += actualBet;
-            if (player.roundBet > this.state.currentMaxBet) {
-              this.state.currentMaxBet = player.roundBet;
-              this.state.highestBetPlayerId = client.sessionId;
-              this.state.players.forEach((p: Player, id: string) => {
-                if (id !== client.sessionId && !p.isFolded && !p.isAllIn && p.connected) {
-                  p.hasActed = false;
-                }
-              });
-            }
-            player.isAllIn = true;
-            this.state.lastAction = `${player.nickname} va resto $${(actualBet / 100).toLocaleString()} en Pique R2`;
-          }
-          player.hasActed = true;
-          this.advanceTurnPique2();
-        }
       } else if (this.state.phase === "DESCARTE") {
         const { action, droppedCards } = message;
         player.hasActed = true;
@@ -1035,6 +896,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.rngCounter = 0;
     this.currentTimeline.push({ event: 'start', seed, time: Date.now() });
 
+    // Reset pots to guarantee no carry-over from previous aborted games
+    this.state.pot = 0;
+    this.state.piquePot = 0;
+    this.state.currentMaxBet = 0;
+
     SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP");
 
     // Resetear el estado de los jugadores para la nueva ronda
@@ -1147,7 +1013,6 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Limpiar registro de jugadores que pasaron para el cobro de banda
     this.piquePassPlayerIds.clear();
-    this.piquePassRound1.clear();
 
     // Resetear apuesta máxima del pique (La Mano la fijará al apostar)
     this.state.currentMaxBet = 0;
@@ -1164,33 +1029,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // Inicializar la Mano activa para el orden de turnos de esta partida
     this.state.activeManoId = this.state.dealerId;
 
-    // Reset folds and deduct ante (Casa) — skip if restarting pique
-    let antePlayerCount = 0;
+    // Reset folds (skip ante for now per user request: pot must start at 0)
     for (const [, p] of this.state.players) {
       p.isFolded = !p.connected || p.isWaiting;
-      if (!p.isFolded && !skipAnte) {
-        const anteAmount = Math.min(1_000_000, p.chips);
-        if (anteAmount <= 0) continue;
-        // Persist ante to DB
-        if (p.supabaseUserId) {
-          const result = await SupabaseService.recordBet(p.supabaseUserId, anteAmount, this.currentGameId, undefined, { roomId: this.roomId, tableName: (this as any).metadata?.tableName, phase: 'ANTE' });
-          if (result && !result.success && result.isBalanceError) {
-            console.warn(`[MesaRoom] Ante rejected (insufficient funds) for ${p.nickname}`);
-            p.isFolded = true;
-            continue;
-          }
-          if (result && !result.success) {
-            console.warn(`[MesaRoom] Ante DB error for ${p.nickname}: ${result.error} (proceeding anyway)`);
-          }
-        }
-        antePlayerCount++;
-        p.chips -= anteAmount;
-        p.totalMainBet += anteAmount;
-        this.state.pot += anteAmount;
-      }
     }
     if (!skipAnte) {
-      this.state.lastAction = `Entrada obligatoria: $${(1_000_000/100).toLocaleString()} × ${antePlayerCount} jugadores = $${(this.state.pot/100).toLocaleString()} al pozo`;
+      this.state.lastAction = `Nueva mano iniciada.`;
     }
 
     this.clock.setTimeout(() => {
@@ -1466,7 +1310,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
 
     if (orderedActivePlayers.length === 0) {
-      this.startPiqueRonda2();
+      this.afterPiqueResolution();
       return;
     }
 
@@ -1477,7 +1321,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       if (roundsDealt >= 2) {
         dealInterval.clear();
         this.clock.setTimeout(() => {
-          this.startPiqueRonda2();
+          this.afterPiqueResolution();
         }, 1000);
         return;
       }
@@ -1502,261 +1346,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /**
-   * Fase: PIQUE_2 (segunda ronda de pique)
-   * Después de completar las 4 cartas, los jugadores activos hacen una segunda ronda de apuestas por el pique.
-   * Si un jugador pasa en ambas rondas (doble-paso), el sistema evalúa automáticamente:
-   * - Con juego → gana el pique
-   * - Sin juego + no restiado → se bota
-   * - Restiado sin juego → sigue hasta showdown final
-   */
-  private startPiqueRonda2() {
-    this.state.phase = "PIQUE_2";
-    console.log(`[MesaRoom] Iniciando Fase: Pique Ronda 2`);
-
-    // Guardar quiénes pasaron en ronda 1 para detectar doble-paso
-    this.piquePassRound1 = new Set(this.piquePassPlayerIds);
-    this.juegoCallers = [];
-
-    // Resetear estado de acción para la nueva ronda
-    this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
-    this.state.currentMaxBet = 0;
-    this.state.highestBetPlayerId = "";
-
-    this.advanceTurnPique2(this.state.activeManoId);
-  }
-
-  /**
-   * Avanza turno en PIQUE_2. Similar a advanceTurnBetting pero al terminar llama resolveDoublePaso().
-   */
-  private advanceTurnPique2(startFromId?: string) {
-    const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
-      .filter(p => !p.isFolded && p.connected && !p.isWaiting);
-
-    if (activePlayers.length <= 1) {
-      this.resolveDoublePaso();
-      return;
-    }
-
-    const currentTurnId = this.state.turnPlayerId;
-    let startSeatIdx = this.seatOrder.indexOf(startFromId || currentTurnId);
-
-    if (startSeatIdx === -1) {
-      if (startFromId) {
-        startSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
-      }
-      if (startSeatIdx === -1) {
-        return this.resolveDoublePaso();
-      }
-    }
-
-    const total = this.seatOrder.length;
-    const loopStart = startFromId ? 0 : 1;
-
-    for (let i = loopStart; i <= total; i++) {
-      const idx = (startSeatIdx + i) % total;
-      const id = this.seatOrder[idx];
-      const p = this.state.players.get(id);
-
-      if (p && p.connected && !p.isFolded && !p.isAllIn && !p.hasActed) {
-        // Verificar si el jugador necesita actuar (no ha actuado o la apuesta subió)
-        if (!p.hasActed || (this.state.currentMaxBet > 0 && p.roundBet < this.state.currentMaxBet)) {
-          this.state.turnPlayerId = id;
-          return;
-        }
-      }
-    }
-
-    // Verificar si algún jugador no ha igualado la apuesta máxima (ronda reabierta por raise)
-    for (let i = 0; i < total; i++) {
-      const idx = (this.seatOrder.indexOf(this.state.activeManoId) + i) % total;
-      const id = this.seatOrder[idx];
-      const p = this.state.players.get(id);
-      if (p && p.connected && !p.isFolded && !p.isAllIn && this.state.currentMaxBet > 0 && p.roundBet < this.state.currentMaxBet) {
-        this.state.turnPlayerId = id;
-        return;
-      }
-    }
-
-    // Todos actuaron → resolver doble-paso
-    this.resolveDoublePaso();
-  }
-
-  /**
-   * Resuelve el pique después de la ronda 2, evaluando doble-pasos.
-   * Doble-paso = jugador pasó en ronda 1 (PIQUE) Y pasó en ronda 2 (PIQUE_2).
-   * - Con juego → piqueWinner (gana el pique)
-   * - Sin juego + no restiado → fold (se bota, cartas al mazo)
-   * - Restiado sin juego → se queda, resolver en showdown final
-   *
-   * Si no hay piqueWinners → continúa a APUESTA_4_CARTAS (pique se mantiene para ganador final).
-   * Si 1 piqueWinner → awardPiqueAndContinue (mostrar cartas 5s).
-   * Si 2+ piqueWinners → showdownPique entre ellos.
-   */
-  private resolveDoublePaso() {
-    const piqueWinners: string[] = [];
-    const doublePasoFolded: string[] = [];
-
-    // Identificar jugadores con doble-paso
-    for (const [sessionId, player] of this.state.players.entries()) {
-      if (player.isFolded || !player.connected || player.isWaiting) continue;
-
-      const passedR1 = this.piquePassRound1.has(sessionId);
-      // Un jugador "pasó" en R2 si no apostó nada en esta ronda (roundBet === 0 y hasActed con paso)
-      const passedR2 = player.hasActed && player.roundBet === 0 && this.state.currentMaxBet === 0
-        // Si hay apuesta activa y no la igualó, es porque pasó (fold)
-        || (player.hasActed && this.state.currentMaxBet > 0 && player.roundBet === 0 && !player.isAllIn);
-
-      if (passedR1 && passedR2) {
-        // Doble-paso detectado
-        const hand = evaluateHand(player.cards);
-
-        if (hand.type !== 'NINGUNA') {
-          // Tiene juego → candidato a ganar el pique
-          piqueWinners.push(sessionId);
-          console.log(`[MesaRoom] Doble-paso con juego: ${player.nickname} (${hand.type}, ${hand.points} pts)`);
-        } else if (player.isAllIn) {
-          // Restiado sin juego → se queda hasta showdown final
-          console.log(`[MesaRoom] Doble-paso restiado sin juego: ${player.nickname} — sigue hasta showdown`);
-        } else {
-          // Sin juego, no restiado → se bota
-          player.isFolded = true;
-          doublePasoFolded.push(sessionId);
-          this.state.lastAction = `${player.nickname} se bota (doble-paso sin juego)`;
-          console.log(`[MesaRoom] Doble-paso sin juego: ${player.nickname} se bota`);
-
-          // Devolver cartas al mazo
-          if (player.cards) {
-            for (const card of player.cards.split(',').filter(Boolean)) {
-              this.deck.push(card);
-            }
-            this.setPlayerCards(sessionId, "");
-          }
-
-          this.attemptManoRotation(sessionId, "Mano se bota por doble-paso");
-          if (player.id === this.state.activeManoId) this.transferMano();
-        }
-      }
-    }
-
-    this.currentTimeline.push({
-      event: 'pique_ronda2_resolved',
-      piqueWinners,
-      doublePasoFolded,
-      time: Date.now(),
-      rng_state: this.getRngState()
-    });
-
-    console.log(`[MesaRoom] Resolviendo Pique R2: ${piqueWinners.length} con juego, ${doublePasoFolded.length} se botaron`);
-
-    if (piqueWinners.length === 0) {
-      // Nadie ganó el pique por doble-paso → pique se mantiene para el ganador final
-      this.afterPiqueResolution();
-      return;
-    }
-
-    if (piqueWinners.length === 1) {
-      // Un solo jugador con doble-paso y juego → gana el pique
-      const winnerId = piqueWinners[0];
-      const winner = this.state.players.get(winnerId);
-      if (winner) {
-        this.state.lastAction = `¡${winner.nickname} gana el Pique con juego!`;
-        this.pendingPiqueWinnerId = winnerId;
-        // Revelar cartas del ganador
-        winner.revealedCards = winner.cards;
-        this.state.phase = "SHOWDOWN_WAIT";
-        this.state.turnPlayerId = winnerId;
-        this.state.showdownTimer = 5;
-        console.log(`[MesaRoom] ${winner.nickname} gana el pique por doble-paso. Mostrando cartas...`);
-
-        const interval = this.clock.setInterval(() => {
-          this.state.showdownTimer--;
-          if (this.state.showdownTimer <= 0) {
-            interval.clear();
-            if (this.pendingPiqueWinnerId) {
-              this.awardPiqueAndContinue(winnerId);
-            }
-          }
-        }, 1000);
-      } else {
-        this.afterPiqueResolution();
-      }
-      return;
-    }
-
-    // 2+ jugadores con doble-paso y juego → showdown del pique
-    this.showdownPique(piqueWinners);
-  }
-
-  /**
-   * Showdown del pique: revela cartas de los jugadores que llevan juego, compara manos,
-   * muestra animación de 10s, luego entrega el pique al ganador.
-   */
-  private showdownPique(callerIds: string[]) {
-    console.log(`[MesaRoom] Showdown del Pique con ${callerIds.length} jugadores`);
-
-    // Revelar cartas de los que llevan juego
-    for (const id of callerIds) {
-      const p = this.state.players.get(id);
-      if (p) p.revealedCards = p.cards;
-    }
-
-    // Evaluar manos con bonus de La Mano
-    const manoId = this.state.dealerId;
-    const callerPlayers = callerIds.map(id => this.state.players.get(id)!).filter(Boolean);
-
-    let winner = callerPlayers[0];
-    let bestHand = evaluateHand(winner.cards);
-    let bestPoints = bestHand.points + (winner.id === manoId ? 1 : 0);
-
-    for (let i = 1; i < callerPlayers.length; i++) {
-      const p = callerPlayers[i];
-      const hand = evaluateHand(p.cards);
-      const pts = hand.points + (p.id === manoId ? 1 : 0);
-      if (compareHands(hand, bestHand) > 0 || (hand.type === bestHand.type && pts > bestPoints)) {
-        winner = p; bestHand = hand; bestPoints = pts;
-      }
-    }
-
-    this.state.lastAction = `Pique: ¡${winner.nickname} gana con ${bestHand.type}! (${bestPoints} pts)`;
-
-    // Timer de 10 segundos para mostrar cartas
-    this.state.showdownTimer = 10;
-    const interval = this.clock.setInterval(() => {
-      this.state.showdownTimer--;
-      if (this.state.showdownTimer <= 0) {
-        interval.clear();
-
-        // Entregar pique al ganador
-        const piqueRake = Math.floor(this.state.piquePot * 0.05);
-        const piquePayout = this.state.piquePot - piqueRake;
-        winner.chips += piquePayout;
-        console.log(`[MesaRoom] ${winner.nickname} gana showdown pique: $${piquePayout} (Rake: $${piqueRake})`);
-
-        if (winner.supabaseUserId) {
-          SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
-        }
-
-        this.currentTimeline.push({ event: 'pique_showdown', winner: winner.id, callers: callerIds, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
-        this.state.piquePot = 0;
-
-        // Todos los que participaron en el showdown del pique se retiran del juego principal
-        for (const id of callerIds) {
-          const p = this.state.players.get(id);
-          if (p) {
-            p.isFolded = true;
-            p.revealedCards = "";
-            if (p.id === this.state.activeManoId) this.transferMano();
-          }
-        }
-
-        this.afterPiqueResolution();
-      }
-    }, 1000);
-  }
-
-  /**
    * Entrega el pique al ganador único y continúa con el juego principal.
-   * Se llama después de que el ganador decide mostrar/ocultar cartas.
+   * Se llama cuando un jugador gana el pique en la ronda de 3 cartas.
    */
   private awardPiqueAndContinue(winnerId: string) {
     const winner = this.state.players.get(winnerId);
@@ -1788,7 +1379,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /**
-   * Después de resolver el pique, verificar cuántos jugadores quedan para el pot principal.
+   * Después de completar las 4 cartas (o resolver el pique de 3 cartas),
+   * verificar cuántos jugadores quedan para el pot principal.
    * - 0 jugadores → abortar
    * - 1 jugador → devolver su apuesta del pot principal y terminar
    * - 2+ jugadores → continuar a APUESTA_4_CARTAS

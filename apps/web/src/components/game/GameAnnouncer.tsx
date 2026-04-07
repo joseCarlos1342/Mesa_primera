@@ -18,7 +18,6 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
       'PIQUE_DEAL': 'Repartiendo el Pique',
       'PIQUE': '¡A Picar!',
       'COMPLETAR': 'Completando Manos',
-      'PIQUE_2': '¡Pique Ronda 2!',
       'APUESTA_4_CARTAS': '¡Apuesta! — 4 cartas',
       'DESCARTE': 'La Bajada',
       'COMPLETAR_DESCARTE': 'Entregando reemplazos',
