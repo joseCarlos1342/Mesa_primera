@@ -69,7 +69,8 @@ export default function GameRoomPage() {
   const [hasVotedPique, setHasVotedPique] = useState(false)
   const [bandaEvent, setBandaEvent] = useState<any>(null)
   const [disabledChips, setDisabledChips] = useState<number[]>([])
-
+  /** Mensaje de saldo insuficiente recibido del servidor al volver al LOBBY */
+  const [insufficientBalance, setInsufficientBalance] = useState<{ required: number; current: number; message: string } | null>(null)
   const hasAttemptedJoin = useRef(false)
   /** Marca si el jugador abandonó intencionalmente (evita auto-reconexión) */
   const abandonedRef = useRef(false)
@@ -281,6 +282,11 @@ export default function GameRoomPage() {
             piqueVotersTotal: state.piqueVotersTotal ?? 0,
             currentMaxBet: state.currentMaxBet ?? 0
           })
+
+          // Limpiar alerta de saldo insuficiente cuando sale de LOBBY (nueva partida iniciada)
+          if (state.phase !== 'LOBBY') {
+            setInsufficientBalance(null);
+          }
         })
 
         // Cartas privadas: solo el dueño recibe sus cartas reales
@@ -315,6 +321,11 @@ export default function GameRoomPage() {
             setBandaEvent({ winnerNickname: '⚠', totalBanda: 0, bandaPerPlayer: 0, details: [], _errorMsg: data.message });
             setTimeout(() => setBandaEvent(null), 3000);
           }
+        })
+
+        // Saldo insuficiente al volver al LOBBY — el jugador debe recargar
+        joinedRoom.onMessage("insufficient-balance", (data: any) => {
+          setInsufficientBalance(data);
         })
 
         // ── Single-session policy: force logout ──
@@ -605,7 +616,33 @@ export default function GameRoomPage() {
 
                 {room && (
                   <div className="flex flex-col items-center w-full">
-                    {players.find(p => p.id === room?.sessionId)?.isReady ? (
+                    {/* ── Alerta de saldo insuficiente ── */}
+                    {insufficientBalance && (
+                      <div className="w-full max-w-sm mb-4 bg-[#2a1008]/90 border border-[#e74c3c]/40 rounded-2xl px-5 py-4 backdrop-blur-md flex flex-col items-center gap-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-[#e74c3c] flex-shrink-0" />
+                          <span className="text-[#f3edd7] font-bold text-xs md:text-sm text-center leading-snug">
+                            {insufficientBalance.message}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => { setShowDeposit(true); }}
+                          className="w-full h-12 md:h-14 bg-gradient-to-b from-[#d4af37] via-[#c5a028] to-[#8a6d1c] hover:from-[#fdf0a6] hover:via-[#d4af37] hover:to-[#c5a028] text-[#1a0a00] rounded-xl font-black text-sm md:text-base shadow-[0_10px_20px_rgba(0,0,0,0.6)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all uppercase tracking-widest border border-[#d4af37]/40 border-b-[3px] border-b-[#5c4613]"
+                        >
+                          Cargar Fichas
+                        </button>
+                      </div>
+                    )}
+
+                    {insufficientBalance ? (
+                      /* Botón deshabilitado cuando no tiene saldo */
+                      <button
+                        disabled
+                        className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#4b5563] to-[#374151] text-[#9ca3af] rounded-2xl font-black text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-inner uppercase tracking-widest border border-white/5 cursor-not-allowed opacity-60"
+                      >
+                        Saldo Insuficiente
+                      </button>
+                    ) : players.find(p => p.id === room?.sessionId)?.isReady ? (
                       <button
                         onClick={() => room.send('toggleReady', { isReady: false })}
                         className="w-full max-w-sm h-16 md:h-20 bg-gradient-to-b from-[#e74c3c] via-[#c0392b] to-[#922b21] hover:from-[#f1948a] hover:via-[#e74c3c] hover:to-[#c0392b] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-12 landscape:text-xs shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#7b241c] tactile-button"

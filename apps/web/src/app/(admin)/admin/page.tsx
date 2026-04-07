@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film, ScrollText } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film, ScrollText, Info } from "lucide-react";
 import Link from "next/link";
 import { getAdminDashboardStats } from "@/app/actions/admin-dashboard";
 import { formatCurrency } from "@/utils/format";
@@ -70,14 +70,38 @@ export default async function AdminPage() {
             <MessageSquare className="w-5 h-5" />
             NUEVO BROADCAST
           </Link>
-          <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl">
+          <div className={`group relative backdrop-blur-xl border px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl cursor-help ${
+            statsData.vaultStatus === "OPERATIVO" ? "bg-emerald-900/20 border-emerald-500/20" :
+            statsData.vaultStatus === "ALERTA" ? "bg-amber-900/20 border-amber-500/20" :
+            "bg-red-900/20 border-red-500/20"
+          }`}>
             <div className="text-right">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Status Bóveda</p>
-              <p className="text-emerald-400 font-bold text-sm">OPERATIVO • 100%</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Status Bóveda</p>
+              <div className="flex items-center justify-end gap-2 mt-0.5">
+                {statsData.vaultStatus === "OPERATIVO" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-red-400" />}
+                <p className={`font-bold text-sm ${
+                  statsData.vaultStatus === "OPERATIVO" ? "text-emerald-400" :
+                  statsData.vaultStatus === "ALERTA" ? "text-amber-400" :
+                  "text-red-400"
+                }`}>{statsData.vaultStatus} • {statsData.vaultCoverage}%</p>
+              </div>
+            </div>
+            {/* Tooltip */}
+            <div className="absolute bottom-full right-0 mb-2 w-72 p-4 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="w-3.5 h-3.5 text-slate-400" />
+                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">¿Qué mide?</p>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-3">Cobertura de la bóveda: compara los depósitos recibidos vs retiros procesados contra los saldos de usuarios. Si la cobertura es 100%+, la plataforma puede cubrir todos los saldos.</p>
+              <div className="space-y-1.5 text-[10px] font-mono">
+                <div className="flex justify-between text-slate-400"><span>Depósitos:</span><span className="text-emerald-400">{formatCurrency(statsData.vaultTotalDeposits)}</span></div>
+                <div className="flex justify-between text-slate-400"><span>Retiros:</span><span className="text-red-400">-{formatCurrency(statsData.vaultTotalWithdrawals)}</span></div>
+                <div className="border-t border-white/5 pt-1.5 flex justify-between text-slate-300 font-bold"><span>Bóveda neta:</span><span>{formatCurrency(statsData.vaultBalance)}</span></div>
+              </div>
             </div>
           </div>
           
-          <div className={`backdrop-blur-xl border px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl ${
+          <div className={`group relative backdrop-blur-xl border px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl cursor-help ${
             statsData.ledgerIntegrityStatus === "OPERATIVO" ? "bg-emerald-900/20 border-emerald-500/20" :
             statsData.ledgerIntegrityStatus === "ALERTA" ? "bg-amber-900/20 border-amber-500/20" :
             "bg-red-900/20 border-red-500/20"
@@ -95,6 +119,24 @@ export default async function AdminPage() {
                 {statsData.ledgerIntegrityDiff !== 0 && (
                   <p className="text-[10px] text-red-300 font-mono mt-0.5">Diff: {formatCurrency(statsData.ledgerIntegrityDiff)}</p>
                 )}
+             </div>
+             {/* Tooltip */}
+             <div className="absolute bottom-full right-0 mb-2 w-72 p-4 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
+               <div className="flex items-center gap-2 mb-2">
+                 <Info className="w-3.5 h-3.5 text-slate-400" />
+                 <p className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">¿Qué mide?</p>
+               </div>
+               <p className="text-[11px] text-slate-400 leading-relaxed mb-3">Consistencia financiera: compara la suma neta del ledger (créditos − débitos) con la suma de los saldos en wallets. Si hay diferencia, existe una discrepancia contable que debe investigarse.</p>
+               <div className="space-y-1.5 text-[10px] font-mono">
+                 <div className="flex justify-between text-slate-400"><span>Ledger neto:</span><span>{formatCurrency(statsData.totalLedgerBalance)}</span></div>
+                 <div className="flex justify-between text-slate-400"><span>Saldo wallets:</span><span>{formatCurrency(statsData.totalUsersBalance)}</span></div>
+                 <div className="border-t border-white/5 pt-1.5 flex justify-between font-bold"><span className="text-slate-300">Diferencia:</span><span className={statsData.ledgerIntegrityDiff === 0 ? "text-emerald-400" : "text-red-400"}>{formatCurrency(statsData.ledgerIntegrityDiff)}</span></div>
+               </div>
+               <div className="mt-3 pt-2 border-t border-white/5 space-y-1 text-[10px] text-slate-500">
+                 <p>• <span className="text-emerald-400">OPERATIVO</span>: Diff = 0</p>
+                 <p>• <span className="text-amber-400">ALERTA</span>: Diff {'<='} $1.000</p>
+                 <p>• <span className="text-red-400">CRÍTICO</span>: Diff {'>'} $1.000</p>
+               </div>
              </div>
           </div>
         </div>
