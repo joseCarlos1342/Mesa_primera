@@ -323,6 +323,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             player.isFolded = true;
             player.hasActed = true;
             this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
+            this.attemptManoRotation(client.sessionId, "Mano sin fichas en apuestas");
             if (player.id === this.state.activeManoId) this.transferMano();
             advanceNext();
             return;
@@ -334,6 +335,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
               player.isFolded = true;
               player.hasActed = true;
               this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
+              this.attemptManoRotation(client.sessionId, "Mano sin fondos en apuestas");
               if (player.id === this.state.activeManoId) this.transferMano();
               advanceNext();
               return;
@@ -364,6 +366,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
               player.isFolded = true;
               player.hasActed = true;
               this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
+              this.attemptManoRotation(client.sessionId, "Mano sin fondos al igualar");
               if (player.id === this.state.activeManoId) this.transferMano();
               advanceNext();
               return;
@@ -389,6 +392,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             player.isFolded = true;
             player.hasActed = true;
             this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
+            this.attemptManoRotation(client.sessionId, "Mano sin fichas para resto");
             if (player.id === this.state.activeManoId) this.transferMano();
             advanceNext();
             return;
@@ -400,6 +404,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
               player.isFolded = true;
               player.hasActed = true;
               this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
+              this.attemptManoRotation(client.sessionId, "Mano sin fondos para resto");
               if (player.id === this.state.activeManoId) this.transferMano();
               advanceNext();
               return;
@@ -668,12 +673,30 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     player.connected = false;
     this.updateLobbyMetadata();
 
-    // TRANSFERIR ANFITRIÓN INMEDIATAMENTE SI SE DESCONECTA
+    // TRANSFERIR ANFITRIÓN INMEDIATAMENTE SI SE DESCONECTA (siguiendo orden de asientos)
     if (this.state.dealerId === client.sessionId) {
-      const nextHost = Array.from(this.state.players.values()).find(p => p.connected && p.id !== client.sessionId);
-      if (nextHost) {
-        this.state.dealerId = nextHost.id;
-        console.log(`[MesaRoom] El anfitrión se desconectó. Nuevo anfitrión temporal: ${nextHost.nickname}`);
+      const currentSeatIdx = this.seatOrder.indexOf(client.sessionId);
+      let replaced = false;
+      if (currentSeatIdx !== -1) {
+        for (let i = 1; i < this.seatOrder.length; i++) {
+          const nextIdx = (currentSeatIdx + i) % this.seatOrder.length;
+          const nextId = this.seatOrder[nextIdx];
+          const p = this.state.players.get(nextId);
+          if (p && p.connected) {
+            this.state.dealerId = nextId;
+            this.dealerRotatedThisGame = true;
+            console.log(`[MesaRoom] El anfitrión se desconectó. Mano pasa a ${p.nickname} (orden de asientos).`);
+            replaced = true;
+            break;
+          }
+        }
+      }
+      if (!replaced) {
+        const fallback = Array.from(this.state.players.values()).find(p => p.connected && p.id !== client.sessionId);
+        if (fallback) {
+          this.state.dealerId = fallback.id;
+          this.dealerRotatedThisGame = true;
+        }
       }
     }
 
@@ -715,9 +738,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (seatIdx !== -1) this.seatOrder.splice(seatIdx, 1);
     this.updateLobbyMetadata();
 
-    // Si era el dealer y quedan jugadores, asignar otro dealer
+    // Si era el dealer y quedan jugadores, asignar el siguiente en orden de asientos
     if (this.state.dealerId === sessionId && this.state.players.size > 0) {
-      this.state.dealerId = Array.from(this.state.players.keys())[0];
+      if (this.seatOrder.length > 0) {
+        this.state.dealerId = this.seatOrder[0];
+      } else {
+        this.state.dealerId = Array.from(this.state.players.keys())[0];
+      }
     }
 
     // ── Ajustar votación de pique si hay propuesta activa ──
@@ -896,10 +923,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.rngCounter = 0;
     this.currentTimeline.push({ event: 'start', seed, time: Date.now() });
 
-    // Reset pots to guarantee no carry-over from previous aborted games
+    // Reset pots and visual state to guarantee no carry-over from previous games
     this.state.pot = 0;
     this.state.piquePot = 0;
     this.state.currentMaxBet = 0;
+    this.state.bottomCard = "";
 
     SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP");
 
@@ -1266,6 +1294,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         this.state.dealerId = this.seatOrder[nextSeatIdx];
       }
     }
+    this.dealerRotatedThisGame = true;
     this.assignTurnOrders();
 
     const newMano = this.state.players.get(this.state.dealerId);
@@ -1330,7 +1359,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const currentCardsCount = player.cards ? player.cards.split(',').filter(Boolean).length : 0;
 
       if (currentCardsCount < 4) {
-        const card = this.deck.pop();
+        // Repartir desde el fondo del mazo para evitar dar las cartas
+        // recién devueltas por jugadores que pasaron (están en el tope)
+        const card = this.deck.shift();
         if (card) {
           const newCards = player.cards ? player.cards + "," + card : card;
           this.setPlayerCards(sessionId, newCards);
