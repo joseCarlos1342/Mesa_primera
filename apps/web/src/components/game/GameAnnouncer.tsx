@@ -24,6 +24,8 @@ export function GameAnnouncer({ phase }: GameAnnouncerProps) {
       'REVELAR_CARTA': '¡Carta del fondo!',
       'GUERRA': '¡Guerra!',
       'CANTICOS': '¡Cánticos!',
+      'DECLARAR_JUEGO': '¿Tienes Juego?',
+      'GUERRA_JUEGO': '¡Guerra de Juegos!',
       'SHOWDOWN': '¡Cartas sobre la mesa!',
       'PAYOUT': 'Repartiendo el Pozo',
     };
