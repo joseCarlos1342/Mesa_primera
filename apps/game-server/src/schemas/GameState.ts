@@ -34,7 +34,7 @@ export class Player extends Schema {
 }
 
 export class GameState extends Schema {
-  @type("string") phase: string = "LOBBY"; // LOBBY, STARTING, BARAJANDO, SORTEO_MANO, PIQUE_DEAL, PIQUE, COMPLETAR, PIQUE_2, APUESTA_4_CARTAS, DESCARTE, COMPLETAR_DESCARTE, REVELAR_CARTA, CANTICOS, GUERRA, SHOWDOWN
+  @type("string") phase: string = "LOBBY"; // LOBBY, STARTING, BARAJANDO, SORTEO_MANO, PIQUE_DEAL, PIQUE, COMPLETAR, APUESTA_4_CARTAS, DESCARTE, COMPLETAR_DESCARTE, REVELAR_CARTA, CANTICOS, GUERRA, SHOWDOWN
   @type({ map: Player }) players = new MapSchema<Player>();
   @type("string") dealerId: string = "";
   /** La Mano activa para el orden de turnos (puede transferirse si dealerId se retira mid-game) */
