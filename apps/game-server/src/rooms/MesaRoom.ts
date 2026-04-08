@@ -1648,7 +1648,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    const piqueRake = Math.floor(this.state.piquePot * 0.05);
+    const piqueRake = Math.ceil(this.state.piquePot * 0.05 / 100) * 100;
     const piquePayout = this.state.piquePot - piqueRake;
     winner.chips += piquePayout;
     console.log(`[MesaRoom] ${winner.nickname} gana el pique: $${piquePayout} (Rake: $${piqueRake})`);
@@ -2110,7 +2110,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         if (compareHands(pHand, bestHand) > 0) { winner = p; bestHand = pHand; }
       }
 
-      const rake = Math.floor(sp.amount * 0.05);
+      const rake = Math.ceil(sp.amount * 0.05 / 100) * 100;
       const payout = sp.amount - rake;
       winner.chips += payout;
       totalPayout += payout;
@@ -2177,7 +2177,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     const totalPot = this.state.pot + this.state.piquePot;
     // Also award pique pot to overall winner (same as before)
-    const piqueRake = Math.floor(this.state.piquePot * 0.05);
+    const piqueRake = Math.ceil(this.state.piquePot * 0.05 / 100) * 100;
     const piquePayout = this.state.piquePot - piqueRake;
     if (piquePayout > 0) {
       winner.chips += piquePayout;
@@ -2304,8 +2304,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (!winner) return;
 
     const totalPot = this.state.pot + this.state.piquePot;
-    const potRake = Math.floor(this.state.pot * 0.05);
-    const piqueRake = Math.floor(this.state.piquePot * 0.05);
+    const potRake = Math.ceil(this.state.pot * 0.05 / 100) * 100;
+    const piqueRake = Math.ceil(this.state.piquePot * 0.05 / 100) * 100;
     const potPayout = this.state.pot - potRake;
     const piquePayout = this.state.piquePot - piqueRake;
     const rake = potRake + piqueRake;
