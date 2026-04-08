@@ -171,7 +171,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           points={undefined} /* Opponents don't show points, only for self */
           turnOrder={p?.turnOrder}
           isWaiting={p?.isWaiting}
-          isAllIn={p?.isAllIn}
+          isAllIn={p?.isAllIn && !p?.passedWithJuego}
         />
         {/* Opponent's Cards: visible on mobile only during SORTEO_MANO, otherwise lg+ only */}
         {p ? (
@@ -485,14 +485,22 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   {room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
                      <div className="ml-1 bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">{me.turnOrder}ª</div>
                   )}
-                  {me.isAllIn && (
+                  {me.isAllIn && !me.passedWithJuego && (
                      <div className="ml-1 bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">Resto</div>
                   )}
                 </div>
               </div>
 
               {/* 🃏 CENTER: My Cards (reduced 30% for mobile landscape) */}
-              <div className="flex-1 flex justify-center items-end pointer-events-auto min-w-0" style={{ transform: 'translateX(-2rem)' }}>
+              <div className="flex-1 flex flex-col justify-end items-center pointer-events-auto min-w-0" style={{ transform: 'translateX(-2rem)' }}>
+                {/* Instrucción de descarte */}
+                {phase === 'DESCARTE' && isMyTurn && !me?.passedWithJuego && (
+                  <div className="mb-1 md:mb-2 px-3 py-1 bg-[#0a180e]/90 border border-[#d4af37]/40 rounded-full backdrop-blur-md animate-pulse">
+                    <span className="text-[#fdf0a6] text-[8px] md:text-xs font-bold uppercase tracking-wider">
+                      Selecciona las cartas que vas a botar
+                    </span>
+                  </div>
+                )}
                 <div className="relative h-20 md:h-44 w-full max-w-[350px] md:max-w-[500px] mb-0.5 md:mb-2">
                   <div className="relative w-full h-full flex justify-center items-end">
                     {myCards && myCards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
@@ -501,7 +509,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                         const angle = (idx - middle) * 8; 
                         const offsetX = (idx - middle) * (typeof window !== 'undefined' && window.innerWidth < 1000 ? 55 : 70); 
                         
-                        const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId;
+                        const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId && !me?.passedWithJuego;
                         const handleCardClick = () => {
                           if (!isDescarteTurn) return;
                           setSelectedCards(prev => prev.includes(cardStr) ? prev.filter(c => c !== cardStr) : [...prev, cardStr]);
@@ -562,6 +570,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   myRoundBet={me?.roundBet ?? 0}
                   myChips={me?.chips ?? 0}
                   isAllIn={me?.isAllIn ?? false}
+                  passedWithJuego={me?.passedWithJuego ?? false}
                 />
               </div>
             </div>

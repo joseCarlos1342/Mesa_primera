@@ -47,6 +47,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private juegoCallers: string[] = [];
   /** ID del ganador del pique pendiente de decidir mostrar/ocultar cartas. */
   private pendingPiqueWinnerId: string = "";
+  /** ID del jugador que declaró "llevo juego" en DESCARTE, pendiente de dismiss. */
+  private pendingLlevoJuegoPlayerId: string = "";
   private pendingShowdownData: { overallWinnerId: string; potWinners: any[]; totalPayout: number; totalRake: number; activePlayers: Player[] } | null = null;
   /** Votación democrática del pique fijo. */
   private piqueVoters = new Map<string, boolean>();
@@ -365,11 +367,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             // Hay apuesta activa y no hemos igualado
             const hand = evaluateHand(player.cards);
             if (hand.type !== 'NINGUNA') {
-              // Tiene juego: se queda sin apostar más (side pot implícito)
-              player.isAllIn = true;
+              // Tiene juego: se queda sin apostar más, reclamará pique en DESCARTE
+              player.passedWithJuego = true;
               player.hasActed = true;
               this.state.lastAction = `${player.nickname} se queda con juego (${hand.type})`;
-              console.log(`[MesaRoom] ${player.nickname} se queda con juego sin igualar (side pot implícito)`);
+              console.log(`[MesaRoom] ${player.nickname} se queda con juego — reclamará pique en DESCARTE`);
             } else {
               // No tiene juego: fold
               player.isFolded = true;
@@ -502,7 +504,52 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     this.onMessage("dismiss-reveal", (client) => {
       if (this.state.phase !== "PIQUE_REVEAL") return;
-      // Cualquier jugador en la mesa puede cerrar la demostración
+
+      // ── Caso: Llevo Juego durante DESCARTE ──
+      if (this.pendingLlevoJuegoPlayerId) {
+        const playerId = this.pendingLlevoJuegoPlayerId;
+        this.pendingLlevoJuegoPlayerId = "";
+        const player = this.state.players.get(playerId);
+
+        if (player) {
+          player.revealedCards = "";
+
+          // Barajar cartas del jugador y ponerlas encima del naipe
+          const playerCards = player.cards ? player.cards.split(',').filter(Boolean) : [];
+          for (let i = playerCards.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [playerCards[i], playerCards[j]] = [playerCards[j], playerCards[i]];
+          }
+          for (const card of playerCards) {
+            this.deck.push(card);
+          }
+          this.setPlayerCards(playerId, "");
+
+          // Pagar pique menos comisión
+          const piqueRake = Math.ceil(this.state.piquePot * 0.05 / 100) * 100;
+          const piquePayout = this.state.piquePot - piqueRake;
+          player.chips += piquePayout;
+          console.log(`[MesaRoom] ${player.nickname} gana el pique por Llevo Juego: $${piquePayout} (Rake: $${piqueRake})`);
+          this.state.lastAction = `¡${player.nickname} gana el Pique! (+$${(piquePayout / 100).toLocaleString()})`;
+
+          if (player.supabaseUserId) {
+            SupabaseService.awardPot(player.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
+          }
+          this.currentTimeline.push({ event: 'pique_won', winner: playerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
+          this.state.piquePot = 0;
+
+          // Retirar al jugador del pot principal
+          player.isFolded = true;
+          if (player.id === this.state.activeManoId) this.transferMano();
+        }
+
+        // Reanudar DESCARTE
+        this.state.phase = "DESCARTE";
+        this.advanceTurnPhaseDescarte();
+        return;
+      }
+
+      // ── Caso original: reveal durante PIQUE ──
       const revealedPlayer = Array.from(this.state.players.values() as IterableIterator<Player>)
         .find(p => p.revealedCards && p.isFolded);
       if (revealedPlayer) {
@@ -511,6 +558,34 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       // Restaurar la fase PIQUE y continuar el turno
       this.state.phase = "PIQUE";
       this.advanceTurnPhase2();
+    });
+
+    // ── Llevo Juego: jugador que pasó con juego reclama el pique durante DESCARTE ──
+    this.onMessage("llevo-juego", (client) => {
+      if (this.state.phase !== "DESCARTE") return;
+      if (this.state.turnPlayerId !== client.sessionId) return;
+      const player = this.state.players.get(client.sessionId);
+      if (!player || !player.passedWithJuego) return;
+
+      player.hasActed = true;
+      player.revealedCards = player.cards;
+      this.state.lastAction = `¡${player.nickname} lleva juego!`;
+      console.log(`[MesaRoom] ${player.nickname} declara Llevo Juego en DESCARTE`);
+
+      this.currentTimeline.push({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action: 'llevo-juego', time: Date.now(), rng_state: this.getRngState() });
+
+      // Guardar referencia para procesar en dismiss-reveal
+      this.pendingLlevoJuegoPlayerId = client.sessionId;
+
+      // Cambiar a PIQUE_REVEAL para mostrar las cartas
+      this.state.phase = "PIQUE_REVEAL";
+      this.state.turnPlayerId = client.sessionId;
+
+      this.broadcast("pique-fold-reveal", {
+        playerId: client.sessionId,
+        llevaJuego: true,
+        cards: player.cards
+      });
     });
 
     this.onMessage("dismiss-showdown", (client) => {
@@ -1057,6 +1132,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       p.hasActed = false;
       p.roundBet = 0;
       p.isAllIn = false;
+      p.passedWithJuego = false;
       p.totalMainBet = 0;
       p.revealedCards = "";
       this.setPlayerCards(sessionId, "");
@@ -1200,6 +1276,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       p.hasActed = false;
       p.roundBet = 0;
       p.isAllIn = false;
+      p.passedWithJuego = false;
       p.totalMainBet = 0;
       this.setPlayerCards(sessionId, "");
       p.revealedCards = "";
@@ -1805,7 +1882,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const idx = (startSeatIdx + i) % total;
       const id = this.seatOrder[idx];
       const p = this.state.players.get(id);
-      if (p && p.connected && !p.isFolded && !p.isAllIn &&
+      if (p && p.connected && !p.isFolded && !p.isAllIn && !p.passedWithJuego &&
           (!p.hasActed || p.roundBet < this.state.currentMaxBet)) {
         this.state.turnPlayerId = id;
         return;
