@@ -14,14 +14,15 @@ const withPWA = withPWAInit({
 const supabaseOrigin = "https://bhwchdzfvhhhuxovrqio.supabase.co";
 const gameServerOrigin = "https://vps23830.cubepath.net";
 const livekitWss = "wss://mesaprimera-59x1pueh.livekit.cloud";
+const livekitHttps = "https://mesaprimera-59x1pueh.livekit.cloud";
 
 const cspDirectives = [
   `default-src 'self'`,
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com`,
   `style-src 'self' https://fonts.googleapis.com 'unsafe-inline'`,
   `font-src 'self' https://fonts.gstatic.com`,
   `img-src 'self' ${supabaseOrigin} https://www.transparenttextures.com data: blob:`,
-  `connect-src 'self' ${supabaseOrigin} wss://bhwchdzfvhhhuxovrqio.supabase.co ${gameServerOrigin} wss://vps23830.cubepath.net ${livekitWss} https://api.twilio.com https://verify.twilio.com`,
+  `connect-src 'self' ${supabaseOrigin} wss://bhwchdzfvhhhuxovrqio.supabase.co ${gameServerOrigin} wss://vps23830.cubepath.net ${livekitWss} ${livekitHttps} https://api.twilio.com https://verify.twilio.com`,
   `media-src 'self'`,
   `worker-src 'self' blob:`,
   `manifest-src 'self'`,
