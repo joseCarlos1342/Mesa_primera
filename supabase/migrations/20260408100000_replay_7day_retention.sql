@@ -68,17 +68,25 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
+  WITH keyed AS (
+    SELECT gr.*, COALESCE(gr.room_id, gr.game_id::text) AS mesa_key
+    FROM game_replays gr
+    WHERE gr.players @> ANY (
+      ARRAY[('[{"userId": "' || p_user_id::text || '"}]')::jsonb]
+    )
+      AND gr.created_at >= (NOW() - INTERVAL '7 days')
+  )
   SELECT
-    COALESCE(gr.room_id, gr.game_id::text) AS room_id,
-    COALESCE(MAX(gr.table_name), 'Mesa') AS table_name,
-    MIN(gr.created_at) AS first_played_at,
-    MAX(gr.created_at) AS last_played_at,
+    k.mesa_key AS room_id,
+    COALESCE(MAX(k.table_name), 'Mesa') AS table_name,
+    MIN(k.created_at) AS first_played_at,
+    MAX(k.created_at) AS last_played_at,
     COUNT(*)::BIGINT AS game_count,
     (
       SELECT jsonb_agg(DISTINCT elem)
       FROM game_replays gr2,
            jsonb_array_elements(gr2.players) AS elem
-      WHERE COALESCE(gr2.room_id, gr2.game_id::text) = COALESCE(gr.room_id, gr.game_id::text)
+      WHERE COALESCE(gr2.room_id, gr2.game_id::text) = k.mesa_key
         AND gr2.players @> ANY (
           ARRAY[('[{"userId": "' || p_user_id::text || '"}]')::jsonb]
         )
@@ -88,18 +96,14 @@ AS $$
       (SELECT SUM(CASE WHEN l.direction = 'credit' THEN l.amount_cents ELSE -l.amount_cents END)
        FROM ledger l
        INNER JOIN game_replays gr3 ON gr3.game_id = l.game_id
-       WHERE COALESCE(gr3.room_id, gr3.game_id::text) = COALESCE(gr.room_id, gr.game_id::text)
+       WHERE COALESCE(gr3.room_id, gr3.game_id::text) = k.mesa_key
          AND gr3.created_at >= (NOW() - INTERVAL '7 days')
          AND l.user_id = p_user_id),
       0
     )::BIGINT AS total_net_result
-  FROM game_replays gr
-  WHERE gr.players @> ANY (
-    ARRAY[('[{"userId": "' || p_user_id::text || '"}]')::jsonb]
-  )
-    AND gr.created_at >= (NOW() - INTERVAL '7 days')
-  GROUP BY COALESCE(gr.room_id, gr.game_id::text)
-  ORDER BY MAX(gr.created_at) DESC
+  FROM keyed k
+  GROUP BY k.mesa_key
+  ORDER BY MAX(k.created_at) DESC
   LIMIT p_limit;
 $$;
 
