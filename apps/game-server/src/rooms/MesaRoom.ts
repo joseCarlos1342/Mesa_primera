@@ -2002,6 +2002,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * cada jugador declare si lleva juego o no.
    */
   private startPhase4Canticos() {
+    // Si nadie apostó en GUERRA (todos pasaron/check), saltar Cánticos
+    // e ir directo a Declarar Juego — no tiene sentido una segunda ronda de paso.
+    if (this.state.currentMaxBet === 0) {
+      console.log(`[MesaRoom] Todos pasaron en GUERRA — saltando Cánticos, directo a Declarar Juego`);
+      this.startPhaseDeclararJuego();
+      return;
+    }
     this.state.phase = "CANTICOS";
     console.log(`[MesaRoom] Iniciando Fase 4: Cánticos`);
     this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });

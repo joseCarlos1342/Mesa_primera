@@ -212,8 +212,8 @@ export function ActionControls({
           </>
         )}
 
-        {/* ── PASO — contextual label & style (hidden during DECLARAR_JUEGO and passedWithJuego in DESCARTE) ── */}
-        {!isDeclararJuego && !(phase === 'DESCARTE' && passedWithJuego) && (
+        {/* ── PASO — hidden during DECLARAR_JUEGO and DESCARTE (en bajada se debe descartar obligatoriamente) ── */}
+        {!isDeclararJuego && phase !== 'DESCARTE' && (
           <button
             onClick={() => {
               if (phase === 'DESCARTE') {
