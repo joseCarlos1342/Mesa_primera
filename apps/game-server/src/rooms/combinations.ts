@@ -43,16 +43,22 @@ export function parseCardsStr(cardsStr: string): Card[] {
 
 export function evaluateHand(cardsStr: string): HandEvaluation {
   const cards = parseCardsStr(cardsStr);
-  const points = cards.reduce((sum, c) => sum + (CARD_POINTS[c.value] || 0), 0);
+
+  // Puntos por palo: la suma más alta de cartas del mismo palo
+  const suitGroups: Record<string, number> = {};
+  for (const c of cards) {
+    suitGroups[c.suit] = (suitGroups[c.suit] || 0) + (CARD_POINTS[c.value] || 0);
+  }
+  const maxSuitPoints = Math.max(0, ...Object.values(suitGroups));
   
   if (cards.length < 4) {
-    return { type: 'NINGUNA', points };
+    return { type: 'NINGUNA', points: maxSuitPoints };
   }
 
   // Check Segunda (4 cartas del mismo palo)
   const isSegunda = cards.every(c => c.suit === cards[0].suit);
   if (isSegunda) {
-    return { type: 'SEGUNDA', points };
+    return { type: 'SEGUNDA', points: maxSuitPoints };
   }
 
   // Check Chivo (As, 6, 7 del mismo palo)
@@ -65,18 +71,20 @@ export function evaluateHand(cardsStr: string): HandEvaluation {
   });
   
   if (hasChivo) {
-    return { type: 'CHIVO', points };
+    return { type: 'CHIVO', points: maxSuitPoints };
   }
 
   // Check Primera (4 cartas de diferente palo)
+  // Para Primera: suma total (una carta por palo = valor de primera tradicional)
   const suits = new Set(cards.map(c => c.suit));
   const isPrimera = suits.size === 4;
   
   if (isPrimera) {
-    return { type: 'PRIMERA', points };
+    const totalPoints = cards.reduce((sum, c) => sum + (CARD_POINTS[c.value] || 0), 0);
+    return { type: 'PRIMERA', points: totalPoints };
   }
 
-  return { type: 'NINGUNA', points };
+  return { type: 'NINGUNA', points: maxSuitPoints };
 }
 
 // Devuelve verdadero si handA venció a handB
