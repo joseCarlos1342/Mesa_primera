@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { formatAmount } from '@/utils/format';
 
 type TimelineEvent = {
   event: string;
@@ -72,10 +73,10 @@ export function AdminReplayViewer({ timeline, players }: { timeline: TimelineEve
 
   const getEventDescription = (ev: TimelineEvent): string => {
     if (ev.event === 'start') return 'Inicio de Partida';
-    if (ev.event === 'end') return `${getPlayerName(ev.winner)} gana ${ev.payout ? `$${(ev.payout / 100).toLocaleString()}` : ''}`;
+    if (ev.event === 'end') return `${getPlayerName(ev.winner)} gana ${ev.payout ? `$${formatAmount(ev.payout)}` : ''}`;
     const name = getPlayerName(ev.player);
     const actionLabel = ev.action === 'voy' ? 'Apuesta' : ev.action === 'paso' ? 'Pasa' : ev.action === 'discard' ? 'Descarta' : ev.action || '';
-    const amountStr = ev.amount ? ` $${(ev.amount / 100).toLocaleString()}` : '';
+    const amountStr = ev.amount ? ` $${formatAmount(ev.amount)}` : '';
     const comboStr = ev.combination ? ` (${ev.combination})` : '';
     return `${name} → ${actionLabel}${amountStr}${comboStr}`;
   };
@@ -131,11 +132,11 @@ export function AdminReplayViewer({ timeline, players }: { timeline: TimelineEve
             <div className="flex gap-4 text-right">
               <div>
                 <p className="text-[9px] font-black uppercase text-slate-500">Pozo</p>
-                <p className="text-lg font-black text-white">${((event.pot || 0) / 100).toLocaleString()}</p>
+                <p className="text-lg font-black text-white">${formatAmount(event.pot || 0)}</p>
               </div>
               <div>
                 <p className="text-[9px] font-black uppercase text-slate-500">Rake</p>
-                <p className="text-lg font-black text-emerald-400">${((event.rake || 0) / 100).toLocaleString()}</p>
+                <p className="text-lg font-black text-emerald-400">${formatAmount(event.rake || 0)}</p>
               </div>
             </div>
           )}

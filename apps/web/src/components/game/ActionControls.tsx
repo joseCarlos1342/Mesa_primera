@@ -2,6 +2,7 @@
 
 import { m, AnimatePresence } from 'framer-motion'
 import { Room } from '@colyseus/sdk'
+import { formatAmount } from '@/utils/format'
 
 interface ActionControlsProps {
   room: Room;
@@ -81,7 +82,7 @@ export function ActionControls({
             }}
             className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
           >
-            VOY ${(currentMaxBet / 100).toLocaleString()}
+            VOY ${formatAmount(currentMaxBet)}
           </button>
         )}
         {piqueFixed && !canAffordPique && myChips > 0 && (
@@ -93,7 +94,7 @@ export function ActionControls({
             }}
             className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
           >
-            Resto ${(myChips / 100).toLocaleString()}
+            Resto ${formatAmount(myChips)}
           </button>
         )}
 
@@ -114,12 +115,12 @@ export function ActionControls({
                 ? 'bg-gradient-to-b from-gray-500 to-gray-700 text-gray-300 border-gray-800 cursor-not-allowed opacity-60'
                 : 'bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white border-green-700'
             }`}>
-            IR! ${(totalBet / 100).toLocaleString()}
+            IR! ${formatAmount(totalBet)}
           </button>
         )}
         {isPique && isBetBelowMin && !piqueFixed && (
           <span className="text-[7px] md:text-[9px] text-red-400 font-bold uppercase tracking-wider whitespace-nowrap">
-            Mín: ${(minPique / 100).toLocaleString()}
+            Mín: ${formatAmount(minPique)}
           </span>
         )}
 
@@ -130,7 +131,7 @@ export function ActionControls({
             onClick={() => send('igualar')}
             className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-green-700 active:scale-95 transition-all uppercase tracking-wider"
           >
-            IR ${(callAmount / 100).toLocaleString()}
+            IR ${formatAmount(callAmount)}
           </button>
         )}
 
@@ -140,7 +141,7 @@ export function ActionControls({
             onClick={() => send('resto')}
             className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
           >
-            IR Resto ${(myChips / 100).toLocaleString()}
+            IR Resto ${formatAmount(myChips)}
           </button>
         )}
 
@@ -156,7 +157,7 @@ export function ActionControls({
               onClick={onBetConfirm}
               className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
             >
-              IR! ${(totalBet / 100).toLocaleString()}
+              IR! ${formatAmount(totalBet)}
             </button>
           </>
         )}
