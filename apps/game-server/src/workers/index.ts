@@ -38,7 +38,7 @@ export const ledgerWorker = new Worker(
       // Get all users with wallets
       const { data: wallets, error: walletsErr } = await supabase
         .from('wallets')
-        .select('user_id, balance');
+        .select('user_id, balance_cents');
 
       if (walletsErr) {
         console.error('[LedgerWorker] Error fetching wallets:', walletsErr);
@@ -63,7 +63,7 @@ export const ledgerWorker = new Worker(
         }
 
         const ledgerBalance = lastEntry?.balance_after_cents ?? 0;
-        const walletBalance = wallet.balance ?? 0;
+        const walletBalance = wallet.balance_cents ?? 0;
 
         if (ledgerBalance !== walletBalance) {
           discrepancies.push({
