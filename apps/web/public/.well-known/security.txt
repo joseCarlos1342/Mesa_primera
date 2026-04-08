@@ -1,0 +1,8 @@
+# Security Policy — Primera Riverada los 4 Ases
+# https://securitytxt.org/
+
+Contact: mailto:seguridad@primerariveradalos4ases.com
+Expires: 2027-04-01T00:00:00.000Z
+Preferred-Languages: es, en
+Canonical: https://primerariveradalos4ases.com/.well-known/security.txt
+Policy: https://primerariveradalos4ases.com/security-policy
