@@ -14,10 +14,10 @@ interface ShowdownPlayer {
 
 interface ShowdownCinematicProps {
   players: ShowdownPlayer[];
-  timer: number;
   pot: number;
   piquePot: number;
   dealerId: string;
+  onDismiss?: () => void;
 }
 
 const HAND_RANK: Record<string, number> = { 'SEGUNDA': 3, 'CHIVO': 2, 'PRIMERA': 1, 'NINGUNA': 0 };
@@ -35,7 +35,7 @@ function parseCard(cardStr: string) {
   return { value, suit, src: `/cards/${paddedValue}-${mappedSuit}.png?v=3` };
 }
 
-export function ShowdownCinematic({ players, timer, pot, piquePot, dealerId }: ShowdownCinematicProps) {
+export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss }: ShowdownCinematicProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
 
@@ -108,19 +108,13 @@ export function ShowdownCinematic({ players, timer, pot, piquePot, dealerId }: S
   return (
     <div 
       ref={containerRef}
-      className="absolute inset-0 z-60 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm pointer-events-none"
+      className="absolute inset-0 z-60 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm pointer-events-auto"
       style={{ opacity: 0 }}
     >
-      {/* Header: Timer + Title */}
+      {/* Header: Title */}
       <div className="showdown-header flex flex-col items-center mb-6 md:mb-8">
         <div className="text-[#d4af37] text-[10px] md:text-xs uppercase tracking-[0.3em] font-black mb-2">
           Mostrando Cartas
-        </div>
-        <div className="relative">
-          <div className="text-white font-mono font-black text-5xl md:text-7xl tabular-nums">
-            {timer}
-          </div>
-          <div className="absolute -inset-4 border border-[#d4af37]/20 rounded-xl" />
         </div>
       </div>
 
@@ -192,6 +186,20 @@ export function ShowdownCinematic({ players, timer, pot, piquePot, dealerId }: S
           </div>
         )}
       </div>
+
+      {/* Dismiss button */}
+      {onDismiss && (
+        <button
+          onClick={onDismiss}
+          className="mt-6 md:mt-8 h-10 md:h-12 px-6 md:px-8
+            bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04]
+            rounded-xl font-black text-xs md:text-sm
+            shadow-lg border-b-[3px] border-b-[#5c4613]
+            hover:-translate-y-0.5 active:scale-95 transition-all uppercase tracking-wider"
+        >
+          Cerrar
+        </button>
+      )}
     </div>
   );
 }

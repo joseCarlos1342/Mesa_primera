@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Search, ArrowRightLeft, Check, AlertCircle, Loader2, User, ChevronLeft } from 'lucide-react'
 import { lookupUserByPhone, transferToPlayer } from '@/app/actions/transfer'
+import { getAvatarSvg } from '@/utils/avatars'
 
 interface TransferModalProps {
   isOpen: boolean
@@ -110,13 +111,13 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
           initial={{ opacity: 0, scale: 0.92, y: 24 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.92, y: 24 }}
-          className="relative w-full max-w-md max-h-[90vh] flex flex-col bg-[#0a0a0a] border-2 border-cyan-500/30 rounded-[2rem] shadow-[0_30px_80px_rgba(0,0,0,0.9),0_0_60px_rgba(6,182,212,0.08)] overflow-hidden"
+          className="relative w-full max-w-md max-h-[90vh] flex flex-col bg-[#0a0a0a] border-2 border-brand-gold/30 rounded-[2rem] md:rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden"
         >
           {/* Header Glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-40 rounded-full blur-[80px] -mt-20 pointer-events-none bg-cyan-500/8" />
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none bg-brand-gold/5" />
 
           {/* Top Bar */}
-          <div className="relative z-10 p-6 flex items-center justify-between border-b border-cyan-500/10 shrink-0">
+          <div className="relative z-10 p-6 md:p-8 flex items-center justify-between border-b border-brand-gold/10 shrink-0">
             <div className="flex items-center gap-3">
               {step !== 'search' && step !== 'result' && (
                 <button
@@ -130,14 +131,14 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                   <ChevronLeft className="w-5 h-5 text-white/60" />
                 </button>
               )}
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center border shadow-lg bg-cyan-500/10 border-cyan-500/20">
-                <ArrowRightLeft className="w-5 h-5 text-cyan-400" />
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-lg bg-brand-gold/10 border-brand-gold/20">
+                <ArrowRightLeft className="w-6 h-6 text-brand-gold" />
               </div>
               <div>
-                <h3 className="text-sm font-display font-black uppercase tracking-[0.15em] italic leading-none text-cyan-400">
+                <h3 className="text-sm font-display font-black uppercase tracking-[0.2em] italic leading-none text-brand-gold">
                   Transferir Saldo
                 </h3>
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-0.5">
+                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-60 mt-1">
                   {step === 'search' && 'Buscar destinatario'}
                   {step === 'confirm-recipient' && 'Confirmar destinatario'}
                   {step === 'amount' && 'Ingresar monto'}
@@ -148,14 +149,14 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
             </div>
             <button
               onClick={handleClose}
-              className="w-10 h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-all active:scale-95 border border-white/10 group"
+              className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all active:scale-95 border border-white/10 group"
             >
-              <X className="w-5 h-5 text-white/40 group-hover:text-white transition-colors" />
+              <X className="w-6 h-6 text-text-secondary group-hover:text-text-premium transition-colors" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="relative z-10 p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+          <div className="relative z-10 p-6 md:p-10 space-y-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
 
             {/* ── Step 1: Search by phone ── */}
             {step === 'search' && (
@@ -166,14 +167,14 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
 
                 <div className="space-y-3">
                   <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-gold/40" />
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => { setPhone(e.target.value); setError(''); }}
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                       placeholder="+57 300 123 4567"
-                      className="w-full h-14 pl-12 pr-4 bg-white/5 border-2 border-white/10 focus:border-cyan-500/50 rounded-2xl text-white text-base font-medium placeholder:text-white/20 outline-none transition-all"
+                      className="w-full h-14 pl-12 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-base font-medium placeholder:text-white/20 outline-none transition-all"
                       autoFocus
                     />
                   </div>
@@ -188,7 +189,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                   <button
                     onClick={handleSearch}
                     disabled={loading || !phone.trim()}
-                    className="w-full h-14 bg-cyan-500/20 hover:bg-cyan-500/30 disabled:bg-white/5 disabled:text-white/20 text-cyan-400 disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-cyan-500/20 hover:border-cyan-500/40 disabled:border-white/5 active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full h-14 bg-brand-gold/20 hover:bg-brand-gold/30 disabled:bg-white/5 disabled:text-white/20 text-brand-gold disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-brand-gold/20 hover:border-brand-gold/40 disabled:border-white/5 active:scale-[0.98] flex items-center justify-center gap-2"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-4 h-4" />}
                     <span>{loading ? 'Buscando...' : 'Buscar Jugador'}</span>
@@ -204,24 +205,24 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                   <p className="text-sm text-white/60">Verifica que este sea el jugador correcto antes de continuar.</p>
                 </div>
 
-                <div className="p-6 bg-cyan-500/5 border-2 border-cyan-500/20 rounded-[1.5rem] space-y-4">
+                <div className="p-6 bg-brand-gold/5 border-2 border-brand-gold/20 rounded-[1.5rem] space-y-4">
                   {/* Avatar + Info */}
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/20 flex items-center justify-center overflow-hidden shrink-0">
-                      {recipient.avatar_url ? (
-                        <img src={`/avatars/${recipient.avatar_url}.png`} alt="" className="w-full h-full object-cover" />
+                    <div className="w-16 h-16 rounded-2xl bg-brand-gold/10 border-2 border-brand-gold/20 flex items-center justify-center overflow-hidden shrink-0">
+                      {recipient.avatar_url && getAvatarSvg(recipient.avatar_url) ? (
+                        <div className="w-full h-full p-1">{getAvatarSvg(recipient.avatar_url)}</div>
                       ) : (
-                        <User className="w-8 h-8 text-cyan-400/60" />
+                        <User className="w-8 h-8 text-brand-gold/60" />
                       )}
                     </div>
                     <div className="min-w-0">
                       <p className="font-display font-black text-lg text-white italic uppercase tracking-tight truncate">{recipient.username}</p>
                       <p className="text-xs text-white/40 font-bold">Nivel {recipient.level}</p>
-                      <p className="text-xs text-cyan-400/70 font-mono mt-0.5">{maskPhone(phone)}</p>
+                      <p className="text-xs text-brand-gold/70 font-mono mt-0.5">{maskPhone(phone)}</p>
                     </div>
                   </div>
 
-                  <div className="h-px bg-cyan-500/10" />
+                  <div className="h-px bg-brand-gold/10" />
 
                   <div className="flex gap-3">
                     <button
@@ -232,7 +233,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                     </button>
                     <button
                       onClick={() => setStep('amount')}
-                      className="flex-1 h-12 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-xl font-black uppercase tracking-[0.15em] text-[10px] transition-all border-2 border-cyan-500/30 active:scale-[0.97]"
+                      className="flex-1 h-12 bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold rounded-xl font-black uppercase tracking-[0.15em] text-[10px] transition-all border-2 border-brand-gold/30 active:scale-[0.97]"
                     >
                       Confirmar ✓
                     </button>
@@ -260,7 +261,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                       placeholder="0"
                       min="100"
                       step="100"
-                      className="w-full h-16 pl-10 pr-4 bg-white/5 border-2 border-white/10 focus:border-cyan-500/50 rounded-2xl text-white text-2xl font-display font-black italic placeholder:text-white/10 outline-none transition-all text-center"
+                      className="w-full h-16 pl-10 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-2xl font-display font-black italic placeholder:text-white/10 outline-none transition-all text-center"
                       autoFocus
                     />
                   </div>
@@ -282,7 +283,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                   <button
                     onClick={() => setStep('confirm-transfer')}
                     disabled={amountCents < 10000 || amountCents > currentBalance}
-                    className="w-full h-14 bg-cyan-500/20 hover:bg-cyan-500/30 disabled:bg-white/5 disabled:text-white/20 text-cyan-400 disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-cyan-500/20 hover:border-cyan-500/40 disabled:border-white/5 active:scale-[0.98]"
+                    className="w-full h-14 bg-brand-gold/20 hover:bg-brand-gold/30 disabled:bg-white/5 disabled:text-white/20 text-brand-gold disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-brand-gold/20 hover:border-brand-gold/40 disabled:border-white/5 active:scale-[0.98]"
                   >
                     Continuar
                   </button>
@@ -314,7 +315,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                   <div className="h-px bg-white/5" />
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Monto</span>
-                    <span className="font-display font-black text-xl text-cyan-400 italic">${(amountCents / 100).toLocaleString()}</span>
+                    <span className="font-display font-black text-xl text-brand-gold italic">${(amountCents / 100).toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -336,7 +337,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                   <button
                     onClick={handleTransfer}
                     disabled={loading}
-                    className="flex-1 h-14 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white rounded-2xl font-black uppercase tracking-[0.15em] text-xs transition-all shadow-[0_8px_20px_rgba(6,182,212,0.25)] hover:shadow-[0_12px_30px_rgba(6,182,212,0.35)] active:scale-[0.97] flex items-center justify-center gap-2"
+                    className="flex-1 h-14 bg-brand-gold hover:brightness-110 text-black rounded-2xl font-black uppercase tracking-[0.15em] text-xs transition-all shadow-[inset_0_-6px_0_#8b6b2e,0_10px_20px_rgba(0,0,0,0.4)] hover:shadow-[inset_0_-4px_0_#8b6b2e,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-0.5 active:shadow-[inset_0_-2px_0_#8b6b2e,0_4px_8px_rgba(0,0,0,0.2)] flex items-center justify-center gap-2"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
                     <span>{loading ? 'Procesando...' : 'Confirmar'}</span>

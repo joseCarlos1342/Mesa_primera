@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Search, ArrowRightLeft, Check, AlertCircle, Loader2, User, ChevronLeft } from 'lucide-react'
 import { lookupUserByPhone } from '@/app/actions/transfer'
+import { getAvatarSvg } from '@/utils/avatars'
 import type { Room } from '@colyseus/sdk'
 
 interface GameTransferModalProps {
@@ -119,14 +120,14 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
           initial={{ opacity: 0, scale: 0.95, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 30 }}
-          className="relative bg-gradient-to-br from-[#0d2b3d] via-[#0a1f2e] to-[#0a0a0a] border-2 border-cyan-500/30 w-full h-full sm:h-auto sm:max-h-[85vh] sm:max-w-md sm:rounded-[2.5rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.9),0_0_80px_rgba(6,182,212,0.06)] flex flex-col"
+          className="relative bg-gradient-to-br from-[#1a1a0a] via-[#12120a] to-[#0a0a0a] border-2 border-brand-gold/30 w-full h-full sm:h-auto sm:max-h-[85vh] sm:max-w-md sm:rounded-[2.5rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col"
         >
           {/* Decorative */}
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('/textures/noise.png')] mix-blend-overlay" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-40 bg-cyan-500/5 rounded-full blur-[100px] -translate-y-1/2 pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-40 bg-brand-gold/5 rounded-full blur-[100px] -translate-y-1/2 pointer-events-none" />
 
           {/* Header */}
-          <div className="p-5 pb-3 flex justify-between items-center relative z-10 border-b border-cyan-500/10">
+          <div className="p-5 pb-3 flex justify-between items-center relative z-10 border-b border-brand-gold/10">
             <div className="flex items-center gap-3">
               {step !== 'search' && step !== 'result' && (
                 <button
@@ -141,7 +142,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                 </button>
               )}
               <div>
-                <h2 className="text-xl font-display font-black italic text-cyan-400 leading-none tracking-tight uppercase">
+                <h2 className="text-xl font-display font-black italic text-brand-gold leading-none tracking-tight uppercase">
                   Transferir
                 </h2>
                 <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mt-0.5">
@@ -155,7 +156,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
             </div>
             <button
               onClick={handleClose}
-              className="w-10 h-10 bg-black/40 hover:bg-black/60 rounded-xl flex items-center justify-center transition-all border border-cyan-500/15 hover:border-cyan-500/30 active:scale-90 group"
+              className="w-10 h-10 bg-black/40 hover:bg-black/60 rounded-xl flex items-center justify-center transition-all border border-brand-gold/15 hover:border-brand-gold/30 active:scale-90 group"
             >
               <X className="w-5 h-5 text-white/50 group-hover:text-white group-hover:rotate-90 transition-all" />
             </button>
@@ -177,7 +178,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                     onChange={(e) => { setPhone(e.target.value); setError(''); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     placeholder="+57 300 123 4567"
-                    className="w-full h-14 pl-12 pr-4 bg-white/5 border-2 border-white/10 focus:border-cyan-500/50 rounded-2xl text-white text-base font-medium placeholder:text-white/15 outline-none transition-all"
+                    className="w-full h-14 pl-12 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-base font-medium placeholder:text-white/15 outline-none transition-all"
                     autoFocus
                   />
                 </div>
@@ -192,7 +193,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                 <button
                   onClick={handleSearch}
                   disabled={loading || !phone.trim()}
-                  className="w-full h-14 bg-cyan-500/20 hover:bg-cyan-500/30 disabled:bg-white/5 disabled:text-white/20 text-cyan-400 disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-cyan-500/20 disabled:border-white/5 active:scale-[0.98] flex items-center justify-center gap-2"
+                  className="w-full h-14 bg-brand-gold/20 hover:bg-brand-gold/30 disabled:bg-white/5 disabled:text-white/20 text-brand-gold disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-brand-gold/20 disabled:border-white/5 active:scale-[0.98] flex items-center justify-center gap-2"
                 >
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-4 h-4" />}
                   <span>{loading ? 'Buscando...' : 'Buscar'}</span>
@@ -205,19 +206,19 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                 <p className="text-sm text-white/50 text-center">¿Es este jugador?</p>
 
-                <div className="p-5 bg-cyan-500/5 border-2 border-cyan-500/20 rounded-2xl space-y-4">
+                <div className="p-5 bg-brand-gold/5 border-2 border-brand-gold/20 rounded-2xl space-y-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/20 flex items-center justify-center overflow-hidden shrink-0">
-                      {recipient.avatar_url ? (
-                        <img src={`/avatars/${recipient.avatar_url}.png`} alt="" className="w-full h-full object-cover" />
+                    <div className="w-14 h-14 rounded-2xl bg-brand-gold/10 border-2 border-brand-gold/20 flex items-center justify-center overflow-hidden shrink-0">
+                      {recipient.avatar_url && getAvatarSvg(recipient.avatar_url) ? (
+                        <div className="w-full h-full p-1">{getAvatarSvg(recipient.avatar_url)}</div>
                       ) : (
-                        <User className="w-7 h-7 text-cyan-400/60" />
+                        <User className="w-7 h-7 text-brand-gold/60" />
                       )}
                     </div>
                     <div className="min-w-0">
                       <p className="font-display font-black text-lg text-white italic uppercase truncate">{recipient.username}</p>
                       <p className="text-xs text-white/40 font-bold">Nivel {recipient.level}</p>
-                      <p className="text-xs text-cyan-400/60 font-mono mt-0.5">{maskPhone(phone)}</p>
+                      <p className="text-xs text-brand-gold/60 font-mono mt-0.5">{maskPhone(phone)}</p>
                     </div>
                   </div>
 
@@ -225,7 +226,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                     <button onClick={() => { setRecipient(null); setStep('search'); }} className="flex-1 h-11 bg-white/5 hover:bg-white/10 text-white/50 rounded-xl font-bold uppercase tracking-widest text-[10px] border border-white/10">
                       Buscar Otro
                     </button>
-                    <button onClick={() => setStep('amount')} className="flex-1 h-11 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-xl font-black uppercase tracking-wider text-[10px] border-2 border-cyan-500/30 active:scale-[0.97]">
+                    <button onClick={() => setStep('amount')} className="flex-1 h-11 bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold rounded-xl font-black uppercase tracking-wider text-[10px] border-2 border-brand-gold/30 active:scale-[0.97]">
                       Confirmar ✓
                     </button>
                   </div>
@@ -251,7 +252,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                     placeholder="0"
                     min="100"
                     step="100"
-                    className="w-full h-16 pl-10 pr-4 bg-white/5 border-2 border-white/10 focus:border-cyan-500/50 rounded-2xl text-white text-2xl font-display font-black italic placeholder:text-white/10 outline-none transition-all text-center"
+                    className="w-full h-16 pl-10 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-2xl font-display font-black italic placeholder:text-white/10 outline-none transition-all text-center"
                     autoFocus
                   />
                 </div>
@@ -273,7 +274,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                 <button
                   onClick={() => setStep('confirm-transfer')}
                   disabled={amountCents < 10000 || amountCents > myChips}
-                  className="w-full h-14 bg-cyan-500/20 hover:bg-cyan-500/30 disabled:bg-white/5 disabled:text-white/20 text-cyan-400 disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-cyan-500/20 disabled:border-white/5 active:scale-[0.98]"
+                  className="w-full h-14 bg-brand-gold/20 hover:bg-brand-gold/30 disabled:bg-white/5 disabled:text-white/20 text-brand-gold disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-brand-gold/20 disabled:border-white/5 active:scale-[0.98]"
                 >
                   Continuar
                 </button>
@@ -299,7 +300,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                   <div className="h-px bg-white/5" />
                   <div className="flex justify-between">
                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Monto</span>
-                    <span className="font-display font-black text-xl text-cyan-400 italic">${(amountCents / 100).toLocaleString()}</span>
+                    <span className="font-display font-black text-xl text-brand-gold italic">${(amountCents / 100).toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -317,7 +318,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                   <button
                     onClick={handleTransfer}
                     disabled={loading}
-                    className="flex-1 h-14 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white rounded-2xl font-black uppercase tracking-wider text-xs shadow-[0_8px_20px_rgba(6,182,212,0.25)] active:scale-[0.97] flex items-center justify-center gap-2"
+                    className="flex-1 h-14 bg-brand-gold hover:brightness-110 text-black rounded-2xl font-black uppercase tracking-wider text-xs shadow-[inset_0_-6px_0_#8b6b2e,0_10px_20px_rgba(0,0,0,0.4)] active:translate-y-0.5 active:shadow-[inset_0_-2px_0_#8b6b2e,0_4px_8px_rgba(0,0,0,0.2)] flex items-center justify-center gap-2"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
                     <span>{loading ? 'Enviando...' : 'Confirmar'}</span>
