@@ -55,19 +55,31 @@ async function verifyAdmin() {
 export async function getAuditLog(limit = 200): Promise<AuditLogEntry[]> {
   const supabase = await verifyAdmin()
 
+  // admin_audit_log.admin_id references auth.users (not profiles),
+  // so we fetch entries first, then resolve admin names from profiles separately.
   const { data: entries, error } = await supabase
     .from('admin_audit_log')
-    .select(`
-      id, admin_id, action, target_type, target_id, details, created_at,
-      admin:profiles!admin_audit_log_admin_id_fkey(full_name, username)
-    `)
+    .select('id, admin_id, action, target_type, target_id, details, created_at')
     .order('created_at', { ascending: false })
     .limit(limit)
 
   if (error) throw error
 
+  // Resolve admin names from profiles
+  const adminIds = [...new Set((entries || []).map((e: any) => e.admin_id).filter(Boolean))]
+  let adminMap: Record<string, { full_name: string | null; username: string | null }> = {}
+  if (adminIds.length > 0) {
+    const { data: admins } = await supabase
+      .from('profiles')
+      .select('id, full_name, username')
+      .in('id', adminIds)
+    for (const a of (admins || [])) {
+      adminMap[a.id] = { full_name: a.full_name, username: a.username }
+    }
+  }
+
   return (entries || []).map((en: any) => {
-    const pInfo = en.admin ? (Array.isArray(en.admin) ? en.admin[0] : en.admin) : null
+    const pInfo = adminMap[en.admin_id] || null
     return {
       ...en,
       admin: pInfo ? { display_name: pInfo.full_name || pInfo.username || 'Admin' } : null,
