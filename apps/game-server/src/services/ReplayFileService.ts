@@ -112,6 +112,74 @@ export class ReplayFileService {
     }
   }
 
+  /** Máximo de días que se retienen las grabaciones para jugadores */
+  private static readonly RETENTION_DAYS = 7;
+
+  /**
+   * Elimina archivos de replay con más de RETENTION_DAYS días de antigüedad.
+   * Se ejecuta al iniciar el servidor y periódicamente.
+   * Retorna el número de archivos eliminados.
+   */
+  static cleanup(): number {
+    this.init();
+    let deleted = 0;
+    const cutoff = Date.now() - this.RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+    try {
+      const months = fs.readdirSync(this.BASE_DIR)
+        .filter(d => fs.statSync(path.join(this.BASE_DIR, d)).isDirectory());
+
+      for (const month of months) {
+        const monthDir = path.join(this.BASE_DIR, month);
+        const files = fs.readdirSync(monthDir).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          const filePath = path.join(monthDir, file);
+          try {
+            const stat = fs.statSync(filePath);
+            if (stat.mtimeMs < cutoff) {
+              fs.unlinkSync(filePath);
+              deleted++;
+            }
+          } catch {
+            // Archivo ya borrado o inaccesible, saltar
+          }
+        }
+
+        // Eliminar carpeta mensual si quedó vacía
+        try {
+          const remaining = fs.readdirSync(monthDir);
+          if (remaining.length === 0) {
+            fs.rmdirSync(monthDir);
+          }
+        } catch {
+          // OK
+        }
+      }
+
+      if (deleted > 0) {
+        console.log(`[ReplayFileService] Cleanup: ${deleted} replays eliminados (más de ${this.RETENTION_DAYS} días)`);
+      }
+    } catch (e: any) {
+      console.error('[ReplayFileService] Cleanup error:', e.message);
+    }
+
+    return deleted;
+  }
+
+  /**
+   * Inicia el job periódico de limpieza (cada 6 horas).
+   * Llamar una vez al iniciar el servidor.
+   */
+  static startCleanupJob(): void {
+    // Limpieza inmediata al arrancar
+    this.cleanup();
+    // Repetir cada 6 horas
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    setInterval(() => this.cleanup(), SIX_HOURS);
+    console.log(`[ReplayFileService] Cleanup job iniciado: cada 6h, retención=${this.RETENTION_DAYS} días`);
+  }
+
   /**
    * Lista las grabaciones disponibles, opcionalmente filtradas por room_id.
    * Retorna metadatos sin el timeline completo (para listados).
@@ -119,6 +187,7 @@ export class ReplayFileService {
   static list(options?: { roomId?: string; limit?: number }): Omit<ReplayData, 'timeline' | 'admin_timeline'>[] {
     this.init();
     const limit = options?.limit || 100;
+    const cutoff = new Date(Date.now() - this.RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const results: Omit<ReplayData, 'timeline' | 'admin_timeline'>[] = [];
 
     try {
@@ -138,6 +207,8 @@ export class ReplayFileService {
             const raw = fs.readFileSync(path.join(monthDir, file), 'utf-8');
             const replay = JSON.parse(raw) as ReplayData;
             if (options?.roomId && replay.room_id !== options.roomId) continue;
+            // Filtrar replays más antiguos que la ventana de retención
+            if (replay.created_at < cutoff) continue;
             // Excluir timelines pesados del listado
             const { timeline, admin_timeline, ...meta } = replay;
             results.push(meta);
