@@ -1740,40 +1740,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    // 2+ jugadores con piquePot pendiente → resolver el pique antes de continuar
-    if (this.state.piquePot > 0) {
-      const manoId = this.state.dealerId;
-      // Evaluar manos y encontrar al ganador del pique
-      let winner = remaining[0];
-      let bestHand = evaluateHand(winner.cards);
-      let bestRank = { 'SEGUNDA': 4, 'CHIVO': 3, 'PRIMERA': 2, 'NINGUNA': 1 }[bestHand.type] || 0;
-      let bestPts = bestHand.points + (winner.id === manoId ? 1 : 0);
-
-      for (let i = 1; i < remaining.length; i++) {
-        const p = remaining[i];
-        const h = evaluateHand(p.cards);
-        const rank = { 'SEGUNDA': 4, 'CHIVO': 3, 'PRIMERA': 2, 'NINGUNA': 1 }[h.type] || 0;
-        const pts = h.points + (p.id === manoId ? 1 : 0);
-        if (rank > bestRank || (rank === bestRank && pts > bestPts)) {
-          winner = p; bestHand = h; bestRank = rank; bestPts = pts;
-        }
-      }
-
-      console.log(`[MesaRoom] Resolución del Pique: ${winner.nickname} gana con ${bestHand.type} (${bestPts} pts)`);
-
-      // Revelar cartas de todos los jugadores activos para el showdown del pique
-      remaining.forEach(p => { p.revealedCards = p.cards; });
-      this.state.lastAction = `¡${winner.nickname} gana el Pique con ${bestHand.type}!`;
-
-      // Usar el flujo show-muck existente para el pique
-      this.pendingPiqueWinnerId = winner.id;
-      this.state.phase = "SHOWDOWN";
-      this.state.showdownTimer = 0;
-      // No hay timer automático — se espera "dismiss-showdown"
-      return;
-    }
-
-    // 2+ jugadores sin pique → continuar partida normalmente
+    // 2+ jugadores → continuar partida normalmente (el pique se resuelve en el showdown final)
     this.startPhaseApuesta4Cartas();
   }
 
