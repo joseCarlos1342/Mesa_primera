@@ -54,7 +54,7 @@ export async function getLedgerEntries(limit = 100): Promise<AdminLedgerEntry[]>
     .select(`
       id, user_id, amount_cents, type, direction, balance_before_cents, balance_after_cents,
       reference_id, description, metadata, status, created_at,
-      user:profiles(full_name, username)
+      user:profiles!ledger_user_id_fkey(full_name, username)
     `)
     .order("created_at", { ascending: false })
     .limit(limit);

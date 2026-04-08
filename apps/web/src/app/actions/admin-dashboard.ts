@@ -59,11 +59,25 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const { data: activeUsersCount } = await supabase
     .rpc("get_active_users_count");
 
-  // Fetch active games (status values in DB: waiting, in_progress, finished)
-  const { count: activeGamesCount } = await supabase
-    .from("games")
-    .select("*", { count: "exact", head: true })
-    .in("status", ["waiting", "in_progress"]);
+  // Fetch active rooms from Colyseus matchmaker API (real-time, not stale DB records)
+  let activeGamesCount = 0;
+  try {
+    const gsUrl = process.env.GAME_SERVER_URL || process.env.NEXT_PUBLIC_GAME_SERVER_URL || 'https://vps23830.cubepath.net';
+    const res = await fetch(`${gsUrl}/matchmake/`, { next: { revalidate: 0 }, signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const rooms = await res.json() as any[];
+      // Only count rooms with at least 1 client (real active games)
+      activeGamesCount = rooms.filter((r: any) => r.clients > 0).length;
+    }
+  } catch {
+    // Fallback: count recent in-progress games in DB (created within last 24h)
+    const { count } = await supabase
+      .from("games")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["waiting", "in_progress"])
+      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+    activeGamesCount = count || 0;
+  }
 
   // Financial Integrity Check
   // 1. Sum of all user balances
