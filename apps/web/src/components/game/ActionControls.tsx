@@ -28,7 +28,7 @@ interface ActionControlsProps {
 }
 
 const EMPTY_CARDS: string[] = [];
-const ACTIVE_PHASES = ['PIQUE', 'APUESTA_4_CARTAS', 'DESCARTE', 'GUERRA', 'CANTICOS', 'GUERRA_JUEGO'];
+const ACTIVE_PHASES = ['PIQUE', 'APUESTA_4_CARTAS', 'DESCARTE', 'GUERRA', 'CANTICOS', 'GUERRA_JUEGO', 'DECLARAR_JUEGO'];
 const BETTING_PHASES_4CARDS = ['APUESTA_4_CARTAS', 'GUERRA', 'CANTICOS', 'GUERRA_JUEGO'];
 
 export function ActionControls({
@@ -37,10 +37,11 @@ export function ActionControls({
   currentMaxBet = 0, myRoundBet = 0, myChips = 0, isAllIn = false,
 }: ActionControlsProps) {
   if (!isMyTurn || !ACTIVE_PHASES.includes(phase)) return null;
-  if (isAllIn) return null; // Restiado players don't see controls
+  if (isAllIn && phase !== 'DECLARAR_JUEGO') return null; // Restiado players still declare juego
 
   const is4CardBetting = BETTING_PHASES_4CARDS.includes(phase);
   const isPique = phase === 'PIQUE';
+  const isDeclararJuego = phase === 'DECLARAR_JUEGO';
   const isBetBelowMin = isPique && totalBet > 0 && totalBet < minPique;
 
   // Pique obligatorio: La Mano ya fijó el monto y yo no soy La Mano
@@ -170,26 +171,52 @@ export function ActionControls({
           </button>
         )}
 
-        {/* ── PASO — contextual label & style ── */}
-        <button
-          onClick={() => {
-            if (phase === 'DESCARTE') {
-              // En DESCARTE, Paso = mantener todas las cartas (no botarse)
-              send('discard', { droppedCards: [] });
-            } else {
-              send('paso');
-            }
-          }}
-          className={`h-7 md:h-10 px-3 md:px-6 rounded-lg font-black text-[9px] md:text-sm shadow border-b-2 active:scale-95 transition-all uppercase tracking-widest ${
-            // Check style (green/neutral) when no active bet in 4-card phases or DESCARTE
-            ((is4CardBetting && !hasActiveBet) || phase === 'DESCARTE')
-              ? 'bg-gradient-to-b from-[#6b7280] to-[#4b5563] text-white border-b-[#374151]'
-              // Fold/Stay style (red) otherwise
-              : 'bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white border-b-[#7f1d1d]'
-          }`}
-        >
-          Paso
-        </button>
+        {/* ── DECLARAR_JUEGO: Tengo Juego / No Tengo Juego ── */}
+        {isDeclararJuego && (
+          <>
+            <button
+              onClick={() => {
+                if (navigator.vibrate) navigator.vibrate(50);
+                room.send('declarar-juego', { tiene: true });
+              }}
+              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+            >
+              Tengo Juego
+            </button>
+            <button
+              onClick={() => {
+                if (navigator.vibrate) navigator.vibrate(50);
+                room.send('declarar-juego', { tiene: false });
+              }}
+              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
+            >
+              No Tengo Juego
+            </button>
+          </>
+        )}
+
+        {/* ── PASO — contextual label & style (hidden during DECLARAR_JUEGO) ── */}
+        {!isDeclararJuego && (
+          <button
+            onClick={() => {
+              if (phase === 'DESCARTE') {
+                // En DESCARTE, Paso = mantener todas las cartas (no botarse)
+                send('discard', { droppedCards: [] });
+              } else {
+                send('paso');
+              }
+            }}
+            className={`h-7 md:h-10 px-3 md:px-6 rounded-lg font-black text-[9px] md:text-sm shadow border-b-2 active:scale-95 transition-all uppercase tracking-widest ${
+              // Check style (green/neutral) when no active bet in 4-card phases or DESCARTE
+              ((is4CardBetting && !hasActiveBet) || phase === 'DESCARTE')
+                ? 'bg-gradient-to-b from-[#6b7280] to-[#4b5563] text-white border-b-[#374151]'
+                // Fold/Stay style (red) otherwise
+                : 'bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white border-b-[#7f1d1d]'
+            }`}
+          >
+            Paso
+          </button>
+        )}
       </m.div>
     </AnimatePresence>
   )

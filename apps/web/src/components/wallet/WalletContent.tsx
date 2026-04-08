@@ -61,13 +61,13 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
             </Link>
             <button
               onClick={() => setShowTransfer(true)}
-              className="group relative flex-1 h-16 bg-cyan-500/20 hover:bg-cyan-500/30 rounded-2xl transition-all duration-200 border-2 border-cyan-500/30 hover:border-cyan-500/50 active:scale-[0.97] overflow-hidden"
+              className="group relative flex-1 h-16 bg-brand-gold/15 hover:bg-brand-gold/25 rounded-2xl transition-all duration-200 border-2 border-brand-gold/30 hover:border-brand-gold/50 active:scale-[0.97] overflow-hidden"
             >
-              <span className="relative z-10 flex items-center justify-center gap-2 text-cyan-400 font-black uppercase tracking-[0.15em] text-[10px] sm:text-xs">
+              <span className="relative z-10 flex items-center justify-center gap-2 text-brand-gold font-black uppercase tracking-[0.15em] text-[10px] sm:text-xs">
                 <ArrowRightLeft className="w-5 h-5" />
                 <span>Transferir</span>
               </span>
-              <div className="absolute inset-0 bg-cyan-400/10 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out"></div>
+              <div className="absolute inset-0 bg-brand-gold/10 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out"></div>
             </button>
           </div>
         </div>

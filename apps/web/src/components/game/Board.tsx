@@ -584,63 +584,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
         )}
       </AnimatePresence>
 
-      {/* DECLARAR_JUEGO: Each player declares if they have game */}
-      <AnimatePresence>
-        {phase === 'DECLARAR_JUEGO' && (
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto"
-          >
-            {isMyTurn ? (() => {
-              const hand = evaluateHand(myCards);
-              const handLabel: Record<string, string> = {
-                'SEGUNDA': 'Segunda',
-                'CHIVO': 'Chivo',
-                'PRIMERA': 'Primera',
-                'NINGUNA': 'Sin Juego',
-              };
-              return (
-                <div className="flex flex-col items-center gap-4 px-6">
-                  <div className="text-[#d4af37] text-[10px] md:text-xs uppercase tracking-[0.3em] font-black">
-                    Declara tu Juego
-                  </div>
-                  <div className="text-white/70 text-sm md:text-base text-center">
-                    Tu mano: <span className="text-[#fdf0a6] font-bold">{handLabel[hand.type]}</span>
-                    {hand.type !== 'NINGUNA' && (
-                      <span className="text-white/50"> ({hand.points} pts)</span>
-                    )}
-                  </div>
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => { if (navigator.vibrate) navigator.vibrate(50); room.send('declarar-juego', { tiene: true }); }}
-                      className="h-12 px-6 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-xl font-black text-sm shadow-lg border-b-[3px] border-b-[#5c4613] hover:-translate-y-0.5 transition-all uppercase tracking-wider"
-                    >
-                      Tengo Juego
-                    </button>
-                    <button
-                      onClick={() => { if (navigator.vibrate) navigator.vibrate(50); room.send('declarar-juego', { tiene: false }); }}
-                      className="h-12 px-6 bg-gradient-to-b from-[#6b7280] to-[#374151] text-white rounded-xl font-black text-sm shadow-lg border-b-[3px] border-b-[#1f2937] hover:-translate-y-0.5 transition-all uppercase tracking-wider"
-                    >
-                      No Tengo Juego
-                    </button>
-                  </div>
-                </div>
-              );
-            })() : (
-              <div className="flex flex-col items-center gap-2">
-                <div className="text-[#d4af37] text-[10px] md:text-xs uppercase tracking-[0.3em] font-black">
-                  Declaración de Juego
-                </div>
-                <div className="text-white/50 text-sm">
-                  Esperando que {players.find(p => p.id === room.state.turnPlayerId)?.nickname ?? 'jugador'} declare...
-                </div>
-              </div>
-            )}
-          </m.div>
-        )}
-      </AnimatePresence>
+      {/* DECLARAR_JUEGO: handled via ActionControls buttons (no overlay) */}
 
       {/* SHOWDOWN / Pique Showdown Cinematic Overlay */}
       <AnimatePresence>
@@ -653,10 +597,10 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           >
             <ShowdownCinematic
               players={players}
-              timer={room.state.showdownTimer ?? 10}
               pot={phase === 'SHOWDOWN' ? pot : 0}
               piquePot={piquePot}
               dealerId={room.state.dealerId}
+              onDismiss={() => room.send('dismiss-showdown')}
             />
           </m.div>
         )}
@@ -673,7 +617,6 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           >
             <div className="flex flex-col items-center gap-4">
               <div className="text-[#d4af37] text-xs uppercase tracking-[0.3em] font-black">¡Ganaste!</div>
-              <div className="text-white font-mono font-black text-4xl md:text-6xl tabular-nums mb-2">{room.state.showdownTimer ?? 5}</div>
               <div className="text-white/70 text-sm mb-2">¿Deseas mostrar tus cartas?</div>
               <div className="flex gap-4">
                 <button
@@ -706,7 +649,6 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
             <div className="flex flex-col items-center gap-2">
               <div className="text-[#d4af37] text-xs uppercase tracking-[0.3em] font-black">{room.state.lastAction}</div>
               <div className="text-white/50 text-sm">Esperando decisión del ganador...</div>
-              <div className="text-white font-mono font-black text-3xl tabular-nums">{room.state.showdownTimer ?? 5}</div>
             </div>
           </m.div>
         )}
