@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Search, ArrowRightLeft, Check, AlertCircle, Loader2, User, ChevronLeft } from 'lucide-react'
 import { lookupUserByPhone } from '@/app/actions/transfer'
 import { getAvatarSvg } from '@/utils/avatars'
+import { formatAmount } from '@/utils/format'
 import type { Room } from '@colyseus/sdk'
 
 interface GameTransferModalProps {
@@ -177,7 +178,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                     value={phone}
                     onChange={(e) => { setPhone(e.target.value); setError(''); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="+57 300 123 4567"
+                    placeholder="300 123 4567"
                     className="w-full h-14 pl-12 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-base font-medium placeholder:text-white/15 outline-none transition-all"
                     autoFocus
                   />
@@ -239,7 +240,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                 <div className="text-center space-y-1">
                   <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Fichas disponibles</p>
-                  <p className="text-2xl font-display font-black text-brand-gold italic">${(myChips / 100).toLocaleString()}</p>
+                  <p className="text-2xl font-display font-black text-brand-gold italic">${formatAmount(myChips)}</p>
                 </div>
 
                 <div className="relative">
@@ -300,7 +301,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                   <div className="h-px bg-white/5" />
                   <div className="flex justify-between">
                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Monto</span>
-                    <span className="font-display font-black text-xl text-brand-gold italic">${(amountCents / 100).toLocaleString()}</span>
+                    <span className="font-display font-black text-xl text-brand-gold italic">${formatAmount(amountCents)}</span>
                   </div>
                 </div>
 
@@ -341,12 +342,12 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                       <Check className="w-8 h-8 text-emerald-400" />
                     </motion.div>
                     <h4 className="text-base font-display font-black uppercase italic text-emerald-400">Transferencia Exitosa</h4>
-                    <p className="text-3xl font-display font-black italic text-white">${((result.amountCents || 0) / 100).toLocaleString()}</p>
+                    <p className="text-3xl font-display font-black italic text-white">${formatAmount(result.amountCents || 0)}</p>
                     <p className="text-xs text-white/40">enviados a <strong className="text-white">{result.recipientName}</strong></p>
                     {result.newBalance !== undefined && (
                       <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
                         <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">Fichas restantes</p>
-                        <p className="text-xl font-display font-black italic text-brand-gold">${(result.newBalance / 100).toLocaleString()}</p>
+                        <p className="text-xl font-display font-black italic text-brand-gold">${formatAmount(result.newBalance)}</p>
                       </div>
                     )}
                   </>

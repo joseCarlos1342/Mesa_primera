@@ -11,7 +11,7 @@ import { RulesModal } from '@/components/game/RulesModal'
 import { ReconnectOverlay } from '@/components/game/ReconnectOverlay'
 import { GameHeader } from '@/components/game/game-header'
 import dynamic from 'next/dynamic'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency, formatAmount } from '@/utils/format'
 
 const Board = dynamic(
   () => import('../../../components/game/Board').then(mod => mod.Board),
@@ -147,7 +147,6 @@ export default function GameRoomPage() {
 
     async function joinRoom() {
       try {
-        console.log(`Connecting to room ${roomId}...`);
 
         // Pequeño delay para permitir que el cliente se estabilice tras un reload rápido
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -166,13 +165,11 @@ export default function GameRoomPage() {
 
         if (savedToken) {
           try {
-            console.log("Token de reconexión encontrado, intentando reconectar...");
             joinedRoom = await client.reconnect(savedToken);
-            console.log("Reconectado exitosamente a la silla original!");
           } catch (e: any) {
             // No mostrar como error crítico si es solo que el token expiró (común tras reinicio de server o mucho tiempo offline)
             if (e.message?.includes("expired") || e.message?.includes("invalid")) {
-              console.log("El token de reconexión expiró o es inválido. Entrando como nuevo jugador...");
+              // Token expiró — normal tras reinicio de server
             } else {
               console.warn("Fallo al reconectar:", e.message || e);
             }
@@ -237,7 +234,6 @@ export default function GameRoomPage() {
 
           const chips = parseInt(sessionStorage.getItem(`chips_${roomId}`) || "1000");
 
-          console.log(`Joining room ${roomId} as new player: ${nick} with ${chips} chips...`);
           joinedRoom = await client.joinById(roomId, {
             nickname: nick,
             deviceId: deviceId,
@@ -251,11 +247,9 @@ export default function GameRoomPage() {
         }
 
         activeRoom = joinedRoom;
-        console.log('Joined room:', joinedRoom.roomId, 'Session ID:', joinedRoom.sessionId);
         setRoom(joinedRoom)
 
         joinedRoom.onLeave((code) => {
-          console.warn('Left room with code', code)
           // No intentar reconectar si el jugador abandonó intencionalmente
           if (code !== 1000 && !abandonedRef.current) {
             setIsReconnecting(true);
@@ -466,10 +460,10 @@ export default function GameRoomPage() {
                 <>
                   <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-[#d4af37]">Cobro de Banda</span>
                   <span className="text-lg md:text-2xl font-black text-[#fdf0a6]">
-                    {bandaEvent.winnerNickname} +${(bandaEvent.totalBanda / 100).toLocaleString()}
+                    {bandaEvent.winnerNickname} +${formatAmount(bandaEvent.totalBanda)}
                   </span>
                   <span className="text-[9px] md:text-[11px] text-[#8faa96] font-bold">
-                    ${(bandaEvent.bandaPerPlayer / 100).toLocaleString()} × {bandaEvent.details?.length || 0} jugador(es)
+                    ${formatAmount(bandaEvent.bandaPerPlayer)} × {bandaEvent.details?.length || 0} jugador(es)
                   </span>
                 </>
               )}
@@ -510,7 +504,7 @@ export default function GameRoomPage() {
                   <div className="bg-[#071a0e]/80 border border-[#d4af37]/20 rounded-xl p-3 md:p-5 flex flex-col items-center gap-1.5">
                     <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a059]/70">Pique Mínimo</span>
                     <span className="text-xl md:text-3xl font-black text-[#fdf0a6] tracking-tight">
-                      ${(minPique / 100).toLocaleString()}
+                      ${formatAmount(minPique)}
                     </span>
                     <span className="text-[8px] md:text-[10px] text-[#8faa96] font-bold uppercase tracking-wider">
                       Banda: ${minPique >= 1_000_000 ? '5,000' : '2,000'} por jugador
@@ -523,7 +517,7 @@ export default function GameRoomPage() {
                           {players.find((p: any) => p.id === proposedPiqueBy)?.nickname || 'Jugador'} propone:
                         </span>
                         <span className="text-lg md:text-2xl font-black text-[#fdf0a6]">
-                          ${(proposedPique / 100).toLocaleString()}
+                          ${formatAmount(proposedPique)}
                         </span>
                         <div className="flex items-center gap-3 text-[10px] md:text-xs text-[#8faa96] font-bold">
                           <span className="text-emerald-400">✓ {piqueVotesFor}</span>
@@ -574,7 +568,7 @@ export default function GameRoomPage() {
                               disabled={amount === minPique}
                               className="px-3 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#fdf0a6] font-bold text-[10px] md:text-xs hover:border-[#d4af37]/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                             >
-                              ${(amount / 100).toLocaleString()}
+                              ${formatAmount(amount)}
                             </button>
                           ))}
                           <button

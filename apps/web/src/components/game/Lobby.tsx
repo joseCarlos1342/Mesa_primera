@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 import { DepositModal } from '@/components/game/DepositModal'
 import { CustomMesaModal } from '@/components/game/CustomMesaModal'
 import Link from 'next/link'
+import { formatAmount } from '@/utils/format'
 
 export function Lobby() {
   const [rooms, setRooms] = useState<RoomAvailable[]>([])
@@ -502,7 +503,7 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
     const balance = userProfile?.balance_cents || 0;
     const requiredMin = isPlaceholder ? 5_000_000 : roomMinEntry;
     if (balance < requiredMin) {
-      alert(`Fondos insuficientes. Se requiere un saldo mínimo de $${(requiredMin / 100).toLocaleString()} para entrar a esta mesa. Por favor, recargue su cuenta.`);
+      alert(`Fondos insuficientes. Se requiere un saldo mínimo de $${formatAmount(requiredMin)} para entrar a esta mesa. Por favor, recargue su cuenta.`);
       return;
     }
 
@@ -616,10 +617,10 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
           {isCustom && !isPlaceholder && (
             <div className="flex flex-wrap gap-2 mt-2 justify-center md:justify-start">
               <span className="px-3 py-1 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] text-[10px] font-black uppercase tracking-wider">
-                Entrada: ${(roomMinEntry / 100).toLocaleString()}
+                Entrada: ${formatAmount(roomMinEntry)}
               </span>
               <span className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider">
-                Pique: ${(roomMinPique / 100).toLocaleString()}
+                Pique: ${formatAmount(roomMinPique)}
               </span>
               {meta?.disabledChips?.length > 0 && (
                 <span className="px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider">

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { ArrowUpWideNarrow, Plus, ArrowDownLeft, ArrowUpRight, Landmark } from 'lucide-react'
 import { useState } from 'react'
 import { TransactionModal } from '@/components/wallet/TransactionModal'
+import { formatAmount } from '@/utils/format'
 
 export function HistoryList({ transactions }: { transactions: any[] }) {
   const [selectedTx, setSelectedTx] = useState<any>(null)
@@ -92,7 +93,7 @@ function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxCli
                   tx.direction === 'credit'
                     ? 'text-brand-gold' : 'text-text-premium'
                 }`}>
-                  {tx.direction === 'credit' ? '+' : '-'}${Math.abs((tx.amount_cents || 0) / 100).toLocaleString()}
+                  {tx.direction === 'credit' ? '+' : '-'}${formatAmount(Math.abs(tx.amount_cents || 0))}
                 </p>
                 <div className="flex justify-end">
                   <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${

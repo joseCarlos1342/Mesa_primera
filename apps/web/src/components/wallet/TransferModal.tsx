@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Search, ArrowRightLeft, Check, AlertCircle, Loader2, User, ChevronLeft } from 'lucide-react'
 import { lookupUserByPhone, transferToPlayer } from '@/app/actions/transfer'
 import { getAvatarSvg } from '@/utils/avatars'
+import { formatAmount } from '@/utils/format'
 
 interface TransferModalProps {
   isOpen: boolean
@@ -162,7 +163,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
             {step === 'search' && (
               <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                 <div className="text-center space-y-2">
-                  <p className="text-sm text-white/60">Ingresa el número de teléfono del jugador al que deseas transferir saldo.</p>
+                  <p className="text-sm text-white/60">Ingresa el número de celular del jugador al que deseas transferir saldo.</p>
                 </div>
 
                 <div className="space-y-3">
@@ -173,7 +174,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                       value={phone}
                       onChange={(e) => { setPhone(e.target.value); setError(''); }}
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                      placeholder="+57 300 123 4567"
+                      placeholder="300 123 4567"
                       className="w-full h-14 pl-12 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-base font-medium placeholder:text-white/20 outline-none transition-all"
                       autoFocus
                     />
@@ -247,7 +248,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                 <div className="text-center space-y-1">
                   <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Saldo disponible</p>
-                  <p className="text-2xl font-display font-black text-brand-gold italic">${(currentBalance / 100).toLocaleString()}</p>
+                  <p className="text-2xl font-display font-black text-brand-gold italic">${formatAmount(currentBalance)}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -315,7 +316,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                   <div className="h-px bg-white/5" />
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Monto</span>
-                    <span className="font-display font-black text-xl text-brand-gold italic">${(amountCents / 100).toLocaleString()}</span>
+                    <span className="font-display font-black text-xl text-brand-gold italic">${formatAmount(amountCents)}</span>
                   </div>
                 </div>
 
@@ -361,13 +362,13 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                     </motion.div>
                     <div className="space-y-1">
                       <h4 className="text-lg font-display font-black uppercase tracking-tight italic text-emerald-400">Transferencia Exitosa</h4>
-                      <p className="text-4xl font-display font-black italic text-white tracking-tighter">${(amountCents / 100).toLocaleString()}</p>
+                      <p className="text-4xl font-display font-black italic text-white tracking-tighter">${formatAmount(amountCents)}</p>
                       <p className="text-xs text-white/50 mt-1">enviados a <strong className="text-white">{recipient?.username}</strong></p>
                     </div>
                     {result.newBalance !== undefined && (
                       <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
                         <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Nuevo Saldo</p>
-                        <p className="text-2xl font-display font-black italic text-brand-gold">${(result.newBalance / 100).toLocaleString()}</p>
+                        <p className="text-2xl font-display font-black italic text-brand-gold">${formatAmount(result.newBalance)}</p>
                       </div>
                     )}
                   </>

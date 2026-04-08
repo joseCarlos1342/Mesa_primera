@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getWalletData } from '@/app/actions/wallet'
 import { TransactionModal } from '../wallet/TransactionModal'
+import { formatAmount } from '@/utils/format'
 
 export function PlayerDashboard() {
   const [data, setData] = useState<any>(null)
@@ -42,7 +43,7 @@ export function PlayerDashboard() {
             <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-text-secondary mb-1 opacity-60">Saldo Disponible</span>
             <div className="flex items-baseline justify-center gap-2 md:gap-4 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] w-full">
               <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black italic bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent tracking-tight whitespace-nowrap pr-4">
-                ${(balance / 100).toLocaleString()}
+                ${formatAmount(balance)}
               </span>
             </div>
           </div>
@@ -137,7 +138,7 @@ export function PlayerDashboard() {
                   <span className={`block text-lg md:text-xl font-display font-black italic tracking-tighter ${
                     tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? 'text-brand-gold' : 'text-text-premium'
                   }`}>
-                    {tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? '+' : '-'}${(Math.abs(tx.amount_cents || 0) / 100).toLocaleString()}
+                    {tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? '+' : '-'}${formatAmount(Math.abs(tx.amount_cents || 0))}
                   </span>
                   <div className="flex justify-end">
                     <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${

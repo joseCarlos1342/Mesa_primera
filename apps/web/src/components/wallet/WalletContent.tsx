@@ -6,6 +6,7 @@ import { ArrowUpWideNarrow, Landmark, Plus, ArrowUpRight, ArrowDownLeft, ArrowRi
 import { useState } from 'react'
 import { TransactionModal } from './TransactionModal'
 import { TransferModal } from './TransferModal'
+import { formatAmount } from '@/utils/format'
 
 interface WalletContentProps {
   wallet: any;
@@ -45,7 +46,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
           <div className="flex flex-col items-center w-full">
             <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-text-secondary mb-1 opacity-60">Saldo en Cartera</span>
             <h2 className="text-5xl md:text-7xl font-display font-black text-brand-gold italic tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] leading-none select-none pr-4">
-              ${(balance / 100).toLocaleString()}
+              ${formatAmount(balance)}
             </h2>
           </div>
 
@@ -204,7 +205,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                     tx.direction === 'credit'
                       ? 'text-brand-gold' : 'text-text-premium'
                   }`}>
-                    {tx.direction === 'credit' ? '+' : '-'}${Math.abs((tx.amount_cents || 0) / 100).toLocaleString()}
+                    {tx.direction === 'credit' ? '+' : '-'}${formatAmount(Math.abs(tx.amount_cents || 0))}
                   </p>
                   <div className="flex justify-end">
                     <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${

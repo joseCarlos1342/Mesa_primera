@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Calendar, Landmark, Hash, Info, ExternalLink, ShieldCheck, FileText, Banknote } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { useEffect, useState } from 'react'
+import { formatAmount } from '@/utils/format'
 
 interface TransactionModalProps {
   transaction: any | null
@@ -119,7 +120,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
                    <p className={`text-6xl md:text-7xl font-display font-black italic tracking-tighter leading-none ${
                      transaction.direction === 'credit' ? 'text-brand-gold' : 'text-red-400'
                    }`}>
-                    {getAmountPrefix(transaction.type, transaction.direction)}${(Math.abs(transaction.amount_cents || 0) / 100).toLocaleString()}
+                    {getAmountPrefix(transaction.type, transaction.direction)}${formatAmount(Math.abs(transaction.amount_cents || 0))}
                   </p>
                   <div className={`mt-4 px-4 py-1.5 rounded-full border-2 text-[10px] font-black uppercase tracking-widest ${
                     transaction.status === 'completed' ? 'bg-brand-gold text-black border-brand-gold' :
