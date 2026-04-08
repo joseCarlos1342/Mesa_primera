@@ -47,6 +47,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private juegoCallers: string[] = [];
   /** ID del ganador del pique pendiente de decidir mostrar/ocultar cartas. */
   private pendingPiqueWinnerId: string = "";
+  private pendingShowdownData: { overallWinnerId: string; potWinners: any[]; totalPayout: number; totalRake: number; activePlayers: Player[] } | null = null;
   /** Votación democrática del pique fijo. */
   private piqueVoters = new Map<string, boolean>();
   private piqueProposerId: string = "";
@@ -512,6 +513,37 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.advanceTurnPhase2();
     });
 
+    this.onMessage("dismiss-showdown", (client) => {
+      if (this.state.phase !== "SHOWDOWN") return;
+
+      // Limpiar cartas reveladas
+      this.state.players.forEach((p: Player) => { p.revealedCards = ""; });
+
+      // Caso 1: Showdown del pique (después de completar 4 cartas)
+      if (this.pendingPiqueWinnerId) {
+        const winnerId = this.pendingPiqueWinnerId;
+        this.attemptManoRotation(winnerId, "Mano ganó Pique");
+        this.awardPiqueAndContinue(winnerId);
+        return;
+      }
+
+      // Caso 2: Showdown de un solo jugador que eligió mostrar cartas
+      if (!this.pendingShowdownData) {
+        // Solo queda 1 jugador que mostró sus cartas
+        const winner = Array.from(this.state.players.values() as IterableIterator<Player>)
+          .find(p => !p.isFolded && p.connected);
+        if (winner) {
+          this.awardPot(winner.id);
+        }
+        return;
+      }
+
+      // Caso 3: Showdown multi-jugador
+      const { overallWinnerId, potWinners, totalPayout, totalRake, activePlayers } = this.pendingShowdownData;
+      this.pendingShowdownData = null;
+      this.finalizeShowdown(overallWinnerId, potWinners, totalPayout, totalRake, activePlayers);
+    });
+
     this.onMessage("declarar-juego", (client, message) => {
       if (this.state.phase !== "DECLARAR_JUEGO") return;
       if (this.state.turnPlayerId !== client.sessionId) return;
@@ -550,17 +582,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           this.state.lastAction = `${player.nickname} muestra sus cartas del Pique`;
           player.revealedCards = player.cards;
           this.state.phase = "SHOWDOWN";
-          this.state.showdownTimer = 10;
-          const interval = this.clock.setInterval(() => {
-            this.state.showdownTimer--;
-            if (this.state.showdownTimer <= 0) {
-              interval.clear();
-              player.revealedCards = "";
-              // Mano Ganadora: si la Mano ganó el pique mostrando su juego, rota
-              this.attemptManoRotation(client.sessionId, "Mano ganó Pique mostrando juego");
-              this.awardPiqueAndContinue(client.sessionId);
-            }
-          }, 1000);
+          this.state.showdownTimer = 0;
+          // Sin timer — esperar "dismiss-showdown"
         } else {
           this.state.lastAction = `${player.nickname} no muestra las cartas`;
           this.awardPiqueAndContinue(client.sessionId);
@@ -571,16 +594,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       if (message.action === "show") {
         this.state.lastAction = `${player.nickname} muestra sus cartas`;
         player.revealedCards = player.cards;
-        // Mostrar cartas con animación de showdown por 10s, luego entregar
+        // Mostrar cartas sin timer automático — esperar "dismiss-showdown"
         this.state.phase = "SHOWDOWN";
-        this.state.showdownTimer = 10;
-        const interval = this.clock.setInterval(() => {
-          this.state.showdownTimer--;
-          if (this.state.showdownTimer <= 0) {
-            interval.clear();
-            this.awardPot(client.sessionId);
-          }
-        }, 1000);
+        this.state.showdownTimer = 0;
       } else {
         this.state.lastAction = `${player.nickname} no muestra las cartas`;
         this.awardPot(client.sessionId);
@@ -1159,6 +1175,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.dealerRotatedThisGame = false;
     this.piqueRestartCount = 0;
     this.piqueFoldCount.clear();
+    this.pendingPiqueWinnerId = "";
+    this.pendingShowdownData = null;
     this.currentGameId = crypto.randomUUID();
     this.currentTimeline = [];
     this.rngCounter = 0;
@@ -1645,6 +1663,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // El ganador del pique ya no juega por el pot principal — se retira
     winner.isFolded = true;
     winner.revealedCards = "";
+    // Devolver cartas del ganador al mazo
+    if (winner.cards) {
+      for (const card of winner.cards.split(',').filter(Boolean)) {
+        this.deck.push(card);
+      }
+    }
+    this.setPlayerCards(winnerId, "");
     if (winner.id === this.state.activeManoId) this.transferMano();
 
     this.pendingPiqueWinnerId = "";
@@ -1715,7 +1740,40 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    // 2+ jugadores → continuar partida normalmente
+    // 2+ jugadores con piquePot pendiente → resolver el pique antes de continuar
+    if (this.state.piquePot > 0) {
+      const manoId = this.state.dealerId;
+      // Evaluar manos y encontrar al ganador del pique
+      let winner = remaining[0];
+      let bestHand = evaluateHand(winner.cards);
+      let bestRank = { 'SEGUNDA': 4, 'CHIVO': 3, 'PRIMERA': 2, 'NINGUNA': 1 }[bestHand.type] || 0;
+      let bestPts = bestHand.points + (winner.id === manoId ? 1 : 0);
+
+      for (let i = 1; i < remaining.length; i++) {
+        const p = remaining[i];
+        const h = evaluateHand(p.cards);
+        const rank = { 'SEGUNDA': 4, 'CHIVO': 3, 'PRIMERA': 2, 'NINGUNA': 1 }[h.type] || 0;
+        const pts = h.points + (p.id === manoId ? 1 : 0);
+        if (rank > bestRank || (rank === bestRank && pts > bestPts)) {
+          winner = p; bestHand = h; bestRank = rank; bestPts = pts;
+        }
+      }
+
+      console.log(`[MesaRoom] Resolución del Pique: ${winner.nickname} gana con ${bestHand.type} (${bestPts} pts)`);
+
+      // Revelar cartas de todos los jugadores activos para el showdown del pique
+      remaining.forEach(p => { p.revealedCards = p.cards; });
+      this.state.lastAction = `¡${winner.nickname} gana el Pique con ${bestHand.type}!`;
+
+      // Usar el flujo show-muck existente para el pique
+      this.pendingPiqueWinnerId = winner.id;
+      this.state.phase = "SHOWDOWN";
+      this.state.showdownTimer = 0;
+      // No hay timer automático — se espera "dismiss-showdown"
+      return;
+    }
+
+    // 2+ jugadores sin pique → continuar partida normalmente
     this.startPhaseApuesta4Cartas();
   }
 
@@ -2039,33 +2097,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (activePlayers.length === 1) {
       const winner = activePlayers[0];
       this.state.lastAction = `¡${winner.nickname} gana!`;
-      // Dar opción de mostrar o no mostrar cartas
+      // Dar opción de mostrar o no mostrar cartas (sin timer automático)
       this.state.phase = "SHOWDOWN_WAIT";
       this.state.turnPlayerId = winner.id;
-      this.state.showdownTimer = 5;
-      const interval = this.clock.setInterval(() => {
-        this.state.showdownTimer--;
-        if (this.state.showdownTimer <= 0) {
-          interval.clear();
-          // Timeout: no mostró cartas, entregar pozo directo
-          this.awardPot(winner.id);
-        }
-      }, 1000);
+      this.state.showdownTimer = 0;
       return;
     }
 
-    // Revelar cartas selectivamente:
-    // - Si algún jugador lleva juego (Segunda, Chivo, Primera), solo mostrar esos mazos.
-    // - Si nadie lleva juego (todos NINGUNA), mostrar todos los mazos.
-    const playersWithGame = activePlayers.filter(p => {
-      const hand = evaluateHand(p.cards);
-      return hand.type !== 'NINGUNA';
-    });
-    const playersToReveal = playersWithGame.length > 0 ? playersWithGame : activePlayers;
-    playersToReveal.forEach(p => {
+    // Revelar cartas de TODOS los jugadores activos (obligatorio cuando 2+ compiten).
+    activePlayers.forEach(p => {
       p.revealedCards = p.cards;
     });
-    console.log(`[MesaRoom] Showdown: ${playersWithGame.length} con juego de ${activePlayers.length} activos → revelando ${playersToReveal.length} mazos`);
+    console.log(`[MesaRoom] Showdown: revelando cartas de ${activePlayers.length} jugadores activos`);
 
     // Calculate side pots
     const sidePots = this.calculateSidePots(activePlayers);
@@ -2118,16 +2161,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.lastAction = `¡${mainWinner.nickname} gana con ${bestHand.type}! (${bestHand.points} pts)`;
     }
 
-    // Show cards for 10 seconds before finalizing
-    this.state.showdownTimer = 10;
-    const interval = this.clock.setInterval(() => {
-      this.state.showdownTimer--;
-      if (this.state.showdownTimer <= 0) {
-        interval.clear();
-        // Finalize — pot already distributed to winners above, now persist
-        this.finalizeShowdown(overallWinnerId, potWinners, totalPayout, totalRake, activePlayers);
-      }
-    }, 1000);
+    // Sin timer automático — se espera "dismiss-showdown" de cualquier jugador
+    this.state.showdownTimer = 0;
+    // Guardar datos del showdown para finalizar cuando alguien cierre
+    this.pendingShowdownData = { overallWinnerId, potWinners, totalPayout, totalRake, activePlayers };
   }
 
   /**
@@ -2404,14 +2441,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.lastAction = `¡${winner.nickname} gana!`;
       this.state.phase = "SHOWDOWN_WAIT";
       this.state.turnPlayerId = winner.id;
-      this.state.showdownTimer = 5;
-      const interval = this.clock.setInterval(() => {
-        this.state.showdownTimer--;
-        if (this.state.showdownTimer <= 0) {
-          interval.clear();
-          this.awardPot(winner.id);
-        }
-      }, 1000);
+      this.state.showdownTimer = 0;
     } else {
       console.log(`[MesaRoom] Fin de mano prematuro, pero no hay un ganador claro. Se aborta partida.`);
       Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => p.isReady = false);
