@@ -18,6 +18,9 @@ export default defineServer({
     },
 
     express: (app) => {
+        // Iniciar job de limpieza de replays antiguos (>7 días)
+        ReplayFileService.startCleanupJob();
+
         app.use(cors({
             origin: (origin, callback) => callback(null, true),
             credentials: true
