@@ -11,6 +11,8 @@ export class Player extends Schema {
   @type("boolean") isReady: boolean = false;
   @type("boolean") isWaiting: boolean = false;
   @type("boolean") isAllIn: boolean = false;
+  /** Jugador que pasó con juego en APUESTA_4_CARTAS — reclamará el pique en DESCARTE. */
+  @type("boolean") passedWithJuego: boolean = false;
   @type("number") chips: number = 0;
   /** Apuesta del jugador en la ronda de apuestas actual (se resetea por fase). */
   @type("uint32") roundBet: number = 0;

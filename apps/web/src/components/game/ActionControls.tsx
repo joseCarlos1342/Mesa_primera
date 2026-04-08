@@ -26,6 +26,8 @@ interface ActionControlsProps {
   myChips?: number;
   /** Si el jugador ya está restiado (all-in). */
   isAllIn?: boolean;
+  /** Si el jugador pasó con juego en APUESTA_4_CARTAS — reclamará pique en DESCARTE. */
+  passedWithJuego?: boolean;
 }
 
 const EMPTY_CARDS: string[] = [];
@@ -36,6 +38,7 @@ export function ActionControls({
   room, phase, isMyTurn, selectedCards = EMPTY_CARDS, onClearSelection,
   totalBet = 0, onBetConfirm, onBetClear, minPique = 500_000,
   currentMaxBet = 0, myRoundBet = 0, myChips = 0, isAllIn = false,
+  passedWithJuego = false,
 }: ActionControlsProps) {
   if (!isMyTurn || !ACTIVE_PHASES.includes(phase)) return null;
   if (isAllIn && phase !== 'DECLARAR_JUEGO') return null; // Restiado players still declare juego
@@ -162,8 +165,21 @@ export function ActionControls({
           </>
         )}
 
-        {/* ── DESCARTE: only show Botar button when cards are selected ── */}
-        {phase === 'DESCARTE' && selectedCards.length > 0 && (
+        {/* ── DESCARTE: Llevo Juego (for players who passed with game) ── */}
+        {phase === 'DESCARTE' && passedWithJuego && (
+          <button
+            onClick={() => {
+              if (navigator.vibrate) navigator.vibrate(50);
+              room.send('llevo-juego');
+            }}
+            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+          >
+            Llevo Juego
+          </button>
+        )}
+
+        {/* ── DESCARTE: only show Botar button when cards are selected (not for passedWithJuego) ── */}
+        {phase === 'DESCARTE' && !passedWithJuego && selectedCards.length > 0 && (
           <button
             onClick={() => send('discard', { droppedCards: selectedCards })}
             className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
@@ -196,8 +212,8 @@ export function ActionControls({
           </>
         )}
 
-        {/* ── PASO — contextual label & style (hidden during DECLARAR_JUEGO) ── */}
-        {!isDeclararJuego && (
+        {/* ── PASO — contextual label & style (hidden during DECLARAR_JUEGO and passedWithJuego in DESCARTE) ── */}
+        {!isDeclararJuego && !(phase === 'DESCARTE' && passedWithJuego) && (
           <button
             onClick={() => {
               if (phase === 'DESCARTE') {

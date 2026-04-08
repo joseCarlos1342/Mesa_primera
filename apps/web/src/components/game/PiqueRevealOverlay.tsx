@@ -6,7 +6,7 @@ import { Room } from '@colyseus/sdk'
 
 interface PiqueRevealOverlayProps {
   room: Room;
-  players: { id: string; nickname: string; revealedCards: string; isFolded: boolean }[];
+  players: { id: string; nickname: string; revealedCards: string; isFolded: boolean; passedWithJuego?: boolean }[];
 }
 
 function parseCard(cardStr: string) {
@@ -26,7 +26,7 @@ export function PiqueRevealOverlay({ room, players }: PiqueRevealOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
 
-  const revealedPlayer = players.find(p => p.revealedCards && p.isFolded);
+  const revealedPlayer = players.find(p => p.revealedCards && (p.isFolded || p.passedWithJuego));
   const cards = revealedPlayer?.revealedCards
     ? revealedPlayer.revealedCards.split(',').filter(Boolean)
     : [];
