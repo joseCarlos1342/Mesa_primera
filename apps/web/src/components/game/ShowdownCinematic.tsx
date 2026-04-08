@@ -108,9 +108,11 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
   return (
     <div 
       ref={containerRef}
-      className="absolute inset-0 z-60 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm pointer-events-auto"
+      className="absolute inset-0 z-60 flex flex-col items-center bg-black/85 backdrop-blur-sm pointer-events-auto overflow-y-auto"
       style={{ opacity: 0 }}
     >
+      {/* Scrollable content wrapper */}
+      <div className="flex flex-col items-center w-full py-6 md:py-8 min-h-full justify-start md:justify-center">
       {/* Header: Title */}
       <div className="showdown-header flex flex-col items-center mb-6 md:mb-8">
         <div className="text-[#d4af37] text-[10px] md:text-xs uppercase tracking-[0.3em] font-black mb-2">
@@ -118,8 +120,8 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
         </div>
       </div>
 
-      {/* Players Grid */}
-      <div className={`flex flex-wrap justify-center gap-6 md:gap-10 px-4 max-w-5xl ${activePlayers.length <= 2 ? 'flex-row' : 'flex-row'}`}>
+      {/* Players — vertical stack on mobile, horizontal wrap on desktop */}
+      <div className="flex flex-col md:flex-row md:flex-wrap md:justify-center gap-6 md:gap-10 px-4 max-w-5xl w-full items-center">
         {activePlayers.map((player, pIdx) => {
           const cards = player.revealedCards.split(',').filter(Boolean);
           const hand = evaluateHand(player.revealedCards);
@@ -130,16 +132,22 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
           return (
             <div 
               key={player.id}
-              className={`flex flex-col items-center ${isWinner ? 'order-first' : ''}`}
+              className={`flex flex-col items-center ${isWinner ? 'md:order-first' : ''}`}
             >
+              {/* Player name above cards on mobile */}
+              <div className={`md:hidden mb-1.5 text-sm font-black tracking-wide ${isWinner ? 'text-[#d4af37]' : 'text-white/90'}`}>
+                {player.nickname}
+                {isMano && <span className="ml-1.5 text-[10px] text-[#d4af37]/70">(La Mano)</span>}
+              </div>
+
               {/* Cards */}
-              <div className="flex gap-1 md:gap-2 mb-3" style={{ perspective: 800 }}>
+              <div className="flex gap-1.5 md:gap-2 mb-2 md:mb-3" style={{ perspective: 800 }}>
                 {cards.map((cardStr, cIdx) => {
                   const card = parseCard(cardStr);
                   return (
                     <div
                       key={`${player.id}-${cardStr}-${cIdx}`}
-                      className={`showdown-card player-${pIdx}-card relative w-14 h-22 md:w-20 md:h-32 lg:w-24 lg:h-38 rounded-lg shadow-2xl overflow-hidden bg-white
+                      className={`showdown-card player-${pIdx}-card relative w-[72px] h-[108px] md:w-20 md:h-32 lg:w-24 lg:h-38 rounded-lg shadow-2xl overflow-hidden bg-white
                         ${isWinner ? 'ring-2 ring-[#d4af37] shadow-[0_0_20px_rgba(212,175,55,0.4)]' : ''}`}
                       style={{ transformStyle: 'preserve-3d' }}
                     >
@@ -155,7 +163,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
 
               {/* Player Label */}
               <div className={`showdown-label player-${pIdx}-label flex flex-col items-center`}>
-                <div className={`text-sm md:text-base font-black tracking-wide ${isWinner ? 'text-[#d4af37]' : 'text-white/90'}`}>
+                <div className={`hidden md:block text-base font-black tracking-wide ${isWinner ? 'text-[#d4af37]' : 'text-white/90'}`}>
                   {player.nickname}
                   {isMano && <span className="ml-1.5 text-[10px] text-[#d4af37]/70">(La Mano)</span>}
                 </div>
@@ -174,7 +182,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
       </div>
 
       {/* Pot Summary */}
-      <div className="mt-6 md:mt-8 flex gap-4">
+      <div className="mt-5 md:mt-8 flex gap-4 shrink-0">
         <div className="bg-[#0a180e]/90 px-4 py-2 rounded-xl border border-[#d4af37]/20">
           <span className="text-[#fdf0a6] text-[8px] uppercase tracking-widest opacity-60">Pozo</span>
           <div className="text-[#4ade80] font-mono font-black text-sm md:text-lg">{formatCurrency(pot)}</div>
@@ -191,7 +199,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="mt-6 md:mt-8 h-10 md:h-12 px-6 md:px-8
+          className="mt-5 md:mt-8 mb-4 h-10 md:h-12 px-6 md:px-8 shrink-0
             bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04]
             rounded-xl font-black text-xs md:text-sm
             shadow-lg border-b-[3px] border-b-[#5c4613]
@@ -200,6 +208,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
           Cerrar
         </button>
       )}
+      </div>
     </div>
   );
 }
