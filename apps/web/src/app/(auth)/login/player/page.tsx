@@ -271,14 +271,14 @@ function PlayerLoginContent() {
           <footer className="mt-10 pt-10 border-t-2 border-white/5 space-y-4 text-center">
             {hasPin !== false && (
               <p className="text-sm text-text-secondary">
-                ¿Olvidaste tu clave?{' '}
+                ¿Olvidaste tu clave?<br className="sm:hidden" />{' '}
                 <Link href="/recovery" className="text-brand-gold font-black hover:text-white underline underline-offset-8 decoration-2 decoration-brand-gold/40 hover:decoration-brand-gold transition-all">
                   Recupérala aquí
                 </Link>
               </p>
             )}
             <p className="text-sm text-text-secondary">
-              ¿Aún no tienes cuenta?{' '}
+              ¿Aún no tienes cuenta?<br className="sm:hidden" />{' '}
               <Link href="/register/player" className="text-brand-gold font-black hover:text-white underline underline-offset-8 decoration-2 decoration-brand-gold/40 hover:decoration-brand-gold transition-all">
                 Regístrate aquí
               </Link>
