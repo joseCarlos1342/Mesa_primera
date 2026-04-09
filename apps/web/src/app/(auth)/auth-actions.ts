@@ -648,11 +648,18 @@ export async function setPlayerPin(prevState: unknown, formData: FormData) {
     return { error: 'No se pudo configurar la clave. Intenta de nuevo.' }
   }
 
-  // Mark profile as having a PIN
-  await supabase
+  // Mark profile as having a PIN (use admin client to bypass RLS)
+  const { createAdminClient } = await import('@/utils/supabase/server')
+  const adminSupabase = await createAdminClient()
+  const { error: profileError } = await adminSupabase
     .from('profiles')
     .update({ has_pin: true })
     .eq('id', user.id)
+
+  if (profileError) {
+    console.error('[AUTH_ERROR] Error al marcar has_pin para %s: %s', user.id, profileError.message)
+    // PIN was set but flag wasn't — don't block the user, just log it
+  }
 
   // Register this device as trusted
   await registerTrustedDevice(user.id)
