@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { formatAmount } from '@/utils/format';
+import { Trophy, Clock, Users } from 'lucide-react';
 
 type TimelineEvent = {
   event: string;
@@ -24,6 +25,7 @@ type TimelineEvent = {
 
 type PlayerSnapshot = {
   userId: string;
+  sessionId?: string;
   nickname: string;
   cards: string;
   chips: number;
@@ -144,10 +146,10 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
   const players: PlayerSnapshot[] = replay.players || [];
   const progress = timeline.length > 1 ? (currentStep / (timeline.length - 1)) * 100 : 100;
 
-  // Find player nickname by session ID
   const getPlayerName = (sessionId?: string) => {
     if (!sessionId) return 'Desconocido';
-    const p = players.find(pl => pl.userId === sessionId);
+    // Priority: sessionId (new format), then userId (old format)
+    const p = players.find(pl => pl.sessionId === sessionId || pl.userId === sessionId);
     return p?.nickname || sessionId.substring(0, 8);
   };
 
@@ -169,16 +171,13 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Link href="/replays" className="text-[var(--text-secondary)] hover:text-[var(--accent-gold)] transition-colors text-sm font-bold">
-              ← Repeticiones
-            </Link>
-            {isAdmin && (
+          {isAdmin && (
+            <div className="mb-2">
               <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 tracking-widest">
                 MODO ADMIN
               </span>
-            )}
-          </div>
+            </div>
+          )}
           <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter text-[var(--accent-gold)]">
             Repetición de Partida
           </h1>
@@ -333,19 +332,21 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       </div>
 
       {/* Timeline Mini-Map */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border-glow)] rounded-[2rem] p-6 mb-6 shadow-2xl">
-        <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Línea de Tiempo</h3>
-        <div className="flex flex-wrap gap-1.5">
+      <div className="bg-black/30 border border-white/5 rounded-[2rem] p-6 mb-6 shadow-2xl backdrop-blur-md">
+        <h3 className="text-xs font-black uppercase tracking-widest text-[var(--accent-gold)] mb-4 flex items-center gap-2">
+          <Clock className="w-4 h-4" /> Línea de Tiempo
+        </h3>
+        <div className="flex flex-wrap gap-2">
           {timeline.map((ev, i) => (
             <button
               key={i}
               onClick={() => setCurrentStep(i)}
-              className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all border ${
+              className={`w-10 h-10 rounded-xl text-xs font-black transition-all border flex items-center justify-center ${
                 i === currentStep
-                  ? 'bg-[var(--accent-gold)] text-black border-[var(--accent-gold)] scale-110 shadow-lg'
+                  ? 'bg-[var(--accent-gold)] text-black border-[var(--accent-gold)] scale-110 shadow-[0_0_15px_rgba(234,179,8,0.4)]'
                   : i < currentStep
-                  ? 'bg-white/10 text-white/60 border-white/10'
-                  : 'bg-white/5 text-slate-500 border-white/5 hover:bg-white/10'
+                  ? 'bg-[var(--accent-gold)]/10 text-[var(--accent-gold)] border-[var(--accent-gold)]/20 hover:bg-[var(--accent-gold)]/20'
+                  : 'bg-black/40 text-slate-500 border-white/5 hover:bg-white/10 hover:text-white/80'
               }`}
               title={`${ev.event}${ev.phase ? ` (${ev.phase})` : ''}`}
             >
@@ -356,28 +357,38 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       </div>
 
       {/* Players State */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border-glow)] rounded-[2rem] p-6 shadow-2xl">
-        <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Estado Final de Jugadores</h3>
+      <div className="bg-black/30 border border-white/5 rounded-[2rem] p-6 shadow-2xl backdrop-blur-md mb-8">
+        <h3 className="text-xs font-black uppercase tracking-widest text-[var(--accent-gold)] mb-5 flex items-center gap-2">
+          <Users className="w-4 h-4" /> Estado Final de Jugadores
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {players.map((p, i) => {
             const isWinner = event.event === 'end' && event.winner === p.userId;
             return (
               <div
                 key={i}
-                className={`p-5 rounded-2xl border transition-all ${
+                className={`p-5 rounded-2xl border transition-all relative overflow-hidden ${
                   isWinner
-                    ? 'bg-[var(--accent-gold)]/10 border-[var(--accent-gold)]/30 shadow-lg'
-                    : 'bg-white/5 border-white/5'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_4px_24px_-8px_rgba(16,185,129,0.2)]'
+                    : 'bg-black/40 border-white/5 hover:bg-white/5'
                 }`}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-base font-black text-white italic">{p.nickname}</span>
-                  {isWinner && <span className="text-lg">🏆</span>}
+                {isWinner && (
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/50 to-emerald-400" />
+                )}
+                
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-lg font-black text-white italic truncate pr-2">{p.nickname}</span>
+                  {isWinner ? (
+                    <span className="text-emerald-400 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20">
+                      <Trophy className="w-4 h-4" />
+                    </span>
+                  ) : null}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fichas</span>
-                    <span className="text-sm font-black text-emerald-400">${formatAmount(p.chips)}</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-2 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#8b9b91]">Fichas</span>
+                    <span className="text-sm font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">${formatAmount(p.chips)}</span>
                   </div>
                   {p.cards && (
                     <div>
