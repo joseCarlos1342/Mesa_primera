@@ -217,55 +217,44 @@ export function AppLockProvider({
   }, [isEnabled, isLocked])
 
   // ── Enroll ──
+  // IMPORTANT: Call navigator.credentials.create() IMMEDIATELY on user gesture.
+  // Any async server call before it will consume the transient activation on mobile,
+  // causing NotAllowedError. Server-side passkey registration runs AFTER local enroll.
   const enroll = useCallback(async (): Promise<EnrollResult> => {
     isBiometricPromptActive.current = true
     try {
-      // 1. Try server-side WebAuthn registration (for Fast Login)
-      const serverResult = await getPasskeyRegistrationOptions()
-      if (serverResult.error) {
-        console.warn('[AppLock] Server options error:', serverResult.error)
-        // Fall through to local enrollment
-      } else if (serverResult.options) {
-        try {
+      // 1. Local biometric enrollment FIRST (preserves user gesture / transient activation)
+      const credentialId = await enrollCredential()
+      if (!credentialId) {
+        return { ok: false, error: 'Tu dispositivo no completó la verificación biométrica.' }
+      }
+
+      // Activate lock immediately
+      localStorage.setItem(APP_LOCK_KEY, 'true')
+      localStorage.setItem(CREDENTIAL_ID_KEY, credentialId)
+      stampActivity()
+      setIsEnabled(true)
+
+      // 2. Try server-side passkey registration in background (for Fast Login)
+      // This doesn't need user gesture — it reuses the credential already created
+      try {
+        const serverResult = await getPasskeyRegistrationOptions()
+        if (serverResult.options) {
           const attestation = await startRegistration({ optionsJSON: serverResult.options })
-          // Generate a stable device ID for this browser
           const deviceId = localStorage.getItem('mesa_primera_device_id') ?? crypto.randomUUID()
           localStorage.setItem('mesa_primera_device_id', deviceId)
-
           const verification = await verifyPasskeyRegistration(attestation, deviceId)
           if (verification.ok && verification.credentialId) {
-            localStorage.setItem(APP_LOCK_KEY, 'true')
+            // Update stored credential to server-verified one
             localStorage.setItem(CREDENTIAL_ID_KEY, verification.credentialId)
-            stampActivity()
-            setIsEnabled(true)
-            return { ok: true }
           }
-          console.warn('[AppLock] Server verification failed:', verification.error)
-        } catch (e: any) {
-          const errName = e?.name ?? ''
-          const errMsg = e?.message ?? String(e)
-          console.warn('[AppLock] startRegistration error:', errName, errMsg)
-          // If the user explicitly cancelled, propagate that
-          if (errName === 'NotAllowedError') {
-            return { ok: false, error: 'Permiso denegado o cancelado por el usuario.' }
-          }
-          if (errName === 'SecurityError') {
-            return { ok: false, error: 'Error de seguridad del dominio. Contacta soporte.' }
-          }
-          // For other errors, fall through to local enrollment
         }
+      } catch (e) {
+        // Server passkey registration is optional — app lock already works locally
+        console.warn('[AppLock] Server-side passkey registration skipped:', e)
       }
 
-      // 2. Fallback to local-only enrollment (works offline, still provides app-lock)
-      const credentialId = await enrollCredential()
-      if (credentialId) {
-        localStorage.setItem(APP_LOCK_KEY, 'true')
-        localStorage.setItem(CREDENTIAL_ID_KEY, credentialId)
-        stampActivity()
-        setIsEnabled(true)
-        return { ok: true }
-      }
-      return { ok: false, error: 'Tu dispositivo no completó la verificación biométrica.' }
+      return { ok: true }
     } catch (e: any) {
       console.error('[AppLock] Unexpected enroll error:', e)
       return { ok: false, error: e?.message || 'Error inesperado.' }
