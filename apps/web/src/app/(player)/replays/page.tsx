@@ -22,39 +22,39 @@ export default async function PlayerReplaysPage() {
       {/* Mesa List */}
       {mesas.length === 0 ? (
         <div className="text-center py-20">
-          <Film className="w-16 h-16 text-[var(--accent-gold)]/50 mx-auto mb-4" />
-          <p className="text-[var(--accent-gold)] font-bold text-lg">Aún no tienes partidas registradas</p>
+          <Film className="w-16 h-16 text-(--accent-gold)/50 mx-auto mb-4" />
+          <p className="text-(--accent-gold) font-bold text-lg">Aún no tienes partidas registradas</p>
           <p className="text-slate-400 text-sm mt-1">Juega una partida y aparecerá aquí.</p>
         </div>
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto bg-black/20 rounded-[2rem] border border-white/5 p-6 backdrop-blur-md">
+          <div className="hidden md:block overflow-x-auto bg-black/20 rounded-4xl border border-white/5 p-6 backdrop-blur-md">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10 text-left">
-                  <th className="pb-4 pt-2 text-xs font-black text-[var(--accent-gold)] uppercase tracking-widest pl-4">
+                  <th className="pb-4 pt-2 text-xs font-black text-(--accent-gold) uppercase tracking-widest pl-4">
                     <div className="flex items-center gap-1.5">
                       <Hash className="w-3.5 h-3.5" />
                       Mesa
                     </div>
                   </th>
-                  <th className="pb-4 pt-2 text-xs font-black text-[var(--accent-gold)] uppercase tracking-widest">
+                  <th className="pb-4 pt-2 text-xs font-black text-(--accent-gold) uppercase tracking-widest">
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" />
                       Fecha / Hora
                     </div>
                   </th>
-                  <th className="pb-4 pt-2 text-xs font-black text-[var(--accent-gold)] uppercase tracking-widest">
+                  <th className="pb-4 pt-2 text-xs font-black text-(--accent-gold) uppercase tracking-widest">
                     <div className="flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5" />
                       Jugadores
                     </div>
                   </th>
-                  <th className="pb-4 pt-2 text-xs font-black text-[var(--accent-gold)] uppercase tracking-widest text-center">
+                  <th className="pb-4 pt-2 text-xs font-black text-(--accent-gold) uppercase tracking-widest text-center">
                     Partidas
                   </th>
-                  <th className="pb-4 pt-2 text-xs font-black text-[var(--accent-gold)] uppercase tracking-widest text-right pr-4">
+                  <th className="pb-4 pt-2 text-xs font-black text-(--accent-gold) uppercase tracking-widest text-right pr-4">
                     Resultado
                   </th>
                   <th className="pb-4 pt-2 w-10" />
@@ -73,10 +73,10 @@ export default async function PlayerReplaysPage() {
                           href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}`}
                           className="flex flex-col gap-1"
                         >
-                          <span className="font-black text-lg text-white group-hover:text-[var(--accent-gold)] transition-colors">
+                          <span className="font-black text-lg text-white group-hover:text-(--accent-gold) transition-colors">
                             {mesa.table_name || 'Mesa'}
                           </span>
-                          <span className="text-[11px] text-[var(--accent-gold)]/60 font-mono tracking-widest">
+                          <span className="text-[11px] text-(--accent-gold)/60 font-mono tracking-widest">
                             {mesa.room_id.substring(0, 8)}
                           </span>
                         </Link>
@@ -103,7 +103,7 @@ export default async function PlayerReplaysPage() {
                         </div>
                       </td>
                       <td className="py-5 text-center">
-                        <span className="inline-flex items-center justify-center min-w-[2rem] h-8 px-3 rounded-xl bg-black/40 border border-white/10 text-sm font-black text-[var(--accent-gold)]">
+                        <span className="inline-flex items-center justify-center min-w-8 h-8 px-3 rounded-xl bg-black/40 border border-white/10 text-sm font-black text-(--accent-gold)">
                           {mesa.game_count}
                         </span>
                       </td>
@@ -119,7 +119,7 @@ export default async function PlayerReplaysPage() {
                       <td className="py-5 pr-2">
                         <Link
                           href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}`}
-                          className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 text-[var(--text-secondary)] group-hover:bg-[var(--accent-gold)] group-hover:text-black transition-all"
+                          className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 text-(--text-secondary) group-hover:bg-(--accent-gold) group-hover:text-black transition-all"
                         >
                           <ChevronRight className="w-5 h-5 ml-0.5" />
                         </Link>
@@ -142,15 +142,15 @@ export default async function PlayerReplaysPage() {
                 <Link
                   key={mesa.room_id}
                   href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}`}
-                  className="bg-black/20 border border-[var(--accent-gold)]/20 rounded-[2rem] p-5 backdrop-blur-md active:scale-[0.98] transition-transform flex flex-col relative overflow-hidden"
+                  className="bg-black/20 border border-(--accent-gold)/20 rounded-4xl p-5 backdrop-blur-md active:scale-[0.98] transition-transform flex flex-col relative overflow-hidden"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h2 className="font-black text-xl text-white flex items-center gap-2">
-                        <Hash className="w-5 h-5 text-[var(--accent-gold)]" />
+                        <Hash className="w-5 h-5 text-(--accent-gold)" />
                         {mesa.table_name || 'Mesa'}
                       </h2>
-                      <p className="text-[10px] text-[var(--accent-gold)]/60 font-mono tracking-widest mt-1">
+                      <p className="text-[10px] text-(--accent-gold)/60 font-mono tracking-widest mt-1">
                         {mesa.room_id.substring(0, 8)}
                       </p>
                     </div>
@@ -165,7 +165,7 @@ export default async function PlayerReplaysPage() {
 
                   <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm mb-4">
                     <div>
-                      <p className="text-[10px] font-black text-[var(--accent-gold)] uppercase tracking-widest mb-1 flex items-center gap-1">
+                      <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest mb-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Fecha
                       </p>
                       <p className="text-white font-bold">
@@ -178,15 +178,15 @@ export default async function PlayerReplaysPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-[var(--accent-gold)] uppercase tracking-widest mb-1 flex items-center gap-1">
+                      <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest mb-1 flex items-center gap-1">
                         <Film className="w-3 h-3" /> Partidas
                       </p>
                       <p className="text-white font-bold">{mesa.game_count} jugadas</p>
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-[var(--accent-gold)]/10">
-                    <p className="text-[10px] font-black text-[var(--accent-gold)] uppercase tracking-widest mb-1 flex items-center gap-1">
+                  <div className="pt-3 border-t border-(--accent-gold)/10">
+                    <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest mb-1 flex items-center gap-1">
                       <Users className="w-3 h-3" /> Jugadores
                     </p>
                     <p className="text-xs text-slate-300 font-medium truncate">
@@ -195,8 +195,8 @@ export default async function PlayerReplaysPage() {
                   </div>
 
                   {/* Arrow overlay */}
-                  <div className="absolute right-4 bottom-4 w-8 h-8 rounded-full bg-[var(--accent-gold)]/10 flex items-center justify-center">
-                    <ChevronRight className="w-4 h-4 text-[var(--accent-gold)]" />
+                  <div className="absolute right-4 bottom-4 w-8 h-8 rounded-full bg-(--accent-gold)/10 flex items-center justify-center">
+                    <ChevronRight className="w-4 h-4 text-(--accent-gold)" />
                   </div>
                 </Link>
               );

@@ -269,14 +269,26 @@ export async function verifyPasskeyLogin(
   // Ensure the user has a proxy email for magic link generation
   const proxyEmail = `player-${device.user_id}@passkey.mesa-primera.internal`
 
+  // Cast admin API for methods not fully typed in @supabase/supabase-js
+  const adminAuth = adminSupabase.auth.admin as typeof adminSupabase.auth.admin & {
+    updateUser: (uid: string, attrs: Record<string, unknown>) => Promise<{
+      data: { user?: unknown } | null
+      error: { message: string } | null
+    }>
+    generateLink: (params: { type: string; email: string }) => Promise<{
+      data: { properties?: { hashed_token?: string } } | null
+      error: { message: string } | null
+    }>
+  }
+
   // Set email on the auth user (idempotent) so generateLink works
-  await adminSupabase.auth.admin.updateUser(device.user_id, {
+  await adminAuth.updateUser(device.user_id, {
     email: proxyEmail,
     email_confirm: true,
   })
 
   // Generate a magic link — returns a hashed_token we can verify server-side
-  const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+  const { data: linkData, error: linkError } = await adminAuth.generateLink({
     type: 'magiclink',
     email: proxyEmail,
   })

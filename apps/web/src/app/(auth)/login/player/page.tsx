@@ -1,11 +1,13 @@
 "use client"
 
 import { Suspense, useActionState, useState, useTransition } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { loginWithPin, loginWithPhone, checkPhoneHasPin } from '../../auth-actions'
+import { getPasskeyLoginOptions, verifyPasskeyLogin } from '../../passkey-actions'
 import Link from 'next/link'
-import { LogIn, KeyRound } from 'lucide-react'
+import { LogIn, KeyRound, Fingerprint } from 'lucide-react'
 import { phoneSchema, pinSchema } from '@/lib/validations'
+import { startAuthentication } from '@simplewebauthn/browser'
 
 function PlayerLoginContent() {
   const [pinState, pinFormAction, isPinPending] = useActionState(loginWithPin, null)
@@ -18,6 +20,10 @@ function PlayerLoginContent() {
   const [pinValue, setPinValue] = useState('')
   const [hasPin, setHasPin] = useState<boolean | null>(null)
   const [isCheckingPin, startCheckingPin] = useTransition()
+  const [passkeyAvailable, setPasskeyAvailable] = useState(false)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [passkeyError, setPasskeyError] = useState<string | null>(null)
+  const router = useRouter()
   const searchParams = useSearchParams()
   const wasKicked = searchParams.get('kicked') === 'true'
 
@@ -44,6 +50,36 @@ function PlayerLoginContent() {
         const result = await checkPhoneHasPin(value)
         setHasPin(result)
       })
+      // Check if user has a trusted passkey device (in parallel)
+      getPasskeyLoginOptions(value).then(res => {
+        setPasskeyAvailable(!!res.available)
+      }).catch(() => setPasskeyAvailable(false))
+    }
+  }
+
+  async function handlePasskeyLogin() {
+    setPasskeyError(null)
+    setPasskeyLoading(true)
+    try {
+      const optionsResult = await getPasskeyLoginOptions(phoneValue)
+      if (!optionsResult.available || !optionsResult.options) {
+        setPasskeyError('No hay huella registrada para este dispositivo.')
+        return
+      }
+
+      const assertion = await startAuthentication({ optionsJSON: optionsResult.options })
+      const result = await verifyPasskeyLogin(phoneValue, assertion)
+
+      if (result.ok) {
+        router.push('/')
+        return
+      }
+
+      setPasskeyError(result.error ?? 'Error en la verificación.')
+    } catch (e) {
+      setPasskeyError('Verificación biométrica cancelada o fallida.')
+    } finally {
+      setPasskeyLoading(false)
     }
   }
 
@@ -189,6 +225,30 @@ function PlayerLoginContent() {
             {hasPin === false && (
               <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl text-amber-400/80 text-sm text-center animate-in fade-in duration-500">
                 Tu cuenta aún no tiene clave. Te enviaremos un código SMS para configurarla.
+              </div>
+            )}
+
+            {/* Biometric Fast Login */}
+            {passkeyAvailable && phoneIsValid && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {passkeyError && (
+                  <p className="text-red-400 text-xs font-bold text-center mb-3">{passkeyError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePasskeyLogin}
+                  disabled={passkeyLoading || isPending}
+                  className="group relative w-full h-20 bg-gradient-to-b from-emerald-600 via-emerald-700 to-emerald-800 text-white font-black uppercase tracking-widest text-base rounded-2xl transition-all duration-200 border-b-4 border-emerald-900 active:border-b-0 active:translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.4)] disabled:opacity-50 overflow-hidden"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-3">
+                    <Fingerprint className="w-6 h-6" />
+                    {passkeyLoading ? 'VERIFICANDO...' : 'ENTRAR CON HUELLA'}
+                  </span>
+                  <div className="absolute inset-0 bg-white/10 translate-x-[-105%] skew-x-[-20deg] group-hover:translate-x-[155%] transition-transform duration-1000 ease-in-out" />
+                </button>
+                <p className="text-center text-white/30 text-xs mt-3 uppercase tracking-widest font-bold">
+                  — o usa tu clave —
+                </p>
               </div>
             )}
 

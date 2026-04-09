@@ -420,6 +420,10 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       // User verified for PIN recovery — redirect to set new PIN
       redirect(`/recovery/pin`)
 
+    case 'login-set-pin':
+      // Legacy user without PIN — verified via OTP, now redirect to set PIN
+      redirect(`/register/player/pin`)
+
     default:
       // Legacy login flow (backwards compat)
       await enforceSessionPolicy(data.user.id)
