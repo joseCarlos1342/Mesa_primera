@@ -48,11 +48,12 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/recovery')
   const isPublicSeoPage = pathname === '/primera-riverada-los-4-ases'
   const isAdminPath = pathname.startsWith('/admin')
   const isMfaPage = pathname === '/login/admin/mfa'
   const isMfaSetupPage = pathname === '/login/admin/mfa/setup'
+  const isPinSetupPage = pathname === '/register/player/pin' || pathname === '/recovery/pin'
 
   // PREVENT REDIRECT FOR STATIC FILES
   const isStaticFile = pathname.match(/\.(json|xml|txt|png|jpg|jpeg|gif|webp|svg|ico)$/)
@@ -164,7 +165,8 @@ export async function updateSession(request: NextRequest) {
         }
       } else {
         // Un jugador logueado NO debe estar en páginas de auth
-        if (isAuthPage) {
+        // EXCEPTO: páginas de configuración de PIN (requieren sesión activa)
+        if (isAuthPage && !isPinSetupPage) {
           const url = request.nextUrl.clone()
           url.pathname = '/'
           return NextResponse.redirect(url)

@@ -121,8 +121,8 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[var(--accent-gold)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">Cargando repetición...</p>
+          <div className="w-10 h-10 border-2 border-(--accent-gold) border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold text-(--text-secondary) uppercase tracking-widest">Cargando repetición...</p>
         </div>
       </div>
     );
@@ -131,8 +131,8 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
   if (!replay) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-lg font-bold text-[var(--text-secondary)]">Repetición no encontrada</p>
-        <Link href="/lobby" className="text-[var(--accent-gold)] font-bold hover:underline">Volver al Lobby</Link>
+        <p className="text-lg font-bold text-(--text-secondary)">Repetición no encontrada</p>
+        <Link href="/lobby" className="text-(--accent-gold) font-bold hover:underline">Volver al Lobby</Link>
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-screen text-[var(--text-primary)]">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-screen text-(--text-primary)">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
@@ -178,10 +178,10 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
               </span>
             </div>
           )}
-          <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter text-[var(--accent-gold)]">
+          <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter text-(--accent-gold)">
             Repetición de Partida
           </h1>
-          <p className="text-xs text-[var(--text-secondary)] font-mono mt-1">
+          <p className="text-xs text-(--text-secondary) font-mono mt-1">
             ID: {replay.game_id?.substring(0, 8)} &middot; Seed: {replay.rng_seed?.substring(0, 12)}...
           </p>
         </div>
@@ -204,7 +204,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       <div className="mb-6">
         <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[var(--accent-gold)] to-amber-500 rounded-full transition-all duration-300"
+            className="h-full bg-linear-to-r from-(--accent-gold) to-amber-500 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -215,7 +215,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       </div>
 
       {/* Main Event Display */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border-glow)] rounded-[2rem] p-6 md:p-8 mb-6 shadow-2xl">
+      <div className="bg-(--bg-card) border border-(--border-glow) rounded-4xl p-6 md:p-8 mb-6 shadow-2xl">
         {/* Event Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -291,7 +291,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
           className={`px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all border ${
             isPlaying
               ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-              : 'bg-[var(--accent-gold)] text-black border-[var(--accent-gold)]'
+              : 'bg-(--accent-gold) text-black border-(--accent-gold)'
           }`}
         >
           {isPlaying ? '⏸ Pausar' : '▶ Reproducir'}
@@ -322,7 +322,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
             onClick={() => setSpeed(s)}
             className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border ${
               speed === s
-                ? 'bg-[var(--accent-gold)] text-black border-[var(--accent-gold)]'
+                ? 'bg-(--accent-gold) text-black border-(--accent-gold)'
                 : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white'
             }`}
           >
@@ -332,8 +332,8 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       </div>
 
       {/* Timeline Mini-Map */}
-      <div className="bg-black/30 border border-white/5 rounded-[2rem] p-6 mb-6 shadow-2xl backdrop-blur-md">
-        <h3 className="text-xs font-black uppercase tracking-widest text-[var(--accent-gold)] mb-4 flex items-center gap-2">
+      <div className="bg-black/30 border border-white/5 rounded-4xl p-6 mb-6 shadow-2xl backdrop-blur-md">
+        <h3 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-4 flex items-center gap-2">
           <Clock className="w-4 h-4" /> Línea de Tiempo
         </h3>
         <div className="flex flex-wrap gap-2">
@@ -343,9 +343,9 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
               onClick={() => setCurrentStep(i)}
               className={`w-10 h-10 rounded-xl text-xs font-black transition-all border flex items-center justify-center ${
                 i === currentStep
-                  ? 'bg-[var(--accent-gold)] text-black border-[var(--accent-gold)] scale-110 shadow-[0_0_15px_rgba(234,179,8,0.4)]'
+                  ? 'bg-(--accent-gold) text-black border-(--accent-gold) scale-110 shadow-[0_0_15px_rgba(234,179,8,0.4)]'
                   : i < currentStep
-                  ? 'bg-[var(--accent-gold)]/10 text-[var(--accent-gold)] border-[var(--accent-gold)]/20 hover:bg-[var(--accent-gold)]/20'
+                  ? 'bg-(--accent-gold)/10 text-(--accent-gold) border-(--accent-gold)/20 hover:bg-(--accent-gold)/20'
                   : 'bg-black/40 text-slate-500 border-white/5 hover:bg-white/10 hover:text-white/80'
               }`}
               title={`${ev.event}${ev.phase ? ` (${ev.phase})` : ''}`}
@@ -357,8 +357,8 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       </div>
 
       {/* Players State */}
-      <div className="bg-black/30 border border-white/5 rounded-[2rem] p-6 shadow-2xl backdrop-blur-md mb-8">
-        <h3 className="text-xs font-black uppercase tracking-widest text-[var(--accent-gold)] mb-5 flex items-center gap-2">
+      <div className="bg-black/30 border border-white/5 rounded-4xl p-6 shadow-2xl backdrop-blur-md mb-8">
+        <h3 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-5 flex items-center gap-2">
           <Users className="w-4 h-4" /> Estado Final de Jugadores
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -374,7 +374,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
                 }`}
               >
                 {isWinner && (
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/50 to-emerald-400" />
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-emerald-500/50 to-emerald-400" />
                 )}
                 
                 <div className="flex items-center justify-between mb-4">
@@ -395,7 +395,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Cartas</p>
                       <div className="flex gap-1.5 flex-wrap">
                         {p.cards.split(',').filter(Boolean).map((card, ci) => (
-                          <span key={ci} className="px-2.5 py-1 bg-black/50 rounded-lg text-xs font-black text-[var(--accent-gold)] border border-[var(--accent-gold)]/20">
+                          <span key={ci} className="px-2.5 py-1 bg-black/50 rounded-lg text-xs font-black text-(--accent-gold) border border-(--accent-gold)/20">
                             {formatCard(card)}
                           </span>
                         ))}
