@@ -51,13 +51,6 @@ function bufferToBase64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
 }
 
-function base64ToBuffer(b64: string): ArrayBuffer {
-  const binary = atob(b64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes.buffer as ArrayBuffer
-}
-
 async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   if (
     typeof window === 'undefined' ||
@@ -110,26 +103,37 @@ async function enrollCredential(): Promise<string | null> {
 }
 
 /**
- * Verification: uses navigator.credentials.get() with the stored credential.
- * Shows a simple biometric prompt on mobile (no passkey-creation sheet).
+ * Quick device-level biometric/PIN verification.
+ * Creates a throw-away credential to trigger the native fingerprint/FaceID prompt.
+ * This is more reliable than credentials.get() because it doesn't depend on
+ * a previously stored credential matching exactly.
  */
-async function verifyWithCredential(credentialIdB64: string): Promise<boolean> {
+async function requestDeviceVerification(): Promise<boolean> {
   try {
     const challenge = crypto.getRandomValues(new Uint8Array(32))
-    const assertion = await navigator.credentials.get({
+    const credential = (await navigator.credentials.create({
       publicKey: {
         challenge: challenge.buffer as ArrayBuffer,
-        rpId: window.location.hostname,
-        allowCredentials: [{
-          id: base64ToBuffer(credentialIdB64),
-          type: 'public-key',
-          transports: ['internal'],
-        }],
-        userVerification: 'required',
+        rp: { name: 'Mesa Primera Lock', id: window.location.hostname },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(16)),
+          name: 'lock-check',
+          displayName: 'Verificación',
+        },
+        pubKeyCredParams: [
+          { alg: -7, type: 'public-key' },
+          { alg: -257, type: 'public-key' },
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required',
+          residentKey: 'discouraged',
+        },
         timeout: 60000,
+        excludeCredentials: [],
       },
-    })
-    return !!assertion
+    })) as PublicKeyCredential | null
+    return !!credential
   } catch {
     return false
   }
@@ -277,19 +281,7 @@ export function AppLockProvider({
   const handleUnlock = useCallback(async () => {
     isBiometricPromptActive.current = true
     try {
-      const credentialId = localStorage.getItem(CREDENTIAL_ID_KEY)
-      if (!credentialId) {
-        // No stored credential — re-enroll silently
-        const newId = await enrollCredential()
-        if (newId) {
-          localStorage.setItem(CREDENTIAL_ID_KEY, newId)
-          stampActivity()
-          setIsLocked(false)
-          return true
-        }
-        return false
-      }
-      const ok = await verifyWithCredential(credentialId)
+      const ok = await requestDeviceVerification()
       if (ok) {
         stampActivity()
         setIsLocked(false)
