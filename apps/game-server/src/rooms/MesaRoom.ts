@@ -2273,6 +2273,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
       userId: p.supabaseUserId || p.id,
+      sessionId: p.id,
       nickname: p.nickname,
       cards: p.cards,
       chips: p.chips
@@ -2402,6 +2403,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
       userId: p.supabaseUserId || p.id,
+      sessionId: p.id,
       nickname: p.nickname,
       cards: p.cards,
       chips: p.chips

@@ -67,8 +67,9 @@ export class ReplayFileService {
   }
 
   /**
-   * Guarda una grabación como archivo JSON en el filesystem.
-   * Retorna true si se guardó exitosamente.
+   * Guarda una grabación como archivos JSON y MP4 en el filesystem.
+   * Por requisitos de diseño, se crea un par simultáneo .json y .mp4 (mock temporal para el video).
+   * Retorna true si se guardaron exitosamente.
    */
   static save(replay: ReplayData): boolean {
     this.init();
@@ -76,8 +77,16 @@ export class ReplayFileService {
       const monthDir = path.join(this.BASE_DIR, this.getMonthDir(replay.created_at));
       if (!this.ensureDir(monthDir)) return false;
 
-      const filePath = path.join(monthDir, `${replay.game_id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(replay), 'utf-8');
+      const baseFilePath = path.join(monthDir, replay.game_id);
+      
+      // Guardar JSON (metadatos y timeline)
+      fs.writeFileSync(`${baseFilePath}.json`, JSON.stringify(replay), 'utf-8');
+      
+      // Guardar Video (Mock vacío por el momento, requiere implementación real de grabación en cliente/servidor)
+      if (!fs.existsSync(`${baseFilePath}.mp4`)) {
+        fs.writeFileSync(`${baseFilePath}.mp4`, Buffer.from('dummy video context'), 'utf-8');
+      }
+
       return true;
     } catch (e: any) {
       console.error(`[ReplayFileService] Error saving replay ${replay.game_id}:`, e.message);
@@ -131,7 +140,7 @@ export class ReplayFileService {
 
       for (const month of months) {
         const monthDir = path.join(this.BASE_DIR, month);
-        const files = fs.readdirSync(monthDir).filter(f => f.endsWith('.json'));
+        const files = fs.readdirSync(monthDir).filter(f => f.endsWith('.json') || f.endsWith('.mp4'));
 
         for (const file of files) {
           const filePath = path.join(monthDir, file);
