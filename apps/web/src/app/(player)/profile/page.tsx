@@ -220,10 +220,10 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto grid lg:grid-cols-12 gap-8 md:gap-12 w-full h-full overflow-hidden">
+      <div className="max-w-4xl mx-auto grid lg:grid-cols-12 gap-8 md:gap-12 w-full h-full overflow-hidden px-0">
         {/* Left Column: Avatar & Loyalty */}
-        <aside className="lg:col-span-5 space-y-10 w-full overflow-visible">
-          <div className="relative bg-black/40 backdrop-blur-3xl border-brand-gold/10 border-2 rounded-[3.5rem] p-8 md:p-12 flex flex-col items-center text-center shadow-2xl overflow-hidden group hover:border-brand-gold/30 transition-all duration-500 w-full">
+        <aside className="lg:col-span-5 space-y-10 w-full overflow-hidden">
+          <div className="relative bg-black/40 backdrop-blur-3xl border-brand-gold/10 border-2 rounded-3xl md:rounded-[3.5rem] p-8 md:p-12 flex flex-col items-center text-center shadow-xl overflow-hidden group hover:border-brand-gold/30 transition-all duration-500 w-full">
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-48 h-48 bg-brand-gold/5 rounded-full blur-3xl -mr-24 -mt-24 group-hover:bg-brand-gold/10 transition-colors duration-1000" />
             
@@ -312,7 +312,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Mini Stats Card */}
-          <div className="bg-black/40 backdrop-blur-3xl border-2 border-brand-gold/10 rounded-[3rem] p-6 sm:p-10 grid grid-cols-3 gap-4 sm:gap-6 shadow-2xl hover:bg-black/60 transition-colors duration-500 w-full overflow-hidden">
+          <div className="bg-black/40 backdrop-blur-3xl border-2 border-brand-gold/10 rounded-2xl md:rounded-[3rem] p-6 sm:p-10 grid grid-cols-3 gap-4 sm:gap-6 shadow-xl hover:bg-black/60 transition-colors duration-500 w-full overflow-hidden">
              <div className="text-center space-y-2">
                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-brand-gold mx-auto opacity-40" />
                <p className="text-xl sm:text-2xl font-display font-black text-[#f3edd7] leading-none">{stats?.games_played || 0}</p>
@@ -333,7 +333,7 @@ export default function ProfilePage() {
 
         {/* Right Column: Settings Form */}
         <main className="lg:col-span-7 w-full">
-          <div className="bg-black/40 backdrop-blur-3xl border-brand-gold/10 border-2 rounded-[4rem] p-8 sm:p-10 lg:p-14 shadow-2xl relative h-full hover:bg-black/60 transition-colors duration-500 overflow-hidden w-full">
+          <div className="bg-black/40 backdrop-blur-3xl border-brand-gold/10 border-2 rounded-3xl md:rounded-[4rem] p-6 sm:p-10 lg:p-14 shadow-xl relative h-full hover:bg-black/60 transition-colors duration-500 overflow-hidden w-full">
             <header className="mb-10 sm:mb-12 flex items-center gap-6">
                <div className="p-4 bg-brand-gold/10 border border-brand-gold/20 rounded-[1.5rem] shadow-xl flex-shrink-0">
                   <Tag className="w-6 h-6 sm:w-7 sm:h-7 text-brand-gold" />
@@ -430,11 +430,11 @@ export default function ProfilePage() {
                           disableLock();
                           showToast('Bloqueo biométrico desactivado', 'success');
                         } else {
-                          const ok = await enrollLock();
-                          if (ok) {
+                          const result = await enrollLock();
+                          if (result.ok) {
                             showToast('¡Bloqueo biométrico activado!', 'success');
                           } else {
-                            showToast('No se pudo activar. Intenta de nuevo.', 'error');
+                            showToast(result.error || 'No se pudo activar. Intenta de nuevo.', 'error');
                           }
                         }
                       }}

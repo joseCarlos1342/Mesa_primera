@@ -22,12 +22,12 @@ const CHALLENGE_COOKIE = 'webauthn_challenge'
 const CHALLENGE_MAX_AGE = 120 // 2 minutes
 
 function getRpId(): string {
-  return process.env.WEBAUTHN_RP_ID ?? 'localhost'
+  return (process.env.WEBAUTHN_RP_ID ?? 'localhost').trim()
 }
 
 function getExpectedOrigins(): string[] {
   const origins = process.env.WEBAUTHN_ORIGINS
-  if (origins) return origins.split(',').map(o => o.trim())
+  if (origins) return origins.split(',').map(o => o.trim()).filter(Boolean)
   return ['http://localhost:3000', 'https://localhost:3000']
 }
 
