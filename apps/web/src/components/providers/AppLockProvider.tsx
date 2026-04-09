@@ -22,11 +22,16 @@ const LAST_ACTIVE_KEY = 'mesa_primera_last_active'
 const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes
 const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const
 
+interface EnrollResult {
+  ok: boolean
+  error?: string
+}
+
 interface AppLockContextValue {
   isEnabled: boolean
   isLocked: boolean
   isSupported: boolean
-  enroll: () => Promise<boolean>
+  enroll: () => Promise<EnrollResult>
   disable: () => void
 }
 
@@ -34,7 +39,7 @@ const AppLockContext = createContext<AppLockContextValue>({
   isEnabled: false,
   isLocked: false,
   isSupported: false,
-  enroll: async () => false,
+  enroll: async () => ({ ok: false }),
   disable: () => {},
 })
 
@@ -212,12 +217,15 @@ export function AppLockProvider({
   }, [isEnabled, isLocked])
 
   // ── Enroll ──
-  const enroll = useCallback(async (): Promise<boolean> => {
+  const enroll = useCallback(async (): Promise<EnrollResult> => {
     isBiometricPromptActive.current = true
     try {
       // 1. Try server-side WebAuthn registration (for Fast Login)
       const serverResult = await getPasskeyRegistrationOptions()
-      if (serverResult.options) {
+      if (serverResult.error) {
+        console.warn('[AppLock] Server options error:', serverResult.error)
+        // Fall through to local enrollment
+      } else if (serverResult.options) {
         try {
           const attestation = await startRegistration({ optionsJSON: serverResult.options })
           // Generate a stable device ID for this browser
@@ -230,10 +238,21 @@ export function AppLockProvider({
             localStorage.setItem(CREDENTIAL_ID_KEY, verification.credentialId)
             stampActivity()
             setIsEnabled(true)
-            return true
+            return { ok: true }
           }
-        } catch (e) {
-          console.warn('[AppLock] Server-side registration failed, falling back to local:', e)
+          console.warn('[AppLock] Server verification failed:', verification.error)
+        } catch (e: any) {
+          const errName = e?.name ?? ''
+          const errMsg = e?.message ?? String(e)
+          console.warn('[AppLock] startRegistration error:', errName, errMsg)
+          // If the user explicitly cancelled, propagate that
+          if (errName === 'NotAllowedError') {
+            return { ok: false, error: 'Permiso denegado o cancelado por el usuario.' }
+          }
+          if (errName === 'SecurityError') {
+            return { ok: false, error: 'Error de seguridad del dominio. Contacta soporte.' }
+          }
+          // For other errors, fall through to local enrollment
         }
       }
 
@@ -244,8 +263,12 @@ export function AppLockProvider({
         localStorage.setItem(CREDENTIAL_ID_KEY, credentialId)
         stampActivity()
         setIsEnabled(true)
+        return { ok: true }
       }
-      return !!credentialId
+      return { ok: false, error: 'Tu dispositivo no completó la verificación biométrica.' }
+    } catch (e: any) {
+      console.error('[AppLock] Unexpected enroll error:', e)
+      return { ok: false, error: e?.message || 'Error inesperado.' }
     } finally {
       isBiometricPromptActive.current = false
     }
