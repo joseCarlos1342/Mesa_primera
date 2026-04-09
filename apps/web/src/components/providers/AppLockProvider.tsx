@@ -10,6 +10,11 @@ import {
   type ReactNode,
 } from 'react'
 import { PwaLockScreen } from '@/components/pwa-lock-screen'
+import { startRegistration } from '@simplewebauthn/browser'
+import {
+  getPasskeyRegistrationOptions,
+  verifyPasskeyRegistration,
+} from '@/app/(auth)/passkey-actions'
 
 const APP_LOCK_KEY = 'mesa_primera_app_lock_enabled'
 const CREDENTIAL_ID_KEY = 'mesa_primera_lock_credential_id'
@@ -142,6 +147,8 @@ export function AppLockProvider({
   const [isLocked, setIsLocked] = useState(false)
   const [ready, setReady] = useState(false)
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Suppresses visibilitychange-based locking while the OS biometric prompt is open */
+  const isBiometricPromptActive = useRef(false)
 
   // ── Init: check support, lock on open if enabled ──
   useEffect(() => {
@@ -162,6 +169,7 @@ export function AppLockProvider({
     if (!isEnabled) return
 
     function handleVisibility() {
+      if (isBiometricPromptActive.current) return
       if (document.hidden) {
         // Stamp current time when going to background
         stampActivity()
@@ -205,14 +213,42 @@ export function AppLockProvider({
 
   // ── Enroll ──
   const enroll = useCallback(async (): Promise<boolean> => {
-    const credentialId = await enrollCredential()
-    if (credentialId) {
-      localStorage.setItem(APP_LOCK_KEY, 'true')
-      localStorage.setItem(CREDENTIAL_ID_KEY, credentialId)
-      stampActivity()
-      setIsEnabled(true)
+    isBiometricPromptActive.current = true
+    try {
+      // 1. Try server-side WebAuthn registration (for Fast Login)
+      const serverResult = await getPasskeyRegistrationOptions()
+      if (serverResult.options) {
+        try {
+          const attestation = await startRegistration({ optionsJSON: serverResult.options })
+          // Generate a stable device ID for this browser
+          const deviceId = localStorage.getItem('mesa_primera_device_id') ?? crypto.randomUUID()
+          localStorage.setItem('mesa_primera_device_id', deviceId)
+
+          const verification = await verifyPasskeyRegistration(attestation, deviceId)
+          if (verification.ok && verification.credentialId) {
+            localStorage.setItem(APP_LOCK_KEY, 'true')
+            localStorage.setItem(CREDENTIAL_ID_KEY, verification.credentialId)
+            stampActivity()
+            setIsEnabled(true)
+            return true
+          }
+        } catch (e) {
+          console.warn('[AppLock] Server-side registration failed, falling back to local:', e)
+        }
+      }
+
+      // 2. Fallback to local-only enrollment (works offline, still provides app-lock)
+      const credentialId = await enrollCredential()
+      if (credentialId) {
+        localStorage.setItem(APP_LOCK_KEY, 'true')
+        localStorage.setItem(CREDENTIAL_ID_KEY, credentialId)
+        stampActivity()
+        setIsEnabled(true)
+      }
+      return !!credentialId
+    } finally {
+      isBiometricPromptActive.current = false
     }
-    return !!credentialId
   }, [])
 
   // ── Disable ──
@@ -227,24 +263,29 @@ export function AppLockProvider({
 
   // ── Unlock ──
   const handleUnlock = useCallback(async () => {
-    const credentialId = localStorage.getItem(CREDENTIAL_ID_KEY)
-    if (!credentialId) {
-      // No stored credential — re-enroll silently
-      const newId = await enrollCredential()
-      if (newId) {
-        localStorage.setItem(CREDENTIAL_ID_KEY, newId)
+    isBiometricPromptActive.current = true
+    try {
+      const credentialId = localStorage.getItem(CREDENTIAL_ID_KEY)
+      if (!credentialId) {
+        // No stored credential — re-enroll silently
+        const newId = await enrollCredential()
+        if (newId) {
+          localStorage.setItem(CREDENTIAL_ID_KEY, newId)
+          stampActivity()
+          setIsLocked(false)
+          return true
+        }
+        return false
+      }
+      const ok = await verifyWithCredential(credentialId)
+      if (ok) {
         stampActivity()
         setIsLocked(false)
-        return true
       }
-      return false
+      return ok
+    } finally {
+      isBiometricPromptActive.current = false
     }
-    const ok = await verifyWithCredential(credentialId)
-    if (ok) {
-      stampActivity()
-      setIsLocked(false)
-    }
-    return ok
   }, [])
 
   if (!ready) return null

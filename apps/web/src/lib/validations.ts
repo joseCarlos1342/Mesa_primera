@@ -8,6 +8,8 @@ const MESSAGES = {
   fullName: 'Solo letras, espacios y guiones. Entre 2 y 80 caracteres',
   nickname: 'Solo letras, números y guión bajo _. Entre 3 y 20 caracteres, sin espacios',
   otp: 'El código debe tener exactamente 6 dígitos',
+  pin: 'La clave debe ser exactamente 6 dígitos numéricos',
+  pinConfirm: 'Las claves no coinciden',
   email: 'Correo electrónico inválido',
   passwordMin: 'La contraseña debe tener al menos 8 caracteres',
   passwordMax: 'La contraseña no puede superar 100 caracteres',
@@ -66,6 +68,14 @@ export const otpTokenSchema = z
   .regex(/^\d{6}$/, MESSAGES.otp)
 
 /**
+ * PIN de acceso: exactamente 6 dígitos numéricos.
+ */
+export const pinSchema = z
+  .string({ error: MESSAGES.pin })
+  .trim()
+  .regex(/^\d{6}$/, MESSAGES.pin)
+
+/**
  * Email de administrador.
  */
 export const adminEmailSchema = z
@@ -122,6 +132,19 @@ export const loginPlayerSchema = z.object({
   phone: phoneSchema,
 })
 
+export const loginPlayerWithPinSchema = z.object({
+  phone: phoneSchema,
+  pin: pinSchema,
+})
+
+export const setPinSchema = z.object({
+  pin: pinSchema,
+  pinConfirm: pinSchema,
+}).refine(data => data.pin === data.pinConfirm, {
+  message: MESSAGES.pinConfirm,
+  path: ['pinConfirm'],
+})
+
 export const loginAdminSchema = z.object({
   email: adminEmailSchema,
   password: adminPasswordSchema,
@@ -136,6 +159,8 @@ export const depositSchema = z.object({
 
 export type RegisterPlayerInput = z.infer<typeof registerPlayerSchema>
 export type LoginPlayerInput = z.infer<typeof loginPlayerSchema>
+export type LoginPlayerWithPinInput = z.infer<typeof loginPlayerWithPinSchema>
+export type SetPinInput = z.infer<typeof setPinSchema>
 export type LoginAdminInput = z.infer<typeof loginAdminSchema>
 export type DepositInput = z.infer<typeof depositSchema>
 

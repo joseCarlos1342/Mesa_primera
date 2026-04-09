@@ -64,11 +64,11 @@ export function PiqueRevealOverlay({ room, players }: PiqueRevealOverlayProps) {
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 z-60 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto"
+      className="absolute inset-0 z-60 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto overflow-y-auto landscape:justify-start landscape:pt-4"
       style={{ opacity: 0 }}
     >
       {/* Header */}
-      <div className="reveal-header flex flex-col items-center mb-4 md:mb-6 px-4 text-center">
+      <div className="reveal-header flex flex-col items-center mb-4 md:mb-6 landscape:mb-2 px-4 text-center">
         <div className="text-[#d4af37] text-[10px] md:text-xs uppercase tracking-[0.25em] font-black mb-1">
           Muestra de Juego
         </div>
@@ -87,6 +87,7 @@ export function PiqueRevealOverlay({ room, players }: PiqueRevealOverlayProps) {
               className="reveal-card relative rounded-lg overflow-hidden bg-white ring-1 ring-[#d4af37]/40 shadow-[0_0_24px_rgba(212,175,55,0.25)]
                 w-16 h-24
                 min-[360px]:w-20 min-[360px]:h-30
+                landscape:w-14 landscape:h-[84px]
                 md:w-24 md:h-36
                 lg:w-28 lg:h-42"
               style={{ transformStyle: 'preserve-3d' }}
@@ -103,7 +104,7 @@ export function PiqueRevealOverlay({ room, players }: PiqueRevealOverlayProps) {
       </div>
 
       {/* Player label + suit info */}
-      <div className="reveal-label flex flex-col items-center mt-4 md:mt-6">
+      <div className="reveal-label flex flex-col items-center mt-4 md:mt-6 landscape:mt-2">
         <div className="text-[#fdf0a6] text-xs md:text-sm font-black tracking-wide uppercase">
           {cards.length} cartas del mismo palo
         </div>
@@ -112,7 +113,7 @@ export function PiqueRevealOverlay({ room, players }: PiqueRevealOverlayProps) {
       {/* Dismiss button */}
       <button
         onClick={() => room.send('dismiss-reveal')}
-        className="mt-6 md:mt-8 h-10 md:h-12 px-6 md:px-8
+        className="mt-6 md:mt-8 landscape:mt-3 h-10 md:h-12 landscape:h-9 px-6 md:px-8
           bg-[#0a180e]/90 text-[#d4af37] border border-[#d4af37]/40
           rounded-xl font-black text-xs md:text-sm
           shadow-lg hover:bg-[#0a180e] hover:border-[#d4af37]/70

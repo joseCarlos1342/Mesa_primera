@@ -8,7 +8,6 @@ import { verifyOtp } from '../../../auth-actions'
 function VerifyContent() {
   const searchParams = useSearchParams()
   const phone = searchParams.get('phone') || ''
-  const flow = searchParams.get('flow') || 'login'
   const [state, formAction, isPending] = useActionState(verifyOtp, null)
 
   return (
@@ -16,11 +15,9 @@ function VerifyContent() {
       {/* Premium Casino Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_#0a2a1f_100%)]" />
-        {/* Subtle Felt Texture Overlay */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3%3C/filter%3%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3%3C/svg%3")` }} 
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3%3C/filter%3%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3%3C/svg%3")` }}
         />
-        {/* Shadow Vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
@@ -36,11 +33,11 @@ function VerifyContent() {
         <div className="relative backdrop-blur-2xl bg-black/40 border-2 border-brand-gold/20 p-8 md:p-10 rounded-[2.5rem] shadow-[0_40px_80px_rgba(0,0,0,0.7)]">
           <div className="space-y-3 mb-10 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/30 text-brand-gold text-[12px] font-black tracking-widest uppercase mb-2">
-              🔐 ACCESO BÓVEDA
+              🔐 VERIFICACIÓN
             </div>
-            <h2 className="text-3xl font-bold text-text-premium">Verifica tu Código</h2>
+            <h2 className="text-3xl font-bold text-text-premium">Confirma tu Número</h2>
             <p className="text-text-secondary text-base">
-              Enviamos la clave maestra a <br/>
+              Enviamos un código de 6 dígitos a <br/>
               <span className="text-brand-gold font-mono font-bold tracking-widest">{phone}</span>
             </p>
           </div>
@@ -53,8 +50,8 @@ function VerifyContent() {
 
           <form action={formAction} className="space-y-10">
             <input type="hidden" name="phone" value={phone} />
-            <input type="hidden" name="flow" value={flow} />
-            
+            <input type="hidden" name="flow" value="register" />
+
             <div className="group relative">
               <input
                 name="token"
@@ -65,7 +62,6 @@ function VerifyContent() {
                 required
                 className="w-full h-20 md:h-24 text-center text-2xl md:text-5xl font-black tracking-[0.1em] md:tracking-[0.3em] bg-black/50 border-2 border-white/10 rounded-[2rem] text-text-premium placeholder-white/5 focus:outline-none focus:border-brand-gold/50 focus:ring-4 focus:ring-brand-gold/10 transition-all font-mono shadow-inner"
               />
-              {/* Decorative focus glow */}
               <div className="absolute inset-0 rounded-[2rem] bg-brand-gold/5 blur-xl -z-10 group-focus-within:opacity-100 opacity-0 transition-opacity" />
             </div>
 
@@ -75,7 +71,7 @@ function VerifyContent() {
               className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-base rounded-2xl transition-all duration-200 border-b-4 border-brand-gold-dark active:border-b-0 active:translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.4)] disabled:opacity-50 overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-3">
-                {isPending ? 'AUTENTICANDO...' : 'CÓDIGO CORRECTO →'}
+                {isPending ? 'VERIFICANDO...' : 'CONFIRMAR CÓDIGO →'}
               </span>
               <div className="absolute inset-0 bg-white/20 translate-x-[-105%] skew-x-[-20deg] group-hover:translate-x-[155%] transition-transform duration-1000 ease-in-out" />
             </button>
@@ -90,22 +86,14 @@ function VerifyContent() {
             </p>
           </footer>
         </div>
-
-        {/* Security Indicator */}
-        <div className="mt-12 text-center pb-8 opacity-40">
-          <div className="inline-flex items-center gap-2 text-text-secondary text-[10px] font-black tracking-widest uppercase">
-            <div className="w-2 h-2 rounded-full bg-brand-gold animate-ping" />
-            CONEXIÓN SEGURA TLS 1.3
-          </div>
-        </div>
       </div>
     </div>
   )
 }
 
-export default function VerifyPage() {
+export default function RegisterVerifyPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Cargando Bóveda...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Cargando...</div>}>
       <VerifyContent />
     </Suspense>
   )

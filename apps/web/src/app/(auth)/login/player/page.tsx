@@ -1,28 +1,60 @@
 "use client"
 
-import { Suspense, useActionState, useState } from 'react'
+import { Suspense, useActionState, useState, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { loginWithPhone } from '../../auth-actions'
+import { loginWithPin, loginWithPhone, checkPhoneHasPin } from '../../auth-actions'
 import Link from 'next/link'
-import { LogIn } from 'lucide-react'
-import { phoneSchema } from '@/lib/validations'
+import { LogIn, KeyRound } from 'lucide-react'
+import { phoneSchema, pinSchema } from '@/lib/validations'
 
 function PlayerLoginContent() {
-  const [state, formAction, isPending] = useActionState(loginWithPhone, null)
+  const [pinState, pinFormAction, isPinPending] = useActionState(loginWithPin, null)
+  const [otpState, otpFormAction, isOtpPending] = useActionState(loginWithPhone, null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [pinError, setPinError] = useState<string | null>(null)
   const [phoneTouched, setPhoneTouched] = useState(false)
+  const [pinTouched, setPinTouched] = useState(false)
+  const [phoneValue, setPhoneValue] = useState('')
+  const [pinValue, setPinValue] = useState('')
+  const [hasPin, setHasPin] = useState<boolean | null>(null)
+  const [isCheckingPin, startCheckingPin] = useTransition()
   const searchParams = useSearchParams()
   const wasKicked = searchParams.get('kicked') === 'true'
+
+  const isPending = isPinPending || isOtpPending
 
   function validatePhone(value: string) {
     const result = phoneSchema.safeParse(value.trim())
     setPhoneError(result.success ? null : result.error.issues?.[0]?.message ?? 'Número inválido')
+    return result.success
   }
 
-  // Combine local + server errors (server error takes precedence after submit)
+  function validatePin(value: string) {
+    const result = pinSchema.safeParse(value.trim())
+    setPinError(result.success ? null : result.error.issues?.[0]?.message ?? 'Clave inválida')
+  }
+
+  async function handlePhoneBlur(value: string) {
+    setPhoneTouched(true)
+    const isValid = validatePhone(value)
+
+    if (isValid && value.length === 10) {
+      // Check if user has a PIN configured
+      startCheckingPin(async () => {
+        const result = await checkPhoneHasPin(value)
+        setHasPin(result)
+      })
+    }
+  }
+
+  // Combine local + server errors
+  const state = hasPin === false ? otpState : pinState
   const serverPhoneError = (state as any)?.fieldErrors?.phone
+  const serverPinError = (state as any)?.fieldErrors?.pin
   const displayPhoneError = serverPhoneError ?? phoneError
+  const displayPinError = serverPinError ?? pinError
   const phoneIsValid = phoneTouched && !displayPhoneError
+  const pinIsValid = pinTouched && !displayPinError
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-hidden">
@@ -65,7 +97,8 @@ function PlayerLoginContent() {
             </div>
           )}
 
-          <form action={formAction} className="space-y-8">
+          <form action={hasPin === false ? otpFormAction : pinFormAction} className="space-y-8">
+            {/* Phone Input */}
             <div className="space-y-3 group">
               <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors">
                 Tu Número de Celular
@@ -81,15 +114,13 @@ function PlayerLoginContent() {
                   maxLength={10}
                   required
                   placeholder="3001234567"
+                  value={phoneValue}
                   onChange={e => {
                     const digits = e.target.value.replace(/\D/g, '')
-                    e.target.value = digits
+                    setPhoneValue(digits)
                     if (phoneTouched) validatePhone(digits)
                   }}
-                  onBlur={e => {
-                    setPhoneTouched(true)
-                    validatePhone(e.target.value)
-                  }}
+                  onBlur={e => handlePhoneBlur(e.target.value)}
                   className={`w-full h-20 pl-16 pr-6 bg-black/50 border-2 rounded-2xl text-lg md:text-2xl text-text-premium placeholder-white/10 focus:outline-none focus:ring-4 transition-all font-mono tracking-tighter md:tracking-normal shadow-inner
                     ${displayPhoneError
                       ? 'border-red-500/60 focus:border-red-500/80 focus:ring-red-500/10'
@@ -98,8 +129,11 @@ function PlayerLoginContent() {
                         : 'border-white/10 focus:border-brand-gold/50 focus:ring-brand-gold/10'
                     }`}
                 />
-                {phoneIsValid && (
+                {phoneIsValid && !isCheckingPin && (
                   <span className="absolute right-5 text-green-400 text-xl font-black pointer-events-none">✓</span>
+                )}
+                {isCheckingPin && (
+                  <span className="absolute right-5 text-brand-gold text-sm font-black pointer-events-none animate-pulse">...</span>
                 )}
               </div>
               {displayPhoneError && (
@@ -109,19 +143,80 @@ function PlayerLoginContent() {
               )}
             </div>
 
+            {/* PIN Input — shown when user has PIN configured */}
+            {hasPin !== false && (
+              <div className="space-y-3 group animate-in fade-in slide-in-from-top-4 duration-500">
+                <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors flex items-center gap-2">
+                  <KeyRound className="w-3.5 h-3.5" /> Tu Clave de 6 Dígitos
+                </label>
+                <div className="relative">
+                  <input
+                    name="pin"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                    placeholder="••••••"
+                    value={pinValue}
+                    onChange={e => {
+                      const digits = e.target.value.replace(/\D/g, '')
+                      setPinValue(digits)
+                      if (pinTouched) validatePin(digits)
+                    }}
+                    onBlur={() => {
+                      setPinTouched(true)
+                      validatePin(pinValue)
+                    }}
+                    className={`w-full h-20 text-center text-2xl md:text-4xl font-black tracking-[0.2em] bg-black/50 border-2 rounded-2xl text-text-premium placeholder-white/10 focus:outline-none focus:ring-4 transition-all font-mono shadow-inner
+                      ${displayPinError
+                        ? 'border-red-500/60 focus:border-red-500/80 focus:ring-red-500/10'
+                        : pinIsValid
+                          ? 'border-green-500/40 focus:border-green-500/60 focus:ring-green-500/10'
+                          : 'border-white/10 focus:border-brand-gold/50 focus:ring-brand-gold/10'
+                      }`}
+                  />
+                  {pinIsValid && (
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-green-400 text-xl font-black">✓</span>
+                  )}
+                </div>
+                {displayPinError && (
+                  <p className="text-red-400 text-xs font-bold ml-2 mt-1">{displayPinError}</p>
+                )}
+              </div>
+            )}
+
+            {/* Hint for users without PIN */}
+            {hasPin === false && (
+              <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl text-amber-400/80 text-sm text-center animate-in fade-in duration-500">
+                Tu cuenta aún no tiene clave. Te enviaremos un código SMS para configurarla.
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isPending}
               className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-base rounded-2xl transition-all duration-200 border-b-4 border-brand-gold-dark active:border-b-0 active:translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.4)] disabled:opacity-50 overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-3">
-                {isPending ? 'AUTENTICANDO...' : 'ENTRAR A JUGAR'}
+                {isPending
+                  ? 'AUTENTICANDO...'
+                  : hasPin === false
+                    ? 'ENVIAR CÓDIGO SMS'
+                    : 'ENTRAR A JUGAR'}
               </span>
               <div className="absolute inset-0 bg-white/20 translate-x-[-105%] skew-x-[-20deg] group-hover:translate-x-[155%] transition-transform duration-1000 ease-in-out" />
             </button>
           </form>
 
-          <footer className="mt-10 pt-10 border-t-2 border-white/5 text-center">
+          <footer className="mt-10 pt-10 border-t-2 border-white/5 space-y-4 text-center">
+            {hasPin !== false && (
+              <p className="text-sm text-text-secondary">
+                ¿Olvidaste tu clave?{' '}
+                <Link href="/recovery" className="text-brand-gold font-black hover:text-white underline underline-offset-8 decoration-2 decoration-brand-gold/40 hover:decoration-brand-gold transition-all">
+                  Recupérala aquí
+                </Link>
+              </p>
+            )}
             <p className="text-sm text-text-secondary">
               ¿Aún no tienes cuenta?{' '}
               <Link href="/register/player" className="text-brand-gold font-black hover:text-white underline underline-offset-8 decoration-2 decoration-brand-gold/40 hover:decoration-brand-gold transition-all">
