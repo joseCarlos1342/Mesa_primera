@@ -157,7 +157,7 @@ export default function RecoveryPinPage() {
               className="group relative w-full h-20 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark text-black font-black uppercase tracking-widest text-base rounded-2xl transition-all duration-200 border-b-4 border-brand-gold-dark active:border-b-0 active:translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.4)] disabled:opacity-50 overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-3">
-                {isPending ? 'GUARDANDO...' : 'GUARDAR NUEVA CLAVE →'}
+                {isPending ? 'GUARDANDO...' : 'GUARDAR CLAVE →'}
               </span>
               <div className="absolute inset-0 bg-white/20 translate-x-[-105%] skew-x-[-20deg] group-hover:translate-x-[155%] transition-transform duration-1000 ease-in-out" />
             </button>

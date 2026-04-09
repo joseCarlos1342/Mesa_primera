@@ -115,7 +115,7 @@ export default function RecoveryPage() {
 
           <footer className="mt-10 pt-10 border-t-2 border-white/5 text-center">
             <p className="text-sm text-text-secondary">
-              ¿Recuerdas tu clave?{' '}
+              ¿Recuerdas tu clave?<br className="sm:hidden" />{' '}
               <Link href="/login/player" className="text-brand-gold font-black hover:text-white underline underline-offset-8 decoration-2 decoration-brand-gold/40 hover:decoration-brand-gold transition-all">
                 Iniciar sesión
               </Link>
