@@ -8,11 +8,19 @@ import { redis } from '@/utils/redis'
 import {
   registerPlayerSchema,
   loginPlayerSchema,
+  loginPlayerWithPinSchema,
   loginAdminSchema,
   otpTokenSchema,
+  setPinSchema,
+  pinSchema,
   flattenZodErrors,
 } from '@/lib/validations'
 import crypto from 'crypto'
+import { enforceSessionPolicy } from './auth-actions-helpers'
+
+const DEVICE_COOKIE_NAME = 'device_trusted_id'
+const DEVICE_TRUST_DAYS = 30
+const DEVICE_COOKIE_MAX_AGE = 60 * 60 * 24 * DEVICE_TRUST_DAYS
 
 type ProfileSeedCandidate = {
   id: string
@@ -24,37 +32,36 @@ type ProfileSeedCandidate = {
 }
 
 /**
- * Genera un device ID seguro, lo guarda como cookie httpOnly,
- * actualiza profiles.last_device_id y publica un evento Redis
- * para forzar el logout de sesiones anteriores.
+ * Genera y persiste un device_trusted_id en cookie httpOnly (30 días)
+ * y lo registra como dispositivo confiable en la BD.
  */
-async function enforceSessionPolicy(userId: string) {
+async function registerTrustedDevice(userId: string) {
   const deviceId = crypto.randomUUID()
-
-  // 1. Set httpOnly cookie so middleware can compare later
   const cookieStore = await cookies()
-  cookieStore.set('session_device_id', deviceId, {
+
+  cookieStore.set(DEVICE_COOKIE_NAME, deviceId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: DEVICE_COOKIE_MAX_AGE,
   })
 
-  // 2. Update DB with new device identifier
   const supabase = await createClient()
-  await supabase
-    .from('profiles')
-    .update({ last_device_id: deviceId, is_online: true })
-    .eq('id', userId)
+  await supabase.rpc('register_trusted_device', {
+    p_device_id: deviceId,
+    p_trust_days: DEVICE_TRUST_DAYS,
+  })
 
-  // 3. Publish kick event for old sessions (game-server subscribes)
-  try {
-    await redis.publish('session_kick', JSON.stringify({ userId, deviceId }))
-  } catch (e) {
-    // Non-critical: if Redis is down the middleware check still protects HTTP routes
-    console.warn('[SESSION_POLICY] Redis publish failed:', (e as Error).message)
-  }
+  return deviceId
+}
+
+/**
+ * Lee el device_trusted_id actual de la cookie.
+ */
+async function getDeviceCookie(): Promise<string | null> {
+  const cookieStore = await cookies()
+  return cookieStore.get(DEVICE_COOKIE_NAME)?.value ?? null
 }
 
 function normalizePhone(phone: string): string {
@@ -216,11 +223,95 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
     return { error: error.message }
   }
 
-  redirect(`/login/player/verify?phone=${encodeURIComponent(phone)}`)
+  redirect(`/register/player/verify?phone=${encodeURIComponent(phone)}`)
 }
 
 /**
- * Inicia el proceso de LOGIN para un jugador existente.
+ * Inicia el proceso de LOGIN para un jugador existente (modelo híbrido PIN + dispositivo).
+ *
+ * 1. Valida teléfono + PIN con signInWithPassword.
+ * 2. Si el dispositivo es conocido (cookie válida en BD), completa el login.
+ * 3. Si el dispositivo es desconocido, cierra la sesión parcial y envía OTP para 2FA.
+ */
+export async function loginWithPin(prevState: unknown, formData: FormData) {
+  const rl = await enforceRateLimiting('login_player', 5, 60)
+  if (!rl.success) return { error: rl.error }
+
+  const rawPhone = (formData.get('phone') as string ?? '').trim()
+  const rawPin = (formData.get('pin') as string ?? '').trim()
+
+  const parsed = loginPlayerWithPinSchema.safeParse({ phone: rawPhone, pin: rawPin })
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
+  const supabase = await createClient()
+  const phone = normalizePhone(parsed.data.phone)
+
+  // Authenticate with password (PIN)
+  const { data, error } = await supabase.auth.signInWithPassword({
+    phone,
+    password: parsed.data.pin,
+  })
+
+  if (error) {
+    console.error('[AUTH_ERROR] Error en login PIN (%s): %s', phone, error.message)
+    if (error.message.toLowerCase().includes('invalid login credentials')) {
+      return { error: 'Número o clave incorrectos. Verifica tus datos.' }
+    }
+    return { error: error.message }
+  }
+
+  if (!data.user) {
+    return { error: 'Error al iniciar sesión. Intenta de nuevo.' }
+  }
+
+  // Check if device is trusted
+  const deviceCookie = await getDeviceCookie()
+
+  if (deviceCookie) {
+    const { data: isTrusted } = await supabase.rpc('is_device_trusted', {
+      p_phone: phone,
+      p_device_id: deviceCookie,
+    })
+
+    if (isTrusted) {
+      // Known device — update last_login_at and complete login
+      await supabase
+        .from('user_devices')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('user_id', data.user.id)
+        .eq('device_id', deviceCookie)
+
+      await enforceSessionPolicy(data.user.id)
+      redirect('/')
+    }
+  }
+
+  // Unknown device — sign out the partial session and trigger 2FA via OTP
+  await supabase.auth.signOut()
+
+  // Send OTP for device verification
+  const { error: otpError } = await supabase.auth.signInWithOtp({
+    phone,
+    options: { shouldCreateUser: false },
+  })
+
+  if (otpError) {
+    console.error('[AUTH_ERROR] Error enviando OTP para 2FA (%s): %s', phone, otpError.message)
+
+    if (isOtpProviderDisabled(otpError.message)) {
+      return { error: 'El servicio de SMS no está disponible. Inténtalo más tarde.' }
+    }
+    return { error: 'No pudimos enviar el código de verificación. Inténtalo de nuevo.' }
+  }
+
+  redirect(`/login/player/device-verify?phone=${encodeURIComponent(phone)}`)
+}
+
+/**
+ * Login legacy con solo teléfono (para usuarios que aún no tienen PIN configurado).
+ * Envía un OTP para autenticarse y después lo redirige a configurar su PIN.
  */
 export async function loginWithPhone(prevState: unknown, formData: FormData) {
   const rl = await enforceRateLimiting('login_player', 5, 60)
@@ -238,7 +329,7 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
   let { error } = await supabase.auth.signInWithOtp({
     phone,
     options: {
-      shouldCreateUser: false // No crear usuario aquí, forzar registro para nuevos
+      shouldCreateUser: false
     }
   })
 
@@ -277,11 +368,12 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
     return { error: error.message }
   }
 
-  redirect(`/login/player/verify?phone=${encodeURIComponent(phone)}`)
+  redirect(`/login/player/verify?phone=${encodeURIComponent(phone)}&flow=login-set-pin`)
 }
 
 /**
  * Verifica el código OTP enviado por SMS al jugador.
+ * Soporta múltiples flujos: register, login, recovery, device-verify.
  */
 export async function verifyOtp(prevState: unknown, formData: FormData) {
   const rl = await enforceRateLimiting('verify_otp', 5, 60)
@@ -289,6 +381,7 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
 
   const phone = (formData.get('phone') as string ?? '').trim()
   const token = (formData.get('token') as string ?? '').trim()
+  const flow = (formData.get('flow') as string ?? 'login').trim()
 
   const tokenParsed = otpTokenSchema.safeParse(token)
   if (!tokenParsed.success) {
@@ -307,12 +400,31 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
     return { error: error.message }
   }
 
-  // Enforce single-session policy
-  if (data.user) {
-    await enforceSessionPolicy(data.user.id)
+  if (!data.user) {
+    return { error: 'Error de verificación. Intenta de nuevo.' }
   }
 
-  redirect('/')
+  // Route based on flow
+  switch (flow) {
+    case 'register':
+      // User just verified identity — redirect to set PIN
+      redirect(`/register/player/pin`)
+
+    case 'device-verify':
+      // User verified new device during login — register device + complete login
+      await registerTrustedDevice(data.user.id)
+      await enforceSessionPolicy(data.user.id)
+      redirect('/')
+
+    case 'recovery':
+      // User verified for PIN recovery — redirect to set new PIN
+      redirect(`/recovery/pin`)
+
+    default:
+      // Legacy login flow (backwards compat)
+      await enforceSessionPolicy(data.user.id)
+      redirect('/')
+  }
 }
 
 /**
@@ -493,4 +605,115 @@ export async function signOut(redirectTo: string = '/login/player') {
   await supabase.auth.signOut()
 
   redirect(redirectTo)
+}
+
+// ─── PIN Setup & Recovery ────────────────────────────────────────────────────
+
+/**
+ * Establece o actualiza el PIN de 6 dígitos para el jugador autenticado.
+ * Se usa tanto en el registro como en la recuperación de PIN.
+ */
+export async function setPlayerPin(prevState: unknown, formData: FormData) {
+  const rl = await enforceRateLimiting('set_pin', 5, 300)
+  if (!rl.success) return { error: rl.error }
+
+  const pin = (formData.get('pin') as string ?? '').trim()
+  const pinConfirm = (formData.get('pinConfirm') as string ?? '').trim()
+  const flow = (formData.get('flow') as string ?? 'register').trim()
+
+  const parsed = setPinSchema.safeParse({ pin, pinConfirm })
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
+  const supabase = await createClient()
+
+  // Ensure user is authenticated
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    redirect('/login/player')
+  }
+
+  // Set the password (PIN) on the auth user
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.pin,
+  })
+
+  if (error) {
+    console.error('[AUTH_ERROR] Error al configurar PIN para %s: %s', user.id, error.message)
+    return { error: 'No se pudo configurar la clave. Intenta de nuevo.' }
+  }
+
+  // Mark profile as having a PIN
+  await supabase
+    .from('profiles')
+    .update({ has_pin: true })
+    .eq('id', user.id)
+
+  // Register this device as trusted
+  await registerTrustedDevice(user.id)
+
+  // Enforce single-session policy
+  await enforceSessionPolicy(user.id)
+
+  redirect('/')
+}
+
+/**
+ * Inicia la recuperación de PIN: valida que el teléfono exista y envía OTP.
+ */
+export async function startPinRecovery(prevState: unknown, formData: FormData) {
+  const rl = await enforceRateLimiting('pin_recovery', 3, 300)
+  if (!rl.success) return { error: rl.error }
+
+  const rawPhone = (formData.get('phone') as string ?? '').trim()
+  const parsed = loginPlayerSchema.safeParse({ phone: rawPhone })
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
+  const supabase = await createClient()
+  const phone = normalizePhone(parsed.data.phone)
+
+  // Check if phone exists
+  const { data: phoneExists } = await supabase.rpc('check_phone_exists', { p_phone: phone })
+  if (!phoneExists) {
+    return { error: 'No encontramos una cuenta con este número. ¿Deseas registrarte?' }
+  }
+
+  // Send OTP
+  let { error } = await supabase.auth.signInWithOtp({
+    phone,
+    options: { shouldCreateUser: false },
+  })
+
+  if (error && isMissingPhoneAuthUser(error.message)) {
+    const recovery = await provisionMissingPhoneAuthUser(phone)
+    if (recovery.recovered) {
+      const retry = await supabase.auth.signInWithOtp({
+        phone,
+        options: { shouldCreateUser: false },
+      })
+      error = retry.error
+    }
+  }
+
+  if (error) {
+    if (isOtpProviderDisabled(error.message)) {
+      return { error: 'El servicio de SMS no está disponible. Inténtalo más tarde.' }
+    }
+    return { error: error.message }
+  }
+
+  redirect(`/recovery/verify?phone=${encodeURIComponent(phone)}`)
+}
+
+/**
+ * Comprueba si un teléfono tiene PIN configurado (usado por el UI de login).
+ */
+export async function checkPhoneHasPin(phone: string): Promise<boolean> {
+  const supabase = await createClient()
+  const normalized = normalizePhone(phone)
+  const { data } = await supabase.rpc('user_has_pin', { p_phone: normalized })
+  return data === true
 }

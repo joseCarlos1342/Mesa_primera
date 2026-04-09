@@ -1848,6 +1848,112 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /**
+   * Calcula y devuelve al jugador la porción de su apuesta de ronda que nadie igualó.
+   * Retorna el monto reembolsado (0 si no aplica).
+   */
+  private refundUncalledBet(): number {
+    const allPlayers = Array.from(this.state.players.values() as IterableIterator<Player>);
+    // Incluir roundBets de TODOS los jugadores conectados (incluidos foldeados que apostaron esta ronda)
+    const roundBets = allPlayers
+      .filter(p => p.connected || p.roundBet > 0)
+      .map(p => p.roundBet)
+      .sort((a, b) => b - a);
+
+    if (roundBets.length < 1) return 0;
+
+    const highest = roundBets[0];
+    const secondHighest = roundBets.length > 1 ? roundBets[1] : 0;
+    const uncalled = highest - secondHighest;
+
+    if (uncalled <= 0) return 0;
+
+    // Encontrar al jugador activo con la apuesta más alta
+    const highBetter = allPlayers.find(p => p.roundBet === highest && !p.isFolded);
+    if (!highBetter) return 0;
+
+    highBetter.chips += uncalled;
+    highBetter.roundBet -= uncalled;
+    highBetter.totalMainBet -= uncalled;
+    this.state.pot = Math.max(0, this.state.pot - uncalled);
+
+    console.log(`[MesaRoom] Devolviendo apuesta no igualada: $${uncalled} a ${highBetter.nickname}`);
+    this.state.lastAction = `${highBetter.nickname} recupera $${(uncalled / 100).toLocaleString()} (nadie igualó)`;
+
+    // Revertir la porción no igualada en el ledger
+    if (highBetter.supabaseUserId) {
+      SupabaseService.awardPot(highBetter.supabaseUserId, uncalled, 0, this.currentGameId).catch(console.error);
+    }
+
+    return uncalled;
+  }
+
+  /**
+   * Termina la mano prematuramente cuando nadie igualó la apuesta y el pot principal queda en 0.
+   * Resuelve el pique (si hay piquePot > 0) comparando las manos, limpia el estado y rota La Mano.
+   */
+  private endHandEarlyAfterFoldOut() {
+    const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected);
+
+    // Resolución del pique: otorgar al mejor mano entre los jugadores restantes
+    if (this.state.piquePot > 0 && remaining.length > 0) {
+      const manoId = this.state.dealerId;
+      let winner = remaining[0];
+      let bestHand = evaluateHand(winner.cards);
+      let bestPoints = bestHand.points + (winner.id === manoId ? 1 : 0);
+
+      for (let i = 1; i < remaining.length; i++) {
+        const p = remaining[i];
+        const h = evaluateHand(p.cards);
+        const pts = h.points + (p.id === manoId ? 1 : 0);
+        const hWithBonus = { ...h, points: pts };
+        const bestWithBonus = { ...bestHand, points: bestPoints };
+        if (compareHands(hWithBonus, bestWithBonus) > 0) {
+          winner = p; bestHand = h; bestPoints = pts;
+        }
+      }
+
+      const piqueRake = Math.ceil(this.state.piquePot * 0.05 / 100) * 100;
+      const piquePayout = this.state.piquePot - piqueRake;
+      winner.chips += piquePayout;
+      console.log(`[MesaRoom] Fin de mano prematuro — ${winner.nickname} gana el pique: $${piquePayout} (Rake: $${piqueRake})`);
+      this.state.lastAction = `${winner.nickname} gana el Pique ($${(piquePayout / 100).toLocaleString()})`;
+
+      if (winner.supabaseUserId) {
+        SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
+      }
+      this.currentTimeline.push({ event: 'pique_won_early', winner: winner.id, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
+    }
+
+    // Limpiar estado y volver al lobby tras un breve delay para que el cliente vea el mensaje
+    this.clock.setTimeout(() => {
+      this.state.pot = 0;
+      this.state.piquePot = 0;
+
+      Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => {
+        p.isReady = false;
+        p.revealedCards = "";
+      });
+      this.state.bottomCard = "";
+      this.state.activeManoId = "";
+      this.state.showdownTimer = 0;
+      this.promoteWaitingPlayers();
+      this.state.phase = "LOBBY";
+      this.notifyInsufficientBalance();
+
+      // Rotar La Mano solo si no rotó ya durante esta partida
+      if (!this.dealerRotatedThisGame) {
+        const dealerSeatIdx = this.seatOrder.indexOf(this.state.dealerId);
+        if (dealerSeatIdx !== -1 && this.seatOrder.length > 1) {
+          const nextSeatIdx = (dealerSeatIdx + 1) % this.seatOrder.length;
+          this.state.dealerId = this.seatOrder[nextSeatIdx];
+        }
+      }
+      this.assignTurnOrders();
+    }, 3000);
+  }
+
+  /**
    * Avance de turno unificado para todas las fases de apuesta (APUESTA_4_CARTAS, GUERRA, CANTICOS).
    * Un jugador "necesita actuar" si:
    *  - no se botó, no está restiado, está conectado
@@ -1858,6 +1964,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
       .filter(p => !p.isFolded && p.connected);
     if (activePlayers.length <= 1) {
+      // Devolver apuesta no igualada antes de avanzar
+      this.refundUncalledBet();
+      if (this.state.pot === 0) {
+        this.endHandEarlyAfterFoldOut();
+        return;
+      }
       if (nextPhaseCallback) nextPhaseCallback();
       else this.startPhase6Showdown();
       return;
@@ -1888,7 +2000,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         return;
       }
     }
-    // Nadie más necesita actuar
+    // Nadie más necesita actuar — verificar apuesta no igualada
+    this.refundUncalledBet();
+    if (this.state.pot === 0) {
+      this.endHandEarlyAfterFoldOut();
+      return;
+    }
     if (nextPhaseCallback) nextPhaseCallback();
     else this.startPhase6Showdown();
   }
@@ -2147,6 +2264,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (activePlayers.length === 1) {
       const winner = activePlayers[0];
+      // Si no hay pot principal (apuesta devuelta), terminar sin interfaz de ganador
+      if (this.state.pot === 0) {
+        console.log(`[MesaRoom] Solo queda ${winner.nickname} con pot=0 — terminando sin UI de ganador`);
+        this.endHandEarlyAfterFoldOut();
+        return;
+      }
       this.state.lastAction = `¡${winner.nickname} gana!`;
       // Dar opción de mostrar o no mostrar cartas (sin timer automático)
       this.state.phase = "SHOWDOWN_WAIT";

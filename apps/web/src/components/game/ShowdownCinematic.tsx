@@ -112,16 +112,16 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
       style={{ opacity: 0 }}
     >
       {/* Scrollable content wrapper */}
-      <div className="flex flex-col items-center w-full py-6 md:py-8 min-h-full justify-start md:justify-center">
+      <div className="flex flex-col items-center w-full py-6 md:py-8 landscape:py-3 min-h-full justify-start md:justify-center">
       {/* Header: Title */}
-      <div className="showdown-header flex flex-col items-center mb-6 md:mb-8">
+      <div className="showdown-header flex flex-col items-center mb-6 md:mb-8 landscape:mb-2">
         <div className="text-[#d4af37] text-[10px] md:text-xs uppercase tracking-[0.3em] font-black mb-2">
           Mostrando Cartas
         </div>
       </div>
 
-      {/* Players — vertical stack on mobile, horizontal wrap on desktop */}
-      <div className="flex flex-col md:flex-row md:flex-wrap md:justify-center gap-6 md:gap-10 px-4 max-w-5xl w-full items-center">
+      {/* Players — vertical stack on mobile, horizontal wrap on desktop & landscape */}
+      <div className="flex flex-col landscape:flex-row landscape:flex-wrap landscape:justify-center md:flex-row md:flex-wrap md:justify-center gap-6 md:gap-10 landscape:gap-4 px-4 max-w-5xl w-full items-center">
         {activePlayers.map((player, pIdx) => {
           const cards = player.revealedCards.split(',').filter(Boolean);
           const hand = evaluateHand(player.revealedCards);
@@ -147,7 +147,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
                   return (
                     <div
                       key={`${player.id}-${cardStr}-${cIdx}`}
-                      className={`showdown-card player-${pIdx}-card relative w-[72px] h-[108px] md:w-20 md:h-32 lg:w-24 lg:h-38 rounded-lg shadow-2xl overflow-hidden bg-white
+                      className={`showdown-card player-${pIdx}-card relative w-[72px] h-[108px] landscape:w-[54px] landscape:h-[80px] md:w-20 md:h-32 lg:w-24 lg:h-38 rounded-lg shadow-2xl overflow-hidden bg-white
                         ${isWinner ? 'ring-2 ring-[#d4af37] shadow-[0_0_20px_rgba(212,175,55,0.4)]' : ''}`}
                       style={{ transformStyle: 'preserve-3d' }}
                     >
@@ -182,7 +182,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
       </div>
 
       {/* Pot Summary */}
-      <div className="mt-5 md:mt-8 flex gap-4 shrink-0">
+      <div className="mt-5 md:mt-8 landscape:mt-2 flex gap-4 shrink-0">
         <div className="bg-[#0a180e]/90 px-4 py-2 rounded-xl border border-[#d4af37]/20">
           <span className="text-[#fdf0a6] text-[8px] uppercase tracking-widest opacity-60">Pozo</span>
           <div className="text-[#4ade80] font-mono font-black text-sm md:text-lg">{formatCurrency(pot)}</div>
@@ -199,7 +199,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="mt-5 md:mt-8 mb-4 h-10 md:h-12 px-6 md:px-8 shrink-0
+          className="mt-5 md:mt-8 landscape:mt-2 mb-4 h-10 md:h-12 landscape:h-9 px-6 md:px-8 shrink-0
             bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04]
             rounded-xl font-black text-xs md:text-sm
             shadow-lg border-b-[3px] border-b-[#5c4613]
