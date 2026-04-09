@@ -175,10 +175,12 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/25" />
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     value={phone}
-                    onChange={(e) => { setPhone(e.target.value); setError(''); }}
+                    onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError(''); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="300 123 4567"
+                    placeholder="3001234567"
                     className="w-full h-14 pl-12 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-base font-medium placeholder:text-white/15 outline-none transition-all"
                     autoFocus
                   />
