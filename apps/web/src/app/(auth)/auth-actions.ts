@@ -667,6 +667,11 @@ export async function setPlayerPin(prevState: unknown, formData: FormData) {
   // Enforce single-session policy
   await enforceSessionPolicy(user.id)
 
+  // On first-time setup (register or legacy migration), offer biometric enrollment
+  if (flow === 'register' || flow === 'login-set-pin') {
+    redirect('/register/player/biometric')
+  }
+
   redirect('/')
 }
 
