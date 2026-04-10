@@ -53,7 +53,7 @@ export const ledgerWorker = new Worker(
           .from('ledger')
           .select('balance_after_cents')
           .eq('user_id', wallet.user_id)
-          .order('created_at', { ascending: false })
+          .order('sequence', { ascending: false })
           .limit(1)
           .maybeSingle();
 
