@@ -24,7 +24,10 @@ export function ShuffleAnimation() {
     const cards = Array.from(deckRef.current.querySelectorAll<HTMLElement>('.sc'))
     if (cards.length !== CARD_COUNT) return
 
-    const tl = gsap.timeline({ repeat: -1 })
+    const mm = gsap.matchMedia()
+
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      const tl = gsap.timeline({ repeat: -1 })
 
     // Pad each 5-second cycle so the repeat aligns perfectly
     tl.addLabel('c1', 0)
@@ -107,6 +110,7 @@ export function ShuffleAnimation() {
 
     addCycle(0)
     addCycle(5)
+    }) // end prefers-reduced-motion: no-preference
   }, { scope: deckRef })
 
   return (

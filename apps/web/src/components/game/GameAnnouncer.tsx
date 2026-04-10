@@ -5,13 +5,24 @@ import { m, AnimatePresence } from 'framer-motion'
 
 interface GameAnnouncerProps {
   phase: string;
+  /** Optional custom message to display (e.g., Mano transfer).  Overrides phase message when set. */
+  customMessage?: string | null;
 }
 
-export function GameAnnouncer({ phase }: GameAnnouncerProps) {
+export function GameAnnouncer({ phase, customMessage }: GameAnnouncerProps) {
   const [announcement, setAnnouncement] = useState<{ text: string; id: number } | null>(null);
+
+  // Handle custom messages (e.g., Mano transfer)
+  useEffect(() => {
+    if (!customMessage) return;
+    setAnnouncement({ text: customMessage, id: Date.now() });
+    const timer = setTimeout(() => setAnnouncement(null), 3500);
+    return () => clearTimeout(timer);
+  }, [customMessage]);
 
   useEffect(() => {
     if (phase === 'LOBBY') return;
+    if (customMessage) return; // Don't override custom message
     
     const messages: Record<string, string> = {
       'SORTEO_MANO': 'Sorteando La Mano',
