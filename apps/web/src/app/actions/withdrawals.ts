@@ -17,6 +17,7 @@ export async function requestWithdrawal(amount: number, bankDetails: string) {
   const amount_cents = Math.round(amount * 100)
 
   if (!wallet) return { error: 'Wallet not found' }
+  if (amount_cents <= 0 || amount_cents % 100000 !== 0) return { error: 'El monto debe ser múltiplo de $1.000 COP' }
   if (Number(wallet.balance_cents) < amount_cents) return { error: 'Saldo insuficiente' }
 
   // 1. Create PENDING withdrawal request

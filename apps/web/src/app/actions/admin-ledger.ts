@@ -56,7 +56,7 @@ export async function getLedgerEntries(limit = 100): Promise<AdminLedgerEntry[]>
       reference_id, description, metadata, status, created_at,
       user:profiles!ledger_user_id_fkey(full_name, username)
     `)
-    .order("created_at", { ascending: false })
+    .order("sequence", { ascending: false })
     .limit(limit);
 
   if (error) throw error;
@@ -107,7 +107,7 @@ export async function getUsersWithBalances(): Promise<UserWithBalance[]> {
       .from("ledger")
       .select("created_at")
       .eq("user_id", w.user_id)
-      .order("created_at", { ascending: false })
+      .order("sequence", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -138,7 +138,7 @@ export async function getUserLedger(userId: string, limit = 200): Promise<AdminL
       reference_id, description, metadata, status, created_at
     `)
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+    .order("sequence", { ascending: false })
     .limit(limit);
 
   if (error) throw error;
