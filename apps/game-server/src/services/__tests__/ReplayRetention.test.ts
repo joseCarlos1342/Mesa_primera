@@ -103,8 +103,10 @@ describe('ReplayFileService — 7-day Retention', () => {
     ReplayFileService.save(old);
     const oldMonthDir = `${daysAgo(15).getFullYear()}-${String(daysAgo(15).getMonth() + 1).padStart(2, '0')}`;
     const oldFilePath = path.join(tmpDir, oldMonthDir, 'game-old2.json');
+    const oldMp4Path = path.join(tmpDir, oldMonthDir, 'game-old2.mp4');
     const fifteenDaysAgo = daysAgo(15);
     fs.utimesSync(oldFilePath, fifteenDaysAgo, fifteenDaysAgo);
+    if (fs.existsSync(oldMp4Path)) fs.utimesSync(oldMp4Path, fifteenDaysAgo, fifteenDaysAgo);
 
     ReplayFileService.cleanup();
 

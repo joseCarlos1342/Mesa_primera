@@ -82,7 +82,7 @@ describe('ActionControls', () => {
       expect(screen.getByText('Paso')).toBeInTheDocument();
     });
 
-    it('Should render Igualar button when there is an active bet', () => {
+    it('Should render IR (call) button when there is an active bet', () => {
       render(
         <ActionControls 
           room={mockRoom} 
@@ -94,7 +94,7 @@ describe('ActionControls', () => {
         />
       );
 
-      expect(screen.getByText(/Igualar/)).toBeInTheDocument();
+      expect(screen.getByText(/IR/)).toBeInTheDocument();
     });
 
     it('Should render Resto button when player cannot afford to call', () => {
@@ -109,7 +109,7 @@ describe('ActionControls', () => {
         />
       );
 
-      expect(screen.getByText(/Resto/)).toBeInTheDocument();
+      expect(screen.getByText(/IR Resto/)).toBeInTheDocument();
     });
 
     it('Should return null when player is all-in', () => {
