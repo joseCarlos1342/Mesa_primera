@@ -73,6 +73,36 @@ describe('Transfer Server Actions', () => {
       const result = await lookupUserByPhone('+573001234567')
       expect(result).toEqual({ error: 'Error al buscar usuario' })
     })
+
+    it('normalizes real Colombian number (3205802918) to +573205802918', async () => {
+      mockSupabase.rpc.mockResolvedValue({
+        data: { found: true, user_id: 'user-2', username: 'RealPlayer', avatar_url: null, level: 1 },
+        error: null,
+      })
+
+      await lookupUserByPhone('3205802918')
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('lookup_user_by_phone', { p_phone: '+573205802918' })
+    })
+
+    it('normalizes legacy hackathon number (0000000002) to +570000000002', async () => {
+      mockSupabase.rpc.mockResolvedValue({
+        data: { found: true, user_id: 'user-legacy', username: 'LegacyPlayer', avatar_url: null, level: 1 },
+        error: null,
+      })
+
+      await lookupUserByPhone('0000000002')
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('lookup_user_by_phone', { p_phone: '+570000000002' })
+    })
+
+    it('normalizes legacy hackathon number (0000000003) to +570000000003', async () => {
+      mockSupabase.rpc.mockResolvedValue({
+        data: { found: true, user_id: 'user-legacy-3', username: 'LegacyPlayer3', avatar_url: null, level: 1 },
+        error: null,
+      })
+
+      await lookupUserByPhone('0000000003')
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('lookup_user_by_phone', { p_phone: '+570000000003' })
+    })
   })
 
   describe('transferToPlayer', () => {

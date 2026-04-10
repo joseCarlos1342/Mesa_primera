@@ -14,6 +14,7 @@ import type {
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
 } from '@simplewebauthn/server'
+import { normalizePhone } from '@/lib/phone'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -31,13 +32,7 @@ function getExpectedOrigins(): string[] {
   return ['http://localhost:3000', 'https://localhost:3000']
 }
 
-function normalizePhone(phone: string): string {
-  const cleaned = phone.replace(/[^\d+]/g, '')
-  if (!cleaned.startsWith('+')) {
-    return cleaned.startsWith('57') ? `+${cleaned}` : `+57${cleaned}`
-  }
-  return cleaned
-}
+
 
 /** Store a challenge in an httpOnly cookie for later verification */
 async function storeChallenge(challenge: string) {

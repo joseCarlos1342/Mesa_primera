@@ -34,6 +34,7 @@ describe('Auth Actions', () => {
       auth: {
         signInWithOtp: mockSignInWithOtp,
       },
+      rpc: jest.fn().mockResolvedValue({ data: false, error: null }),
     }
     ;(createClient as any).mockResolvedValue(mockSupabase)
   })
@@ -64,7 +65,7 @@ describe('Auth Actions', () => {
           },
         },
       })
-      expect(redirect).toHaveBeenCalledWith('/login/player/verify?phone=%2B573205802918')
+      expect(redirect).toHaveBeenCalledWith('/register/player/verify?phone=%2B573205802918')
     })
   })
 
@@ -85,7 +86,7 @@ describe('Auth Actions', () => {
           shouldCreateUser: false
         }
       })
-      expect(redirect).toHaveBeenCalledWith('/login/player/verify?phone=%2B573205802918')
+      expect(redirect).toHaveBeenCalledWith('/login/player/verify?phone=%2B573205802918&flow=login-set-pin')
     })
 
     it('debe devolver un error si signInWithOtp falla', async () => {
