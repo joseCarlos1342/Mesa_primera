@@ -195,7 +195,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
               required
               min={10000}
               max={50000000}
-              step={1}
+              step={1000}
               className={`w-full h-16 md:h-16 lg:h-16 landscape:h-12 pl-14 md:pl-16 pr-6 bg-black/40 border-2 rounded-2xl md:rounded-[2rem] landscape:rounded-xl text-3xl md:text-4xl landscape:text-2xl font-display font-black text-[#f3edd7] placeholder:text-brand-gold/10 focus:outline-none focus:bg-black/60 transition-all italic tracking-tight shadow-[inset_0_4px_15px_rgba(0,0,0,0.6)]
                 ${fieldErrors.amount ? 'border-red-500/60 focus:border-red-500/80' : 'border-brand-gold/10 focus:border-[#c0a060]/60'}`}
             />
