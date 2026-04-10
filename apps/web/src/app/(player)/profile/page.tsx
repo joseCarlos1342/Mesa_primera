@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getMyStats, PlayerStats } from '@/app/actions/stats';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { useAppLock } from '@/components/providers/AppLockProvider';
+import { normalizePhone } from '@/lib/phone';
 import { useRef } from 'react';
 
 export default function ProfilePage() {
@@ -68,13 +69,7 @@ export default function ProfilePage() {
     loadData();
   }, [supabase, router]);
 
-  // Normalize phone to E.164 (+57...)
-  function normalizePhone(raw: string): string {
-    const digits = raw.replace(/\D/g, '');
-    if (digits.startsWith('57') && digits.length === 12) return '+' + digits;
-    if (digits.length === 10) return '+57' + digits;
-    return raw.startsWith('+') ? raw : '+' + digits;
-  }
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

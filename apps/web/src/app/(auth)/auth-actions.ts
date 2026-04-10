@@ -17,6 +17,7 @@ import {
 } from '@/lib/validations'
 import crypto from 'crypto'
 import { enforceSessionPolicy } from './auth-actions-helpers'
+import { normalizePhone } from '@/lib/phone'
 
 const DEVICE_COOKIE_NAME = 'device_trusted_id'
 const DEVICE_TRUST_DAYS = 30
@@ -64,18 +65,7 @@ async function getDeviceCookie(): Promise<string | null> {
   return cookieStore.get(DEVICE_COOKIE_NAME)?.value ?? null
 }
 
-function normalizePhone(phone: string): string {
-  // Solo dígitos y el +
-  const cleaned = phone.replace(/[^\d+]/g, '')
-  
-  if (!cleaned.startsWith('+')) {
-    if (cleaned.startsWith('57')) {
-      return `+${cleaned}`
-    }
-    return `+57${cleaned}`
-  }
-  return cleaned
-}
+
 
 function isMissingPhoneAuthUser(errorMessage: string): boolean {
   const normalized = errorMessage.toLowerCase()

@@ -169,7 +169,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
             {/* ── Step 1: Search ── */}
             {step === 'search' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                <p className="text-sm text-white/50 text-center">Ingresa el teléfono del jugador.</p>
+                <p className="text-sm text-white/50 text-center">Ingresa el teléfono del jugador (10 dígitos, sin +57).</p>
 
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/25" />

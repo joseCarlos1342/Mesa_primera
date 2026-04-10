@@ -163,7 +163,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
             {step === 'search' && (
               <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                 <div className="text-center space-y-2">
-                  <p className="text-sm text-white/60">Ingresa el número de celular del jugador al que deseas transferir saldo.</p>
+                  <p className="text-sm text-white/60">Ingresa el número de celular del jugador (10 dígitos, sin +57).</p>
                 </div>
 
                 <div className="space-y-3">
