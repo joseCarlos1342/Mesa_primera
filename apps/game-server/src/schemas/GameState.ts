@@ -33,6 +33,11 @@ export class Player extends Schema {
   supabaseUserId: string = "";
   /** Contribución total a pot principal (ANTE + apuestas). Server-only, para cálculo de side pots en showdown. */
   totalMainBet: number = 0;
+  /**
+   * Declaration state for DECLARAR_JUEGO phase. Server-only.
+   * null = hasn't declared yet, true = "tengo juego", false = "no tengo juego"
+   */
+  declaredJuego: boolean | null = null;
 }
 
 export class GameState extends Schema {

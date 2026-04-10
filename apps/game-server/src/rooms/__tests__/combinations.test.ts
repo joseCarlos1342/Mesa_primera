@@ -63,4 +63,48 @@ describe('Combinations & Hand Evaluation', () => {
       expect(compareHands(handB, handA)).toBeLessThan(0); // handB loses
     });
   });
+
+  describe('Sin juego / Points-based resolution with Mano bonus', () => {
+    it('La Mano wins a NINGUNA vs NINGUNA tie with +1 point bonus', () => {
+      // Same NINGUNA hand — Mano should win with the +1 bonus
+      const handA = evaluateHand('7-O,6-O,5-E,1-B'); // NINGUNA
+      const handB = evaluateHand('7-C,6-C,5-B,1-E'); // NINGUNA — same points, different suits
+
+      expect(handA.type).toBe('NINGUNA');
+      expect(handB.type).toBe('NINGUNA');
+      expect(handA.points).toBe(handB.points); // tied on points
+
+      // Simulate Mano bonus for handA
+      const handAWithBonus: HandEvaluation = { ...handA, points: handA.points + 1 };
+      expect(compareHands(handAWithBonus, handB)).toBeGreaterThan(0); // Mano wins
+    });
+
+    it('higher NINGUNA points beat La Mano bonus', () => {
+      // Player 2 has clearly more points than Mano even with +1
+      const manoHand = evaluateHand('2-O,3-O,4-E,4-B'); // NINGUNA — lower points
+      const otherHand = evaluateHand('7-O,6-O,5-E,1-B'); // NINGUNA — higher points
+
+      expect(manoHand.type).toBe('NINGUNA');
+      expect(otherHand.type).toBe('NINGUNA');
+
+      const manoWithBonus: HandEvaluation = { ...manoHand, points: manoHand.points + 1 };
+      expect(compareHands(otherHand, manoWithBonus)).toBeGreaterThan(0); // Other player wins
+    });
+
+    it('NINGUNA hands are comparable for sin-juego resolution', () => {
+      // All three players have NINGUNA — ensure they can be sorted
+      const hand1 = evaluateHand('1-O,2-O,3-E,4-B'); // NINGUNA
+      const hand2 = evaluateHand('7-O,6-O,5-E,1-B'); // NINGUNA
+      const hand3 = evaluateHand('5-C,4-C,3-O,2-E'); // NINGUNA
+
+      expect(hand1.type).toBe('NINGUNA');
+      expect(hand2.type).toBe('NINGUNA');
+      expect(hand3.type).toBe('NINGUNA');
+
+      // Should produce deterministic ordering
+      const sorted = [hand1, hand2, hand3].sort((a, b) => compareHands(b, a));
+      expect(sorted[0].points).toBeGreaterThanOrEqual(sorted[1].points);
+      expect(sorted[1].points).toBeGreaterThanOrEqual(sorted[2].points);
+    });
+  });
 });
