@@ -7,6 +7,7 @@ import { Room } from '@colyseus/sdk';
 import { ArrowLeft, Eye, UserX, VolumeX, Ban, Loader2, Users, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { ManoIcon } from '@/components/game/ManoIcon';
 
 const VoiceChat = dynamic(
   () => import('@/components/VoiceChat').then(mod => mod.VoiceChat),
@@ -204,9 +205,7 @@ export default function SpectatePage() {
                       <span className={`w-2 h-2 rounded-full ${p.connected ? 'bg-emerald-400' : 'bg-red-400'}`} />
                       <span className="text-white font-bold">{p.nickname}</span>
                       {isDealer && (
-                        <span className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20 uppercase tracking-widest">
-                          Mano
-                        </span>
+                        <ManoIcon size="xs" />
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">

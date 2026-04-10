@@ -6,7 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { RoomAvailable, Room } from '@colyseus/sdk'
 import { useRouter } from 'next/navigation'
 import { Plus, Users, Zap, Trophy, Shield, RefreshCcw, Film } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { DepositModal } from '@/components/game/DepositModal'
 import { CustomMesaModal } from '@/components/game/CustomMesaModal'
 import Link from 'next/link'
@@ -300,7 +300,7 @@ export function Lobby() {
         {/* Premium Header Section */}
         <header className="flex flex-col items-center justify-center gap-6 md:gap-12 pb-8 md:pb-20 relative px-4">
           {/* 1. Server Status & Tables - Larger and Primary */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="inline-flex items-center gap-4 px-8 py-3 bg-brand-gold/5 border-2 border-brand-gold/20 rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(197,160,89,0.1)]"
@@ -311,18 +311,18 @@ export function Lobby() {
             <span className="text-[10px] md:text-xs font-black text-text-premium uppercase tracking-[0.2em]">
               {rooms.length} MESAS DISPONIBLES
             </span>
-          </motion.div>
+          </m.div>
 
           {/* 2. Main Title & Subtitle - Impactful Size */}
           <div className="flex flex-col items-center space-y-4">
-            <motion.h1
+            <m.h1
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-6xl md:text-9xl lg:text-[10rem] font-display font-black italic text-brand-gold uppercase tracking-tighter leading-[0.75] pr-4 drop-shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
             >
               Lobby
-            </motion.h1>
-            <motion.div
+            </m.h1>
+            <m.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -333,12 +333,12 @@ export function Lobby() {
                 Selecciona tu mesa de primera
               </p>
               <div className="h-px w-8 md:w-16 bg-gradient-to-l from-transparent to-slate-500" />
-            </motion.div>
+            </m.div>
           </div>
 
           {/* 3. Balance Section - Compact */}
           {userProfile && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
@@ -371,7 +371,7 @@ export function Lobby() {
                   <span className="text-xs font-black text-white uppercase tracking-widest relative z-10">Repeticiones</span>
                 </Link>
               </div>
-            </motion.div>
+            </m.div>
           )}
 
           {/* Floating Admin Actions */}

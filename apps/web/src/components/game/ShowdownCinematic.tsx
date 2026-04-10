@@ -1,15 +1,18 @@
 "use client"
 
-import { useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 import { evaluateHand } from '@/utils/handEvaluation'
 import { formatCurrency } from '@/utils/format'
+import { ManoIcon } from './ManoIcon'
 
 interface ShowdownPlayer {
   id: string;
   nickname: string;
   revealedCards: string;
   isFolded: boolean;
+  turnOrder?: number;
 }
 
 interface ShowdownCinematicProps {
@@ -37,9 +40,10 @@ function parseCard(cardStr: string) {
 
 export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss }: ShowdownCinematicProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const hasAnimated = useRef(false);
 
-  const activePlayers = players.filter(p => !p.isFolded && p.revealedCards);
+  const activePlayers = players
+    .filter(p => !p.isFolded && p.revealedCards)
+    .sort((a, b) => (a.turnOrder || 99) - (b.turnOrder || 99)); // Mano (1) first, then 2, 3, etc.
 
   // Compute winner client-side (same logic as server: hand rank > points, La Mano +1)
   const winnerId = (() => {
@@ -61,47 +65,49 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
     return best.id;
   })();
 
-  useEffect(() => {
-    if (hasAnimated.current || !containerRef.current) return;
-    hasAnimated.current = true;
+  useGSAP(() => {
+    if (!containerRef.current) return;
 
-    const header = containerRef.current.querySelector('.showdown-header');
+    const mm = gsap.matchMedia();
 
-    const tl = gsap.timeline();
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      const header = containerRef.current!.querySelector('.showdown-header');
+      const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
 
-    // Fade in the backdrop
-    tl.fromTo(containerRef.current, { opacity: 0 }, { opacity: 1, duration: 0.4 });
+      // Fade in the backdrop
+      tl.fromTo(containerRef.current!, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 });
 
-    // Header entrance
-    if (header) {
-      tl.fromTo(header, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' }, '-=0.2');
-    }
-
-    // Stagger card flips per player group
-    activePlayers.forEach((_, pIdx) => {
-      const playerCards = containerRef.current!.querySelectorAll(`.player-${pIdx}-card`);
-      const playerLabel = containerRef.current!.querySelector(`.player-${pIdx}-label`);
-
-      // Cards flip in with stagger
-      tl.fromTo(playerCards, 
-        { rotateY: 180, scale: 0.6, opacity: 0 },
-        { rotateY: 0, scale: 1, opacity: 1, duration: 0.6, stagger: 0.15, ease: 'back.out(1.4)' },
-        pIdx === 0 ? '-=0.1' : '-=0.3'
-      );
-
-      // Player label fades in after their cards
-      if (playerLabel) {
-        tl.fromTo(playerLabel, 
-          { y: 15, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out' },
-          '-=0.2'
-        );
+      // Header entrance
+      if (header) {
+        tl.fromTo(header, { y: -30, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.5, ease: 'back.out(1.7)' }, '-=0.2');
       }
+
+      // Stagger card flips per player group
+      activePlayers.forEach((_, pIdx) => {
+        const playerCards = containerRef.current!.querySelectorAll(`.player-${pIdx}-card`);
+        const playerLabel = containerRef.current!.querySelector(`.player-${pIdx}-label`);
+
+        tl.fromTo(playerCards,
+          { rotateY: 180, scale: 0.6, autoAlpha: 0 },
+          { rotateY: 0, scale: 1, autoAlpha: 1, duration: 0.6, stagger: 0.15, ease: 'back.out(1.4)' },
+          pIdx === 0 ? '-=0.1' : '-=0.3'
+        );
+
+        if (playerLabel) {
+          tl.fromTo(playerLabel,
+            { y: 15, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.4 },
+            '-=0.2'
+          );
+        }
+      });
     });
 
-    return () => { tl.kill(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Reduced motion: show everything immediately
+    mm.add('(prefers-reduced-motion: reduce)', () => {
+      gsap.set(containerRef.current!, { autoAlpha: 1 });
+    });
+  }, { scope: containerRef });
 
   if (activePlayers.length === 0) return null;
 
@@ -109,7 +115,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
     <div 
       ref={containerRef}
       className="absolute inset-0 z-60 flex flex-col items-center bg-black/85 backdrop-blur-sm pointer-events-auto overflow-y-auto"
-      style={{ opacity: 0 }}
+      style={{ visibility: 'hidden', opacity: 0 }}
     >
       {/* Scrollable content wrapper */}
       <div className="flex flex-col items-center w-full py-6 md:py-8 landscape:py-3 min-h-full justify-start md:justify-center">
@@ -135,9 +141,9 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
               className={`flex flex-col items-center ${isWinner ? 'md:order-first' : ''}`}
             >
               {/* Player name above cards on mobile */}
-              <div className={`md:hidden mb-1.5 text-sm font-black tracking-wide ${isWinner ? 'text-[#d4af37]' : 'text-white/90'}`}>
+              <div className={`md:hidden mb-1.5 text-sm font-black tracking-wide flex items-center gap-1 ${isWinner ? 'text-[#d4af37]' : 'text-white/90'}`}>
                 {player.nickname}
-                {isMano && <span className="ml-1.5 text-[10px] text-[#d4af37]/70">(La Mano)</span>}
+                {isMano && <ManoIcon size="xs" />}
               </div>
 
               {/* Cards */}
@@ -163,9 +169,9 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
 
               {/* Player Label */}
               <div className={`showdown-label player-${pIdx}-label flex flex-col items-center`}>
-                <div className={`hidden md:block text-base font-black tracking-wide ${isWinner ? 'text-[#d4af37]' : 'text-white/90'}`}>
+                <div className={`hidden md:flex items-center gap-1 text-base font-black tracking-wide ${isWinner ? 'text-[#d4af37]' : 'text-white/90'}`}>
                   {player.nickname}
-                  {isMano && <span className="ml-1.5 text-[10px] text-[#d4af37]/70">(La Mano)</span>}
+                  {isMano && <ManoIcon size="xs" />}
                 </div>
                 <div className={`text-xs md:text-sm font-mono ${isWinner ? 'text-[#4ade80]' : 'text-white/60'}`}>
                   {hand.type} &middot; {displayPoints} pts

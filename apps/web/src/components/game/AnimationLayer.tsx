@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 import { Card } from './Card'
 
@@ -14,8 +14,17 @@ interface FlyingCard {
 
 export function AnimationLayer() {
   const [flyingCards, setFlyingCards] = useState<FlyingCard[]>([]);
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   useEffect(() => {
+    const scheduleRemoval = (newFlyers: FlyingCard[]) => {
+      const timer = setTimeout(() => {
+        setFlyingCards(prev => prev.filter(fc => !newFlyers.find(nf => nf.id === fc.id)));
+        timersRef.current.delete(timer);
+      }, 600);
+      timersRef.current.add(timer);
+    };
+
     const handleDeal = (e: Event) => {
       const customEvent = e as CustomEvent<{ toPlayerId: string; cards: string[]; isFaceUp?: boolean }>;
       const { toPlayerId, cards, isFaceUp = false } = customEvent.detail;
@@ -46,9 +55,7 @@ export function AnimationLayer() {
       setFlyingCards(prev => [...prev, ...newFlyers]);
 
       // Remove after animation completes (duration ~0.5s)
-      setTimeout(() => {
-        setFlyingCards(prev => prev.filter(fc => !newFlyers.find(nf => nf.id === fc.id)));
-      }, 600);
+      scheduleRemoval(newFlyers);
     };
 
     const handleDiscard = (e: Event) => {
@@ -79,9 +86,7 @@ export function AnimationLayer() {
 
       setFlyingCards(prev => [...prev, ...newFlyers]);
 
-      setTimeout(() => {
-        setFlyingCards(prev => prev.filter(fc => !newFlyers.find(nf => nf.id === fc.id)));
-      }, 600);
+      scheduleRemoval(newFlyers);
     };
 
     window.addEventListener('animate-deal', handleDeal);
@@ -90,6 +95,8 @@ export function AnimationLayer() {
     return () => {
       window.removeEventListener('animate-deal', handleDeal);
       window.removeEventListener('animate-discard', handleDiscard);
+      timersRef.current.forEach(t => clearTimeout(t));
+      timersRef.current.clear();
     };
   }, []);
 

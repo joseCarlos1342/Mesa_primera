@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { WifiOff } from 'lucide-react'
 
 interface ReconnectOverlayProps {
@@ -12,7 +12,7 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -31,7 +31,7 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
             style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 50%, rgba(212,175,55,0.06) 0%, transparent 70%)' }}
           />
 
-          <motion.div
+          <m.div
             initial={{ scale: 0.88, opacity: 0, y: 16 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 8 }}
@@ -65,7 +65,7 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
               <div className="relative z-10 flex flex-col items-center px-8 py-10">
 
                 {/* Icon ring */}
-                <motion.div
+                <m.div
                   animate={{ opacity: [1, 0.5, 1] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                   className="relative flex items-center justify-center w-20 h-20 rounded-full mb-7"
@@ -79,7 +79,7 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
                     className="w-9 h-9"
                     style={{ color: '#d4af37', filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.4))' }}
                   />
-                </motion.div>
+                </m.div>
 
                 {/* Title */}
                 <h2
@@ -113,7 +113,7 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex items-center gap-2">
                     {[0, 0.2, 0.4].map((delay, i) => (
-                      <motion.span
+                      <m.span
                         key={i}
                         animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.1, 0.8] }}
                         transition={{ duration: 1.4, repeat: Infinity, delay, ease: 'easeInOut' }}
@@ -153,8 +153,8 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
                 <path d="M2 2 L2 8 M2 2 L8 2" stroke="#d4af37" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             ))}
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   )

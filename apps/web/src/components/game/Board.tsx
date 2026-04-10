@@ -14,6 +14,7 @@ import { PiqueRevealOverlay } from './PiqueRevealOverlay'
 import { useState, useEffect, useRef } from 'react'
 import { AnimationLayer } from './AnimationLayer'
 import { ShuffleAnimation } from './ShuffleAnimation'
+import { ManoIcon } from './ManoIcon'
 import { useCardPreloader } from '@/hooks/useCardPreloader'
 
 interface BoardProps {
@@ -37,6 +38,9 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
   const [adminWatching, setAdminWatching] = useState(false);
+  const [manoMessage, setManoMessage] = useState<string | null>(null);
+  const [manoTransfer, setManoTransfer] = useState<{ fromId: string; toId: string } | null>(null);
+  const prevDealerIdRef = useRef<string>("");
   const prevPlayersRef = useRef<any[]>([]);
   const prevMyCardsRef = useRef<string>("");
 
@@ -47,6 +51,9 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   const getPlayerIndex = (id: string) => players.findIndex(p => p.id === id);
 
   const totalBet = Object.entries(chipCounts).reduce((sum, [denom, count]) => sum + Number(denom) * count, 0);
+
+  // Hide dealer badge during preliminary phases before the sorteo is confirmed
+  const hideMano = ['LOBBY', 'STARTING', 'BARAJANDO', 'SORTEO_MANO'].includes(phase);
 
   const addChip = (val: number) => {
     if ((me?.chips || 0) < totalBet + val) return;
@@ -62,6 +69,28 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
 
   // Intro shows only during the STARTING phase (server-controlled timing)
   const showIntro = phase === 'STARTING';
+
+  // Detect dealerId changes to trigger Mano transfer animation + announcement
+  useEffect(() => {
+    const dealerId = room?.state?.dealerId || "";
+    const prevDealerId = prevDealerIdRef.current;
+
+    if (dealerId && prevDealerId && dealerId !== prevDealerId && !hideMano) {
+      const newMano = players.find(p => p.id === dealerId);
+      if (newMano) {
+        setManoMessage(`${newMano.nickname} es la nueva mano`);
+        setManoTransfer({ fromId: prevDealerId, toId: dealerId });
+        const timer = setTimeout(() => {
+          setManoMessage(null);
+          setManoTransfer(null);
+        }, 3500);
+        prevDealerIdRef.current = dealerId;
+        return () => clearTimeout(timer);
+      }
+    }
+
+    prevDealerIdRef.current = dealerId;
+  }, [room?.state?.dealerId, players, hideMano]);
 
   useEffect(() => {
     const myId = room?.sessionId;
@@ -167,7 +196,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           player={p || { nickname: 'VACÍO', chips: null, connected: true }} 
           isActive={p && room.state.turnPlayerId === p.id} 
           isMe={false} 
-          isDealer={p && room.state.dealerId === p.id}
+          isDealer={!hideMano && p && room.state.dealerId === p.id}
           points={undefined} /* Opponents don't show points, only for self */
           turnOrder={p?.turnOrder}
           isWaiting={p?.isWaiting}
@@ -195,7 +224,6 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                         transformOrigin: 'top center',
                         marginRight: idx !== arr.length - 1 ? '-35px' : '0px',
                         zIndex: idx,
-                        transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
                       }}
                       className={p.isFolded ? 'pointer-events-none grayscale' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
                     >
@@ -242,7 +270,6 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                           transformOrigin: 'top center',
                           marginRight: idx !== opponentCardCount - 1 ? '-35px' : '0px',
                           zIndex: idx,
-                          transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
                         }}
                         className="drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]"
                       >
@@ -275,7 +302,29 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
       {/* Decorative center ellipse */}
       <div className="absolute w-[85vw] h-[55vh] border-[1px] border-white/5 rounded-[50%] pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]" />
 
-      <GameAnnouncer phase={phase} />
+      <GameAnnouncer phase={phase} customMessage={manoMessage} />
+
+      {/* Mano Transfer Animation: flying icon between players */}
+      <AnimatePresence>
+        {manoTransfer && (
+          <m.div
+            key={`mano-transfer-${manoTransfer.toId}`}
+            className="absolute inset-0 z-[95] pointer-events-none flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <m.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: [0.5, 1.4, 1], opacity: [0, 1, 1] }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 1.2, ease: "easeOut" }}
+            >
+              <ManoIcon size="md" animate />
+            </m.div>
+          </m.div>
+        )}
+      </AnimatePresence>
 
       {/* Admin Spectator Banner */}
       <AnimatePresence>
@@ -319,10 +368,10 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
             >
               {/* Decorative line top */}
               <m.div 
-                initial={{ width: 0 }}
-                animate={{ width: 100 }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
                 transition={{ delay: 1, duration: 0.8 }}
-                className="h-px bg-gradient-to-r from-transparent via-[#d4af37] to-transparent" 
+                className="h-px w-[100px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent origin-center" 
               />
 
               <h1 className="text-4xl md:text-7xl font-serif font-black italic uppercase tracking-[0.25em] text-center leading-tight drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] px-4">
@@ -336,10 +385,10 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
 
               {/* Decorative line bottom */}
               <m.div 
-                initial={{ width: 0 }}
-                animate={{ width: 100 }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
                 transition={{ delay: 1, duration: 0.8 }}
-                className="h-px bg-gradient-to-r from-transparent via-[#d4af37] to-transparent" 
+                className="h-px w-[100px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent origin-center" 
               />
             </m.div>
 
@@ -479,10 +528,10 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   )}
                   
                   {/* Dealer Tag */}
-                  {room.state.dealerId === myId && (
-                     <div className="ml-1 bg-[#d4af37] text-black text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">Mano</div>
+                  {!hideMano && room.state.dealerId === myId && (
+                     <ManoIcon size="xs" className="ml-1" />
                   )}
-                  {room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
+                  {!hideMano && room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
                      <div className="ml-1 bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">{me.turnOrder}ª</div>
                   )}
                   {me.isAllIn && !me.passedWithJuego && (

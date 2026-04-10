@@ -3,6 +3,7 @@
 import { m } from 'framer-motion'
 import { getAvatarSvg } from '@/utils/avatars'
 import { formatCurrency } from '@/utils/format'
+import { ManoIcon } from './ManoIcon'
 
 interface PlayerBadgeProps {
   player: any;
@@ -95,9 +96,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
 
          {/* In-pill badges: only for own player (enemies use below-pill badges) */}
          {isMe && isDealer && !isWaiting && (
-            <div className="bg-[#d4af37] text-black text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white/20 uppercase tracking-tighter">
-              Mano
-            </div>
+            <ManoIcon size="xs" />
          )}
 
          {isMe && !isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
@@ -123,9 +122,7 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
        {!isMe && (
          <div className="flex items-center justify-center gap-0.5 md:gap-1 mt-0.5">
            {isDealer && !isWaiting && (
-             <span className="bg-[#d4af37] text-black text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full shadow-sm border border-white/20 uppercase tracking-tighter leading-none">
-               Mano
-             </span>
+             <ManoIcon size="xs" />
            )}
            {!isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
              <span className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter leading-none">

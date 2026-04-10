@@ -1,7 +1,8 @@
 "use client"
 
-import { useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 import { Room } from '@colyseus/sdk'
 
 interface PiqueRevealOverlayProps {
@@ -24,40 +25,44 @@ function parseCard(cardStr: string) {
 
 export function PiqueRevealOverlay({ room, players }: PiqueRevealOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const hasAnimated = useRef(false);
 
   const revealedPlayer = players.find(p => p.revealedCards && (p.isFolded || p.passedWithJuego));
   const cards = revealedPlayer?.revealedCards
     ? revealedPlayer.revealedCards.split(',').filter(Boolean)
     : [];
 
-  useEffect(() => {
-    if (hasAnimated.current || !containerRef.current || cards.length === 0) return;
-    hasAnimated.current = true;
+  useGSAP(() => {
+    if (!containerRef.current || cards.length === 0) return;
 
-    const tl = gsap.timeline();
-    tl.fromTo(containerRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+    const mm = gsap.matchMedia();
 
-    const header = containerRef.current.querySelector('.reveal-header');
-    if (header) {
-      tl.fromTo(header, { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'back.out(1.5)' }, '-=0.1');
-    }
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+      tl.fromTo(containerRef.current!, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 });
 
-    const cardEls = containerRef.current.querySelectorAll('.reveal-card');
-    tl.fromTo(cardEls,
-      { rotateY: 180, scale: 0.5, opacity: 0 },
-      { rotateY: 0, scale: 1, opacity: 1, duration: 0.5, stagger: 0.12, ease: 'back.out(1.3)' },
-      '-=0.2'
-    );
+      const header = containerRef.current!.querySelector('.reveal-header');
+      if (header) {
+        tl.fromTo(header, { y: -20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.4, ease: 'back.out(1.5)' }, '-=0.1');
+      }
 
-    const label = containerRef.current.querySelector('.reveal-label');
-    if (label) {
-      tl.fromTo(label, { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, '-=0.1');
-    }
+      const cardEls = containerRef.current!.querySelectorAll('.reveal-card');
+      tl.fromTo(cardEls,
+        { rotateY: 180, scale: 0.5, autoAlpha: 0 },
+        { rotateY: 0, scale: 1, autoAlpha: 1, duration: 0.5, stagger: 0.12, ease: 'back.out(1.3)' },
+        '-=0.2'
+      );
 
-    return () => { tl.kill(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      const label = containerRef.current!.querySelector('.reveal-label');
+      if (label) {
+        tl.fromTo(label, { y: 10, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.3 }, '-=0.1');
+      }
+    });
+
+    // Reduced motion: show everything immediately
+    mm.add('(prefers-reduced-motion: reduce)', () => {
+      gsap.set(containerRef.current!, { autoAlpha: 1 });
+    });
+  }, { scope: containerRef });
 
   if (!revealedPlayer || cards.length === 0) return null;
 
@@ -65,7 +70,7 @@ export function PiqueRevealOverlay({ room, players }: PiqueRevealOverlayProps) {
     <div
       ref={containerRef}
       className="absolute inset-0 z-60 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto overflow-y-auto landscape:justify-start landscape:pt-4"
-      style={{ opacity: 0 }}
+      style={{ visibility: 'hidden', opacity: 0 }}
     >
       {/* Header */}
       <div className="reveal-header flex flex-col items-center mb-4 md:mb-6 landscape:mb-2 px-4 text-center">
