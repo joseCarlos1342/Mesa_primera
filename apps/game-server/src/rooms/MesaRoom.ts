@@ -49,7 +49,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private pendingPiqueWinnerId: string = "";
   /** ID del jugador que declaró "llevo juego" en DESCARTE, pendiente de dismiss. */
   private pendingLlevoJuegoPlayerId: string = "";
-  private pendingShowdownData: { overallWinnerId: string; potWinners: any[]; totalPayout: number; totalRake: number; activePlayers: Player[] } | null = null;
+  private pendingShowdownData: { overallWinnerId: string; potWinners: any[]; totalPayout: number; totalRake: number; activePlayers: Player[]; persisted?: boolean } | null = null;
   /** Votación democrática del pique fijo. */
   private piqueVoters = new Map<string, boolean>();
   private piqueProposerId: string = "";
@@ -591,11 +591,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.onMessage("dismiss-showdown", (client) => {
       if (this.state.phase !== "SHOWDOWN") return;
 
-      // Limpiar cartas reveladas
-      this.state.players.forEach((p: Player) => { p.revealedCards = ""; });
-
       // Caso 1: Showdown del pique (después de completar 4 cartas)
       if (this.pendingPiqueWinnerId) {
+        this.state.players.forEach((p: Player) => { p.revealedCards = ""; });
         const winnerId = this.pendingPiqueWinnerId;
         this.attemptManoRotation(winnerId, "Mano ganó Pique");
         this.awardPiqueAndContinue(winnerId);
@@ -604,7 +602,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
       // Caso 2: Showdown de un solo jugador que eligió mostrar cartas
       if (!this.pendingShowdownData) {
-        // Solo queda 1 jugador que mostró sus cartas
+        this.state.players.forEach((p: Player) => { p.revealedCards = ""; });
         const winner = Array.from(this.state.players.values() as IterableIterator<Player>)
           .find(p => !p.isFolded && p.connected);
         if (winner) {
@@ -613,7 +611,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         return;
       }
 
-      // Caso 3: Showdown multi-jugador
+      // Caso 3: Showdown multi-jugador — payout already persisted, just cleanup
       const { overallWinnerId, potWinners, totalPayout, totalRake, activePlayers } = this.pendingShowdownData;
       this.pendingShowdownData = null;
       this.finalizeShowdown(overallWinnerId, potWinners, totalPayout, totalRake, activePlayers);
@@ -628,6 +626,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const { tiene } = message; // true = "Tengo Juego", false = "No Tengo Juego"
 
       player.hasActed = true;
+      player.declaredJuego = tiene;
       this.currentTimeline.push({ event: 'declarar_juego', player: client.sessionId, tiene, time: Date.now(), rng_state: this.getRngState() });
 
       if (tiene) {
@@ -635,10 +634,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         this.state.lastAction = `${player.nickname} declara: ¡Tengo ${hand.type}!`;
         console.log(`[MesaRoom] ${player.nickname} declara tener juego (${hand.type}, ${hand.points} pts)`);
       } else {
-        player.isFolded = true;
         this.state.lastAction = `${player.nickname} declara: No tengo juego`;
-        this.attemptManoRotation(client.sessionId, "Mano declara no tener juego");
-        if (player.id === this.state.activeManoId) this.transferMano();
+        console.log(`[MesaRoom] ${player.nickname} declara no tener juego`);
       }
 
       this.advanceTurnDeclarar();
@@ -1135,6 +1132,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       p.passedWithJuego = false;
       p.totalMainBet = 0;
       p.revealedCards = "";
+      p.declaredJuego = null;
       this.setPlayerCards(sessionId, "");
     }
   }
@@ -1278,6 +1276,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       p.isAllIn = false;
       p.passedWithJuego = false;
       p.totalMainBet = 0;
+      p.declaredJuego = null;
       this.setPlayerCards(sessionId, "");
       p.revealedCards = "";
     });
@@ -1542,6 +1541,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         p.hasActed = false;
         p.isFolded = false;
         p.revealedCards = "";
+        p.declaredJuego = null;
       });
       this.state.players.forEach((p: Player, sessionId: string) => {
         this.setPlayerCards(sessionId, "");
@@ -2037,11 +2037,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /**
-   * Repartir reemplazos: todos los del jugador de una vez, sequentially por jugador, desde abajo del mazo.
+   * Repartir reemplazos: todas las cartas de un jugador antes de pasar al siguiente (reparto por bloque),
+   * en orden desde activeManoId, tomando del fondo del mazo.
    */
   private startPhaseReemplazoDescarte() {
     this.state.phase = "COMPLETAR_DESCARTE";
-    console.log(`[MesaRoom] Repartiendo reemplazos desde el fondo del mazo...`);
+    console.log(`[MesaRoom] Repartiendo reemplazos por bloque desde el fondo del mazo...`);
 
     // Ordered by seatOrder starting from activeManoId
     const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
@@ -2061,39 +2062,42 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    // Round-robin: reparte 1 carta a la vez a cada jugador que necesita,
-    // ciclando hasta que todos tengan sus cartas completas.
-    let roundRobinIdx = 0;
+    // Block dealing: all pending cards for current player, then next player
+    let currentPlayerIdx = 0;
 
     const dealInterval = this.clock.setInterval(() => {
-      // Buscar el siguiente jugador que aún necesita cartas
-      let attempts = 0;
-      while (attempts < playersNeedingCards.length) {
-        const idx = roundRobinIdx % playersNeedingCards.length;
-        const { player, sessionId } = playersNeedingCards[idx];
-        roundRobinIdx++;
-
-        if (player.pendingDiscardCards.length > 0) {
-          // Tomar 1 carta del fondo del mazo
-          const card = this.deck.shift();
-          if (card) {
-            const newCards = player.cards ? player.cards + "," + card : card;
-            this.setPlayerCards(sessionId, newCards);
-          }
-          // Descontar 1 carta pendiente
-          player.pendingDiscardCards = player.pendingDiscardCards.slice(1);
-          break;
-        }
-        attempts++;
+      if (currentPlayerIdx >= playersNeedingCards.length) {
+        dealInterval.clear();
+        this.startPhaseRevealBottomCard();
+        return;
       }
 
-      // Verificar si todos recibieron sus cartas
-      const allDone = playersNeedingCards.every(({ player }) => player.pendingDiscardCards.length === 0);
-      if (allDone) {
+      const { player, sessionId } = playersNeedingCards[currentPlayerIdx];
+
+      if (player.pendingDiscardCards.length > 0) {
+        // Deal 1 card from bottom of deck
+        const card = this.deck.shift();
+        if (card) {
+          const newCards = player.cards ? player.cards + "," + card : card;
+          this.setPlayerCards(sessionId, newCards);
+        }
+        player.pendingDiscardCards = player.pendingDiscardCards.slice(1);
+
+        // If this player got all their cards, move to next player
+        if (player.pendingDiscardCards.length === 0) {
+          currentPlayerIdx++;
+        }
+      } else {
+        // Player already done, skip to next
+        currentPlayerIdx++;
+      }
+
+      // Check if all done
+      if (currentPlayerIdx >= playersNeedingCards.length) {
         dealInterval.clear();
         this.startPhaseRevealBottomCard();
       }
-    }, 800); // 800ms entre cada carta individual
+    }, 800); // 800ms between each individual card
   }
 
   /**
@@ -2161,7 +2165,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     this.state.phase = "DECLARAR_JUEGO";
     console.log(`[MesaRoom] Iniciando Declaración de Juego`);
-    this.state.players.forEach((p: Player) => { p.hasActed = false; });
+    this.state.players.forEach((p: Player) => { p.hasActed = false; p.declaredJuego = null; });
     // Iniciar desde La Mano
     this.advanceTurnDeclarar(this.state.activeManoId);
   }
@@ -2169,7 +2173,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   /**
    * Avanza el turno en la fase DECLARAR_JUEGO.
    * Busca el siguiente jugador activo que aún no ha declarado.
-   * Cuando todos declararon, evalúa si se necesita ronda de apuestas adicional.
+   * When all have declared: if 2+ have juego → GUERRA_JUEGO;
+   * if 1 has juego → that player wins (standard showdown);
+   * if 0 have juego → points-based resolution (all non-folded players compete).
    */
   private advanceTurnDeclarar(startFromId?: string) {
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
@@ -2201,17 +2207,31 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
     }
 
-    // Todos declararon — verificar cuántos tienen juego
-    const withGame = Array.from(this.state.players.values() as IterableIterator<Player>)
-      .filter(p => !p.isFolded && p.connected && !p.isWaiting);
+    // All players have declared — evaluate outcomes
+    const withJuego = activePlayers.filter(p => p.declaredJuego === true);
+    const withoutJuego = activePlayers.filter(p => p.declaredJuego === false);
 
-    if (withGame.length <= 1) {
+    if (withJuego.length >= 2) {
+      // 2+ players with juego → fold the "no tengo juego" players, then betting round
+      for (const p of withoutJuego) {
+        p.isFolded = true;
+        this.attemptManoRotation(p.id, "Declaró no tener juego");
+        if (p.id === this.state.activeManoId) this.transferMano();
+      }
+      this.startPhaseGuerraJuego();
+    } else if (withJuego.length === 1) {
+      // 1 player with juego → fold the rest (standard showdown win)
+      for (const p of withoutJuego) {
+        p.isFolded = true;
+        this.attemptManoRotation(p.id, "Declaró no tener juego");
+        if (p.id === this.state.activeManoId) this.transferMano();
+      }
       this.startPhase6Showdown();
-      return;
+    } else {
+      // Nobody has juego → points-based resolution among all active players
+      console.log(`[MesaRoom] Nadie tiene juego — resolución por puntos`);
+      this.startPhase6Showdown();
     }
-
-    // 2+ jugadores con juego → ronda de apuestas final (GUERRA_JUEGO)
-    this.startPhaseGuerraJuego();
   }
 
   /**
@@ -2339,6 +2359,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.showdownTimer = 0;
     // Guardar datos del showdown para finalizar cuando alguien cierre
     this.pendingShowdownData = { overallWinnerId, potWinners, totalPayout, totalRake, activePlayers };
+
+    // Persist payout immediately — don't wait for dismiss
+    this.persistShowdownResults(overallWinnerId, potWinners, totalPayout, totalRake, activePlayers);
   }
 
   /**
@@ -2369,10 +2392,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /**
-   * Persiste los resultados del showdown en Supabase y limpia el estado.
-   * Se llama después de que el timer de showdown expira.
+   * Persists payout, replay, and stats to Supabase immediately when the winner is determined.
+   * Called from startPhase6Showdown — does NOT transition to LOBBY.
    */
-  private finalizeShowdown(
+  private persistShowdownResults(
     overallWinnerId: string,
     potWinners: { winnerId: string; potAmount: number; payout: number; rake: number }[],
     totalPayout: number,
@@ -2383,7 +2406,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (!winner) return;
 
     const totalPot = this.state.pot + this.state.piquePot;
-    // Also award pique pot to overall winner (same as before)
+    // Also award pique pot to overall winner
     const piqueRake = Math.ceil(this.state.piquePot * 0.05 / 100) * 100;
     const piquePayout = this.state.piquePot - piqueRake;
     if (piquePayout > 0) {
@@ -2476,6 +2499,24 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         SupabaseService.updatePlayerStats(p.supabaseUserId, isWinner, playerPayout, playerRake, specialPlay).catch(console.error);
       }
     });
+
+    // Mark as persisted so dismiss-showdown doesn't re-persist
+    if (this.pendingShowdownData) {
+      this.pendingShowdownData.persisted = true;
+    }
+  }
+
+  /**
+   * Handles visual cleanup after dismiss-showdown. Transitions to LOBBY.
+   * Financial settlement already happened in persistShowdownResults.
+   */
+  private finalizeShowdown(
+    overallWinnerId: string,
+    potWinners: { winnerId: string; potAmount: number; payout: number; rake: number }[],
+    totalPayout: number,
+    totalRake: number,
+    activePlayers: Player[]
+  ) {
 
     Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => p.isReady = false);
     this.state.pot = 0;
