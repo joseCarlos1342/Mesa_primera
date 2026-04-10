@@ -16,6 +16,7 @@ const MESSAGES = {
   amountMin: 'El monto mínimo es $10.000 COP',
   amountMax: 'El monto máximo es $50.000.000 COP',
   amountInt: 'El monto debe ser un número entero positivo',
+  amountRound: 'El monto debe ser múltiplo de $1.000 COP (sin centavos ni cifras sueltas)',
   fileType: 'Solo se aceptan imágenes (JPG, PNG, WebP, GIF)',
   fileSize: 'El archivo no puede superar 5 MB',
   observationsMax: 'Máximo 500 caracteres',
@@ -101,6 +102,7 @@ export const depositAmountSchema = z
   .int(MESSAGES.amountInt)
   .min(10_000, MESSAGES.amountMin)
   .max(50_000_000, MESSAGES.amountMax)
+  .refine(v => v % 1_000 === 0, MESSAGES.amountRound)
 
 /**
  * Observaciones opcionales de depósito.

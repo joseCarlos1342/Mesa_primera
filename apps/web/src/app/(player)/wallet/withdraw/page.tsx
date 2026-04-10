@@ -80,6 +80,8 @@ export default function WithdrawPage() {
                 }}
                 placeholder="0"
                 required
+                min={10000}
+                step={1000}
                 className="w-full h-20 pl-14 pr-6 bg-black/40 border-2 border-white/5 rounded-2xl text-3xl md:text-4xl font-display font-black text-[#f3edd7] placeholder:text-white/10 focus:outline-none focus:border-[#c0a060]/40 focus:bg-black/60 transition-all italic tracking-tighter shadow-inner"
               />
             </div>

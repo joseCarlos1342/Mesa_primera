@@ -8,7 +8,8 @@ const phoneSchema = z.string().min(6).max(20).regex(/^\+?[0-9\s-]+$/, 'Número d
 
 const transferSchema = z.object({
   recipientId: z.string().uuid('ID de destinatario inválido'),
-  amountCents: z.number().int().min(10000, 'El monto mínimo es $100'),
+  amountCents: z.number().int().min(100000, 'El monto mínimo es $1.000')
+    .refine(v => v % 100000 === 0, 'El monto debe ser múltiplo de $1.000 COP'),
 })
 
 /**

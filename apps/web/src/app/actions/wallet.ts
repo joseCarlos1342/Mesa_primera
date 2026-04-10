@@ -33,7 +33,7 @@ export async function getWalletData() {
     .select('*')
     .eq('user_id', user.id)
     .in('type', ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment', 'transfer'])
-    .order('created_at', { ascending: false })
+    .order('sequence', { ascending: false })
     .limit(20)
 
   // 3. Get Pending/Rejected Deposit Requests
@@ -98,7 +98,7 @@ export async function getWalletHistory() {
     .select('*')
     .eq('user_id', user.id)
     .in('type', ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment', 'transfer'])
-    .order('created_at', { ascending: false })
+    .order('sequence', { ascending: false })
     .limit(100)
 
   const { data: depositRequests } = await supabase
