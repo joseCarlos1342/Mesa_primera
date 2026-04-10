@@ -108,18 +108,18 @@ describe('Transfer Server Actions', () => {
   describe('transferToPlayer', () => {
     it('returns error when not authenticated', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
-      const result = await transferToPlayer('recipient-id', 50000)
+      const result = await transferToPlayer('recipient-id', 100000)
       expect(result).toEqual({ error: 'No autenticado' })
     })
 
     it('returns error for invalid recipient UUID', async () => {
-      const result = await transferToPlayer('not-a-uuid', 50000)
+      const result = await transferToPlayer('not-a-uuid', 100000)
       expect(result.error).toBeTruthy()
     })
 
     it('returns error for amount below minimum', async () => {
       const result = await transferToPlayer('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 5000)
-      expect(result).toEqual({ error: 'El monto mínimo es $100' })
+      expect(result).toEqual({ error: 'El monto mínimo es $1.000' })
     })
 
     it('returns success on valid transfer', async () => {
@@ -128,24 +128,24 @@ describe('Transfer Server Actions', () => {
           reference_id: 'ref-123',
           sender_balance_after: 450000,
           recipient_name: 'PlayerTwo',
-          amount_cents: 50000,
+          amount_cents: 100000,
         },
         error: null,
       })
 
       const recipientId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22'
-      const result = await transferToPlayer(recipientId, 50000)
+      const result = await transferToPlayer(recipientId, 100000)
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith('transfer_between_players', {
         p_recipient_id: recipientId,
-        p_amount_cents: 50000,
+        p_amount_cents: 100000,
       })
       expect(result).toEqual({
         success: true,
         referenceId: 'ref-123',
         senderBalanceAfter: 450000,
         recipientName: 'PlayerTwo',
-        amountCents: 50000,
+        amountCents: 100000,
       })
     })
 
@@ -155,7 +155,7 @@ describe('Transfer Server Actions', () => {
         error: null,
       })
 
-      const result = await transferToPlayer('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 50000)
+      const result = await transferToPlayer('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 100000)
       expect(result).toEqual({ error: 'Saldo insuficiente' })
     })
 
@@ -165,7 +165,7 @@ describe('Transfer Server Actions', () => {
         error: { message: 'connection refused' },
       })
 
-      const result = await transferToPlayer('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 50000)
+      const result = await transferToPlayer('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 100000)
       expect(result).toEqual({ error: 'Error al procesar la transferencia' })
     })
   })
