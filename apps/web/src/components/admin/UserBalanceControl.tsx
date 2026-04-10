@@ -106,7 +106,7 @@ export function UserBalanceControl({ userId, userName, currentBalance }: { userI
                 ref={inputRef}
                 type="number"
                 min="0"
-                step="100"
+                step="1000"
                 value={amount}
                 onChange={(e) => { setAmount(e.target.value); setResult(null) }}
                 placeholder="0"

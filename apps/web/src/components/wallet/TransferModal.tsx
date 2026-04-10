@@ -260,17 +260,17 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                       type="number"
                       value={amountInput}
                       onChange={(e) => { setAmountInput(e.target.value); setError(''); }}
-                      onKeyDown={(e) => e.key === 'Enter' && amountCents >= 10000 && amountCents <= currentBalance && setStep('confirm-transfer')}
+                      onKeyDown={(e) => e.key === 'Enter' && amountCents >= 100000 && amountCents <= currentBalance && setStep('confirm-transfer')}
                       placeholder="0"
-                      min="100"
-                      step="100"
+                      min="1000"
+                      step="1000"
                       className="w-full h-16 pl-10 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-2xl font-display font-black italic placeholder:text-white/10 outline-none transition-all text-center"
                       autoFocus
                     />
                   </div>
 
-                  {amountCents > 0 && amountCents < 10000 && (
-                    <p className="text-[10px] text-amber-400 font-bold text-center">Monto mínimo: $100</p>
+                  {amountCents > 0 && amountCents < 100000 && (
+                    <p className="text-[10px] text-amber-400 font-bold text-center">Monto mínimo: $1.000</p>
                   )}
                   {amountCents > currentBalance && (
                     <p className="text-[10px] text-red-400 font-bold text-center">Excede tu saldo disponible</p>
