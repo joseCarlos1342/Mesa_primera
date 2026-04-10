@@ -38,6 +38,16 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Playwright CLI artifacts
+.playwright-cli/
+
+# Temp YAML snapshots (login/page captures)
+after-login.yaml
+login-page.yaml
+
+# Redis dump
+dump.rdb
+
 # Misc
 .DS_Store
 *.pem
