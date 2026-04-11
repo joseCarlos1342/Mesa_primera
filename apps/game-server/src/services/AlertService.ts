@@ -49,7 +49,7 @@ export class AlertService {
         game_id: payload.game_id || null,
         player_id: payload.player_id || null,
       })
-      .then(({ error }) => {
+      .then(({ error }: { error: any }) => {
         if (error) console.error('[AlertService] Failed to persist alert:', error.message);
       });
   }
