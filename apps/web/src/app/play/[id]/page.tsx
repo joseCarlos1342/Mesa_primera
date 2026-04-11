@@ -73,6 +73,8 @@ export default function GameRoomPage() {
   const [disabledChips, setDisabledChips] = useState<number[]>([])
   /** Mensaje de saldo insuficiente recibido del servidor al volver al LOBBY */
   const [insufficientBalance, setInsufficientBalance] = useState<{ required: number; current: number; message: string } | null>(null)
+  /** Opción válida de juego derivada por el servidor para DECLARAR_JUEGO */
+  const [validJuegoOption, setValidJuegoOption] = useState<{ hasJuego: boolean; handType: string } | null>(null)
   const hasAttemptedJoin = useRef(false)
   /** Marca si el jugador abandonó intencionalmente (evita auto-reconexión) */
   const abandonedRef = useRef(false)
@@ -294,11 +296,33 @@ export default function GameRoomPage() {
           if (state.phase !== 'LOBBY') {
             setInsufficientBalance(null);
           }
+          // Limpiar opción de juego cuando sale de DECLARAR_JUEGO
+          if (state.phase !== 'DECLARAR_JUEGO') {
+            setValidJuegoOption(null);
+          }
+
+          // Resync silencioso: si el servidor dice que tengo cartas pero localmente no las tengo
+          const me = playersArray.find((p: any) => p.id === joinedRoom.sessionId);
+          if (me && me.cardCount > 0 && state.phase !== 'LOBBY' && state.phase !== 'STARTING') {
+            // Use a ref to avoid repeated resyncs
+            setMyCards(prev => {
+              const localCount = prev ? prev.split(',').filter(Boolean).length : 0;
+              if (localCount === 0 || localCount !== me.cardCount) {
+                joinedRoom.send('request-resync');
+              }
+              return prev;
+            });
+          }
         })
 
         // Cartas privadas: solo el dueño recibe sus cartas reales
         joinedRoom.onMessage("private-cards", (cards: string[]) => {
           setMyCards(cards.join(','));
+        })
+
+        // Opción válida de juego derivada por el servidor
+        joinedRoom.onMessage("declarar-juego-option", (data: { hasJuego: boolean; handType: string }) => {
+          setValidJuegoOption(data);
         })
 
         // Configuración de la sala (chips deshabilitados, etc.)
@@ -752,6 +776,7 @@ export default function GameRoomPage() {
             minPique={minPique}
             currentMaxBet={gameState.currentMaxBet}
             disabledChips={disabledChips}
+            validJuegoOption={validJuegoOption}
           />
         )}
 

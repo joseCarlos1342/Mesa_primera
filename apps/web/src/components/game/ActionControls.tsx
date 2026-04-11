@@ -28,6 +28,8 @@ interface ActionControlsProps {
   isAllIn?: boolean;
   /** Si el jugador pasó con juego en APUESTA_4_CARTAS — reclamará pique en DESCARTE. */
   passedWithJuego?: boolean;
+  /** Opción válida de juego derivada por el servidor (null = aún no recibida). */
+  validJuegoOption?: { hasJuego: boolean; handType: string } | null;
 }
 
 const EMPTY_CARDS: string[] = [];
@@ -38,7 +40,7 @@ export function ActionControls({
   room, phase, isMyTurn, selectedCards = EMPTY_CARDS, onClearSelection,
   totalBet = 0, onBetConfirm, onBetClear, minPique = 500_000,
   currentMaxBet = 0, myRoundBet = 0, myChips = 0, isAllIn = false,
-  passedWithJuego = false,
+  passedWithJuego = false, validJuegoOption = null,
 }: ActionControlsProps) {
   if (!isMyTurn || !ACTIVE_PHASES.includes(phase)) return null;
   if (isAllIn && phase !== 'DECLARAR_JUEGO') return null; // Restiado players still declare juego
@@ -188,28 +190,34 @@ export function ActionControls({
           </button>
         )}
 
-        {/* ── DECLARAR_JUEGO: Tengo Juego / No Tengo Juego ── */}
-        {isDeclararJuego && (
-          <>
-            <button
-              onClick={() => {
-                if (navigator.vibrate) navigator.vibrate(50);
-                room.send('declarar-juego', { tiene: true });
-              }}
-              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
-            >
-              Tengo Juego
-            </button>
-            <button
-              onClick={() => {
-                if (navigator.vibrate) navigator.vibrate(50);
-                room.send('declarar-juego', { tiene: false });
-              }}
-              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
-            >
-              No Tengo Juego
-            </button>
-          </>
+        {/* ── DECLARAR_JUEGO: Show only the server-validated option ── */}
+        {isDeclararJuego && validJuegoOption && validJuegoOption.hasJuego && (
+          <button
+            onClick={() => {
+              if (navigator.vibrate) navigator.vibrate(50);
+              room.send('declarar-juego', { tiene: true });
+            }}
+            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+          >
+            Tengo {validJuegoOption.handType}
+          </button>
+        )}
+        {isDeclararJuego && validJuegoOption && !validJuegoOption.hasJuego && (
+          <button
+            onClick={() => {
+              if (navigator.vibrate) navigator.vibrate(50);
+              room.send('declarar-juego', { tiene: false });
+            }}
+            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
+          >
+            No Tengo Juego
+          </button>
+        )}
+        {/* Fallback: if server option not yet received, show loading */}
+        {isDeclararJuego && !validJuegoOption && (
+          <span className="text-[9px] md:text-xs text-[#d4af37] font-bold uppercase animate-pulse">
+            Evaluando...
+          </span>
         )}
 
         {/* ── PASO — hidden during DECLARAR_JUEGO and DESCARTE (en bajada se debe descartar obligatoriamente) ── */}

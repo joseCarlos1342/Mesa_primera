@@ -2,6 +2,10 @@ import { getLedgerEntries, getUsersWithBalances } from "@/app/actions/admin-ledg
 import { BookOpen, ArrowUpRight, ArrowDownLeft, ShieldCheck, Users, Eye, Wallet } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
+import { LedgerRealtimeRefresh } from "@/components/admin/LedgerRealtimeRefresh";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function AdminLedgerPage() {
   let entries: Awaited<ReturnType<typeof getLedgerEntries>> = [];
@@ -34,6 +38,7 @@ export default async function AdminLedgerPage() {
 
   return (
     <div className="min-h-full space-y-8 animate-in fade-in duration-700">
+      <LedgerRealtimeRefresh />
       <div className="pb-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
             <h1 className="text-4xl font-black italic tracking-tighter bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent flex items-center gap-4">

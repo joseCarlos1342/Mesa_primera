@@ -623,11 +623,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
 
-      const { tiene } = message; // true = "Tengo Juego", false = "No Tengo Juego"
+      // Server-side validation: determine if the player actually has juego
+      const hand = evaluateHand(player.cards);
+      const actuallyHasJuego = hand.type !== 'NINGUNA';
+      // Force the correct value regardless of what the client sent
+      const tiene = actuallyHasJuego;
 
       player.hasActed = true;
       player.declaredJuego = tiene;
-      this.currentTimeline.push({ event: 'declarar_juego', player: client.sessionId, tiene, time: Date.now(), rng_state: this.getRngState() });
+      this.currentTimeline.push({ event: 'declarar_juego', player: client.sessionId, tiene, clientClaimed: message?.tiene, serverOverride: message?.tiene !== tiene, time: Date.now(), rng_state: this.getRngState() });
 
       if (tiene) {
         const hand = evaluateHand(player.cards);
@@ -715,6 +719,31 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const targetClient = this.clients.find(c => c.sessionId === targetId);
       if (targetClient) targetClient.leave(4002, "Banned by admin");
       this.removePlayer(targetId);
+    });
+
+    // ── Resincronización silenciosa de cartas privadas ──
+    this.onMessage("request-resync", (client) => {
+      if (this.spectators.has(client.sessionId)) return; // Admin blindness: no cards for spectators
+      const player = this.state.players.get(client.sessionId);
+      if (!player || !player.cards) return;
+      console.log(`[MesaRoom] Resync cartas privadas → ${player.nickname}`);
+      this.sendPrivateCards(client.sessionId);
+    });
+
+    // ── Lookup de jugador por teléfono (para transferencia en mesa sin HTTP) ──
+    this.onMessage("lookup-player", async (client, message) => {
+      if (this.spectators.has(client.sessionId)) return;
+      const { phone } = message || {};
+      if (!phone || typeof phone !== 'string') {
+        client.send("lookup-result", { success: false, error: 'Número inválido' });
+        return;
+      }
+      try {
+        const result = await SupabaseService.lookupUserByPhone(phone);
+        client.send("lookup-result", result);
+      } catch (e) {
+        client.send("lookup-result", { success: false, error: 'Error al buscar usuario' });
+      }
     });
 
     // ── Transferencia P2P entre jugadores ──
@@ -855,7 +884,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       newPlayer.isFolded = this.state.phase === "LOBBY" ? false : oldPlayer.isFolded;
       newPlayer.connected = true;
       newPlayer.deviceId = oldPlayer.deviceId;
-      newPlayer.supabaseUserId = oldPlayer.supabaseUserId;
+      // Prefer fresh userId from options (fixes ghost players created without auth)
+      newPlayer.supabaseUserId = options.userId || oldPlayer.supabaseUserId;
+
+      if (!newPlayer.supabaseUserId) {
+        console.warn(`⚠️ [MesaRoom] Player ${requestedNickname} (${client.sessionId}) restored WITHOUT supabaseUserId — financial ops will be skipped!`);
+      }
 
       // Si reconecta en LOBBY, actualizar chips con el saldo actual de opciones
       if (this.state.phase === "LOBBY" && options.chips) {
@@ -915,6 +949,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     newPlayer.connected = true;
     newPlayer.deviceId = deviceId;
     newPlayer.supabaseUserId = options.userId || "";
+
+    if (!newPlayer.supabaseUserId) {
+      console.warn(`⚠️ [MesaRoom] Player ${requestedNickname} (${client.sessionId}) joined WITHOUT supabaseUserId — financial ops will be skipped!`);
+    }
 
     // Si la partida está en curso, el jugador entra como "esperando"
     if (this.state.phase !== "LOBBY") {
@@ -1005,6 +1043,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           this.dealerRotatedThisGame = true;
         }
       }
+    }
+
+    // Transferir la Mano Activa si el jugador desconectado era el activeManoId
+    if (this.state.activeManoId === client.sessionId) {
+      this.transferMano();
     }
 
     // Si TODOS los jugadores están desconectados, resetear la sala a estado limpio
@@ -1897,7 +1940,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Resolución del pique: otorgar al mejor mano entre los jugadores restantes
     if (this.state.piquePot > 0 && remaining.length > 0) {
-      const manoId = this.state.dealerId;
+      const manoId = this.state.activeManoId || this.state.dealerId;
       let winner = remaining[0];
       let bestHand = evaluateHand(winner.cards);
       let bestPoints = bestHand.points + (winner.id === manoId ? 1 : 0);
@@ -2166,6 +2209,17 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.phase = "DECLARAR_JUEGO";
     console.log(`[MesaRoom] Iniciando Declaración de Juego`);
     this.state.players.forEach((p: Player) => { p.hasActed = false; p.declaredJuego = null; });
+
+    // Send each player their valid option via private message
+    for (const p of activePlayers) {
+      const hand = evaluateHand(p.cards);
+      const hasJuego = hand.type !== 'NINGUNA';
+      const client = this.clientMap.get(p.id);
+      if (client) {
+        client.send("declarar-juego-option", { hasJuego, handType: hand.type });
+      }
+    }
+
     // Iniciar desde La Mano
     this.advanceTurnDeclarar(this.state.activeManoId);
   }
@@ -2215,7 +2269,6 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       // 2+ players with juego → fold the "no tengo juego" players, then betting round
       for (const p of withoutJuego) {
         p.isFolded = true;
-        this.attemptManoRotation(p.id, "Declaró no tener juego");
         if (p.id === this.state.activeManoId) this.transferMano();
       }
       this.startPhaseGuerraJuego();
@@ -2223,7 +2276,6 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       // 1 player with juego → fold the rest (standard showdown win)
       for (const p of withoutJuego) {
         p.isFolded = true;
-        this.attemptManoRotation(p.id, "Declaró no tener juego");
         if (p.id === this.state.activeManoId) this.transferMano();
       }
       this.startPhase6Showdown();
@@ -2307,8 +2359,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // Calculate side pots
     const sidePots = this.calculateSidePots(activePlayers);
 
-    // Evaluate hands — La Mano (dealerId) gets +1 point tiebreaker
-    const manoId = this.state.dealerId;
+    // Evaluate hands — La Mano activa (activeManoId) gets +1 point tiebreaker
+    const manoId = this.state.activeManoId || this.state.dealerId;
     const evaluateWithManoBonus = (player: Player): HandEvaluation => {
       const evaluation = evaluateHand(player.cards);
       return player.id === manoId
@@ -2448,6 +2500,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           roomId: this.roomId,
           tableName: (this as any).metadata?.tableName || 'Mesa VIP',
           playersPresent: playersSnapshot.map(p => ({ odisplayName: p.nickname }))
+        }).then(result => {
+          if (!result.success) {
+            console.error(`[MesaRoom] ⚠️ SETTLEMENT PERSISTENCE FAILED for ${w.nickname} (${w.supabaseUserId}), game=${this.currentGameId}: ${result.error}`);
+          }
         }).catch(console.error);
       }
     }
@@ -2578,6 +2634,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         roomId: this.roomId,
         tableName: (this as any).metadata?.tableName || 'Mesa VIP',
         playersPresent: playersSnapshot.map(p => ({ odisplayName: p.nickname }))
+      }).then(result => {
+        if (!result.success) {
+          console.error(`[MesaRoom] ⚠️ SETTLEMENT PERSISTENCE FAILED for ${winner.nickname} (${winner.supabaseUserId}), game=${this.currentGameId}: ${result.error}`);
+        }
       }).catch(console.error);
     }
 
@@ -2676,7 +2736,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Permite que el cliente muestre visualmente el orden de rotación de la mano.
    */
   private assignTurnOrders(): void {
-    const manoSeatIdx = this.seatOrder.indexOf(this.state.dealerId);
+    const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId || this.state.dealerId);
     if (manoSeatIdx === -1) return;
 
     this.state.players.forEach((player: Player) => {

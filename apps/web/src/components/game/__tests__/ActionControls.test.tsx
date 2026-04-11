@@ -162,4 +162,96 @@ describe('ActionControls', () => {
       expect(onClearSelection).toHaveBeenCalled();
     });
   });
+
+  describe('DECLARAR_JUEGO Phase', () => {
+    it('Should show only "Tengo" button when server says hasJuego = true', () => {
+      render(
+        <ActionControls 
+          room={mockRoom} 
+          phase="DECLARAR_JUEGO" 
+          isMyTurn={true}
+          validJuegoOption={{ hasJuego: true, handType: 'PRIMERA' }}
+        />
+      );
+
+      expect(screen.getByText(/Tengo PRIMERA/)).toBeInTheDocument();
+      expect(screen.queryByText(/No Tengo Juego/)).not.toBeInTheDocument();
+    });
+
+    it('Should show only "No Tengo Juego" button when server says hasJuego = false', () => {
+      render(
+        <ActionControls 
+          room={mockRoom} 
+          phase="DECLARAR_JUEGO" 
+          isMyTurn={true}
+          validJuegoOption={{ hasJuego: false, handType: 'NINGUNA' }}
+        />
+      );
+
+      expect(screen.getByText(/No Tengo Juego/)).toBeInTheDocument();
+      // Should NOT show "Tengo PRIMERA/CHIVO/SEGUNDA" buttons
+      expect(screen.queryByText(/Tengo PRIMERA/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Tengo CHIVO/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Tengo SEGUNDA/)).not.toBeInTheDocument();
+    });
+
+    it('Should show loading state when validJuegoOption is null', () => {
+      render(
+        <ActionControls 
+          room={mockRoom} 
+          phase="DECLARAR_JUEGO" 
+          isMyTurn={true}
+          validJuegoOption={null}
+        />
+      );
+
+      expect(screen.getByText(/Evaluando/)).toBeInTheDocument();
+    });
+
+    it('Should send declarar-juego with tiene:true when clicking Tengo', () => {
+      render(
+        <ActionControls 
+          room={mockRoom} 
+          phase="DECLARAR_JUEGO" 
+          isMyTurn={true}
+          validJuegoOption={{ hasJuego: true, handType: 'CHIVO' }}
+        />
+      );
+
+      const btn = screen.getByText(/Tengo CHIVO/).closest('button');
+      fireEvent.click(btn!);
+
+      expect(mockRoom.send).toHaveBeenCalledWith('declarar-juego', { tiene: true });
+    });
+
+    it('Should send declarar-juego with tiene:false when clicking No Tengo', () => {
+      render(
+        <ActionControls 
+          room={mockRoom} 
+          phase="DECLARAR_JUEGO" 
+          isMyTurn={true}
+          validJuegoOption={{ hasJuego: false, handType: 'NINGUNA' }}
+        />
+      );
+
+      const btn = screen.getByText(/No Tengo Juego/).closest('button');
+      fireEvent.click(btn!);
+
+      expect(mockRoom.send).toHaveBeenCalledWith('declarar-juego', { tiene: false });
+    });
+
+    it('Should render for all-in players during DECLARAR_JUEGO', () => {
+      render(
+        <ActionControls 
+          room={mockRoom} 
+          phase="DECLARAR_JUEGO" 
+          isMyTurn={true}
+          isAllIn={true}
+          validJuegoOption={{ hasJuego: true, handType: 'SEGUNDA' }}
+        />
+      );
+
+      expect(screen.getByText(/Tengo SEGUNDA/)).toBeInTheDocument();
+    });
+  });
 });

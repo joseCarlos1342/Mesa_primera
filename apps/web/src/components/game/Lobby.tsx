@@ -166,7 +166,8 @@ export function Lobby() {
         nickname: nick,
         deviceId: deviceId,
         avatarUrl: avatarUrl,
-        chips: userProfile?.balance_cents || 0
+        chips: userProfile?.balance_cents || 0,
+        userId: userProfile?.id || null
       })
 
       sessionStorage.setItem(`reconnectionToken_${room.roomId}`, room.reconnectionToken);
@@ -225,6 +226,7 @@ export function Lobby() {
         deviceId,
         avatarUrl,
         chips: userProfile?.balance_cents || 0,
+        userId: userProfile?.id || null,
       })
 
       sessionStorage.setItem(`reconnectionToken_${room.roomId}`, room.reconnectionToken);
@@ -524,7 +526,8 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
           nickname: nick,
           deviceId: deviceId,
           avatarUrl: avatarUrl,
-          chips: userProfile?.balance_cents || 0
+          chips: userProfile?.balance_cents || 0,
+          userId: userProfile?.id || null
         });
 
         sessionStorage.setItem(`reconnectionToken_${newRoom.roomId}`, newRoom.reconnectionToken);
