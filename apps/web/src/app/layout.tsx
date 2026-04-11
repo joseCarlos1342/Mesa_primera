@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from 'next/headers'
 import { Playfair_Display, Outfit, Geist_Mono } from "next/font/google";
 import { ClientErrorSuppressor } from "@/components/ClientErrorSuppressor";
 import "./globals.css";
@@ -94,11 +95,12 @@ export const metadata: Metadata = {
 
 import { FramerMotionProvider } from "@/components/providers/FramerMotionProvider";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined
   const runtimePublicSupabaseEnv = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
@@ -145,18 +147,20 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#10b981" />
-        <script
+        <script nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: runtimeSupabaseEnvScript,
           }}
         />
         <script
+          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(organizationJsonLd),
           }}
         />
         <script
+          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(webAppJsonLd),
