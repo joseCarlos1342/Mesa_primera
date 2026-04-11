@@ -52,7 +52,7 @@ export default function ServerLogPage() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "server_alerts" },
-        (payload) => {
+        (payload: { new: ServerAlert }) => {
           setAlerts((prev) => [payload.new as ServerAlert, ...prev]);
         }
       )
