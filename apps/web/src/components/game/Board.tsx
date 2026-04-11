@@ -31,9 +31,11 @@ interface BoardProps {
   currentMaxBet?: number;
   /** Denominaciones de fichas deshabilitadas por el admin en mesas personalizadas. */
   disabledChips?: number[];
+  /** Opción válida de juego derivada por el servidor. */
+  validJuegoOption?: { hasJuego: boolean; handType: string } | null;
 }
 
-export function Board({ room, phase, pot, piquePot, players, myCards = "", minPique = 500_000, currentMaxBet = 0, disabledChips = [] }: BoardProps) {
+export function Board({ room, phase, pot, piquePot, players, myCards = "", minPique = 500_000, currentMaxBet = 0, disabledChips = [], validJuegoOption = null }: BoardProps) {
   useCardPreloader();
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
@@ -620,6 +622,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   myChips={me?.chips ?? 0}
                   isAllIn={me?.isAllIn ?? false}
                   passedWithJuego={me?.passedWithJuego ?? false}
+                  validJuegoOption={validJuegoOption}
                 />
               </div>
             </div>

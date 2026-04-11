@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Search, ArrowRightLeft, Check, AlertCircle, Loader2, User, ChevronLeft } from 'lucide-react'
-import { lookupUserByPhone } from '@/app/actions/transfer'
 import { getAvatarSvg } from '@/utils/avatars'
 import { formatAmount } from '@/utils/format'
 import type { Room } from '@colyseus/sdk'
@@ -64,34 +63,39 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
       }
     }
 
+    const handleLookup = (data: { success: boolean; userId?: string; name?: string; error?: string }) => {
+      setLoading(false)
+      if (data.success && data.userId && data.name) {
+        setRecipient({
+          id: data.userId,
+          username: data.name,
+          avatar_url: null,
+          level: 1,
+        })
+        setStep('confirm-recipient')
+      } else {
+        setError(data.error || 'Usuario no encontrado')
+      }
+    }
+
     room.onMessage('transfer-result', handleResult)
+    room.onMessage('lookup-result', handleLookup)
 
     return () => {
-      room.removeAllListeners()
+      // Only remove our specific listeners by replacing with no-ops
+      room.onMessage('transfer-result', () => {})
+      room.onMessage('lookup-result', () => {})
     }
-    // No removemos todos los listeners al desmontar para no afectar otros handlers.
-    // Colyseus no tiene removeListener por message type individual, pero el componente
-    // controla el state por flag isOpen.
   }, [room, isOpen])
 
   async function handleSearch() {
-    if (!phone.trim()) return
+    if (!phone.trim() || !room) return
     setLoading(true)
     setError('')
 
-    const res = await lookupUserByPhone(phone.trim())
-
-    if (res.error) {
-      setError(res.error)
-      setLoading(false)
-      return
-    }
-
-    if (res.user) {
-      setRecipient(res.user)
-      setStep('confirm-recipient')
-    }
-    setLoading(false)
+    // Use Colyseus message instead of HTTP server action to avoid cookie/auth issues
+    room.send('lookup-player', { phone: phone.trim() })
+    // Result arrives via room.onMessage('lookup-result')
   }
 
   function handleTransfer() {

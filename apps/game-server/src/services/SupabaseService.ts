@@ -44,6 +44,8 @@ export class SupabaseService {
    * Distributes the pot to the winner and records the rake atomically
    * via the `award_pot` database RPC. This guarantees that the ledger
    * entries (win credit + rake debit) are created in a single transaction.
+   *
+   * Returns a structured result so callers can detect persistence failures.
    */
   static async awardPot(
     userId: string,
@@ -52,8 +54,8 @@ export class SupabaseService {
     gameId?: string,
     tableId?: string,
     meta?: { roomId?: string; tableName?: string; playersPresent?: { odisplayName: string; odisplayAvatar?: string }[] }
-  ) {
-    if (!supabaseKey) return;
+  ): Promise<{ success: boolean; balance_after?: number; error?: string }> {
+    if (!supabaseKey) return { success: true };
     try {
       const potDetails = {
         payout,
@@ -79,8 +81,10 @@ export class SupabaseService {
       if (data?.error) throw new Error(data.error);
 
       console.log(`[SupabaseService] Pot awarded via RPC: winner=${userId}, payout=${payout}, rake=${rake}, balance_after=${data?.balance_after}`);
+      return { success: true, balance_after: data?.balance_after };
     } catch (e) {
-      console.error('[SupabaseService] Error awarding pot:', e);
+      console.error(`[SupabaseService] ⚠️ CRITICAL: Failed to persist pot award — winner=${userId}, payout=${payout}, rake=${rake}, game=${gameId}:`, e);
+      return { success: false, error: String(e) };
     }
   }
 
@@ -349,6 +353,33 @@ export class SupabaseService {
       };
     } catch (e) {
       console.error('[SupabaseService] Error transferring between players:', e);
+      return { success: false, error: String(e) };
+    }
+  }
+
+  /**
+   * Look up a user by phone number using the `lookup_user_by_phone` RPC.
+   * Used by the in-game transfer modal to find recipients without going through HTTP/cookies.
+   */
+  static async lookupUserByPhone(
+    phone: string
+  ): Promise<{ success: boolean; userId?: string; name?: string; error?: string }> {
+    if (!supabaseKey) return { success: false, error: 'Supabase no configurado' };
+    try {
+      const { data, error } = await supabase.rpc('lookup_user_by_phone', {
+        p_phone: phone,
+      });
+      if (error) throw error;
+      if (!data || data.error) {
+        return { success: false, error: data?.error || 'Usuario no encontrado' };
+      }
+      return {
+        success: true,
+        userId: data.user_id,
+        name: data.display_name,
+      };
+    } catch (e) {
+      console.error('[SupabaseService] Error looking up user by phone:', e);
       return { success: false, error: String(e) };
     }
   }

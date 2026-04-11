@@ -74,58 +74,19 @@ export async function getLedgerEntries(limit = 100): Promise<AdminLedgerEntry[]>
 export async function getUsersWithBalances(): Promise<UserWithBalance[]> {
   const supabase = await verifyAdmin();
 
-  // Get all wallets joined with profiles
-  const { data: wallets, error } = await supabase
-    .from("wallets")
-    .select(`
-      user_id, balance_cents,
-      profile:profiles(full_name, username)
-    `)
-    .order("balance_cents", { ascending: false });
+  const { data, error } = await supabase.rpc('get_admin_ledger_summary');
 
   if (error) throw error;
 
-  const users: UserWithBalance[] = [];
-
-  for (const w of (wallets || [])) {
-    const profile = w.profile ? (Array.isArray(w.profile) ? w.profile[0] : w.profile) : null;
-
-    // Get aggregate stats from ledger for this user
-    const { data: credits } = await supabase
-      .from("ledger")
-      .select("amount_cents")
-      .eq("user_id", w.user_id)
-      .eq("direction", "credit");
-
-    const { data: debits } = await supabase
-      .from("ledger")
-      .select("amount_cents")
-      .eq("user_id", w.user_id)
-      .eq("direction", "debit");
-
-    const { data: lastEntry } = await supabase
-      .from("ledger")
-      .select("created_at")
-      .eq("user_id", w.user_id)
-      .order("sequence", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const totalCredits = (credits || []).reduce((sum: number, c: any) => sum + (c.amount_cents || 0), 0);
-    const totalDebits = (debits || []).reduce((sum: number, d: any) => sum + (d.amount_cents || 0), 0);
-
-    users.push({
-      id: w.user_id,
-      display_name: (profile as any)?.full_name || (profile as any)?.username || 'Desconocido',
-      username: (profile as any)?.username || null,
-      balance: w.balance_cents || 0,
-      total_credits: totalCredits,
-      total_debits: totalDebits,
-      last_activity: lastEntry?.created_at || null,
-    });
-  }
-
-  return users;
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    display_name: row.display_name || 'Desconocido',
+    username: row.username || null,
+    balance: row.balance || 0,
+    total_credits: row.total_credits || 0,
+    total_debits: row.total_debits || 0,
+    last_activity: row.last_activity || null,
+  }));
 }
 
 export async function getUserLedger(userId: string, limit = 200): Promise<AdminLedgerEntry[]> {
@@ -161,12 +122,12 @@ export async function getUserProfile(userId: string) {
 
   const { data: wallet } = await supabase
     .from("wallets")
-    .select("balance")
+    .select("balance_cents")
     .eq("user_id", userId)
     .maybeSingle();
 
   return {
     ...profile,
-    balance: wallet?.balance || 0
+    balance: wallet?.balance_cents || 0
   };
 }
