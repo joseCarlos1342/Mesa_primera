@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { createClient } from "@supabase/supabase-js";
+import { AlertService } from "../services/AlertService";
 
 const supabase = createClient(
   process.env.SUPABASE_URL || "http://localhost:54321",
@@ -26,7 +27,7 @@ export function startAntiCollusionCron() {
          // If RPC does not exist yet (as this is a simplified version), catch seamlessly
          console.log("[CRON] SQL RPC 'detect_potential_collusion' no encontrado, omitiendo análisis avanzado.");
       } else if (colusions && colusions.length > 0) {
-        console.warn(`[CRON ALERT] Se detectaron ${colusions.length} pares sospechosos de jugadores!`);
+        AlertService.collusion(colusions);
         for (const pair of colusions) {
           await supabase.from("admin_audit_log").insert({
             admin_id: "00000000-0000-0000-0000-000000000000",

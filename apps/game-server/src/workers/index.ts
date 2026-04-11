@@ -1,5 +1,6 @@
 import { Queue, Worker, QueueEvents } from "bullmq";
 import { createClient } from "@supabase/supabase-js";
+import { AlertService } from "../services/AlertService";
 
 const redisOptions = {
   host: process.env.REDIS_HOST || "localhost",
@@ -71,7 +72,7 @@ export const ledgerWorker = new Worker(
             walletBalance,
             ledgerBalance
           });
-          console.warn(`[LedgerWorker] DISCREPANCY: user=${wallet.user_id} wallet=${walletBalance} ledger=${ledgerBalance}`);
+          AlertService.discrepancy(wallet.user_id, walletBalance, ledgerBalance);
         }
       }
 
