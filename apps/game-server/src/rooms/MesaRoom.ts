@@ -1,6 +1,7 @@
 import { Room, Client } from "colyseus";
 import { GameState, Player } from "../schemas/GameState";
 import { SupabaseService } from "../services/SupabaseService";
+import { AlertService } from "../services/AlertService";
 import { createRedisSubscriber } from "../services/redis";
 import type Redis from "ioredis";
 import * as crypto from "crypto";
@@ -888,7 +889,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       newPlayer.supabaseUserId = options.userId || oldPlayer.supabaseUserId;
 
       if (!newPlayer.supabaseUserId) {
-        console.warn(`⚠️ [MesaRoom] Player ${requestedNickname} (${client.sessionId}) restored WITHOUT supabaseUserId — financial ops will be skipped!`);
+        AlertService.identity(requestedNickname, client.sessionId, this.roomId);
       }
 
       // Si reconecta en LOBBY, actualizar chips con el saldo actual de opciones
@@ -951,7 +952,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     newPlayer.supabaseUserId = options.userId || "";
 
     if (!newPlayer.supabaseUserId) {
-      console.warn(`⚠️ [MesaRoom] Player ${requestedNickname} (${client.sessionId}) joined WITHOUT supabaseUserId — financial ops will be skipped!`);
+      AlertService.identity(requestedNickname, client.sessionId, this.roomId);
     }
 
     // Si la partida está en curso, el jugador entra como "esperando"
@@ -1148,7 +1149,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           p.totalMainBet,
           this.currentGameId,
           { roomId: this.roomId, tableName, reason: 'Reembolso: todos los jugadores se desconectaron' }
-        ).catch(err => console.error(`[MesaRoom] Refund failed for ${p.nickname}:`, err));
+        ).catch(err => AlertService.refundFailed(p.supabaseUserId, p.totalMainBet, this.currentGameId, String(err), this.roomId));
       }
     }
 
@@ -2502,7 +2503,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           playersPresent: playersSnapshot.map(p => ({ odisplayName: p.nickname }))
         }).then(result => {
           if (!result.success) {
-            console.error(`[MesaRoom] ⚠️ SETTLEMENT PERSISTENCE FAILED for ${w.nickname} (${w.supabaseUserId}), game=${this.currentGameId}: ${result.error}`);
+            AlertService.settlementFailed(w.nickname, w.supabaseUserId, this.currentGameId, result.error || 'unknown', this.roomId);
           }
         }).catch(console.error);
       }
@@ -2636,7 +2637,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         playersPresent: playersSnapshot.map(p => ({ odisplayName: p.nickname }))
       }).then(result => {
         if (!result.success) {
-          console.error(`[MesaRoom] ⚠️ SETTLEMENT PERSISTENCE FAILED for ${winner.nickname} (${winner.supabaseUserId}), game=${this.currentGameId}: ${result.error}`);
+          AlertService.settlementFailed(winner.nickname, winner.supabaseUserId, this.currentGameId, result.error || 'unknown', this.roomId);
         }
       }).catch(console.error);
     }
@@ -2937,7 +2938,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           p.totalMainBet,
           this.currentGameId,
           { roomId: this.roomId, tableName, reason: 'Reembolso por cierre de sala en partida activa' }
-        ).catch(err => console.error(`[MesaRoom] Refund failed for ${p.nickname}:`, err));
+        ).catch(err => AlertService.refundFailed(p.supabaseUserId, p.totalMainBet, this.currentGameId, String(err), this.roomId));
       }
       // Refund pique pot contributions (tracked via piquePot but not via totalMainBet in some phases)
       // piquePot is separate from main pot — if players contributed to pique but it wasn't settled
@@ -2962,7 +2963,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
                 refundAmount,
                 this.currentGameId,
                 { roomId: this.roomId, tableName, reason: 'Reembolso de pique por cierre de sala' }
-              ).catch(err => console.error(`[MesaRoom] Pique refund failed for ${p.nickname}:`, err));
+              ).catch(err => AlertService.refundFailed(p.supabaseUserId, refundAmount, this.currentGameId, String(err), this.roomId));
             }
           });
         }
