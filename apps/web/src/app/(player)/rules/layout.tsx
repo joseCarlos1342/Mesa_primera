@@ -1,3 +1,4 @@
+import { headers } from 'next/headers'
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -9,11 +10,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RulesLayout({
+export default async function RulesLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -48,6 +50,7 @@ export default function RulesLayout({
   return (
     <>
       <script
+        nonce={nonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

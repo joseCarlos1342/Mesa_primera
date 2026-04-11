@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { buildContentSecurityPolicy } from '@/lib/security/csp'
 import { updateSession } from '@/utils/supabase/middleware'
 
 const CANONICAL_HOST = 'primerariveradalos4ases.com'
@@ -8,6 +9,17 @@ const REDIRECT_HOSTS = new Set([
 ])
 
 export async function proxy(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const requestHeaders = new Headers(request.headers)
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  const contentSecurityPolicy = buildContentSecurityPolicy({
+    nonce,
+    isDevelopment,
+  })
+
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', contentSecurityPolicy)
+
   const { hostname } = request.nextUrl
   const shouldRedirect =
     (request.method === 'GET' || request.method === 'HEAD') &&
@@ -17,10 +29,14 @@ export async function proxy(request: NextRequest) {
     const canonicalUrl = request.nextUrl.clone()
     canonicalUrl.protocol = 'https'
     canonicalUrl.hostname = CANONICAL_HOST
-    return NextResponse.redirect(canonicalUrl, 308)
+    const response = NextResponse.redirect(canonicalUrl, 308)
+    response.headers.set('Content-Security-Policy', contentSecurityPolicy)
+    return response
   }
 
-  return await updateSession(request)
+  const response = await updateSession(request, requestHeaders)
+  response.headers.set('Content-Security-Policy', contentSecurityPolicy)
+  return response
 }
 
 export const config = {
