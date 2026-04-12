@@ -16,6 +16,7 @@ RUN apk add --no-cache \
 # Variables de entorno para Playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=0
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 # Install dependencies for overall workspace
 COPY package.json package-lock.json ./
