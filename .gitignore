@@ -30,8 +30,8 @@ out/
 build
 dist
 
-# Replay storage (local dev)
-replays/
+# Replay storage (local dev) — only root-level, not app routes
+/replays/
 
 
 # Debug
