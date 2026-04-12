@@ -49,6 +49,11 @@ describe('Google Auth Actions', () => {
         signInWithOtp: jest.fn().mockResolvedValue({ error: null }),
       },
       rpc: jest.fn().mockResolvedValue({ data: false, error: null }),
+      from: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: null }),
+        }),
+      }),
     }
     ;(createClient as any).mockResolvedValue(mockSupabase)
 
@@ -144,8 +149,8 @@ describe('Google Auth Actions', () => {
         }),
       )
 
-      // Profile table is updated
-      expect(mockAdminSupabase.from).toHaveBeenCalledWith('profiles')
+      // Profile table is updated via user's own client (RLS allows self-update)
+      expect(mockSupabase.from).toHaveBeenCalledWith('profiles')
 
       // OTP sent
       expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalledWith({

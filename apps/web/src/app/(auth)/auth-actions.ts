@@ -416,14 +416,17 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
   // Route based on flow
   switch (flow) {
     case 'register': {
-      // Phone verified — save it to profiles now
-      const { createAdminClient } = await import('@/utils/supabase/server')
-      const adminSupabase = await createAdminClient()
-      await adminSupabase
+      // Phone verified — save it to profiles now (use user's own client; RLS allows self-update)
+      const { error: phoneErr } = await supabase
         .from('profiles')
         .update({ phone })
         .eq('id', data.user.id)
-      // Confirm phone in auth.users
+      if (phoneErr) {
+        console.error('[VERIFY_OTP] Error saving phone to profile for %s: code=%s message=%s', data.user.id, phoneErr.code, phoneErr.message)
+      }
+      // Confirm phone in auth.users (admin API — needs service_role)
+      const { createAdminClient } = await import('@/utils/supabase/server')
+      const adminSupabase = await createAdminClient()
       await adminSupabase.auth.admin.updateUserById(data.user.id, {
         phone_confirm: true,
       })
@@ -670,16 +673,14 @@ export async function setPlayerPin(prevState: unknown, formData: FormData) {
     return { error: 'No se pudo configurar la clave. Intenta de nuevo.' }
   }
 
-  // Mark profile as having a PIN (use admin client to bypass RLS)
-  const { createAdminClient } = await import('@/utils/supabase/server')
-  const adminSupabase = await createAdminClient()
-  const { error: profileError } = await adminSupabase
+  // Mark profile as having a PIN (user's own client — RLS allows self-update)
+  const { error: profileError } = await supabase
     .from('profiles')
     .update({ has_pin: true })
     .eq('id', user.id)
 
   if (profileError) {
-    console.error('[AUTH_ERROR] Error al marcar has_pin para %s: %s', user.id, profileError.message)
+    console.error('[AUTH_ERROR] Error al marcar has_pin para %s: code=%s message=%s', user.id, profileError.code, profileError.message)
     // PIN was set but flag wasn't — don't block the user, just log it
   }
 
@@ -827,8 +828,10 @@ export async function completeGoogleRegistration(prevState: unknown, formData: F
     return { error: 'Error al actualizar tu perfil. Intenta de nuevo.' }
   }
 
-  // Update the profiles table — phone is NOT set here; it will be set after OTP verification
-  const { error: profileError } = await adminSupabase
+  // Update the profiles table using the user's own session (RLS allows self-update).
+  // Note: adminSupabase (createServerClient + cookies) sends the user's JWT for data ops,
+  // so it runs as 'authenticated' not 'service_role'. Use the user's client directly.
+  const { error: profileError } = await supabase
     .from('profiles')
     .update({
       username: parsed.data.nickname,
@@ -838,7 +841,8 @@ export async function completeGoogleRegistration(prevState: unknown, formData: F
     .eq('id', user.id)
 
   if (profileError) {
-    console.error('[GOOGLE_REG] Error updating profile for %s: %s', user.id, profileError.message)
+    console.error('[GOOGLE_REG] Error updating profile for %s: code=%s message=%s details=%s hint=%s',
+      user.id, profileError.code, profileError.message, profileError.details, profileError.hint)
     // Rollback auth.users metadata to avoid inconsistent state
     await adminSupabase.auth.admin.updateUserById(user.id, {
       phone: '',
