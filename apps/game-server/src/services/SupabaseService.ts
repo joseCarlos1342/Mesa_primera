@@ -358,6 +358,18 @@ export class SupabaseService {
   }
 
   /**
+   * Normaliza un teléfono colombiano a formato E.164 (+57...).
+   */
+  private static normalizePhone(phone: string): string {
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    if (!cleaned.startsWith('+')) {
+      if (cleaned.startsWith('57') && cleaned.length >= 12) return `+${cleaned}`;
+      return `+57${cleaned}`;
+    }
+    return cleaned;
+  }
+
+  /**
    * Look up a user by phone number using the `lookup_user_by_phone` RPC.
    * Used by the in-game transfer modal to find recipients without going through HTTP/cookies.
    */
@@ -366,17 +378,18 @@ export class SupabaseService {
   ): Promise<{ success: boolean; userId?: string; name?: string; error?: string }> {
     if (!supabaseKey) return { success: false, error: 'Supabase no configurado' };
     try {
+      const normalized = this.normalizePhone(phone);
       const { data, error } = await supabase.rpc('lookup_user_by_phone', {
-        p_phone: phone,
+        p_phone: normalized,
       });
       if (error) throw error;
-      if (!data || data.error) {
+      if (!data || !data.found) {
         return { success: false, error: data?.error || 'Usuario no encontrado' };
       }
       return {
         success: true,
         userId: data.user_id,
-        name: data.display_name,
+        name: data.username,
       };
     } catch (e) {
       console.error('[SupabaseService] Error looking up user by phone:', e);
