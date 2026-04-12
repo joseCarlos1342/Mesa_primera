@@ -56,12 +56,12 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
 
   if (!friends || friends.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 bg-white/5 border border-dashed border-white/10 rounded-[3rem] opacity-30">
-        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+      <div className="flex flex-col items-center justify-center py-20 px-6 bg-white/5 border border-dashed border-white/10 rounded-[3rem]">
+        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 opacity-30">
           <ShieldCheck className="w-8 h-8 text-slate-500" />
         </div>
         <p className="font-display font-black italic uppercase tracking-[0.2em] text-sm text-slate-400">Tu círculo está vacío</p>
-        <p className="text-[10px] text-slate-600 mt-2 uppercase tracking-widest font-bold">¡Busca nuevos jugadores abajo!</p>
+        <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-bold">¡Busca nuevos jugadores abajo!</p>
       </div>
     );
   }

@@ -440,3 +440,62 @@ describe('Stats page heading order', () => {
     expect(source).not.toMatch(/<h3[\s>]/)
   })
 })
+
+// ────────────────────────────────────────────────
+// 17. Friends page — button accessible name
+// ────────────────────────────────────────────────
+describe('Friends page button accessibility', () => {
+  it('Add friend button has aria-label', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/friends/page.tsx'),
+      'utf-8'
+    )
+    // The UserPlus button must have an aria-label
+    expect(source).toMatch(/aria-label=["']Agregar amigo["']/)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 18. Friends page — contrast compliance
+// ────────────────────────────────────────────────
+describe('Friends page contrast compliance', () => {
+  it('Subtitle does not use opacity-60 with text-text-secondary', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/friends/page.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/text-text-secondary[\s\S]{0,40}opacity-60/)
+    expect(source).not.toMatch(/opacity-60[\s\S]{0,40}text-text-secondary/)
+  })
+
+  it('Footer does not use opacity-20 wrapper with text elements', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/friends/page.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/className="[^"]*opacity-20[^"]*">\s*<p/)
+  })
+
+  it('Empty state container does not have opacity-30 on text parent', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/friends/_components/FriendsList.tsx'),
+      'utf-8'
+    )
+    // The main container wrapping text should not have opacity-30
+    const emptyStateMatch = source.match(/rounded-\[3rem\][^"]*"/)
+    expect(emptyStateMatch?.[0]).not.toMatch(/opacity-30/)
+  })
+
+  it('Empty state uses text-slate-400 or lighter for visible text', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/friends/_components/FriendsList.tsx'),
+      'utf-8'
+    )
+    // "Tu círculo está vacío" text must not use text-slate-700+ on dark bg
+    expect(source).toMatch(/Tu círculo está vacío/)
+    // Ensure the line uses a visible color (slate-400 or brighter)
+    const lines = source.split('\n')
+    const circuloLine = lines.find(l => l.includes('Tu círculo está vacío'))
+    expect(circuloLine).toMatch(/text-slate-[1-4]00/)
+  })
+})
