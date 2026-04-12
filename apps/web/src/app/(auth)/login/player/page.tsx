@@ -28,6 +28,7 @@ function PlayerLoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const wasKicked = searchParams.get('kicked') === 'true'
+  const oauthError = searchParams.get('error')
 
   const isPending = isPinPending || isOtpPending
 
@@ -127,6 +128,12 @@ function PlayerLoginContent() {
           {wasKicked && (
             <div className="mb-8 p-5 bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl text-amber-400 text-sm font-bold text-center animate-shake">
               Se ha iniciado sesión en otro dispositivo. Tu sesión anterior ha expirado.
+            </div>
+          )}
+
+          {oauthError && (
+            <div className="mb-8 p-5 bg-brand-red/10 border-2 border-brand-red/30 rounded-2xl text-brand-red text-sm font-bold text-center animate-shake">
+              Error de autenticación con Google: {oauthError}
             </div>
           )}
 
