@@ -553,3 +553,68 @@ describe('Rules page contrast compliance', () => {
     expect(contextLines).toMatch(/text-slate-[1-5]00/)
   })
 })
+
+// ── Profile page fixes ─────────────────────────────────────────────
+
+const profileSource = fs.readFileSync(
+  path.resolve(__dirname, '../app/(player)/profile/page.tsx'),
+  'utf-8'
+)
+
+describe('Profile page button-name compliance', () => {
+  it('Avatar upload button has aria-label', () => {
+    // aria-label on the button, Camera icon inside
+    const avatarBtnIdx = profileSource.indexOf('<Camera className="w-6 h-6 md:w-7')
+    const btnContext = profileSource.substring(avatarBtnIdx - 500, avatarBtnIdx)
+    expect(btnContext).toContain('aria-label=')
+  })
+
+  it('Biometric toggle button has aria-label', () => {
+    expect(profileSource).toMatch(/aria-label="[^"]+"\s*\n\s*onClick={async \(\) => {\s*\n\s*if \(lockEnabled\)/)
+  })
+})
+
+describe('Profile page heading order', () => {
+  it('Username heading uses h2 instead of h3', () => {
+    expect(profileSource).toMatch(/<h2[^>]*>[\s\S]*?{formData\.username/)
+    expect(profileSource).not.toMatch(/<h3[^>]*>[\s\S]*?{formData\.username/)
+  })
+})
+
+describe('Profile page contrast compliance', () => {
+  it('Stat labels use text-slate-400 instead of text-slate-600', () => {
+    const mesasMatch = profileSource.match(/Mesas<\/p>[\s\S]{0,5}/)
+    const mesasContext = profileSource.substring(
+      profileSource.indexOf('Mesas</p>') - 80,
+      profileSource.indexOf('Mesas</p>')
+    )
+    expect(mesasContext).toContain('text-slate-400')
+    expect(mesasContext).not.toContain('text-slate-600')
+  })
+
+  it('Form labels use text-brand-gold without opacity modifier', () => {
+    const aliasLabel = profileSource.match(/Alias de Jugador[\s\S]{0,5}/)
+    const aliasContext = profileSource.substring(
+      profileSource.indexOf('Alias de Jugador') - 100,
+      profileSource.indexOf('Alias de Jugador')
+    )
+    expect(aliasContext).not.toMatch(/text-brand-gold\/\d+/)
+  })
+
+  it('Email section does not use container-level opacity-40', () => {
+    const emailIdx = profileSource.indexOf('Enlace de Bóveda')
+    const emailContainer = profileSource.substring(emailIdx - 120, emailIdx)
+    expect(emailContainer).not.toContain('opacity-40')
+  })
+
+  it('Email input has aria-label for accessibility', () => {
+    expect(profileSource).toMatch(/type="email"\s*\n\s*aria-label="[^"]+"/)
+  })
+
+  it('Biometric description uses text-slate-400 instead of text-white/40', () => {
+    const bioIdx = profileSource.indexOf('Pide verificación al abrir la app')
+    const bioContext = profileSource.substring(bioIdx - 80, bioIdx)
+    expect(bioContext).toContain('text-slate-400')
+    expect(bioContext).not.toContain('text-white/40')
+  })
+})
