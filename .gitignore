@@ -16,6 +16,7 @@ node_modules
 coverage
 .playwright/
 test-results/
+.unlighthouse/
 
 # Turbo
 .turbo
