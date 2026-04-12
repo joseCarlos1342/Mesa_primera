@@ -208,7 +208,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex justify-between mt-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+        <div className="flex justify-between mt-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
           <span>Paso {currentStep + 1} de {timeline.length}</span>
           <span>{new Date(event.time).toLocaleTimeString('es-ES')}</span>
         </div>
@@ -235,11 +235,11 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
           {event.event === 'end' && (
             <div className="flex gap-6 text-right">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pozo Total</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pozo Total</p>
                 <p className="text-xl font-black text-white">${formatAmount(event.pot || 0)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Rake</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rake</p>
                 <p className="text-xl font-black text-emerald-400">${formatAmount(event.rake || 0)}</p>
               </div>
             </div>
@@ -315,7 +315,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
 
       {/* Speed Controls */}
       <div className="flex items-center justify-center gap-2 mb-8">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mr-2">Velocidad</span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">Velocidad</span>
         {SPEEDS.map(s => (
           <button
             key={s}
@@ -333,9 +333,9 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
 
       {/* Timeline Mini-Map */}
       <div className="bg-black/30 border border-white/5 rounded-4xl p-6 mb-6 shadow-2xl backdrop-blur-md">
-        <h3 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-4 flex items-center gap-2">
+        <h2 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-4 flex items-center gap-2">
           <Clock className="w-4 h-4" /> Línea de Tiempo
-        </h3>
+        </h2>
         <div className="flex flex-wrap gap-2">
           {timeline.map((ev, i) => (
             <button
@@ -346,7 +346,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
                   ? 'bg-(--accent-gold) text-black border-(--accent-gold) scale-110 shadow-[0_0_15px_rgba(234,179,8,0.4)]'
                   : i < currentStep
                   ? 'bg-(--accent-gold)/10 text-(--accent-gold) border-(--accent-gold)/20 hover:bg-(--accent-gold)/20'
-                  : 'bg-black/40 text-slate-500 border-white/5 hover:bg-white/10 hover:text-white/80'
+                  : 'bg-black/40 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white/80'
               }`}
               title={`${ev.event}${ev.phase ? ` (${ev.phase})` : ''}`}
             >
@@ -358,9 +358,9 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
 
       {/* Players State */}
       <div className="bg-black/30 border border-white/5 rounded-4xl p-6 shadow-2xl backdrop-blur-md mb-8">
-        <h3 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-5 flex items-center gap-2">
+        <h2 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-5 flex items-center gap-2">
           <Users className="w-4 h-4" /> Estado Final de Jugadores
-        </h3>
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {players.map((p, i) => {
             const isWinner = event.event === 'end' && event.winner === p.userId;
@@ -392,7 +392,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
                   </div>
                   {p.cards && (
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Cartas</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Cartas</p>
                       <div className="flex gap-1.5 flex-wrap">
                         {p.cards.split(',').filter(Boolean).map((card, ci) => (
                           <span key={ci} className="px-2.5 py-1 bg-black/50 rounded-lg text-xs font-black text-(--accent-gold) border border-(--accent-gold)/20">
@@ -410,7 +410,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       </div>
 
       {/* Keyboard Shortcuts Hint */}
-      <p className="text-center text-[10px] text-slate-600 mt-6 font-bold uppercase tracking-widest">
+      <p className="text-center text-[10px] text-slate-400 mt-6 font-bold uppercase tracking-widest">
         ◀ ▶ para navegar &middot; Espacio para reproducir/pausar &middot; Controles de velocidad arriba
       </p>
     </div>
