@@ -69,7 +69,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
   }
 
   async function handleTransfer() {
-    if (!recipient || amountCents < 10000) return
+    if (!recipient || amountCents < 100000) return
     setLoading(true)
     setError('')
 
@@ -287,7 +287,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
 
                   <button
                     onClick={() => setStep('confirm-transfer')}
-                    disabled={amountCents < 10000 || amountCents > currentBalance}
+                    disabled={amountCents < 100000 || amountCents > currentBalance}
                     className="w-full h-14 bg-brand-gold/20 hover:bg-brand-gold/30 disabled:bg-white/5 disabled:text-white/20 text-brand-gold disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-brand-gold/20 hover:border-brand-gold/40 disabled:border-white/5 active:scale-[0.98]"
                   >
                     Continuar
