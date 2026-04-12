@@ -415,9 +415,20 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
 
   // Route based on flow
   switch (flow) {
-    case 'register':
-      // User just verified identity — redirect to set PIN
+    case 'register': {
+      // Phone verified — save it to profiles now
+      const { createAdminClient } = await import('@/utils/supabase/server')
+      const adminSupabase = await createAdminClient()
+      await adminSupabase
+        .from('profiles')
+        .update({ phone })
+        .eq('id', data.user.id)
+      // Confirm phone in auth.users
+      await adminSupabase.auth.admin.updateUserById(data.user.id, {
+        phone_confirm: true,
+      })
       redirect(`/register/player/pin`)
+    }
 
     case 'device-verify':
       // User verified new device during login — register device + complete login
@@ -795,7 +806,7 @@ export async function completeGoogleRegistration(prevState: unknown, formData: F
   const { createAdminClient } = await import('@/utils/supabase/server')
   const adminSupabase = await createAdminClient()
 
-  // Update auth.users metadata
+  // Update auth.users metadata (phone will be confirmed after OTP)
   const { error: updateError } = await adminSupabase.auth.admin.updateUserById(user.id, {
     phone,
     phone_confirm: false, // Will be confirmed after OTP
@@ -816,19 +827,23 @@ export async function completeGoogleRegistration(prevState: unknown, formData: F
     return { error: 'Error al actualizar tu perfil. Intenta de nuevo.' }
   }
 
-  // Update the profiles table
+  // Update the profiles table — phone is NOT set here; it will be set after OTP verification
   const { error: profileError } = await adminSupabase
     .from('profiles')
     .update({
       username: parsed.data.nickname,
       full_name: parsed.data.fullName,
       avatar_url: avatarId,
-      phone,
     })
     .eq('id', user.id)
 
   if (profileError) {
     console.error('[GOOGLE_REG] Error updating profile for %s: %s', user.id, profileError.message)
+    // Rollback auth.users metadata to avoid inconsistent state
+    await adminSupabase.auth.admin.updateUserById(user.id, {
+      phone: '',
+      phone_confirm: false,
+    }).catch(() => {})
     if (profileError.message.includes('duplicate') || profileError.message.includes('unique')) {
       return { error: 'El apodo ya está en uso. Elige uno diferente.' }
     }
