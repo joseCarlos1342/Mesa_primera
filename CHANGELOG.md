@@ -1,5 +1,16 @@
 # Changelog
 
+## [Sprint 6.4] - 2026-04-14
+
+### Fixed
+
+- **Zoom restringido en sala de juego** (`useGamePermissions.ts`, `PermissionsGate.tsx`, `play/[id]/page.tsx`):
+  La ruta `/play/[id]` bloqueaba pinch-to-zoom de tres formas: (1) `useGamePermissions` forzaba `requestFullscreen()` + `screen.orientation.lock('landscape')` al entrar, (2) `PermissionsGate` bloqueaba el renderizado de hijos hasta conceder orientación/pantalla completa, y (3) el shell usaba `h-screen overflow-hidden` que recortaba contenido ampliado. Eliminada la lógica de fullscreen/orientación del hook, convertido PermissionsGate en banner no-bloqueante, y reemplazado `h-screen overflow-hidden` por `min-h-screen` en los tres contenedores de la página. El toggle manual de fullscreen en GameHeader se mantiene intacto.
+
+### Added
+
+- **Tests de accesibilidad de zoom en juego** (`game-zoom-accessibility.test.tsx`): 5 tests TDD cubriendo ausencia de fullscreen/orientation-lock forzados, renderizado inmediato de PermissionsGate, y layout sin clipping global.
+
 ## [Sprint 6.3] - 2026-04-12
 
 ### Fixed

@@ -21,7 +21,8 @@
         "NEXT_PUBLIC_SUPABASE_ANON_KEY",
         "SUPABASE_SERVICE_ROLE_KEY",
         "WEBAUTHN_RP_ID",
-        "WEBAUTHN_ORIGINS"
+        "WEBAUTHN_ORIGINS",
+        "RENDER_SECRET_TOKEN"
       ],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**"]

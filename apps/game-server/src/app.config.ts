@@ -49,6 +49,27 @@ export default defineServer({
             res.json({ ok: true, data: replay });
         });
 
+        // ── MP4 download: requiere RENDER_SECRET_TOKEN para acceso ──
+
+        app.get("/api/replays/:gameId/mp4", (req, res) => {
+            const token = req.query.token as string | undefined;
+            const secret = process.env.RENDER_SECRET_TOKEN;
+            if (!secret || token !== secret) {
+                res.status(403).json({ ok: false, error: "Forbidden" });
+                return;
+            }
+            const gameId = req.params.gameId;
+            const mp4Path = ReplayFileService.findMp4(gameId);
+            if (!mp4Path) {
+                res.status(404).json({ ok: false, error: "MP4 not found" });
+                return;
+            }
+            res.setHeader("Content-Type", "video/mp4");
+            res.setHeader("Content-Disposition", `attachment; filename="${gameId}.mp4"`);
+            const stream = require("fs").createReadStream(mp4Path);
+            stream.pipe(res);
+        });
+
         app.use("/colyseus", monitor());
     },
 });

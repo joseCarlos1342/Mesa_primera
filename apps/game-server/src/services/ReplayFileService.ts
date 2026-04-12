@@ -35,6 +35,11 @@ export class ReplayFileService {
   private static readonly BASE_DIR = process.env.REPLAY_STORAGE_DIR
     || (process.env.NODE_ENV === 'production' ? '/data/replays' : path.join(process.cwd(), 'replays'));
 
+  /** Ruta base absoluta del almacenamiento de replays (uso interno del worker). */
+  static get baseDir(): string {
+    return this.BASE_DIR;
+  }
+
   private static initialized = false;
 
   private static ensureDir(dirPath: string): boolean {
@@ -66,6 +71,11 @@ export class ReplayFileService {
     return `${yyyy}-${mm}`;
   }
 
+  /** Versión pública de getMonthDir para otros servicios (ej. RenderQueue). */
+  static getMonthDirFor(isoDate: string): string {
+    return this.getMonthDir(isoDate);
+  }
+
   /**
    * Guarda una grabación como archivos JSON y MP4 en el filesystem.
    * Por requisitos de diseño, se crea un par simultáneo .json y .mp4 (mock temporal para el video).
@@ -82,10 +92,7 @@ export class ReplayFileService {
       // Guardar JSON (metadatos y timeline)
       fs.writeFileSync(`${baseFilePath}.json`, JSON.stringify(replay), 'utf-8');
       
-      // Guardar Video (Mock vacío por el momento, requiere implementación real de grabación en cliente/servidor)
-      if (!fs.existsSync(`${baseFilePath}.mp4`)) {
-        fs.writeFileSync(`${baseFilePath}.mp4`, Buffer.from('dummy video context'), 'utf-8');
-      }
+      // MP4 se genera de forma asíncrona por el RenderWorker (via BullMQ).
 
       return true;
     } catch (e: any) {
@@ -121,6 +128,31 @@ export class ReplayFileService {
     }
   }
 
+  /**
+   * Busca el archivo MP4 de un gameId en todas las subcarpetas mensuales.
+   * Retorna la ruta absoluta si existe, o null si no se ha generado.
+   */
+  static findMp4(gameId: string): string | null {
+    this.init();
+    try {
+      const months = fs.readdirSync(this.BASE_DIR)
+        .filter(d => fs.statSync(path.join(this.BASE_DIR, d)).isDirectory())
+        .sort()
+        .reverse();
+
+      for (const month of months) {
+        const mp4Path = path.join(this.BASE_DIR, month, `${gameId}.mp4`);
+        if (fs.existsSync(mp4Path)) {
+          return mp4Path;
+        }
+      }
+      return null;
+    } catch (e: any) {
+      console.error(`[ReplayFileService] Error finding MP4 ${gameId}:`, e.message);
+      return null;
+    }
+  }
+
   /** Máximo de días que se retienen las grabaciones para jugadores */
   private static readonly RETENTION_DAYS = 7;
 
@@ -140,7 +172,9 @@ export class ReplayFileService {
 
       for (const month of months) {
         const monthDir = path.join(this.BASE_DIR, month);
-        const files = fs.readdirSync(monthDir).filter(f => f.endsWith('.json') || f.endsWith('.mp4'));
+        const files = fs.readdirSync(monthDir).filter(f =>
+          f.endsWith('.json') || f.endsWith('.mp4') || f.endsWith('.mp4.tmp') || f.endsWith('.webm')
+        );
 
         for (const file of files) {
           const filePath = path.join(monthDir, file);
