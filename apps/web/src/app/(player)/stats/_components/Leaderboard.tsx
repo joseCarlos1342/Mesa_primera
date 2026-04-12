@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Trophy, Medal, Target, TrendingUp, User } from "lucide-react";
 import { getAvatarSvg } from "@/utils/avatars";
 import { formatAmount } from "@/utils/format";
@@ -27,12 +27,12 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
       {entries.length === 0 ? (
         <div className="text-center py-20 bg-black/40 border-2 border-dashed border-white/5 rounded-[2.5rem]">
           <Trophy className="w-12 h-12 text-text-secondary opacity-20 mx-auto mb-4" />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary opacity-60 italic">Buscando leyendas...</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary italic">Buscando leyendas...</p>
         </div>
       ) : (
         <div className="space-y-3">
           {entries.map((entry, idx) => (
-            <motion.div
+            <m.div
               key={entry.user_id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -75,9 +75,9 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
                   }`}>
                     {entry.username || 'Anónimo'}
                   </p>
-                  <div className="flex items-center gap-1.5 opacity-60 mt-0.5">
+                  <div className="flex items-center gap-1.5 mt-0.5">
                     <Icon className="w-3 h-3 text-text-secondary" />
-                    <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest whitespace-nowrap">Global Ranking</span>
+                    <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest whitespace-nowrap">Global Ranking</span>
                   </div>
                 </div>
               </div>
@@ -89,13 +89,13 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
                 }`}>
                   {category === 'top_ganadores' ? `$${formatAmount(Number(entry.score))}` : entry.score}
                 </p>
-                <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest opacity-40">
+                <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
                   {category === 'top_ganadores' ? 'Ganancias' : 
                    category === 'mejor_racha' ? 'Best Streak' : 
                    category === 'maestro_primera' ? 'Especiales' : 'Partidas'}
                 </span>
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       )}

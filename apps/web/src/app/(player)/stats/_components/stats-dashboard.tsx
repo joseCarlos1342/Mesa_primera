@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Trophy, Target, TrendingUp, Flame, Star, Crown } from "lucide-react";
 
 interface PlayerStats {
@@ -66,7 +66,7 @@ export function StatsDashboard({ stats }: { stats: PlayerStats }) {
 
       {/* Special Plays / Cantos Section */}
       <section className="bg-black/40 backdrop-blur-xl border-2 border-white/5 p-8 rounded-[2.5rem] relative overflow-hidden group">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-felt-texture opacity-10 pointer-events-none" />
         
         <div className="relative z-10 space-y-8">
           <div className="flex items-center gap-3">
@@ -75,7 +75,7 @@ export function StatsDashboard({ stats }: { stats: PlayerStats }) {
             </div>
             <div>
               <h3 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic">Cantos Especiales</h3>
-              <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-60">Tu desempeño técnico en mesa</p>
+              <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Tu desempeño técnico en mesa</p>
             </div>
           </div>
 
@@ -101,20 +101,20 @@ export function StatsDashboard({ stats }: { stats: PlayerStats }) {
             <div className="flex justify-between items-end">
               <div>
                 <h3 className="text-lg font-display font-black text-text-premium uppercase tracking-tighter italic">Rango: Veterano de Bóveda</h3>
-                <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest opacity-60">Próximo: Gran Maestro</p>
+                <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Próximo: Gran Maestro</p>
               </div>
               <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">650 / 1000 XP</span>
             </div>
             
             <div className="h-4 bg-black/40 rounded-full overflow-hidden border border-white/5 p-1">
-              <motion.div 
+              <m.div 
                 initial={{ width: 0 }}
                 animate={{ width: '65%' }}
                 transition={{ duration: 2, ease: "easeOut" }}
                 className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)] relative overflow-hidden"
               >
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] animate-shimmer" />
-              </motion.div>
+              </m.div>
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ export function StatsDashboard({ stats }: { stats: PlayerStats }) {
 
 function StatHero({ title, value, sub, icon: Icon, color, borderColor, iconColor }: any) {
   return (
-    <motion.div 
+    <m.div 
       whileHover={{ y: -5, scale: 1.02 }}
       className={`relative overflow-hidden bg-gradient-to-br ${color} backdrop-blur-xl border-2 ${borderColor} p-6 h-40 rounded-[2.5rem] flex flex-col justify-center gap-1 group transition-all duration-500 shadow-xl`}
     >
@@ -133,21 +133,21 @@ function StatHero({ title, value, sub, icon: Icon, color, borderColor, iconColor
         <Icon className={`w-16 h-16 ${iconColor}`} />
       </div>
       
-      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary opacity-60">{title}</p>
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary">{title}</p>
       <div className="flex flex-col">
-        <h4 className="text-4xl font-display font-black text-white italic tracking-tighter drop-shadow-lg">{value}</h4>
-        {sub && <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-40 group-hover:opacity-80 transition-opacity">{sub}</span>}
+        <p className="text-4xl font-display font-black text-white italic tracking-tighter drop-shadow-lg">{value}</p>
+        {sub && <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{sub}</span>}
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
 function SpecialStat({ label, count, color, bgColor, description }: any) {
   return (
     <div className={`p-6 ${bgColor} rounded-[2rem] border border-white/5 flex flex-col items-center text-center gap-2 group hover:border-brand-gold/20 transition-all active:scale-95`}>
-      <span className={`text-[10px] font-black uppercase tracking-[0.3em] opacity-60 ${color}`}>{label}</span>
+      <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${color}`}>{label}</span>
       <span className="text-3xl font-display font-black text-white italic">{count}</span>
-      <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-40">{description}</p>
+      <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{description}</p>
     </div>
   );
 }

@@ -302,3 +302,113 @@ describe('Wallet page LCP optimization', () => {
     expect(source).not.toMatch(/transparenttextures\.com/)
   })
 })
+
+// ────────────────────────────────────────────────
+// 12. Stats page — Server-side data fetching (LCP)
+// ────────────────────────────────────────────────
+describe('Stats page server-side rendering', () => {
+  it('page.tsx is an async server component (no "use client")', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/page.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/['"]use client['"]/)
+    expect(source).toMatch(/async\s+function/)
+  })
+
+  it('page.tsx calls getMyStats and getLeaderboard server-side', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/page.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/getMyStats\(\)/)
+    expect(source).toMatch(/getLeaderboard/)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 13. Stats page — no external texture URLs (LCP)
+// ────────────────────────────────────────────────
+describe('Stats page LCP optimization', () => {
+  it('stats-dashboard does not reference external texture URLs', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/_components/stats-dashboard.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/transparenttextures\.com/)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 14. Stats page — framer-motion uses m (tree-shakable)
+// ────────────────────────────────────────────────
+describe('Stats page framer-motion tree-shaking', () => {
+  const statsFiles = [
+    '../app/(player)/stats/_components/stats-dashboard.tsx',
+    '../app/(player)/stats/_components/StatsTabs.tsx',
+    '../app/(player)/stats/_components/Leaderboard.tsx',
+    '../app/(player)/stats/_components/StatsClient.tsx',
+  ]
+
+  statsFiles.forEach((file) => {
+    const name = file.split('/').pop()
+    it(`${name} does not import "motion" (uses "m" instead)`, () => {
+      const source = fs.readFileSync(path.resolve(__dirname, file), 'utf-8')
+      // Should not have: import { motion } or import { motion,
+      expect(source).not.toMatch(/import\s+\{[^}]*\bmotion\b/)
+    })
+  })
+})
+
+// ────────────────────────────────────────────────
+// 15. Stats page — contrast compliance (no opacity on text)
+// ────────────────────────────────────────────────
+describe('Stats page contrast compliance', () => {
+  it('stats-dashboard has no opacity-60 on text-text-secondary', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/_components/stats-dashboard.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/text-text-secondary[\s\S]{0,40}opacity-60/)
+    expect(source).not.toMatch(/opacity-60[\s\S]{0,40}text-text-secondary/)
+  })
+
+  it('stats-dashboard has no opacity-40 on text-text-secondary', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/_components/stats-dashboard.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/text-text-secondary[\s\S]{0,40}opacity-40/)
+    expect(source).not.toMatch(/opacity-40[\s\S]{0,40}text-text-secondary/)
+  })
+
+  it('Leaderboard has no opacity-60 on text-text-secondary wrappers', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/_components/Leaderboard.tsx'),
+      'utf-8'
+    )
+    // no container div with opacity-60 wrapping text
+    expect(source).not.toMatch(/className="[^"]*opacity-60[^"]*">\s*<.*text-text-secondary/)
+  })
+
+  it('Leaderboard has no text-[8px] (minimum 10px)', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/_components/Leaderboard.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/text-\[8px\]/)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 16. Stats page — heading order compliance
+// ────────────────────────────────────────────────
+describe('Stats page heading order', () => {
+  it('stats-dashboard does not use h4 elements (no heading skip)', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/_components/stats-dashboard.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/<h4[\s>]/)
+  })
+})

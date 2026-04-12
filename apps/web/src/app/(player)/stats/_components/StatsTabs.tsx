@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 interface StatsTabsProps {
   activeTab: 'personal' | 'global';
@@ -17,7 +17,7 @@ export function StatsTabs({ activeTab, onChange }: StatsTabsProps) {
         }`}
       >
         {activeTab === 'personal' && (
-          <motion.div
+          <m.div
             layoutId="activeTabStats"
             className="absolute inset-0 bg-brand-gold shadow-[0_0_20px_rgba(202,171,114,0.4)]"
             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
@@ -33,7 +33,7 @@ export function StatsTabs({ activeTab, onChange }: StatsTabsProps) {
         }`}
       >
         {activeTab === 'global' && (
-          <motion.div
+          <m.div
             layoutId="activeTabStats"
             className="absolute inset-0 bg-brand-gold shadow-[0_0_20px_rgba(202,171,114,0.4)]"
             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
