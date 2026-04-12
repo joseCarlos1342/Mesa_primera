@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { ArrowUpWideNarrow, Landmark, Plus, ArrowUpRight, ArrowDownLeft, ArrowRightLeft } from 'lucide-react'
 import { useState } from 'react'
 import { TransactionModal } from './TransactionModal'
@@ -34,17 +34,17 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
   return (
     <div className="space-y-10">
       {/* Premium Balance Card */}
-      <motion.section 
+      <m.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="group relative overflow-hidden bg-[#0a2a1f] p-8 md:p-12 rounded-[2.5rem] border-2 border-brand-gold/30 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700 hover:border-brand-gold/60"
       >
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_transparent_100%)] opacity-40 group-hover:opacity-60 transition-opacity duration-1000" />
+        <div className="absolute inset-0 bg-felt-texture opacity-20 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-bg-poker)_0%,transparent_100%)] opacity-40 group-hover:opacity-60 transition-opacity duration-1000" />
         
         <div className="relative z-10 flex flex-col items-center text-center space-y-4">
           <div className="flex flex-col items-center w-full">
-            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-text-secondary mb-1 opacity-60">Saldo en Cartera</span>
+            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-text-secondary mb-1">Saldo en Cartera</span>
             <h2 className="text-5xl md:text-7xl font-display font-black text-brand-gold italic tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] leading-none select-none pr-4">
               ${formatAmount(balance)}
             </h2>
@@ -72,7 +72,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
             </button>
           </div>
         </div>
-      </motion.section>
+      </m.section>
 
       {/* Chip Packs Grid */}
       <section className="space-y-6">
@@ -85,7 +85,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
 
         <div className="grid grid-cols-2 gap-4">
           {CHIP_PACKS.map((pack, idx) => (
-            <motion.div
+            <m.div
               key={pack.amount}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -117,12 +117,12 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                 
                 <div className="space-y-0.5">
                   <span className="block text-lg font-display font-black text-white leading-tight">${pack.label}</span>
-                  <span className="block text-[8px] font-black text-brand-gold opacity-60 uppercase tracking-widest leading-none">Pagas {pack.price}</span>
+                  <span className="block text-[10px] font-black text-brand-gold/80 uppercase tracking-widest leading-none">Pagas {pack.price}</span>
                 </div>
                 
                 <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-brand-gold/10 rounded-full blur-xl group-hover:bg-brand-gold/20 transition-all opacity-0 group-hover:opacity-100" />
               </Link>
-            </motion.div>
+            </m.div>
           ))}
         </div>
         
@@ -156,7 +156,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
             </div>
           ) : (
             transactions?.map((tx: any, idx: number) => (
-              <motion.div 
+              <m.div 
                 key={tx.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -194,7 +194,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                        tx.type === 'adjustment' || tx.type === 'admin_adjustment' ? 'Ajuste' :
                        tx.type}
                     </p>
-                    <p className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 truncate">
+                    <p className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-[0.2em] truncate">
                       {new Date(tx.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} • {new Date(tx.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -219,7 +219,7 @@ export function WalletContent({ wallet, transactions }: WalletContentProps) {
                 </div>
                 </div>
 
-              </motion.div>
+              </m.div>
             ))
           )}
         </div>

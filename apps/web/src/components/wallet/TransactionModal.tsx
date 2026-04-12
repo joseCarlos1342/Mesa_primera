@@ -95,13 +95,14 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
                   <h3 className="text-sm font-display font-black uppercase tracking-[0.2em] italic leading-none text-brand-gold">
                     Detalles de Operación
                   </h3>
-                  <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-60 mt-1">
+                  <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-1">
                     Información de la Bóveda
                   </p>
                 </div>
               </div>
               <button 
                 onClick={onClose}
+                aria-label="Cerrar detalles"
                 className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all active:scale-95 border border-white/10 group"
               >
                 <X className="w-6 h-6 text-text-secondary group-hover:text-text-premium transition-colors" />
@@ -113,7 +114,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
               
               {/* Type and Amount */}
               <div className="text-center space-y-2">
-                <h4 className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em] opacity-60">
+                <h4 className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em]">
                   Monto
                 </h4>
                 <div className="flex flex-col items-center">
@@ -214,8 +215,8 @@ function DetailItem({ icon: Icon, label, value }: any) {
   return (
     <div className="p-3 md:p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-1 group hover:border-brand-gold/20 transition-all duration-300">
       <div className="flex items-center gap-2">
-        <Icon className="w-3 h-3 text-brand-gold opacity-60 group-hover:opacity-100 transition-opacity" />
-        <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest opacity-60">{label}</span>
+        <Icon className="w-3 h-3 text-brand-gold group-hover:opacity-100 transition-opacity" />
+        <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">{label}</span>
       </div>
       <p className="text-[10px] md:text-[11px] font-black text-text-premium truncate group-hover:text-brand-gold transition-colors">{value}</p>
     </div>
