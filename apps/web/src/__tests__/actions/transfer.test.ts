@@ -122,7 +122,7 @@ describe('Transfer Server Actions', () => {
       expect(result).toEqual({ error: 'El monto mínimo es $1.000' })
     })
 
-    it('returns success on valid transfer', async () => {
+    it('sends p_sender_id to RPC and maps success payload correctly', async () => {
       mockSupabase.rpc.mockResolvedValue({
         data: {
           reference_id: 'ref-123',
@@ -136,9 +136,12 @@ describe('Transfer Server Actions', () => {
       const recipientId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22'
       const result = await transferToPlayer(recipientId, 100000)
 
+      // Must include p_sender_id so the RPC resolves the sender even when
+      // auth.uid() is NULL inside SECURITY DEFINER context
       expect(mockSupabase.rpc).toHaveBeenCalledWith('transfer_between_players', {
         p_recipient_id: recipientId,
         p_amount_cents: 100000,
+        p_sender_id: 'user-1',
       })
       expect(result).toEqual({
         success: true,

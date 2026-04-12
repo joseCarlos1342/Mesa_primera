@@ -68,6 +68,7 @@ export async function transferToPlayer(recipientId: string, amountCents: number)
   const { data, error } = await supabase.rpc('transfer_between_players', {
     p_recipient_id: parsed.data.recipientId,
     p_amount_cents: parsed.data.amountCents,
+    p_sender_id: user.id,
   })
 
   if (error) {
