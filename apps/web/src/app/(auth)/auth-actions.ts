@@ -796,9 +796,14 @@ export async function completeGoogleRegistration(prevState: unknown, formData: F
   // Check if this phone already belongs to another user
   const { data: phoneExists } = await supabase.rpc('check_phone_exists', { p_phone: phone })
   if (phoneExists) {
-    return {
-      fieldErrors: {
-        phone: ['Este número ya está registrado con otra cuenta. Inicia sesión con tu teléfono y vincula Google desde tu perfil.']
+    // If the phone is on the current user (e.g. from a previous failed attempt), allow re-registration
+    const userPhone = user.phone?.replace(/^\+/, '') ?? ''
+    const cleanPhone = phone.replace(/^\+/, '')
+    if (userPhone !== cleanPhone) {
+      return {
+        fieldErrors: {
+          phone: ['Este número ya está registrado con otra cuenta. Inicia sesión con tu teléfono y vincula Google desde tu perfil.']
+        }
       }
     }
   }
