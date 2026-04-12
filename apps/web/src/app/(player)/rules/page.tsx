@@ -77,9 +77,9 @@ export default function RulesPage() {
                   <p className={`text-[10px] font-black uppercase tracking-[0.4em] ${section.color} opacity-80 mb-1`}>
                     {section.subtitle}
                   </p>
-                  <h3 className="text-xl md:text-2xl lg:text-3xl font-display font-black italic text-[#f3edd7] uppercase tracking-tight leading-[1.1]">
+                  <h2 className="text-xl md:text-2xl lg:text-3xl font-display font-black italic text-[#f3edd7] uppercase tracking-tight leading-[1.1]">
                     {section.title}
-                  </h3>
+                  </h2>
                 </div>
                 <div className={`shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-black/60 border border-brand-gold/20 flex items-center justify-center ${section.color} shadow-inner transition-all duration-500 group-hover:scale-110`}>
                   <section.icon className="w-6 h-6 md:w-9 md:h-9" />
@@ -116,8 +116,8 @@ export default function RulesPage() {
         </div>
         
         <div className="space-y-2">
-          <h4 className="text-2xl font-display font-black text-[#f3edd7] uppercase italic tracking-tighter leading-none">¿Dudas en la mesa?</h4>
-          <p className="text-[11px] text-text-secondary font-black uppercase tracking-[0.2em] leading-relaxed max-w-xs mx-auto opacity-50">
+          <h2 className="text-2xl font-display font-black text-[#f3edd7] uppercase italic tracking-tighter leading-none">¿Dudas en la mesa?</h2>
+          <p className="text-[11px] text-slate-400 font-black uppercase tracking-[0.2em] leading-relaxed max-w-xs mx-auto">
             Nuestro equipo de conserjería está disponible 24/7 para asistir a los miembros del club.
           </p>
         </div>
@@ -132,8 +132,8 @@ export default function RulesPage() {
       </motion.section>
       
       {/* Scroll Tip */}
-      <footer className="text-center pt-2 pb-8 opacity-30">
-        <p className="text-[10px] font-black text-[#f3edd7] uppercase tracking-[0.5em]">
+      <footer className="text-center pt-2 pb-8">
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">
           Estatutos Oficiales • Primera Riverada v3.1
         </p>
       </footer>
