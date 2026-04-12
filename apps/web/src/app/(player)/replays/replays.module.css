@@ -1,0 +1,18 @@
+/* Responsive visibility — CSS Module bypasses Tailwind processing */
+.desktopView {
+  display: block;
+}
+.mobileView {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .desktopView {
+    display: none;
+  }
+  .mobileView {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
