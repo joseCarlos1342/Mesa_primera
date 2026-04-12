@@ -746,3 +746,125 @@ export async function checkPhoneHasPin(phone: string): Promise<boolean> {
   const { data } = await supabase.rpc('user_has_pin', { p_phone: normalized })
   return data === true
 }
+
+// ─── Google OAuth: Complete Registration ─────────────────────────────────────
+
+/**
+ * Completa el registro de un usuario que se autenticó con Google.
+ * El usuario ya tiene sesión activa (set por el callback), pero su perfil
+ * está incompleto. Este action:
+ * 1. Valida nickname, nombre, avatar y teléfono.
+ * 2. Verifica que el teléfono no pertenezca a otra cuenta.
+ * 3. Envía OTP al teléfono para verificarlo.
+ * 4. Tras la verificación, actualiza el perfil y continúa al PIN setup.
+ */
+export async function completeGoogleRegistration(prevState: unknown, formData: FormData) {
+  const rl = await enforceRateLimiting('complete_google_reg', 3, 300)
+  if (!rl.success) return { error: rl.error }
+
+  const rawPhone = (formData.get('phone') as string ?? '').trim()
+  const fullName = (formData.get('fullName') as string ?? '').trim()
+  const nickname = (formData.get('nickname') as string ?? '').trim()
+  const avatarId = formData.get('avatarId') as string
+
+  const parsed = registerPlayerSchema.safeParse({ phone: rawPhone, fullName, nickname })
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
+  const supabase = await createClient()
+  const phone = normalizePhone(parsed.data.phone)
+
+  // Ensure user is authenticated (should be from the OAuth callback)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    redirect('/login/player')
+  }
+
+  // Check if this phone already belongs to another user
+  const { data: phoneExists } = await supabase.rpc('check_phone_exists', { p_phone: phone })
+  if (phoneExists) {
+    return {
+      fieldErrors: {
+        phone: ['Este número ya está registrado con otra cuenta. Inicia sesión con tu teléfono y vincula Google desde tu perfil.']
+      }
+    }
+  }
+
+  // Update the user's metadata and profile via admin API
+  const { createAdminClient } = await import('@/utils/supabase/server')
+  const adminSupabase = await createAdminClient()
+
+  // Update auth.users metadata
+  const { error: updateError } = await adminSupabase.auth.admin.updateUserById(user.id, {
+    phone,
+    phone_confirm: false, // Will be confirmed after OTP
+    user_metadata: {
+      ...user.user_metadata,
+      full_name: parsed.data.fullName,
+      username: parsed.data.nickname,
+      avatar_url: avatarId,
+      role: 'player',
+    },
+  })
+
+  if (updateError) {
+    console.error('[GOOGLE_REG] Error updating user metadata for %s: %s', user.id, updateError.message)
+    if (updateError.message.includes('duplicate') || updateError.message.includes('unique')) {
+      return { error: 'El apodo o teléfono ya están en uso por otra cuenta.' }
+    }
+    return { error: 'Error al actualizar tu perfil. Intenta de nuevo.' }
+  }
+
+  // Update the profiles table
+  const { error: profileError } = await adminSupabase
+    .from('profiles')
+    .update({
+      username: parsed.data.nickname,
+      full_name: parsed.data.fullName,
+      avatar_url: avatarId,
+      phone,
+    })
+    .eq('id', user.id)
+
+  if (profileError) {
+    console.error('[GOOGLE_REG] Error updating profile for %s: %s', user.id, profileError.message)
+    if (profileError.message.includes('duplicate') || profileError.message.includes('unique')) {
+      return { error: 'El apodo ya está en uso. Elige uno diferente.' }
+    }
+    return { error: 'Error al guardar tu perfil. Intenta de nuevo.' }
+  }
+
+  // Send OTP to verify the phone
+  const { error: otpError } = await supabase.auth.signInWithOtp({
+    phone,
+    options: { shouldCreateUser: false },
+  })
+
+  if (otpError) {
+    console.error('[GOOGLE_REG] OTP send failed for %s: %s', phone, otpError.message)
+    if (isOtpProviderDisabled(otpError.message)) {
+      return { error: 'El servicio de SMS no está disponible. Inténtalo más tarde.' }
+    }
+    return { error: 'No pudimos enviar el código de verificación. Intenta de nuevo.' }
+  }
+
+  redirect(`/register/player/verify?phone=${encodeURIComponent(phone)}&flow=register`)
+}
+
+/**
+ * Returns the Google profile data for the currently authenticated user.
+ * Used to pre-fill the complete-registration form.
+ */
+export async function getGoogleUserData() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return null
+
+  return {
+    fullName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? '',
+    email: user.email ?? '',
+    avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? '',
+  }
+}
