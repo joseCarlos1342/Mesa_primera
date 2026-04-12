@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { formatAmount } from '@/utils/format';
-import { Trophy, Clock, Users, Copy, Check, Coins, Hand, Timer, Swords, Ban, Layers } from 'lucide-react';
+import { getPlayerMp4DownloadUrl } from '@/app/actions/replays';
+import { Trophy, Clock, Users, Copy, Check, Coins, Hand, Timer, Swords, Ban, Layers, Video, Download, Loader2 } from 'lucide-react';
 
 type TimelineEvent = {
   event: string;
@@ -62,6 +63,8 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
   const [loading, setLoading] = useState(true);
   const [speed, setSpeed] = useState(1);
   const [seedCopied, setSeedCopied] = useState(false);
+  const [mp4Url, setMp4Url] = useState<string | null>(null);
+  const [mp4Status, setMp4Status] = useState<string | null>(null);
   const SPEEDS = [0.5, 1, 2, 4];
 
   useEffect(() => {
@@ -89,7 +92,14 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
         .single();
 
       if (error) console.error('Error fetching replay:', error);
-      if (data) setReplay(data);
+      if (data) {
+        setReplay(data);
+        setMp4Status(data.mp4_status || null);
+        // Obtener URL de descarga si el MP4 está listo
+        if (data.mp4_status === 'ready') {
+          getPlayerMp4DownloadUrl(gameId).then(url => setMp4Url(url)).catch(() => {});
+        }
+      }
       setLoading(false);
     }
     fetchData();
@@ -224,6 +234,36 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
 
       {/* Progress Bar */}
       <div className="mb-6">
+        {/* MP4 Video Download */}
+        {mp4Status && (
+          <div className="mb-4 flex items-center gap-3 p-3 rounded-2xl border bg-black/30 border-white/10">
+            <Video className="w-5 h-5 text-(--accent-gold) shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Video de la Partida</p>
+              {mp4Status === 'ready' && mp4Url ? (
+                <p className="text-xs text-emerald-400 font-bold">Listo para descargar</p>
+              ) : mp4Status === 'processing' ? (
+                <p className="text-xs text-amber-400 font-bold flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Generando video...
+                </p>
+              ) : mp4Status === 'pending' ? (
+                <p className="text-xs text-slate-400 font-bold">En cola de renderizado</p>
+              ) : mp4Status === 'failed' ? (
+                <p className="text-xs text-red-400 font-bold">Error al generar video</p>
+              ) : null}
+            </div>
+            {mp4Status === 'ready' && mp4Url && (
+              <a
+                href={mp4Url}
+                download
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-(--accent-gold) text-black text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" />
+                MP4
+              </a>
+            )}
+          </div>
+        )}
         <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/10">
           <div
             className="h-full rounded-full transition-all duration-300"

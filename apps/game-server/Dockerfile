@@ -3,6 +3,20 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Instalar dependencias del sistema para Playwright (Chromium) y FFmpeg
+RUN apk add --no-cache \
+  chromium \
+  ffmpeg \
+  nss \
+  freetype \
+  harfbuzz \
+  ca-certificates \
+  ttf-freefont
+
+# Variables de entorno para Playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=0
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Install dependencies for overall workspace
 COPY package.json package-lock.json ./
 COPY apps/game-server ./apps/game-server/

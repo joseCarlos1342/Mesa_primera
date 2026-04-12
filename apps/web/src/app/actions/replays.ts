@@ -40,6 +40,11 @@ export type ReplayDetail = {
   pot_breakdown: Record<string, any>;
   final_hands: Record<string, any>;
   rng_seed: string;
+  mp4_status?: string | null;
+  mp4_size_bytes?: number | null;
+  mp4_duration_ms?: number | null;
+  mp4_rendered_at?: string | null;
+  mp4_error?: string | null;
 };
 
 export type ReplayLedgerEntry = {
@@ -118,7 +123,7 @@ export async function getReplayDetail(gameId: string): Promise<ReplayDetail | nu
 
   const { data, error } = await supabase
     .from("game_replays")
-    .select("id, game_id, created_at, players, timeline, admin_timeline, pot_breakdown, final_hands, rng_seed")
+    .select("id, game_id, created_at, players, timeline, admin_timeline, pot_breakdown, final_hands, rng_seed, mp4_status, mp4_size_bytes, mp4_duration_ms, mp4_rendered_at, mp4_error")
     .eq("game_id", gameId)
     .single();
 
@@ -163,6 +168,19 @@ async function fetchReplayFromGameServer(gameId: string): Promise<ReplayDetail |
   }
 }
 
+/**
+ * Genera la URL proxy para que un jugador descargue el MP4.
+ * La autorización real (verificar participación) se hace en el API route.
+ * El token secreto nunca sale del servidor.
+ */
+export async function getPlayerMp4DownloadUrl(gameId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  return `/api/replays/${encodeURIComponent(gameId)}/mp4`;
+}
+
 // ─── Admin Actions ──────────────────────────────────────────
 
 async function verifyAdmin() {
@@ -202,7 +220,7 @@ export async function getAdminReplayDetail(gameId: string): Promise<{ replay: Re
   const [replayRes, ledgerRes] = await Promise.all([
     supabase
       .from("game_replays")
-      .select("id, game_id, created_at, players, timeline, admin_timeline, pot_breakdown, final_hands, rng_seed")
+      .select("id, game_id, created_at, players, timeline, admin_timeline, pot_breakdown, final_hands, rng_seed, mp4_status, mp4_size_bytes, mp4_duration_ms, mp4_rendered_at, mp4_error")
       .eq("game_id", gameId)
       .single(),
     supabase.rpc("get_replay_ledger", { p_game_id: gameId }),
@@ -219,4 +237,15 @@ export async function getAdminReplayDetail(gameId: string): Promise<{ replay: Re
     replay: (replayRes.data as ReplayDetail) || null,
     ledger: (ledgerRes.data || []) as ReplayLedgerEntry[],
   };
+}
+
+/**
+ * Genera la URL proxy para que un admin descargue el MP4.
+ * La autorización real se hace en el API route /api/replays/[gameId]/mp4.
+ * El token secreto nunca sale del servidor.
+ */
+export async function getAdminMp4DownloadUrl(gameId: string): Promise<string | null> {
+  await verifyAdmin();
+
+  return `/api/replays/${encodeURIComponent(gameId)}/mp4`;
 }

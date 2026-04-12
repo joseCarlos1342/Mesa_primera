@@ -5,6 +5,12 @@ import { startAntiCollusionCron } from "./cron/antiCollusion";
 import { initializeSocketIOServer } from "./services/socket";
 import "./workers/push.worker";  // Initialize BullMQ worker
 
+// Initialize render worker only if RENDER_SECRET_TOKEN is configured
+if (process.env.RENDER_SECRET_TOKEN) {
+    require("./workers/render.worker");
+    console.log("[RenderWorker] Initialized — MP4 rendering enabled");
+}
+
 // Polyfill WebSocket for Node 20 compatibility with Colyseus 0.17+
 if (typeof WebSocket === "undefined") {
     const WS = require("ws");
