@@ -307,13 +307,21 @@ describe('Wallet page LCP optimization', () => {
 // 12. Stats page — Server-side data fetching (LCP)
 // ────────────────────────────────────────────────
 describe('Stats page server-side rendering', () => {
-  it('page.tsx is an async server component (no "use client")', () => {
+  it('page.tsx is a server component (no "use client")', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../app/(player)/stats/page.tsx'),
       'utf-8'
     )
     expect(source).not.toMatch(/['"]use client['"]/)
-    expect(source).toMatch(/async\s+function/)
+  })
+
+  it('page.tsx uses Suspense for streaming', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/page.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/Suspense/)
+    expect(source).toMatch(/fallback/)
   })
 
   it('page.tsx calls getMyStats and getLeaderboard server-side', () => {
@@ -323,6 +331,17 @@ describe('Stats page server-side rendering', () => {
     )
     expect(source).toMatch(/getMyStats\(\)/)
     expect(source).toMatch(/getLeaderboard/)
+  })
+
+  it('StatsShell renders header instantly without data dependency', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/_components/StatsShell.tsx'),
+      'utf-8'
+    )
+    // Shell should NOT import any data-fetching actions
+    expect(source).not.toMatch(/getMyStats|getLeaderboard/)
+    // Shell should contain the h1
+    expect(source).toMatch(/<h1/)
   })
 })
 
@@ -348,6 +367,7 @@ describe('Stats page framer-motion tree-shaking', () => {
     '../app/(player)/stats/_components/StatsTabs.tsx',
     '../app/(player)/stats/_components/Leaderboard.tsx',
     '../app/(player)/stats/_components/StatsClient.tsx',
+    '../app/(player)/stats/_components/StatsShell.tsx',
   ]
 
   statsFiles.forEach((file) => {
@@ -410,5 +430,13 @@ describe('Stats page heading order', () => {
       'utf-8'
     )
     expect(source).not.toMatch(/<h4[\s>]/)
+  })
+
+  it('stats-dashboard does not use h3 (should be h2 after h1)', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/stats/_components/stats-dashboard.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/<h3[\s>]/)
   })
 })
