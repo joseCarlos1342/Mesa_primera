@@ -58,13 +58,13 @@ export default function AdminMFASetupPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Configurar 2FA
           </h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-slate-400 text-sm">
             Escanea el código QR con tu app autenticadora
           </p>
         </div>
 
         {enrolling ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center min-h-[360px] py-8">
             <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
@@ -83,7 +83,7 @@ export default function AdminMFASetupPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-[10px] text-slate-600 uppercase tracking-widest text-center">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest text-center">
                     Clave manual
                   </p>
                   <p className="text-xs text-slate-400 text-center font-mono break-all bg-black/40 p-2 rounded-xl border border-slate-800 select-all">
@@ -101,7 +101,7 @@ export default function AdminMFASetupPage() {
               )}
 
               <div className="space-y-2">
-                <label className="text-[10px] text-slate-500 uppercase tracking-widest">
+                <label className="text-[10px] text-slate-400 uppercase tracking-widest">
                   Código de verificación
                 </label>
                 <input
@@ -124,7 +124,7 @@ export default function AdminMFASetupPage() {
               </button>
             </form>
 
-            <p className="text-center text-[10px] text-slate-600 uppercase tracking-widest">
+            <p className="text-center text-[10px] text-slate-400 uppercase tracking-widest">
               Usa Google Authenticator / Authy
             </p>
           </>

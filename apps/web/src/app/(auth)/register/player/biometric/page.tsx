@@ -81,7 +81,7 @@ export default function BiometricSetupPage() {
   if (isSupported === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="animate-pulse text-white/30 text-lg">Verificando compatibilidad...</div>
+        <div className="animate-pulse text-white/60 text-lg">Verificando compatibilidad...</div>
       </div>
     )
   }
@@ -176,7 +176,7 @@ export default function BiometricSetupPage() {
               </div>
 
               <footer className="mt-8 pt-6 border-t-2 border-white/5 text-center">
-                <p className="text-xs text-white/30">
+                <p className="text-xs text-white/60">
                   Siempre podrás activar o desactivar esta opción desde tu perfil.
                   <br />Tu clave de 6 dígitos seguirá siendo tu principal forma de acceso.
                 </p>
