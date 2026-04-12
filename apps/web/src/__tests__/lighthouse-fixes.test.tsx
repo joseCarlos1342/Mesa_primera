@@ -499,3 +499,57 @@ describe('Friends page contrast compliance', () => {
     expect(circuloLine).toMatch(/text-slate-[1-4]00/)
   })
 })
+
+// ────────────────────────────────────────────────
+// 19. Rules page — heading order
+// ────────────────────────────────────────────────
+describe('Rules page heading order', () => {
+  it('does not use h3 elements (sections should be h2)', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/rules/page.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/<h3[\s>]/)
+  })
+
+  it('does not use h4 elements (support section should be h2)', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/rules/page.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/<h4[\s>]/)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 20. Rules page — contrast compliance
+// ────────────────────────────────────────────────
+describe('Rules page contrast compliance', () => {
+  it('Footer does not use opacity-30 wrapper', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/rules/page.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/className="[^"]*opacity-30[^"]*">\s*<p/)
+  })
+
+  it('Support section does not use opacity-50 on text', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/rules/page.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/opacity-50[\s\S]{0,20}">/)
+  })
+
+  it('Footer uses text-slate-500 or visible color instead of dimmed white', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/rules/page.tsx'),
+      'utf-8'
+    )
+    const lines = source.split('\n')
+    const footerPIdx = lines.findIndex(l => l.includes('Estatutos Oficiales'))
+    // The class is on the <p> tag which is the previous line
+    const contextLines = lines.slice(Math.max(0, footerPIdx - 2), footerPIdx + 1).join('\n')
+    expect(contextLines).toMatch(/text-slate-[1-5]00/)
+  })
+})
