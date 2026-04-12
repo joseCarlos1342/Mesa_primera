@@ -5,16 +5,11 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 export type PermissionStatus = 'pending' | 'granted' | 'denied' | 'unavailable'
 
 export interface GamePermissions {
-  orientation: PermissionStatus
   notifications: PermissionStatus
   microphone: PermissionStatus
   isMobile: boolean
   allGranted: boolean
   requestAll: () => Promise<void>
-}
-
-type ScreenOrientationWithLock = ScreenOrientation & {
-  lock?: (orientation: 'landscape') => Promise<void>
 }
 
 function getIsMobile(): boolean {
@@ -25,10 +20,6 @@ function getIsMobile(): boolean {
 
 export function useGamePermissions(): GamePermissions {
   const isMobile = typeof window !== 'undefined' ? getIsMobile() : false
-  const screenOrientation = typeof window !== 'undefined'
-    ? (window.screen.orientation as ScreenOrientationWithLock | undefined)
-    : undefined
-  const [orientation, setOrientation] = useState<PermissionStatus>(isMobile ? 'pending' : 'unavailable')
   const [notifications, setNotifications] = useState<PermissionStatus>('pending')
   const [microphone, setMicrophone] = useState<PermissionStatus>('pending')
   const hasChecked = useRef(false)
@@ -58,44 +49,10 @@ export function useGamePermissions(): GamePermissions {
         // permissions.query not supported for microphone in some browsers
       })
     }
-
-    // Orientation lock: check support
-    if (isMobile && screenOrientation?.lock) {
-      setOrientation('pending')
-    } else if (isMobile) {
-      // API not supported, we'll still try
-      setOrientation('pending')
-    }
-  }, [isMobile, screenOrientation])
+  }, [])
 
   const requestAll = useCallback(async () => {
-    // 1. Screen orientation lock (mobile only)
-    if (isMobile) {
-      try {
-        if (screenOrientation?.lock) {
-          await screenOrientation.lock('landscape')
-          setOrientation('granted')
-        } else {
-          setOrientation('unavailable')
-        }
-      } catch (err: any) {
-        // Some browsers require fullscreen first
-        if (err.name === 'SecurityError' || err.name === 'NotSupportedError') {
-          try {
-            await document.documentElement.requestFullscreen()
-            await screenOrientation?.lock?.('landscape')
-            setOrientation('granted')
-          } catch {
-            // Can't lock orientation - the portrait overlay will still show as fallback
-            setOrientation('unavailable')
-          }
-        } else {
-          setOrientation('unavailable')
-        }
-      }
-    }
-
-    // 2. Notification permission
+    // 1. Notification permission
     if ('Notification' in window && Notification.permission === 'default') {
       try {
         const result = await Notification.requestPermission()
@@ -105,7 +62,7 @@ export function useGamePermissions(): GamePermissions {
       }
     }
 
-    // 3. Microphone permission
+    // 2. Microphone permission
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       stream.getTracks().forEach(t => t.stop())
@@ -113,12 +70,11 @@ export function useGamePermissions(): GamePermissions {
     } catch {
       setMicrophone('denied')
     }
-  }, [isMobile, screenOrientation])
+  }, [])
 
   const allGranted =
-    (orientation === 'granted' || orientation === 'unavailable') &&
     (notifications === 'granted' || notifications === 'denied' || notifications === 'unavailable') &&
     (microphone === 'granted' || microphone === 'denied' || microphone === 'unavailable')
 
-  return { orientation, notifications, microphone, isMobile, allGranted, requestAll }
+  return { notifications, microphone, isMobile, allGranted, requestAll }
 }

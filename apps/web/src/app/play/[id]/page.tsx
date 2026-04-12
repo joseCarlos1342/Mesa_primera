@@ -392,7 +392,7 @@ export default function GameRoomPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-[#073926] relative overflow-hidden">
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#073926] relative">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
         <Loader2 className="h-10 w-10 animate-spin text-[#d4af37] mb-4 relative z-10" />
@@ -403,7 +403,7 @@ export default function GameRoomPage() {
 
   if (error) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-[#073926] text-[#f3edd7] p-6 text-center relative overflow-hidden">
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#073926] text-[#f3edd7] p-6 text-center relative">
         {/* Felt texture */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
         {/* Subtle warm glow */}
@@ -434,7 +434,7 @@ export default function GameRoomPage() {
 
   return (
     <PermissionsGate>
-      <div className="flex flex-col h-screen font-sans relative overflow-hidden bg-[#073926] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.1)] before:to-[rgba(0,0,0,0.5)] before:pointer-events-none">
+      <div className="flex flex-col min-h-screen font-sans relative bg-[#073926] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.1)] before:to-[rgba(0,0,0,0.5)] before:pointer-events-none">
 
         {/* ── ORIENTATION WARNING (global, cubre LOBBY y GAME) ── */}
       {isPortrait && (
