@@ -254,7 +254,8 @@ max_frequency = "30s"
 # Force log out after the specified duration.
 # timebox = "24h"
 # Force log out if the user has been inactive longer than the specified duration.
-inactivity_timeout = "168h" # 7 days
+# NOTE: 168h requires Pro Plan on remote. Set via Dashboard for production.
+inactivity_timeout = "168h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]
@@ -306,7 +307,7 @@ client_id = "env(GOOGLE_CLIENT_ID)"
 secret = "env(GOOGLE_CLIENT_SECRET)"
 redirect_uri = ""
 url = ""
-skip_nonce_check = false
+skip_nonce_check = true
 
 [auth.external.apple]
 enabled = false
