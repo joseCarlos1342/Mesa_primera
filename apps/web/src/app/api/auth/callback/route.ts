@@ -54,9 +54,17 @@ export async function GET(request: Request) {
   // Check profile completeness
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, full_name, avatar_url, phone, has_pin')
+    .select('role, username, full_name, avatar_url, phone, has_pin')
     .eq('id', user.id)
     .maybeSingle()
+
+  // Google sign-in is only for players — block admin accounts
+  if (profile?.role === 'admin') {
+    await supabase.auth.signOut()
+    return NextResponse.redirect(
+      `${origin}/login/player?error=${encodeURIComponent('Google solo está disponible para jugadores. Los admins deben usar su acceso habitual.')}`
+    )
+  }
 
   const isProfileComplete = profile &&
     profile.username &&
