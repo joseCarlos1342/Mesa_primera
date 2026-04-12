@@ -336,6 +336,7 @@ export class SupabaseService {
         p_recipient_id: recipientId,
         p_amount_cents: amountCents,
         p_description: meta?.roomId ? `Transferencia en mesa (sala: ${meta.roomId})` : null,
+        p_sender_id: senderId,
       });
 
       if (error) throw error;
