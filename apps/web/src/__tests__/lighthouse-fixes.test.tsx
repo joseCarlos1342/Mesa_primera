@@ -618,3 +618,25 @@ describe('Profile page contrast compliance', () => {
     expect(bioContext).not.toContain('text-white/40')
   })
 })
+
+// ── Lobby page fixes ────────────────────────────────────────────────
+
+describe('Lobby page contrast compliance', () => {
+  const lobbySource = fs.readFileSync(
+    path.resolve(__dirname, '../components/game/Lobby.tsx'),
+    'utf-8'
+  )
+
+  it('Bottom info section does not use container-level opacity', () => {
+    const infoIdx = lobbySource.indexOf('Seguridad de Élite')
+    const container = lobbySource.substring(infoIdx - 200, infoIdx)
+    expect(container).not.toMatch(/opacity-\d+/)
+  })
+
+  it('Bottom info labels use text-slate-400 instead of text-slate-500', () => {
+    const infoIdx = lobbySource.indexOf('Seguridad de Élite')
+    const context = lobbySource.substring(infoIdx - 120, infoIdx)
+    expect(context).toContain('text-slate-400')
+    expect(context).not.toContain('text-slate-500')
+  })
+})

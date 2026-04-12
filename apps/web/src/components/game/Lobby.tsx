@@ -460,14 +460,14 @@ export function Lobby() {
 
 
         {/* Bottom info - Enhanced for Accessibility */}
-        <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 pt-4 md:pt-24 pb-4 border-t-2 border-brand-gold/10 opacity-60 w-full overflow-hidden">
-          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-500">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 pt-4 md:pt-24 pb-4 border-t-2 border-brand-gold/10 w-full overflow-hidden">
+          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400">
             <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Seguridad de Élite
           </div>
-          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-500">
+          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400">
             <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Juego Auditado
           </div>
-          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-500">
+          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400">
             <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Conexión Blindada
           </div>
         </div>
