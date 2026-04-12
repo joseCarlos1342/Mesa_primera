@@ -177,6 +177,33 @@ describe('Google Auth Actions', () => {
       expect(redirect).not.toHaveBeenCalled()
     })
 
+    it('debe permitir re-registro si el teléfono pertenece al usuario actual (intento previo fallido)', async () => {
+      // Phone exists check returns true, but the phone is on the current user
+      mockSupabase.rpc.mockResolvedValueOnce({ data: true, error: null })
+      mockSupabase.auth.getUser.mockResolvedValueOnce({
+        data: {
+          user: {
+            id: 'google-user-123',
+            email: 'test@gmail.com',
+            phone: '+573205802918',
+            user_metadata: {
+              full_name: 'Google User',
+              avatar_url: 'https://lh3.google.com/photo',
+            },
+          },
+        },
+      })
+
+      try {
+        await completeGoogleRegistration({}, buildFormData())
+      } catch (e: any) {
+        expect(e.message).toBe('NEXT_REDIRECT')
+      }
+
+      // Should proceed to update, not reject
+      expect(mockAdminSupabase.auth.admin.updateUserById).toHaveBeenCalled()
+    })
+
     it('debe rechazar si no hay usuario autenticado', async () => {
       mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } })
 
