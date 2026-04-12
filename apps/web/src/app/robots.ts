@@ -8,7 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin/", "/api/", "/private/", "/wallet/", "/play/"],
       },
       // Block AI training crawlers (defense-in-depth, Cloudflare managed robots.txt also blocks these)
       { userAgent: "GPTBot", disallow: "/" },
