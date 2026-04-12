@@ -25,6 +25,7 @@ export function SupportTrigger() {
           : 'bg-black/40 border-brand-gold/20 text-brand-gold hover:border-brand-gold/50 hover:bg-black/60'
       }`}
       title="Soporte con el Host"
+      aria-label="Soporte con el Host"
     >
       <MessageSquare className={`w-5 h-5 md:w-6 md:h-6 ${hasNewMessage ? 'text-brand-gold' : 'text-text-secondary group-hover:text-brand-gold'}`} />
       {hasNewMessage && (

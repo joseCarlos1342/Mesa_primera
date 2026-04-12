@@ -171,6 +171,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="w-10 h-10 md:w-12 md:h-12 bg-black/40 rounded-xl md:rounded-2xl flex items-center justify-center border-2 border-brand-gold/20 hover:border-brand-gold/50 hover:bg-black/60 transition-all relative shadow-[0_10px_30px_rgba(0,0,0,0.5)] active:scale-90 group backdrop-blur-xl"
+        aria-label="Notificaciones"
       >
         <Bell className={`w-5 h-5 md:w-6 md:h-6 transition-all duration-500 ${unreadCount > 0 ? 'text-brand-gold drop-shadow-[0_0_8px_rgba(202,171,114,0.6)] animate-pulse' : 'text-text-secondary group-hover:text-text-premium'}`} />
         {unreadCount > 0 && (
