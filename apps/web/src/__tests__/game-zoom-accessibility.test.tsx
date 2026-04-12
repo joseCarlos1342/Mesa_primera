@@ -74,15 +74,17 @@ describe('PermissionsGate', () => {
 // 3. Game page shell — no global zoom-trapping layout
 // ────────────────────────────────────────────────
 describe('Game page layout shell', () => {
-  it('outer div must not use h-screen + overflow-hidden together', () => {
+  it('outer div must use min-h-screen for LOBBY and h-screen for gameplay', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../app/play/[id]/page.tsx'),
       'utf-8'
     )
-    // The main game shell wraps everything in "h-screen ... overflow-hidden"
-    // which prevents zoom/scroll. It should use min-h-screen or min-h-dvh instead.
-    const outerShellPattern = /className="[^"]*\bh-screen\b[^"]*\boverflow-hidden\b[^"]*"/
-    expect(source).not.toMatch(outerShellPattern)
+    // The main shell must conditionally switch between min-h-screen (LOBBY)
+    // and h-screen (gameplay) — never a static h-screen + overflow-hidden
+    const staticShellPattern = /className="[^"]*\bh-screen\b[^"]*\boverflow-hidden\b[^"]*"/
+    expect(source).not.toMatch(staticShellPattern)
+    // Must include the conditional pattern
+    expect(source).toMatch(/min-h-screen.*h-screen overflow-hidden/)
   })
 
   it('loading state must not use h-screen + overflow-hidden together', () => {
@@ -90,11 +92,11 @@ describe('Game page layout shell', () => {
       path.resolve(__dirname, '../app/play/[id]/page.tsx'),
       'utf-8'
     )
-    // Loading and error states also use "h-screen ... overflow-hidden"
-    const lines = source.split('\n')
-    const violations = lines.filter(line => 
-      line.includes('h-screen') && line.includes('overflow-hidden')
+    // Loading and error states should use min-h-screen, not h-screen + overflow-hidden
+    // Only check static className="..." strings (not template literals with conditionals)
+    const staticClassLines = source.split('\n').filter(line => 
+      line.includes('className="') && line.includes('h-screen') && line.includes('overflow-hidden')
     )
-    expect(violations).toHaveLength(0)
+    expect(staticClassLines).toHaveLength(0)
   })
 })
