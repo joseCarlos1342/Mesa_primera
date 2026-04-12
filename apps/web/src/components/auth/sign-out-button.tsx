@@ -30,6 +30,7 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
       onClick={handleSignOut}
       className={`${baseStyles} ${variants[variant]} ${className}`}
       title="Cerrar Sesión"
+      aria-label="Cerrar Sesión"
     >
       <LogOut className="w-5 h-5 md:w-6 md:h-6 shrink-0 transition-transform group-hover:-translate-x-1" />
       <span className="text-xs md:text-sm tracking-widest uppercase hidden sm:inline font-black">Salir</span>

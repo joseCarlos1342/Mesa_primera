@@ -147,3 +147,77 @@ describe('Biometric page metadata', () => {
     expect(hasCanonical).toBe(true)
   })
 })
+
+// ────────────────────────────────────────────────
+// 6. Homepage — button accessible names
+// ────────────────────────────────────────────────
+describe('Homepage button accessibility', () => {
+  it('SupportTrigger has aria-label', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/SupportTrigger.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/aria-label/)
+  })
+
+  it('NotificationCenter button has aria-label', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/NotificationCenter.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/aria-label/)
+  })
+
+  it('SignOutButton has aria-label', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/auth/sign-out-button.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/aria-label/)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 7. Homepage — color contrast compliance
+// ────────────────────────────────────────────────
+describe('Homepage contrast compliance', () => {
+  it('PlayerDashboard transaction date text does not use opacity-60', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/dashboard/PlayerDashboard.tsx'),
+      'utf-8'
+    )
+    // text-[9px] with opacity-60 fails WCAG contrast on dark bg
+    expect(source).not.toMatch(/text-\[9px\].*opacity-60/)
+  })
+
+  it('PlayerDashboard "Saldo Disponible" label does not use opacity-60', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/dashboard/PlayerDashboard.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/Saldo Disponible.*opacity-60/)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 8. Homepage — LCP optimization: server-side data
+// ────────────────────────────────────────────────
+describe('Homepage LCP optimization', () => {
+  it('PlayerPage fetches wallet data server-side and passes initialData', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/page.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/async/)
+    expect(source).toMatch(/getWalletData/)
+    expect(source).toMatch(/initialData/)
+  })
+
+  it('PlayerDashboard accepts initialData prop', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/dashboard/PlayerDashboard.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/initialData/)
+  })
+})

@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { Wallet, Play, Users, TrendingUp, ShoppingCart, ArrowUpWideNarrow, Gamepad2, Plus, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -8,8 +8,12 @@ import { getWalletData } from '@/app/actions/wallet'
 import { TransactionModal } from '../wallet/TransactionModal'
 import { formatAmount } from '@/utils/format'
 
-export function PlayerDashboard() {
-  const [data, setData] = useState<any>(null)
+interface PlayerDashboardProps {
+  initialData?: { wallet: any; transactions: any[] } | null
+}
+
+export function PlayerDashboard({ initialData }: PlayerDashboardProps) {
+  const [data, setData] = useState<any>(initialData ?? null)
   const [selectedTx, setSelectedTx] = useState<any | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -17,9 +21,11 @@ export function PlayerDashboard() {
     setSelectedTx(tx)
     setIsModalOpen(true)
   }
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!initialData)
 
   useEffect(() => {
+    // Si ya tenemos datos iniciales del servidor, refrescar silenciosamente
+    if (initialData) return
     getWalletData().then(res => {
       setData(res)
       setLoading(false)
@@ -31,7 +37,7 @@ export function PlayerDashboard() {
   return (
     <div className="space-y-10 animate-in fade-in duration-1000">
       {/* Premium Balance Card - Main Visual Hook */}
-      <motion.section 
+      <m.section 
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="relative overflow-hidden bg-black/40 border-2 border-brand-gold/30 p-8 md:p-12 rounded-[2.5rem] shadow-[0_40px_80px_rgba(0,0,0,0.6)] group"
@@ -40,7 +46,7 @@ export function PlayerDashboard() {
         
         <div className="relative z-10 flex flex-col items-center text-center space-y-4 w-full">
           <div className="flex flex-col items-center w-full px-2">
-            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-text-secondary mb-1 opacity-60">Saldo Disponible</span>
+            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-text-secondary mb-1">Saldo Disponible</span>
             <div className="flex items-baseline justify-center gap-2 md:gap-4 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] w-full">
               <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black italic bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent tracking-tight whitespace-nowrap pr-4">
                 ${formatAmount(balance)}
@@ -65,7 +71,7 @@ export function PlayerDashboard() {
             </Link>
           </div>
         </div>
-      </motion.section>
+      </m.section>
 
       {/* Quick Actions Grid */}
       <div className="grid grid-cols-2 gap-6">
@@ -128,7 +134,7 @@ export function PlayerDashboard() {
                        tx.type === 'refund' ? 'Reembolso' :
                        tx.type}
                     </p>
-                    <p className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 truncate">
+                    <p className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-[0.2em] truncate">
                       {new Date(tx.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} • {new Date(tx.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -172,7 +178,7 @@ export function PlayerDashboard() {
 function QuickActionCard({ icon: Icon, label, href, color }: any) {
   return (
     <Link href={href}>
-      <motion.div 
+      <m.div 
         whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}
         whileTap={{ scale: 0.95 }}
         className={`${color} border-2 p-8 rounded-[2.5rem] flex flex-col items-center gap-5 shadow-2xl transition-all hover:bg-brand-gold/5 group`}
@@ -181,7 +187,7 @@ function QuickActionCard({ icon: Icon, label, href, color }: any) {
           <Icon className="w-8 h-8 text-brand-gold drop-shadow-[0_0_8px_rgba(202,171,114,0.4)]" />
         </div>
         <span className="text-[11px] font-black uppercase tracking-[0.3em] text-text-secondary group-hover:text-text-premium transition-colors">{label}</span>
-      </motion.div>
+      </m.div>
     </Link>
   )
 }
