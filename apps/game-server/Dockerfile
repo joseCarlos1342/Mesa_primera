@@ -1,22 +1,15 @@
-# Use a Node.js lightweight Alpine image
-FROM node:20-alpine
+# Debian slim — compatible con binarios bundled de Playwright (glibc)
+FROM node:20-slim
 
 WORKDIR /app
 
-# Instalar dependencias del sistema para Playwright (Chromium) y FFmpeg
-RUN apk add --no-cache \
-  chromium \
+# Instalar dependencias del sistema para FFmpeg y Playwright
+RUN apt-get update && apt-get install -y --no-install-recommends \
   ffmpeg \
-  nss \
-  freetype \
-  harfbuzz \
-  ca-certificates \
-  ttf-freefont
+  && rm -rf /var/lib/apt/lists/*
 
-# Variables de entorno para Playwright
-ENV PLAYWRIGHT_BROWSERS_PATH=0
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+# Instalar Playwright con Chromium y ffmpeg bundled (incluye deps del sistema)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Install dependencies for overall workspace
 COPY package.json package-lock.json ./
@@ -24,6 +17,9 @@ COPY apps/game-server ./apps/game-server/
 
 # Install dependencies
 RUN npm ci
+
+# Instalar Chromium + ffmpeg de Playwright con sus dependencias de sistema
+RUN npx playwright install --with-deps chromium && npx playwright install ffmpeg
 
 # Set working directory to the game-server package
 WORKDIR /app/apps/game-server

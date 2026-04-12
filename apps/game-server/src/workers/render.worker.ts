@@ -85,7 +85,6 @@ async function processRenderJob(job: Job<RenderJobData>): Promise<RenderJobResul
     // Importar Playwright dinámicamente para no requerir la dependencia en tests unitarios
     const { chromium } = await import('playwright');
     const browser = await chromium.launch({
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
       args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
     });
 
