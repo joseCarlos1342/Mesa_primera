@@ -33,7 +33,7 @@ export default function AdminRegisterPage() {
           <form action={formAction} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2 group">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
                   <User className="w-3 h-3" /> Nombre Completo
                 </label>
                 <input
@@ -46,7 +46,7 @@ export default function AdminRegisterPage() {
               </div>
 
               <div className="space-y-2 group">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
                   <Mail className="w-3 h-3" /> E-mail Corporativo
                 </label>
                 <input
@@ -59,7 +59,7 @@ export default function AdminRegisterPage() {
               </div>
 
               <div className="space-y-2 group">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
                   <Lock className="w-3 h-3" /> Clave Maestra
                 </label>
                 <input
@@ -72,7 +72,7 @@ export default function AdminRegisterPage() {
               </div>
 
               <div className="space-y-2 group">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 group-focus-within:text-red-500 transition-colors flex items-center gap-2">
                   <KeyRound className="w-3 h-3" /> Token de Invitación
                 </label>
                 <input
@@ -99,7 +99,7 @@ export default function AdminRegisterPage() {
           </form>
 
           <footer className="mt-8 pt-8 border-t border-white/5 text-center">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               ¿Ya estás autorizado?{' '}
               <Link href="/login/admin" className="text-red-400 font-bold hover:text-red-300 underline underline-offset-4">
                 Iniciar Sesión Admin

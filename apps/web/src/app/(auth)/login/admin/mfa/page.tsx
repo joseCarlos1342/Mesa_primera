@@ -38,7 +38,7 @@ export default function AdminMFAPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Verificación 2FA
           </h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-slate-400 text-sm">
             Ingresa el código de tu app autenticadora
           </p>
         </div>
@@ -69,7 +69,7 @@ export default function AdminMFAPage() {
           </button>
         </form>
 
-        <p className="text-center text-[10px] text-slate-600 uppercase tracking-widest">
+        <p className="text-center text-[10px] text-slate-400 uppercase tracking-widest">
           Código generado por Google Authenticator / Authy
         </p>
       </div>
