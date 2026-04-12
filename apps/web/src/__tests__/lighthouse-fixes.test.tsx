@@ -221,3 +221,84 @@ describe('Homepage LCP optimization', () => {
     expect(source).toMatch(/initialData/)
   })
 })
+
+// ────────────────────────────────────────────────
+// 9. Wallet page — color contrast compliance
+// ────────────────────────────────────────────────
+describe('Wallet page contrast compliance', () => {
+  it('WalletContent does not use text-[8px] + opacity-60 in chip packs', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/wallet/WalletContent.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/text-\[8px\].*opacity-60/)
+  })
+
+  it('WalletContent transaction date does not use text-[9px] + opacity-60', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/wallet/WalletContent.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/text-\[9px\].*opacity-60/)
+  })
+
+  it('WalletContent "Saldo en Cartera" does not use opacity-60', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/wallet/WalletContent.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/Saldo en Cartera[\s\S]{0,100}opacity-60/)
+  })
+
+  it('TransactionModal DetailItem labels do not use text-[8px] + opacity-60', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/wallet/TransactionModal.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/text-\[8px\].*opacity-60/)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 10. Wallet page — button accessible names
+// ────────────────────────────────────────────────
+describe('Wallet page button accessibility', () => {
+  it('TransactionModal close button has aria-label', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/wallet/TransactionModal.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/aria-label/)
+  })
+
+  it('TransferModal close button has aria-label', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/wallet/TransferModal.tsx'),
+      'utf-8'
+    )
+    expect(source).toMatch(/aria-label/)
+  })
+
+  it('TransferModal back button has aria-label', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/wallet/TransferModal.tsx'),
+      'utf-8'
+    )
+    // Must have at least 2 aria-labels (back + close)
+    const matches = source.match(/aria-label/g)
+    expect(matches?.length).toBeGreaterThanOrEqual(2)
+  })
+})
+
+// ────────────────────────────────────────────────
+// 11. Wallet page — LCP optimization: no external URL textures
+// ────────────────────────────────────────────────
+describe('Wallet page LCP optimization', () => {
+  it('WalletContent does not reference external texture URLs', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../components/wallet/WalletContent.tsx'),
+      'utf-8'
+    )
+    expect(source).not.toMatch(/transparenttextures\.com/)
+  })
+})

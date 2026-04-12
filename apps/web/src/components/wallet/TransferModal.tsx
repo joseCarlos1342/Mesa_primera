@@ -128,6 +128,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                     else if (step === 'confirm-transfer') setStep('amount')
                   }}
                   className="w-9 h-9 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-all border border-white/10"
+                  aria-label="Volver al paso anterior"
                 >
                   <ChevronLeft className="w-5 h-5 text-white/60" />
                 </button>
@@ -139,7 +140,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
                 <h3 className="text-sm font-display font-black uppercase tracking-[0.2em] italic leading-none text-brand-gold">
                   Transferir Saldo
                 </h3>
-                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-60 mt-1">
+                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-1">
                   {step === 'search' && 'Buscar destinatario'}
                   {step === 'confirm-recipient' && 'Confirmar destinatario'}
                   {step === 'amount' && 'Ingresar monto'}
@@ -150,6 +151,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
             </div>
             <button
               onClick={handleClose}
+              aria-label="Cerrar transferencia"
               className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all active:scale-95 border border-white/10 group"
             >
               <X className="w-6 h-6 text-text-secondary group-hover:text-text-premium transition-colors" />
