@@ -74,7 +74,7 @@ export function StatsDashboard({ stats }: { stats: PlayerStats }) {
               <Star className="w-5 h-5 text-brand-gold" />
             </div>
             <div>
-              <h3 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic">Cantos Especiales</h3>
+              <h2 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic">Cantos Especiales</h2>
               <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Tu desempeño técnico en mesa</p>
             </div>
           </div>
@@ -100,7 +100,7 @@ export function StatsDashboard({ stats }: { stats: PlayerStats }) {
           <div className="flex-1 w-full space-y-4">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-lg font-display font-black text-text-premium uppercase tracking-tighter italic">Rango: Veterano de Bóveda</h3>
+                <h2 className="text-lg font-display font-black text-text-premium uppercase tracking-tighter italic">Rango: Veterano de Bóveda</h2>
                 <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Próximo: Gran Maestro</p>
               </div>
               <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">650 / 1000 XP</span>
