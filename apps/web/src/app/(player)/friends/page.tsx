@@ -106,13 +106,14 @@ function FriendsContent() {
           <h1 className="text-4xl md:text-5xl font-display font-black italic text-white uppercase tracking-tighter leading-none">
             Amigos
           </h1>
-          <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em] opacity-60">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
             Primera Riverada • Elite Club
           </p>
         </div>
         
         <button 
           onClick={() => setIsAddModalOpen(true)}
+          aria-label="Agregar amigo"
           className="relative group p-4 bg-brand-gold text-black rounded-[1.5rem] shadow-xl shadow-brand-gold/10 hover:scale-105 active:scale-95 transition-all"
         >
           <UserPlus className="w-6 h-6" />
@@ -305,8 +306,8 @@ function FriendsContent() {
 
       {/* Footer Info */}
       {!loading && (
-        <footer className="text-center pt-8 pb-12 opacity-20">
-          <p className="text-[10px] font-black text-white uppercase tracking-[0.4em]">
+        <footer className="text-center pt-8 pb-12">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
             Los datos se actualizan en tiempo real
           </p>
         </footer>
