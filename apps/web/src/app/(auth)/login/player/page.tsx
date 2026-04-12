@@ -9,6 +9,7 @@ import { LogIn, KeyRound, Fingerprint } from 'lucide-react'
 import { phoneSchema, pinSchema } from '@/lib/validations'
 import { startAuthentication } from '@simplewebauthn/browser'
 import { setAuthBypass } from '@/lib/app-lock-session'
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
 
 function PlayerLoginContent() {
   const [pinState, pinFormAction, isPinPending] = useActionState(loginWithPin, null)
@@ -269,6 +270,13 @@ function PlayerLoginContent() {
               <div className="absolute inset-0 bg-white/20 translate-x-[-105%] skew-x-[-20deg] group-hover:translate-x-[155%] transition-transform duration-1000 ease-in-out" />
             </button>
           </form>
+
+          {/* Google Sign-In */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
+            <div className="relative flex justify-center"><span className="bg-slate-950 px-4 text-xs font-bold text-white/30 uppercase tracking-widest">o</span></div>
+          </div>
+          <GoogleSignInButton label="Ingresar con Google" />
 
           <footer className="mt-10 pt-10 border-t-2 border-white/5 space-y-4 text-center">
             {hasPin !== false && (

@@ -62,6 +62,8 @@ export async function updateSession(
   const isMfaSetupPage = pathname === '/login/admin/mfa/setup'
   const isPinSetupPage = pathname === '/register/player/pin' || pathname === '/recovery/pin'
   const isBiometricSetupPage = pathname === '/register/player/biometric'
+  const isGoogleCompletionPage = pathname === '/register/player/complete'
+  const isVerifyPage = pathname === '/register/player/verify'
 
   // PREVENT REDIRECT FOR STATIC FILES
   const isStaticFile = pathname.match(/\.(json|xml|txt|png|jpg|jpeg|gif|webp|svg|ico)$/)
@@ -174,7 +176,7 @@ export async function updateSession(
       } else {
         // Un jugador logueado NO debe estar en páginas de auth
         // EXCEPTO: páginas de configuración de PIN y biometría (requieren sesión activa)
-        if (isAuthPage && !isPinSetupPage && !isBiometricSetupPage) {
+        if (isAuthPage && !isPinSetupPage && !isBiometricSetupPage && !isGoogleCompletionPage && !isVerifyPage) {
           const url = request.nextUrl.clone()
           url.pathname = '/'
           return NextResponse.redirect(url)

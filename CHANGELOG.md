@@ -1,5 +1,13 @@
 # Changelog
 
+## [Sprint 6.5] - 2026-04-15
+
+### Added
+
+- **Google OAuth para jugadores** (`config.toml`, `google-auth.ts`, `google-sign-in-button.tsx`, `callback/route.ts`, `complete/page.tsx`, `auth-actions.ts`, `middleware.ts`):
+  Nuevo flujo de registro e inicio de sesión con Google vía Supabase PKCE. Los jugadores pueden registrarse con Google y completar datos obligatorios (nombre, apodo, teléfono, avatar). El teléfono se verifica por OTP antes de continuar al setup de PIN/biometría. La página de login también incluye el botón de Google. Middleware actualizado para permitir el flujo de onboarding de Google (`/register/player/complete`, `/register/player/verify`).
+- **Tests de Google Auth** (`google-auth-actions.test.ts`): 8 tests cubriendo `getGoogleUserData` (datos, null, fallback) y `completeGoogleRegistration` (flujo completo, teléfono duplicado, sin sesión, validación, duplicado en BD).
+
 ## [Sprint 6.4] - 2026-04-14
 
 ### Fixed
