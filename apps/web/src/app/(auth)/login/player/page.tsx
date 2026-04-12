@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { LogIn, KeyRound, Fingerprint } from 'lucide-react'
 import { phoneSchema, pinSchema } from '@/lib/validations'
 import { startAuthentication } from '@simplewebauthn/browser'
+import { setAuthBypass } from '@/lib/app-lock-session'
 
 function PlayerLoginContent() {
   const [pinState, pinFormAction, isPinPending] = useActionState(loginWithPin, null)
@@ -71,6 +72,7 @@ function PlayerLoginContent() {
       const result = await verifyPasskeyLogin(phoneValue, assertion)
 
       if (result.ok) {
+        setAuthBypass()
         router.push('/')
         return
       }

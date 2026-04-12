@@ -695,3 +695,56 @@ describe('Replay viewer contrast compliance', () => {
     expect(context).not.toContain('text-slate-600')
   })
 })
+
+// ────────────────────────────────────────────────
+// 20. Wallet modals — mobile overlay & content visibility
+// ────────────────────────────────────────────────
+describe('TransactionModal mobile overlay & content visibility', () => {
+  const txModalPath = path.resolve(__dirname, '../components/wallet/TransactionModal.tsx')
+  let txSource: string
+  beforeAll(() => { txSource = fs.readFileSync(txModalPath, 'utf-8') })
+
+  it('uses z-index higher than BottomNav (z-[100])', () => {
+    // BottomNav uses z-[100]; modal must sit above it
+    const containerMatch = txSource.match(/fixed inset-0 z-\[(\d+)\]/)
+    expect(containerMatch).not.toBeNull()
+    expect(Number(containerMatch![1])).toBeGreaterThan(100)
+  })
+
+  it('does not use max-h-[90vh] without safe-area consideration', () => {
+    // 90vh ignores the bottom nav and safe-area on mobile
+    expect(txSource).not.toMatch(/max-h-\[90vh\]/)
+  })
+
+  it('does not truncate the transaction ID with slice', () => {
+    // The full UUID should be shown, not abbreviated with slice + "..."
+    expect(txSource).not.toMatch(/\.slice\(.*\)\s*\+\s*['"]\.\.\.['"]/)
+  })
+
+  it('DetailItem does not use truncate class for values', () => {
+    // Values like type, channel and ID must wrap instead of being cut off
+    const detailItemBlock = txSource.substring(txSource.indexOf('function DetailItem'))
+    expect(detailItemBlock).not.toMatch(/\btruncate\b/)
+  })
+
+  it('footer has safe-area bottom padding', () => {
+    // The footer/close-button area must account for safe-area on notched devices
+    expect(txSource).toMatch(/pb-safe/)
+  })
+})
+
+describe('TransferModal mobile overlay', () => {
+  const transferModalPath = path.resolve(__dirname, '../components/wallet/TransferModal.tsx')
+  let transferSource: string
+  beforeAll(() => { transferSource = fs.readFileSync(transferModalPath, 'utf-8') })
+
+  it('uses z-index higher than BottomNav (z-[100])', () => {
+    const containerMatch = transferSource.match(/fixed inset-0 z-\[(\d+)\]/)
+    expect(containerMatch).not.toBeNull()
+    expect(Number(containerMatch![1])).toBeGreaterThan(100)
+  })
+
+  it('does not use max-h-[90vh] without safe-area consideration', () => {
+    expect(transferSource).not.toMatch(/max-h-\[90vh\]/)
+  })
+})

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getPasskeyRegistrationOptions, verifyPasskeyRegistration } from '../../../passkey-actions'
 import { Fingerprint, ShieldCheck, ArrowRight } from 'lucide-react'
 import { startRegistration } from '@simplewebauthn/browser'
+import { setAuthBypass } from '@/lib/app-lock-session'
 
 export default function BiometricSetupPage() {
   const router = useRouter()
@@ -60,6 +61,7 @@ export default function BiometricSetupPage() {
       }
 
       setSuccess(true)
+      setAuthBypass()
       setTimeout(() => router.push('/'), 1500)
     } catch (e) {
       const msg = (e as Error).message ?? ''
@@ -74,6 +76,7 @@ export default function BiometricSetupPage() {
   }
 
   function handleSkip() {
+    setAuthBypass()
     router.push('/')
   }
 

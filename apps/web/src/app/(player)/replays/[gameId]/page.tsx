@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { formatAmount } from '@/utils/format';
-import { Trophy, Clock, Users } from 'lucide-react';
+import { Trophy, Clock, Users, Copy, Check, Coins, Hand, Timer, Swords, Ban, Layers } from 'lucide-react';
 
 type TimelineEvent = {
   event: string;
@@ -39,10 +39,10 @@ const PHASE_COLORS: Record<string, string> = {
   GUERRA: 'text-red-400 bg-red-500/10 border-red-500/20',
 };
 
-const EVENT_ICONS: Record<string, string> = {
-  start: '🎬',
-  action: '🃏',
-  end: '🏆',
+const ACTION_ICONS: Record<string, typeof Coins> = {
+  voy: Coins,
+  paso: Ban,
+  discard: Layers,
 };
 
 function formatCard(card: string): string {
@@ -61,6 +61,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
   const [showRng, setShowRng] = useState(false);
   const [loading, setLoading] = useState(true);
   const [speed, setSpeed] = useState(1);
+  const [seedCopied, setSeedCopied] = useState(false);
   const SPEEDS = [0.5, 1, 2, 4];
 
   useEffect(() => {
@@ -107,10 +108,12 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
   }, [isPlaying, currentStep, replay, speed]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'ArrowRight') setCurrentStep(s => s + 1);
+    if (!replay) return;
+    const len = ((replay.admin_timeline || replay.timeline) ?? []).length;
+    if (e.key === 'ArrowRight') setCurrentStep(s => Math.min(len - 1, s + 1));
     if (e.key === 'ArrowLeft') setCurrentStep(s => Math.max(0, s - 1));
     if (e.key === ' ') { e.preventDefault(); setIsPlaying(p => !p); }
-  }, []);
+  }, [replay]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -182,8 +185,27 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
             Repetición de Partida
           </h1>
           <p className="text-xs text-(--text-secondary) font-mono mt-1">
-            ID: {replay.game_id?.substring(0, 8)} &middot; Seed: {replay.rng_seed?.substring(0, 12)}...
+            ID: {replay.game_id?.substring(0, 8)}
           </p>
+          {replay.rng_seed && (
+            <div className="mt-2 flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2 max-w-full">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0">Seed:</span>
+              <code className="text-[11px] font-mono text-slate-300 break-all select-all leading-relaxed">
+                {replay.rng_seed}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(replay.rng_seed);
+                  setSeedCopied(true);
+                  setTimeout(() => setSeedCopied(false), 2000);
+                }}
+                className="shrink-0 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-(--accent-gold) transition-all border border-white/5"
+                title="Copiar seed"
+              >
+                {seedCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          )}
         </div>
 
         {isAdmin && (
@@ -202,10 +224,13 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
 
       {/* Progress Bar */}
       <div className="mb-6">
-        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+        <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/10">
           <div
-            className="h-full bg-linear-to-r from-(--accent-gold) to-amber-500 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
+            className="h-full rounded-full transition-all duration-300"
+            style={{
+              width: `${progress}%`,
+              background: 'linear-gradient(to right, #c5a059, #f59e0b)',
+            }}
           />
         </div>
         <div className="flex justify-between mt-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -218,17 +243,33 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       <div className="bg-(--bg-card) border border-(--border-glow) rounded-4xl p-6 md:p-8 mb-6 shadow-2xl">
         {/* Event Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">{EVENT_ICONS[event.event] || '📋'}</span>
+          <div className="flex items-center gap-4">
+            {/* Action Icon */}
+            <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0 border ${
+              event.event === 'start' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+              event.event === 'end' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+              'bg-(--accent-gold)/10 border-(--accent-gold)/20 text-(--accent-gold)'
+            }`}>
+              {event.event === 'start' ? <Timer className="w-6 h-6 md:w-7 md:h-7" /> :
+               event.event === 'end' ? <Trophy className="w-6 h-6 md:w-7 md:h-7" /> :
+               (() => { const Icon = ACTION_ICONS[event.action || ''] || Hand; return <Icon className="w-6 h-6 md:w-7 md:h-7" />; })()}
+            </div>
             <div>
               <p className="text-xl md:text-2xl font-black italic tracking-tight text-white">
                 {getEventDescription(event)}
               </p>
-              {event.phase && (
-                <span className={`inline-block mt-1 text-[10px] font-black uppercase px-3 py-1 rounded-full border tracking-widest ${PHASE_COLORS[event.phase] || 'text-slate-400 bg-slate-500/10 border-slate-500/20'}`}>
-                  {event.phase}
-                </span>
-              )}
+              <div className="flex items-center gap-2 mt-1.5">
+                {event.phase && (
+                  <span className={`inline-block text-[10px] font-black uppercase px-3 py-1 rounded-full border tracking-widest ${PHASE_COLORS[event.phase] || 'text-slate-400 bg-slate-500/10 border-slate-500/20'}`}>
+                    {event.phase}
+                  </span>
+                )}
+                {event.amount && event.amount > 0 && (
+                  <span className="inline-block text-[10px] font-black uppercase px-3 py-1 rounded-full border tracking-widest bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                    ${formatAmount(event.amount)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -336,12 +377,12 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
         <h2 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-4 flex items-center gap-2">
           <Clock className="w-4 h-4" /> Línea de Tiempo
         </h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(40px, 1fr))' }}>
           {timeline.map((ev, i) => (
             <button
               key={i}
               onClick={() => setCurrentStep(i)}
-              className={`w-10 h-10 rounded-xl text-xs font-black transition-all border flex items-center justify-center ${
+              className={`h-10 rounded-xl text-xs font-black transition-all border flex items-center justify-center ${
                 i === currentStep
                   ? 'bg-(--accent-gold) text-black border-(--accent-gold) scale-110 shadow-[0_0_15px_rgba(234,179,8,0.4)]'
                   : i < currentStep

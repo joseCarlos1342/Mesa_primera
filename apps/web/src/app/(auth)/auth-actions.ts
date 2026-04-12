@@ -22,6 +22,24 @@ import { normalizePhone } from '@/lib/phone'
 const DEVICE_COOKIE_NAME = 'device_trusted_id'
 const DEVICE_TRUST_DAYS = 30
 const DEVICE_COOKIE_MAX_AGE = 60 * 60 * 24 * DEVICE_TRUST_DAYS
+const AUTH_BYPASS_COOKIE = 'mesa_primera_auth_bypass'
+
+/**
+ * Set a short-lived JS-readable cookie so the AppLockProvider on the client
+ * knows this navigation comes right after a successful auth and should skip
+ * the biometric prompt. The cookie lives 60 seconds — just enough for the
+ * redirect + client hydration.
+ */
+async function setAppLockBypassCookie() {
+  const cookieStore = await cookies()
+  cookieStore.set(AUTH_BYPASS_COOKIE, '1', {
+    httpOnly: false, // must be JS-readable
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60,
+  })
+}
 
 type ProfileSeedCandidate = {
   id: string
@@ -274,6 +292,7 @@ export async function loginWithPin(prevState: unknown, formData: FormData) {
         .eq('device_id', deviceCookie)
 
       await enforceSessionPolicy(data.user.id)
+      await setAppLockBypassCookie()
       redirect('/')
     }
   }
@@ -404,6 +423,7 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       // User verified new device during login — register device + complete login
       await registerTrustedDevice(data.user.id)
       await enforceSessionPolicy(data.user.id)
+      await setAppLockBypassCookie()
       redirect('/')
 
     case 'recovery':
@@ -417,6 +437,7 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
     default:
       // Legacy login flow (backwards compat)
       await enforceSessionPolicy(data.user.id)
+      await setAppLockBypassCookie()
       redirect('/')
   }
 }
@@ -659,9 +680,11 @@ export async function setPlayerPin(prevState: unknown, formData: FormData) {
 
   // On first-time setup (register or legacy migration), offer biometric enrollment
   if (flow === 'register' || flow === 'login-set-pin') {
+    await setAppLockBypassCookie()
     redirect('/register/player/biometric')
   }
 
+  await setAppLockBypassCookie()
   redirect('/')
 }
 

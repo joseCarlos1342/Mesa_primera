@@ -65,7 +65,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -80,7 +80,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-[#0a0a0a] border-2 border-brand-gold/30 rounded-[2rem] md:rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+            className="relative w-full max-w-lg h-full sm:h-auto sm:max-h-[85vh] flex flex-col bg-[#0a0a0a] border-2 border-brand-gold/30 sm:rounded-[2rem] md:rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden"
           >
             {/* Header / Background Glow */}
             <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none bg-brand-gold/5" />
@@ -110,7 +110,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
             </div>
 
             {/* Content Body */}
-            <div className="relative z-10 p-6 md:p-10 space-y-8 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+            <div className="relative z-10 p-6 md:p-10 pb-10 md:pb-16 pb-safe space-y-8 overflow-y-auto custom-scrollbar flex-1 min-h-0">
               
               {/* Type and Amount */}
               <div className="text-center space-y-2">
@@ -136,7 +136,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
               {/* Details */}
               <div className="grid grid-cols-2 gap-4">
                 <DetailItem icon={Calendar} label="Fecha" value={new Date(transaction.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} />
-                <DetailItem icon={Hash} label="ID de Transacción" value={transaction.id.slice(0, 16) + '...'} />
+                <DetailItem icon={Hash} label="ID de Transacción" value={transaction.id} mono />
                 <DetailItem icon={Landmark} label="Tipo" value={getTypeLabel(transaction.type)} />
                 <DetailItem icon={Info} label="Canal" value={transaction.type === 'deposit' ? 'Transferencia Directa' : transaction.type === 'withdrawal' ? 'Retiro Bancario' : transaction.type === 'transfer' ? 'P2P' : 'Sistema'} />
               </div>
@@ -195,15 +195,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
               )}
             </div>
 
-            {/* Footer Action */}
-            <div className="relative z-10 p-6 md:p-8 pt-0 shrink-0">
-               <button
-                onClick={onClose}
-                className="w-full h-16 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] transition-all border border-brand-gold/10 hover:border-brand-gold/30 active:scale-95 flex items-center justify-center gap-3"
-              >
-                Listo
-              </button>
-            </div>
+
           </motion.div>
         </div>
       )}
@@ -211,14 +203,14 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
   )
 }
 
-function DetailItem({ icon: Icon, label, value }: any) {
+function DetailItem({ icon: Icon, label, value, mono }: any) {
   return (
     <div className="p-3 md:p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-1 group hover:border-brand-gold/20 transition-all duration-300">
       <div className="flex items-center gap-2">
         <Icon className="w-3 h-3 text-brand-gold group-hover:opacity-100 transition-opacity" />
         <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">{label}</span>
       </div>
-      <p className="text-[10px] md:text-[11px] font-black text-text-premium truncate group-hover:text-brand-gold transition-colors">{value}</p>
+      <p className={`text-[10px] md:text-[11px] font-black text-text-premium break-words group-hover:text-brand-gold transition-colors ${mono ? 'font-mono' : ''}`}>{value}</p>
     </div>
   )
 }

@@ -99,7 +99,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -112,7 +112,7 @@ export function TransferModal({ isOpen, onClose, currentBalance }: TransferModal
           initial={{ opacity: 0, scale: 0.92, y: 24 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.92, y: 24 }}
-          className="relative w-full max-w-md max-h-[90vh] flex flex-col bg-[#0a0a0a] border-2 border-brand-gold/30 rounded-[2rem] md:rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+          className="relative w-full max-w-md h-full sm:h-auto sm:max-h-[85vh] flex flex-col bg-[#0a0a0a] border-2 border-brand-gold/30 sm:rounded-[2rem] md:rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden"
         >
           {/* Header Glow */}
           <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none bg-brand-gold/5" />

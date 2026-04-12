@@ -7,13 +7,15 @@ import { StatsDashboard } from './stats-dashboard'
 import { Leaderboard } from './Leaderboard'
 import { useStatsTab } from './stats-tab-context'
 import { getLeaderboard, type PlayerStats, type LeaderboardEntry } from '@/app/actions/stats'
+import { type BonusStatus } from '@/app/actions/bonus'
 
 interface StatsClientProps {
   initialStats: PlayerStats | null
   initialLeaderboard: LeaderboardEntry[]
+  initialBonusStatus: BonusStatus | null
 }
 
-export function StatsClient({ initialStats, initialLeaderboard }: StatsClientProps) {
+export function StatsClient({ initialStats, initialLeaderboard, initialBonusStatus }: StatsClientProps) {
   const { activeTab } = useStatsTab()
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(initialLeaderboard)
   const [leaderboardCategory, setLeaderboardCategory] = useState<'total_ganadas' | 'top_ganadores' | 'mejor_racha' | 'maestro_primera'>('total_ganadas')
@@ -46,7 +48,7 @@ export function StatsClient({ initialStats, initialLeaderboard }: StatsClientPro
           transition={{ duration: 0.5 }}
         >
           {initialStats ? (
-            <StatsDashboard stats={initialStats} />
+            <StatsDashboard stats={initialStats} bonusStatus={initialBonusStatus} />
           ) : (
             <div className="text-center py-20 bg-black/40 border-2 border-dashed border-white/5 rounded-[3rem] px-8">
                <Star className="w-12 h-12 text-text-secondary opacity-20 mx-auto mb-4" />

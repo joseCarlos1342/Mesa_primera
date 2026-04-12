@@ -67,6 +67,8 @@ function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxCli
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                     : tx.type === 'withdrawal'
                     ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                    : tx.type === 'bonus'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                     : 'bg-white/5 text-text-secondary border border-brand-gold/10'
                 }`}>
                   {tx.type === 'deposit' ? <Plus className="w-5 h-5" /> :
@@ -79,6 +81,7 @@ function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxCli
                     {tx.type === 'deposit' ? 'Depósito' :
                      tx.type === 'withdrawal' ? 'Retiro' :
                      tx.type === 'refund' ? 'Reembolso' :
+                     tx.type === 'bonus' ? 'Bono' :
                      tx.type === 'adjustment' || tx.type === 'admin_adjustment' ? 'Ajuste' :
                      tx.type}
                   </p>

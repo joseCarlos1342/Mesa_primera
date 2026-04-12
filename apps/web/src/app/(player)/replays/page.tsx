@@ -2,6 +2,7 @@ import { getPlayerMesaReplays } from "@/app/actions/replays";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
 import { Film, Users, Clock, ChevronRight, Hash } from "lucide-react";
+import styles from "./replays.module.css";
 
 export default async function PlayerReplaysPage() {
   const mesas = await getPlayerMesaReplays(100);
@@ -29,7 +30,7 @@ export default async function PlayerReplaysPage() {
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto bg-black/20 rounded-4xl border border-white/5 p-6 backdrop-blur-md">
+          <div className={`${styles.desktopView} overflow-x-auto bg-black/20 rounded-4xl border border-white/5 p-6 backdrop-blur-md`}>
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10 text-left">
@@ -62,9 +63,9 @@ export default async function PlayerReplaysPage() {
               </thead>
               <tbody>
                 {mesas.map((mesa) => {
-                  const playerNames = mesa.players
+                  const playerNames = [...new Set(mesa.players
                     ?.map((p: any) => p.nickname)
-                    .filter(Boolean) || [];
+                    .filter(Boolean) || [])];
 
                   return (
                     <tr key={mesa.room_id} className="group border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
@@ -99,7 +100,7 @@ export default async function PlayerReplaysPage() {
                       </td>
                       <td className="py-5">
                         <div className="text-xs text-slate-300 max-w-xs truncate font-medium">
-                          {playerNames.length > 0 ? playerNames.join(', ') : '—'}
+                          {playerNames.length > 0 ? `${playerNames.join(', ')} (${playerNames.length})` : '—'}
                         </div>
                       </td>
                       <td className="py-5 text-center">
@@ -132,11 +133,11 @@ export default async function PlayerReplaysPage() {
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden flex flex-col gap-4">
+          <div className={styles.mobileView}>
             {mesas.map((mesa) => {
-              const playerNames = mesa.players
+              const playerNames = [...new Set(mesa.players
                 ?.map((p: any) => p.nickname)
-                .filter(Boolean) || [];
+                .filter(Boolean) || [])];
 
               return (
                 <Link
@@ -185,19 +186,15 @@ export default async function PlayerReplaysPage() {
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-(--accent-gold)/10">
+                  <div className="pt-3 border-t border-(--accent-gold)/10 pl-4">
                     <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest mb-1 flex items-center gap-1">
-                      <Users className="w-3 h-3" /> Jugadores
+                      <Users className="w-3 h-3" /> Jugadores ({playerNames.length})
                     </p>
                     <p className="text-xs text-slate-300 font-medium truncate">
                       {playerNames.length > 0 ? playerNames.join(', ') : '—'}
                     </p>
                   </div>
 
-                  {/* Arrow overlay */}
-                  <div className="absolute right-4 bottom-4 w-8 h-8 rounded-full bg-(--accent-gold)/10 flex items-center justify-center">
-                    <ChevronRight className="w-4 h-4 text-(--accent-gold)" />
-                  </div>
                 </Link>
               );
             })}

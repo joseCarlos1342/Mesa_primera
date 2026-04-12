@@ -1,6 +1,7 @@
 "use client"
 
 import { signOut } from "../../app/(auth)/auth-actions"
+import { clearSessionValidated } from "@/lib/app-lock-session"
 import { LogOut } from "lucide-react"
 import { usePathname } from "next/navigation"
 
@@ -20,6 +21,7 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
   }
 
   const handleSignOut = async () => {
+    clearSessionValidated()
     // Si estamos en una ruta de admin o el pathname contiene admin, redirigir al login de admin
     const isAdmin = pathname?.includes('/admin')
     signOut(isAdmin ? '/login/admin' : '/login/player')

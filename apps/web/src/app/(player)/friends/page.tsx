@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useCallback } from "react";
-import { UserPlus, Loader2, UserX } from "lucide-react";
+import { UserPlus, Loader2, UserX, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFriendships, removeFriendship } from "@/app/actions/social-actions";
 import { FriendsList } from "./_components/FriendsList";
@@ -231,57 +231,91 @@ function FriendsContent() {
       
       <AnimatePresence>
         {friendToRemove && (
-          <>
+          <div className="fixed inset-0 z-200 flex items-center justify-center p-4">
+            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => !isRemoving && setFriendToRemove(null)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]"
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-slate-900 border border-white/10 p-8 rounded-[3rem] z-[201] shadow-2xl"
-            >
-              <div className="text-center space-y-6">
-                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto border border-red-500/20">
-                  <UserX className="w-10 h-10 text-red-500" />
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-display font-black italic uppercase text-white tracking-tight">
-                    ¿Eliminar Amigo?
-                  </h3>
-                  <p className="text-slate-400 text-sm">
-                    Estás a punto de eliminar a <span className="text-white font-bold">{friendToRemove.name}</span> de tu lista de amigos. Esta acción no se puede deshacer.
-                  </p>
-                </div>
 
-                <div className="flex flex-col gap-3 pt-4">
-                  <button 
-                    onClick={handleRemoveFriend}
-                    disabled={isRemoving}
-                    className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
-                  >
-                    {isRemoving ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      "Sí, Eliminar"
-                    )}
-                  </button>
-                  <button 
-                    onClick={() => setFriendToRemove(null)}
-                    disabled={isRemoving}
-                    className="w-full py-4 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    Cancelar
-                  </button>
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-[92%] sm:max-w-md bg-[#0a0a0a] border-2 border-red-500/20 rounded-4xl sm:rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(239,68,68,0.05)]"
+            >
+              {/* Decorative top line */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-red-500 to-transparent opacity-40" />
+              
+              {/* Decorative glow */}
+              <div className="absolute top-0 right-0 w-48 h-48 bg-red-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+
+              <div className="relative p-6 sm:p-8">
+                {/* Close button */}
+                <button
+                  onClick={() => !isRemoving && setFriendToRemove(null)}
+                  disabled={isRemoving}
+                  aria-label="Cerrar"
+                  className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all active:scale-95 border border-white/10 group disabled:opacity-50"
+                >
+                  <X className="w-5 h-5 text-text-secondary group-hover:text-text-premium transition-colors" />
+                </button>
+
+                <div className="text-center space-y-6 pt-2">
+                  {/* Icon */}
+                  <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.12)]">
+                    <UserX className="w-8 h-8 text-red-400" />
+                  </div>
+
+                  {/* Title & Description */}
+                  <div className="space-y-3">
+                    <h3 className="text-lg sm:text-xl font-display font-black italic uppercase tracking-[0.15em] text-red-400 leading-none">
+                      ¿Eliminar Amigo?
+                    </h3>
+                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
+                      Acción irreversible
+                    </p>
+                  </div>
+
+                  {/* Friend name badge */}
+                  <div className="px-4 py-2.5 bg-red-500/5 rounded-2xl border border-red-500/10 inline-flex items-center gap-2">
+                    <span className="text-sm font-bold text-red-400">{friendToRemove.name}</span>
+                    <span className="text-[10px] text-text-secondary font-black uppercase tracking-widest">será eliminado</span>
+                  </div>
+
+                  <p className="text-sm text-text-secondary leading-relaxed px-2">
+                    Se eliminará de tu lista de amigos y no podrás ver su estado ni enviarle mensajes.
+                  </p>
+
+                  {/* Actions */}
+                  <div className="flex flex-col gap-3 pt-2">
+                    <button
+                      onClick={handleRemoveFriend}
+                      disabled={isRemoving}
+                      className="w-full py-4 bg-linear-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_5px_20px_rgba(220,38,38,0.25)] border border-red-500/30"
+                    >
+                      {isRemoving ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        "Sí, Eliminar"
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setFriendToRemove(null)}
+                      disabled={isRemoving}
+                      className="w-full py-4 bg-white/5 hover:bg-white/10 text-text-secondary hover:text-text-premium font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all active:scale-95 disabled:opacity-50 border border-white/5 hover:border-white/10"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
 
