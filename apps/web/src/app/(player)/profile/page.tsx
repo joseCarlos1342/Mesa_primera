@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getMyStats, PlayerStats } from '@/app/actions/stats';
 import { Toast, ToastType } from '@/components/ui/Toast';
 import { useAppLock } from '@/components/providers/AppLockProvider';
+import { clearSessionValidated } from '@/lib/app-lock-session';
 import { normalizePhone } from '@/lib/phone';
 import { useRef } from 'react';
 
@@ -182,6 +183,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     if (confirm("¿Seguro que deseas cerrar sesión?")) {
+      clearSessionValidated();
       await supabase.auth.signOut();
       router.push('/login/player');
     }
@@ -281,29 +283,9 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-center gap-3">
-                <ShieldCheck className="w-5 h-5 text-brand-gold" />
-                <span className="text-[10px] font-black text-brand-gold uppercase tracking-[0.4em]">Nivel {stats?.level || 1}</span>
-              </div>
               <h2 className="text-3xl md:text-4xl font-display font-black text-[#f3edd7] italic uppercase tracking-tight">
                 {formData.username || 'Miembro'}
               </h2>
-            </div>
-
-            {/* Loyalty Bar */}
-            <div className="w-full mt-10 space-y-3">
-              <div className="flex justify-between text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 px-2">
-                <span>Prestigio</span>
-                <span>Ascenso</span>
-              </div>
-              <div className="h-3 w-full bg-slate-950/60 rounded-full overflow-hidden p-[2px] border-2 border-brand-gold/10 shadow-inner">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: '65%' }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                  className="h-full bg-accent-gold-shimmer rounded-full shadow-[0_0_15px_rgba(202,171,114,0.6)]" 
-                />
-              </div>
             </div>
           </div>
 

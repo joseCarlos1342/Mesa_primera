@@ -15,11 +15,17 @@ import {
   getPasskeyRegistrationOptions,
   verifyPasskeyRegistration,
 } from '@/app/(auth)/passkey-actions'
+import {
+  isSessionValidated,
+  markSessionValidated,
+  clearSessionValidated,
+  consumeAuthBypass,
+} from '@/lib/app-lock-session'
 
 const APP_LOCK_KEY = 'mesa_primera_app_lock_enabled'
 const CREDENTIAL_ID_KEY = 'mesa_primera_lock_credential_id'
 const LAST_ACTIVE_KEY = 'mesa_primera_last_active'
-const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes
+const INACTIVITY_MS = 30 * 60 * 1000 // 30 minutes
 const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const
 
 interface EnrollResult {
@@ -159,33 +165,40 @@ export function AppLockProvider({
   /** Suppresses visibilitychange-based locking while the OS biometric prompt is open */
   const isBiometricPromptActive = useRef(false)
 
-  // ── Init: check support, lock on open if enabled ──
+  // ── Init: check support, lock only on cold open (no session marker) ──
   useEffect(() => {
     isPlatformAuthenticatorAvailable().then((supported) => {
       setIsSupported(supported)
       const stored = localStorage.getItem(APP_LOCK_KEY) === 'true'
       setIsEnabled(stored)
-      // Lock on app open: always lock when loading fresh, or if inactive > 5 min
+
       if (stored && supported) {
-        setIsLocked(true)
+        // Check for one-time auth bypass (set by login/register flows)
+        if (consumeAuthBypass()) {
+          // Just logged in — skip lock and mark session as validated
+          markSessionValidated()
+          setIsLocked(false)
+        } else if (isSessionValidated()) {
+          // Same session (reload / navigation) — already validated, don't lock
+          setIsLocked(false)
+        } else {
+          // Cold open (new tab / app reopened after full close) — lock
+          setIsLocked(true)
+        }
       }
       setReady(true)
     })
   }, [])
 
-  // ── Visibility: lock when app comes back from background ──
+  // ── Visibility: stamp activity when going to background (no lock on return) ──
   useEffect(() => {
     if (!isEnabled) return
 
     function handleVisibility() {
-      if (isBiometricPromptActive.current) return
       if (document.hidden) {
-        // Stamp current time when going to background
         stampActivity()
-      } else {
-        // Came back — always lock (user closed/minimized the app)
-        setIsLocked(true)
       }
+      // Returning from background does NOT lock — only inactivity timer does
     }
 
     document.addEventListener('visibilitychange', handleVisibility)
@@ -237,6 +250,7 @@ export function AppLockProvider({
       localStorage.setItem(APP_LOCK_KEY, 'true')
       localStorage.setItem(CREDENTIAL_ID_KEY, credentialId)
       stampActivity()
+      markSessionValidated()
       setIsEnabled(true)
 
       // 2. Try server-side passkey registration in background (for Fast Login)
@@ -272,6 +286,7 @@ export function AppLockProvider({
     localStorage.removeItem(APP_LOCK_KEY)
     localStorage.removeItem(CREDENTIAL_ID_KEY)
     localStorage.removeItem(LAST_ACTIVE_KEY)
+    clearSessionValidated()
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
     setIsEnabled(false)
     setIsLocked(false)
@@ -284,6 +299,7 @@ export function AppLockProvider({
       const ok = await requestDeviceVerification()
       if (ok) {
         stampActivity()
+        markSessionValidated()
         setIsLocked(false)
       }
       return ok
