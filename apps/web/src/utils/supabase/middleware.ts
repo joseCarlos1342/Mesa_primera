@@ -55,6 +55,7 @@ export async function updateSession(
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
+  const isAuthCallback = pathname === '/api/auth/callback'
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/recovery')
   const isPublicSeoPage = pathname === '/primera-riverada-los-4-ases'
   const isAdminPath = pathname.startsWith('/admin')
@@ -72,7 +73,7 @@ export async function updateSession(
   }
 
   // --- Caso 1: No Autenticado ---
-  if (!user && !isAuthPage && !isPublicSeoPage) {
+  if (!user && !isAuthPage && !isPublicSeoPage && !isAuthCallback) {
     const url = request.nextUrl.clone()
     url.pathname = '/login/player'
     return NextResponse.redirect(url)
