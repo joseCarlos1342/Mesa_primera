@@ -281,7 +281,7 @@ function PlayerLoginContent() {
           {/* Google Sign-In */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
-            <div className="relative flex justify-center"><span className="bg-black/60 backdrop-blur-sm px-4 py-0.5 rounded-full text-xs font-bold text-white/30 uppercase tracking-widest">o</span></div>
+            <div className="relative flex justify-center"><span className="px-4 text-xs font-bold text-white/30 uppercase tracking-widest">o</span></div>
           </div>
           <GoogleSignInButton label="Ingresar con Google" />
 
