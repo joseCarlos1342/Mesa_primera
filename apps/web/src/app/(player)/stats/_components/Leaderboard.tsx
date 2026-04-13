@@ -1,9 +1,8 @@
 "use client";
 
 import { m } from "framer-motion";
-import { Trophy, Medal, Target, TrendingUp, User } from "lucide-react";
+import { Trophy, Medal, Target, User } from "lucide-react";
 import { getAvatarSvg } from "@/utils/avatars";
-import { formatAmount } from "@/utils/format";
 
 interface LeaderboardProps {
   entries: any[];
@@ -13,7 +12,6 @@ interface LeaderboardProps {
 export function Leaderboard({ entries, category }: LeaderboardProps) {
   const getCategoryIcon = () => {
     switch (category) {
-      case 'top_ganadores': return TrendingUp;
       case 'mejor_racha': return Medal;
       case 'maestro_primera': return Target;
       default: return Trophy;
@@ -87,11 +85,10 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
                 <p className={`font-display font-black text-lg md:text-xl italic tracking-tighter transition-all ${
                   idx === 0 ? 'text-brand-gold scale-110 drop-shadow-[0_0_8px_rgba(202,171,114,0.4)]' : 'text-text-premium'
                 }`}>
-                  {category === 'top_ganadores' ? `$${formatAmount(Number(entry.score))}` : entry.score}
+                  {entry.score}
                 </p>
                 <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
-                  {category === 'top_ganadores' ? 'Ganancias' : 
-                   category === 'mejor_racha' ? 'Best Streak' : 
+                  {category === 'mejor_racha' ? 'Best Streak' : 
                    category === 'maestro_primera' ? 'Especiales' : 'Partidas'}
                 </span>
               </div>
