@@ -102,9 +102,12 @@ export default function CompleteGoogleRegistrationPage() {
 
           {/* Google email info */}
           {googleData?.email && (
-            <div className="mb-8 p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center gap-3 text-sm text-text-secondary">
-              <Mail className="w-4 h-4 text-brand-gold flex-shrink-0" />
-              <span>Conectado como <strong className="text-text-premium">{googleData.email}</strong></span>
+            <div className="mb-8 p-4 bg-white/5 border border-white/10 rounded-2xl flex items-start gap-3 text-sm text-text-secondary min-w-0">
+              <Mail className="w-4 h-4 text-brand-gold shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p>Conectado como</p>
+                <p className="text-text-premium font-semibold break-all">{googleData.email}</p>
+              </div>
             </div>
           )}
 
