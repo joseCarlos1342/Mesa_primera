@@ -38,6 +38,8 @@ export class Player extends Schema {
    * null = hasn't declared yet, true = "tengo juego", false = "no tengo juego"
    */
   declaredJuego: boolean | null = null;
+  /** Player declined extra bet in GUERRA_JUEGO but stays in showdown. Server-only. */
+  declinedGuerraJuegoBet: boolean = false;
 }
 
 export class GameState extends Schema {
