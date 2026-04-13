@@ -18,7 +18,7 @@ interface StatsClientProps {
 export function StatsClient({ initialStats, initialLeaderboard, initialBonusStatus }: StatsClientProps) {
   const { activeTab } = useStatsTab()
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(initialLeaderboard)
-  const [leaderboardCategory, setLeaderboardCategory] = useState<'total_ganadas' | 'top_ganadores' | 'mejor_racha' | 'maestro_primera'>('total_ganadas')
+  const [leaderboardCategory, setLeaderboardCategory] = useState<'total_ganadas' | 'mejor_racha' | 'maestro_primera'>('total_ganadas')
   const [isSwitching, setIsSwitching] = useState(false)
 
   useEffect(() => {
@@ -72,7 +72,6 @@ export function StatsClient({ initialStats, initialLeaderboard, initialBonusStat
           <div className="flex flex-wrap justify-center gap-2">
             {[
               { id: 'total_ganadas', label: 'Partidas' },
-              { id: 'top_ganadores', label: 'Ganancias' },
               { id: 'mejor_racha', label: 'Rachas' },
               { id: 'maestro_primera', label: 'Especiales' }
             ].map((cat) => (

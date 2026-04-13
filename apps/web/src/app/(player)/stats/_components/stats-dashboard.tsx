@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { m } from "framer-motion";
-import { Trophy, Target, Flame, Star, Gift, Check, Loader2, Lock } from "lucide-react";
+import { useState, useCallback } from "react";
+import { m, AnimatePresence } from "framer-motion";
+import { Trophy, Target, Flame, Star, Gift, Check, Loader2, Lock, PartyPopper } from "lucide-react";
+import confetti from "canvas-confetti";
 import { claimBonus, type BonusStatus, type BonusTier } from "@/app/actions/bonus";
 
 interface PlayerStats {
@@ -120,6 +121,7 @@ function BonusCard({
   onUpdate: (bs: BonusStatus) => void;
 }) {
   const [claiming, setClaiming] = useState<number | null>(null);
+  const [celebration, setCelebration] = useState<{ name: string; amount: number } | null>(null);
 
   const nextTier = bonusStatus.tiers.find((t) => !t.unlocked);
   const currentRake = bonusStatus.monthly_rake_cents;
@@ -131,16 +133,60 @@ function BonusCard({
 
   const hasClaimable = bonusStatus.tiers.some((t) => t.unlocked && !t.claimed);
 
+  const fireConfetti = useCallback(() => {
+    const duration = 2500;
+    const end = Date.now() + duration;
+
+    const gold = { startVelocity: 30, spread: 360, ticks: 80, zIndex: 9999 };
+
+    // Initial burst from center
+    confetti({ ...gold, particleCount: 80, origin: { x: 0.5, y: 0.4 }, colors: ["#cab172", "#f5d998", "#10b981", "#34d399", "#ffffff"] });
+
+    // Staggered side bursts
+    setTimeout(() => {
+      confetti({ ...gold, particleCount: 50, origin: { x: 0.2, y: 0.6 }, colors: ["#cab172", "#f5d998", "#10b981"] });
+      confetti({ ...gold, particleCount: 50, origin: { x: 0.8, y: 0.6 }, colors: ["#cab172", "#f5d998", "#10b981"] });
+    }, 300);
+
+    // Slow rain effect
+    const interval = setInterval(() => {
+      if (Date.now() > end) { clearInterval(interval); return; }
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ["#cab172", "#10b981", "#f5d998"],
+        zIndex: 9999,
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ["#cab172", "#10b981", "#f5d998"],
+        zIndex: 9999,
+      });
+    }, 120);
+  }, []);
+
   const handleClaim = async (tierId: number) => {
     setClaiming(tierId);
     const result = await claimBonus(tierId);
     if (result.success) {
+      const claimed = bonusStatus.tiers.find((t) => t.id === tierId);
       onUpdate({
         ...bonusStatus,
         tiers: bonusStatus.tiers.map((t) =>
           t.id === tierId ? { ...t, claimed: true } : t
         ),
       });
+      // Fire celebration
+      if (claimed) {
+        setCelebration({ name: claimed.name, amount: claimed.bonus_amount_cents });
+        fireConfetti();
+        setTimeout(() => setCelebration(null), 4000);
+      }
     }
     setClaiming(null);
   };
@@ -178,12 +224,13 @@ function BonusCard({
         {/* Progress bar */}
         {nextTier && (
           <div className="space-y-2">
-            <div className="flex justify-between text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 px-1">
-              <span>Progreso</span>
-              <span>
-                {formatCOP(currentRake)} / {formatCOP(nextTier.min_rake_cents)}
-              </span>
-            </div>
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-300/70 px-1">
+              {progressPct < 30
+                ? "¡Cada mesa te acerca a tu bono! 🎯"
+                : progressPct < 70
+                  ? "¡Vas por buen camino, sigue jugando! 🔥"
+                  : "¡Ya casi lo tienes, una mesa más! 💰"}
+            </p>
             <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5">
               <m.div
                 initial={{ width: 0 }}
@@ -210,6 +257,59 @@ function BonusCard({
           ))}
         </div>
       </div>
+
+      {/* Celebration Overlay */}
+      <AnimatePresence>
+        {celebration && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-[2.5rem]"
+          >
+            <m.div
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 15 }}
+              className="text-center space-y-4"
+            >
+              <m.div
+                animate={{ rotate: [0, -10, 10, -5, 5, 0], y: [0, -8, 0] }}
+                transition={{ duration: 1, repeat: 1 }}
+                className="mx-auto w-20 h-20 bg-brand-gold/20 rounded-3xl flex items-center justify-center border-2 border-brand-gold/40 shadow-[0_0_40px_rgba(202,171,114,0.3)]"
+              >
+                <PartyPopper className="w-10 h-10 text-brand-gold" />
+              </m.div>
+              <m.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-2xl md:text-3xl font-display font-black text-brand-gold italic uppercase tracking-tight"
+              >
+                ¡Bono {celebration.name}!
+              </m.p>
+              <m.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-4xl md:text-5xl font-display font-black text-white italic tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+              >
+                +{formatCOP(celebration.amount)}
+              </m.p>
+              <m.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.4em]"
+              >
+                Acreditado a tu bóveda
+              </m.p>
+            </m.div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
