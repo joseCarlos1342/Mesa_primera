@@ -364,6 +364,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             // Check: nadie ha apostado o ya igualamos
             player.hasActed = true;
             this.state.lastAction = `${player.nickname} pasa (check)`;
+          } else if (phase === "GUERRA_JUEGO") {
+            // GUERRA_JUEGO: declinar la apuesta extra sin perder elegibilidad de showdown
+            player.hasActed = true;
+            player.declinedGuerraJuegoBet = true;
+            this.state.lastAction = `${player.nickname} pasa (no iguala)`;
+            console.log(`[MesaRoom] ${player.nickname} declina apuesta extra en GUERRA_JUEGO — sigue al showdown`);
           } else {
             // Hay apuesta activa y no hemos igualado
             const hand = evaluateHand(player.cards);
@@ -1174,6 +1180,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       p.roundBet = 0;
       p.isAllIn = false;
       p.passedWithJuego = false;
+      p.declinedGuerraJuegoBet = false;
       p.totalMainBet = 0;
       p.revealedCards = "";
       p.declaredJuego = null;
@@ -1319,6 +1326,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       p.roundBet = 0;
       p.isAllIn = false;
       p.passedWithJuego = false;
+      p.declinedGuerraJuegoBet = false;
       p.totalMainBet = 0;
       p.declaredJuego = null;
       this.setPlayerCards(sessionId, "");
@@ -1925,7 +1933,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Revertir la porción no igualada en el ledger
     if (highBetter.supabaseUserId) {
-      SupabaseService.awardPot(highBetter.supabaseUserId, uncalled, 0, this.currentGameId).catch(console.error);
+      SupabaseService.refundPlayer(highBetter.supabaseUserId, uncalled, this.currentGameId, { reason: 'Apuesta no igualada' }).catch(console.error);
     }
 
     return uncalled;
@@ -2010,11 +2018,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (activePlayers.length <= 1) {
       // Devolver apuesta no igualada antes de avanzar
       this.refundUncalledBet();
-      if (this.state.pot === 0) {
+      if (this.state.pot === 0 && activePlayers.length === 0) {
         this.endHandEarlyAfterFoldOut();
         return;
       }
-      if (nextPhaseCallback) nextPhaseCallback();
+      // 1 jugador restante (con o sin pot): ir a showdown para revelación obligatoria
+      if (nextPhaseCallback && this.state.pot > 0) nextPhaseCallback();
       else this.startPhase6Showdown();
       return;
     }
@@ -2038,7 +2047,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const idx = (startSeatIdx + i) % total;
       const id = this.seatOrder[idx];
       const p = this.state.players.get(id);
-      if (p && p.connected && !p.isFolded && !p.isAllIn && !p.passedWithJuego &&
+      if (p && p.connected && !p.isFolded && !p.isAllIn && !p.passedWithJuego && !p.declinedGuerraJuegoBet &&
           (!p.hasActed || p.roundBet < this.state.currentMaxBet)) {
         this.state.turnPlayerId = id;
         return;
@@ -2046,9 +2055,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
     // Nadie más necesita actuar — verificar apuesta no igualada
     this.refundUncalledBet();
-    if (this.state.pot === 0) {
-      this.endHandEarlyAfterFoldOut();
-      return;
+    {
+      const remainingAfterRefund = Array.from(this.state.players.values() as IterableIterator<Player>)
+        .filter(p => !p.isFolded && p.connected);
+      if (this.state.pot === 0 && remainingAfterRefund.length === 0) {
+        this.endHandEarlyAfterFoldOut();
+        return;
+      }
     }
     if (nextPhaseCallback) nextPhaseCallback();
     else this.startPhase6Showdown();
@@ -2294,7 +2307,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private startPhaseGuerraJuego() {
     this.state.phase = "GUERRA_JUEGO";
     console.log(`[MesaRoom] Iniciando Guerra de Juego — apuestas entre jugadores con juego`);
-    this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
+    this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; p.declinedGuerraJuegoBet = false; });
     this.state.currentMaxBet = 0;
     this.state.highestBetPlayerId = "";
     this.advanceTurnBetting(this.state.activeManoId, () => this.startPhase6Showdown());
@@ -2337,9 +2350,32 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (activePlayers.length === 1) {
       const winner = activePlayers[0];
-      // Si no hay pot principal (apuesta devuelta), terminar sin interfaz de ganador
       if (this.state.pot === 0) {
-        console.log(`[MesaRoom] Solo queda ${winner.nickname} con pot=0 — terminando sin UI de ganador`);
+        // Pot=0 (apuesta devuelta) pero queda un ganador con cartas:
+        // Revelar obligatoriamente su mano antes de cerrar.
+        if (winner.cards) {
+          console.log(`[MesaRoom] Solo queda ${winner.nickname} con pot=0 — revelación obligatoria de mano`);
+          winner.revealedCards = winner.cards;
+          this.state.lastAction = `¡${winner.nickname} gana! (${evaluateHand(winner.cards).type})`;
+          this.state.showdownTimer = 0;
+          // Persistir replay / stats antes de esperar dismiss
+          this.currentTimeline.push({ event: 'end', winner: winner.id, pot: 0, payout: 0, rake: 0, time: Date.now(), rng_state: this.getRngState() });
+          const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
+            userId: p.supabaseUserId || p.id, sessionId: p.id, nickname: p.nickname, cards: p.cards, chips: p.chips
+          }));
+          const finalHands: Record<string, any> = {};
+          Array.from(this.state.players.values()).forEach(p => {
+            if (p.cards) {
+              const h = evaluateHand(p.cards);
+              finalHands[p.supabaseUserId || p.id] = { cards: p.cards, handType: h.type, handPoints: h.points, nickname: p.nickname };
+            }
+          });
+          SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, this.currentTimeline.map(({ rng_state, ...e }) => e), playersSnapshot, [...this.currentTimeline], { totalPot: 0, mainPot: 0, piquePot: 0, payout: 0, rake: 0 }, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP').catch(console.error);
+          // Se queda en SHOWDOWN — dismiss-showdown caso 2 limpiará al LOBBY
+          return;
+        }
+        // Sin cartas: nada que mostrar, cerrar directamente
+        console.log(`[MesaRoom] Solo queda ${winner.nickname} con pot=0 y sin cartas — terminando`);
         this.endHandEarlyAfterFoldOut();
         return;
       }
