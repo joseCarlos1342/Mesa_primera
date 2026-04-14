@@ -56,6 +56,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private piqueProposerId: string = "";
   /** Jugadores que dijeron "paso" en la ronda de PIQUE actual (para cobro de Banda). */
   private piquePassPlayerIds = new Set<string>();
+  /** Jugadores que pasaron ANTES de que hubiera apuesta fija (candidatos a reapertura). */
+  private piquePreBetPasserIds = new Set<string>();
+  /** Indica si estamos en reapertura de PIQUE (passers previos deben reconfirmar). */
+  private piqueReopenActive = false;
+  /** IDs de jugadores pendientes de reconfirmar durante la reapertura de PIQUE. */
+  private piqueReopenPendingIds = new Set<string>();
   /** Bandera para evitar doble rotación si la Mano Definitiva ya rotó durante la partida */
   private dealerRotatedThisGame = false;
   /** Contador de reinicios consecutivos del pique para evitar bucle infinito */
@@ -63,6 +69,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private static readonly MAX_PIQUE_RESTARTS = 10;
   /** Contador de veces que cada jugador se botó en PIQUE (persistente entre reinicios) */
   private piqueFoldCount = new Map<string, number>();
+  /** Jugadores con "paso provisional" en APUESTA_4_CARTAS cuando quedan jugadores detrás por actuar */
+  private pasoPendienteIds = new Set<string>();
+  /** Jugador pendiente de decidir Llevo Juego / No Llevo en resolución inmediata */
+  private pendingPasoJuegoPlayerId: string = "";
+  /** Fase en la que se inició la resolución inmediata de paso-juego */
+  private pendingPasoJuegoPhase: string = "";
+  /** Fase desde la que se entró a PIQUE_REVEAL para saber a dónde volver */
+  private phaseBeforePiqueReveal: string = "";
   /** Redis subscriber for single-session kick events */
   private redisSub?: Redis;
 
@@ -218,7 +232,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         if (action === "paso") {
           player.isFolded = true;
           this.piquePassPlayerIds.add(client.sessionId);
+          // Rastrear si pasó antes de que existiera apuesta fija (candidato a reapertura)
+          if (!this.piqueReopenActive && this.state.currentMaxBet === 0) {
+            this.piquePreBetPasserIds.add(client.sessionId);
+          }
 
+          // ── Reapertura: paso definitivo (sin doble-botada, misma mano) ──
+          if (this.piqueReopenActive) {
+            this.piqueReopenPendingIds.delete(client.sessionId);
+            this.state.lastAction = `${player.nickname} pasa definitivamente`;
+          } else {
           // ── Doble-botada: lógica especial al botarse por 2ª vez ──
           const prevFolds = this.piqueFoldCount.get(client.sessionId) || 0;
           const newFolds = prevFolds + 1;
@@ -260,10 +283,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           } else {
             this.state.lastAction = `${player.nickname} pasa en el Pique`;
           }
+          } // end else (!piqueReopenActive)
 
           this.attemptManoRotation(client.sessionId, "Mano pasa en Pique");
           if (player.id === this.state.activeManoId) this.transferMano();
         } else if (action === "voy") {
+          // Durante reapertura, sacar al jugador del set de pendientes
+          if (this.piqueReopenActive) {
+            this.piqueReopenPendingIds.delete(client.sessionId);
+          }
           const betAmount = message.amount || this.state.minPique;
           const actualBet = Math.min(betAmount, player.chips);
 
@@ -372,17 +400,46 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
             console.log(`[MesaRoom] ${player.nickname} declina apuesta extra en GUERRA_JUEGO — sigue al showdown`);
           } else {
             // Hay apuesta activa y no hemos igualado
+
+            // En APUESTA_4_CARTAS: si quedan jugadores detrás por responder,
+            // el paso es provisional — se resolverá cuando el turno vuelva.
+            if (phase === 'APUESTA_4_CARTAS' && !this.pasoPendienteIds.has(client.sessionId)) {
+              const myIdx = this.seatOrder.indexOf(client.sessionId);
+              const hasPlayersBehind = myIdx !== -1 && this.seatOrder.some((id, idx) => {
+                if (idx <= myIdx) return false;
+                const pp = this.state.players.get(id);
+                return pp && pp.connected && !pp.isFolded && !pp.isAllIn && !pp.hasActed && !pp.passedWithJuego && !this.pasoPendienteIds.has(id);
+              });
+              if (hasPlayersBehind) {
+                this.pasoPendienteIds.add(client.sessionId);
+                player.hasActed = true;
+                this.state.lastAction = `${player.nickname} pasa (pendiente)`;
+                console.log(`[MesaRoom] ${player.nickname} pasa provisionalmente — quedan jugadores por actuar`);
+                advanceNext();
+                return;
+              }
+            }
+
             const hand = evaluateHand(player.cards);
             if (hand.type !== 'NINGUNA') {
-              // Tiene juego: se queda sin apostar más, reclamará pique en DESCARTE
-              player.passedWithJuego = true;
-              player.hasActed = true;
-              this.state.lastAction = `${player.nickname} se queda con juego (${hand.type})`;
-              console.log(`[MesaRoom] ${player.nickname} se queda con juego — reclamará pique en DESCARTE`);
+              this.pasoPendienteIds.delete(client.sessionId);
+
+              // Resolución inmediata: preguntar Llevo Juego / No Llevo ahora mismo
+              this.pendingPasoJuegoPlayerId = client.sessionId;
+              this.pendingPasoJuegoPhase = phase;
+              const clientObj = this.clientMap.get(client.sessionId);
+              if (clientObj) {
+                clientObj.send('paso-juego-choice', { handType: hand.type });
+              }
+              this.state.lastAction = `${player.nickname} decide si lleva juego...`;
+              console.log(`[MesaRoom] ${player.nickname} paso definitivo con juego (${hand.type}) en ${phase} — esperando decisión inmediata`);
+              // NO llamar advanceNext() — turn queda en este jugador hasta que responda
+              return;
             } else {
               // No tiene juego: fold
               player.isFolded = true;
               player.hasActed = true;
+              this.pasoPendienteIds.delete(client.sessionId);
               this.state.lastAction = `${player.nickname} se bota`;
               this.attemptManoRotation(client.sessionId, "Mano se bota en apuestas");
               if (player.id === this.state.activeManoId) this.transferMano();
@@ -391,6 +448,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           advanceNext();
 
         } else if (action === "voy") {
+          this.pasoPendienteIds.delete(client.sessionId);
           const betIncrement = amount || 0;
           if (betIncrement <= 0) {
             console.log(`[MesaRoom] ${player.nickname} intentó IR con monto inválido.`);
@@ -435,6 +493,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           advanceNext();
 
         } else if (action === "igualar") {
+          this.pasoPendienteIds.delete(client.sessionId);
           const callAmount = this.state.currentMaxBet - player.roundBet;
           if (callAmount <= 0) {
             player.hasActed = true;
@@ -470,6 +529,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           advanceNext();
 
         } else if (action === "resto") {
+          this.pasoPendienteIds.delete(client.sessionId);
           const allInAmount = player.chips;
           if (allInAmount <= 0) {
             player.isFolded = true;
@@ -550,9 +610,19 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (player.id === this.state.activeManoId) this.transferMano();
         }
 
-        // Reanudar DESCARTE
-        this.state.phase = "DESCARTE";
-        this.advanceTurnPhaseDescarte();
+        // Reanudar la fase de origen
+        const returnPhase = this.phaseBeforePiqueReveal || "DESCARTE";
+        this.phaseBeforePiqueReveal = "";
+
+        if (returnPhase === "DESCARTE") {
+          this.state.phase = "DESCARTE";
+          this.advanceTurnPhaseDescarte();
+        } else {
+          // APUESTA_4_CARTAS, GUERRA, CANTICOS, etc.
+          this.state.phase = returnPhase;
+          const nextPhaseCallback = this.getNextPhaseCallback(returnPhase);
+          this.advanceTurnBetting(undefined, nextPhaseCallback);
+        }
         return;
       }
 
@@ -583,6 +653,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
       // Guardar referencia para procesar en dismiss-reveal
       this.pendingLlevoJuegoPlayerId = client.sessionId;
+      this.phaseBeforePiqueReveal = "DESCARTE";
 
       // Cambiar a PIQUE_REVEAL para mostrar las cartas
       this.state.phase = "PIQUE_REVEAL";
@@ -593,6 +664,71 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         llevaJuego: true,
         cards: player.cards
       });
+    });
+
+    // ── Resolución inmediata de Llevo Juego / No Llevo en cualquier fase de apuestas ──
+    this.onMessage("paso-juego-response", (client, message) => {
+      if (this.pendingPasoJuegoPlayerId !== client.sessionId) return;
+      const resolvePhase = this.pendingPasoJuegoPhase;
+      if (this.state.phase !== resolvePhase) return;
+
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+
+      const { llevaJuego } = message;
+      this.pendingPasoJuegoPlayerId = "";
+      this.pendingPasoJuegoPhase = "";
+
+      this.currentTimeline.push({ event: 'action', phase: resolvePhase, player: client.sessionId, action: llevaJuego ? 'llevo-juego-inmediato' : 'no-llevo-juego', time: Date.now(), rng_state: this.getRngState() });
+
+      // Callback de siguiente fase según la fase actual
+      const nextPhaseCallback = this.getNextPhaseCallback(resolvePhase);
+
+      if (llevaJuego) {
+        // Lleva juego: revelar cartas, resolver pique inmediatamente
+        player.hasActed = true;
+        player.passedWithJuego = true;
+        player.revealedCards = player.cards;
+        this.state.lastAction = `¡${player.nickname} lleva juego!`;
+        console.log(`[MesaRoom] ${player.nickname} lleva juego inmediatamente en ${resolvePhase}`);
+
+        this.pendingLlevoJuegoPlayerId = client.sessionId;
+        this.phaseBeforePiqueReveal = resolvePhase;
+
+        this.state.phase = "PIQUE_REVEAL";
+        this.state.turnPlayerId = client.sessionId;
+
+        this.broadcast("pique-fold-reveal", {
+          playerId: client.sessionId,
+          llevaJuego: true,
+          cards: player.cards
+        });
+      } else {
+        // No lleva juego: fold y devolver cartas al mazo
+        player.isFolded = true;
+        player.hasActed = true;
+        this.state.lastAction = `${player.nickname} no lleva juego — se bota`;
+        console.log(`[MesaRoom] ${player.nickname} no lleva juego — fold inmediato en ${resolvePhase}`);
+
+        // Devolver sus 4 cartas al mazo (sin barajar el mazo completo)
+        const playerCards = player.cards ? player.cards.split(',').filter(Boolean) : [];
+        for (const card of playerCards) {
+          this.deck.push(card);
+        }
+        this.setPlayerCards(client.sessionId, "");
+
+        // Broadcast animation event for card return
+        this.broadcast("fold-return-cards", {
+          playerId: client.sessionId,
+          cardCount: playerCards.length
+        });
+
+        this.attemptManoRotation(client.sessionId, "Mano no lleva juego");
+        if (player.id === this.state.activeManoId) this.transferMano();
+
+        // Continuar la ronda de apuestas con el callback correcto
+        this.advanceTurnBetting(undefined, nextPhaseCallback);
+      }
     });
 
     this.onMessage("dismiss-showdown", (client) => {
@@ -1428,6 +1564,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Limpiar registro de jugadores que pasaron para el cobro de banda
     this.piquePassPlayerIds.clear();
+    this.piquePreBetPasserIds.clear();
+    this.piqueReopenActive = false;
+    this.piqueReopenPendingIds.clear();
 
     // Resetear apuesta máxima del pique (La Mano la fijará al apostar)
     this.state.currentMaxBet = 0;
@@ -1499,11 +1638,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
 
   private advanceTurnPhase2(startFromId?: string) {
-    // If only 1 active SEATED player remains, no need for them to act — auto-restart pique
+    // If only 1 active SEATED player remains AND no one is pending to act,
+    // resolve immediately (restart or reopen).
     // IMPORTANT: Exclude isWaiting players — they are spectators and cannot act
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
       .filter(p => !p.isFolded && p.connected && !p.isWaiting);
-    if (activePlayers.length < 2) {
+    const pendingToAct = activePlayers.some(p => !p.hasActed);
+    if (activePlayers.length < 2 && !pendingToAct) {
+      // ── REAPERTURA: solo si hay passers previos a la apuesta y no estamos ya en reapertura ──
+      if (!this.piqueReopenActive && this.piquePreBetPasserIds.size > 0) {
+        this.reopenPiqueForPassers();
+        return;
+      }
       this.restartPique();
       return;
     }
@@ -1535,11 +1681,74 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       .filter(p => !p.isFolded && p.connected && !p.isWaiting);
 
     if (activeInPique.length < 2) {
+      // ── REAPERTURA: solo si hay passers previos a la apuesta y no estamos ya en reapertura ──
+      if (!this.piqueReopenActive && this.piquePreBetPasserIds.size > 0) {
+        this.reopenPiqueForPassers();
+        return;
+      }
       this.restartPique();
       return;
     }
 
+    // Limpiar estado de reapertura al avanzar a Completar
+    this.piqueReopenActive = false;
+    this.piqueReopenPendingIds.clear();
+    this.piquePreBetPasserIds.clear();
     this.startPhase3CompletarMano();
+  }
+
+  /**
+   * Reabre la fase PIQUE para jugadores que previamente pasaron,
+   * dándoles la oportunidad de igualar o confirmar paso definitivo
+   * antes de cobrar banda.
+   */
+  private reopenPiqueForPassers() {
+    this.piqueReopenActive = true;
+    this.piqueReopenPendingIds.clear();
+
+    // Solo reabrir a los que pasaron ANTES de que existiera apuesta fija
+    const previousPassers = new Set(this.piquePreBetPasserIds);
+    this.piquePreBetPasserIds.clear();
+    // Limpiar piquePassPlayerIds de los passers pre-apuesta (se repoblarán si confirman paso)
+    for (const id of previousPassers) {
+      this.piquePassPlayerIds.delete(id);
+    }
+
+    // Restaurar elegibilidad en orden de asiento
+    for (const id of this.seatOrder) {
+      if (!previousPassers.has(id)) continue;
+      const p = this.state.players.get(id);
+      if (!p || !p.connected || p.isWaiting) continue;
+
+      p.isFolded = false;
+      p.hasActed = false;
+      this.piqueReopenPendingIds.add(id);
+    }
+
+    if (this.piqueReopenPendingIds.size === 0) {
+      // Nadie conectado para reabrir — cobrar banda directamente
+      // Restaurar passers originales para que restartPique los cobre
+      for (const id of previousPassers) {
+        this.piquePassPlayerIds.add(id);
+      }
+      this.restartPique();
+      return;
+    }
+
+    // Fijar turno al primer passer pendiente según seatOrder
+    for (const id of this.seatOrder) {
+      if (this.piqueReopenPendingIds.has(id)) {
+        this.state.turnPlayerId = id;
+        break;
+      }
+    }
+
+    console.log(`[MesaRoom] Reapertura de PIQUE: ${this.piqueReopenPendingIds.size} jugador(es) deben confirmar (igualar o paso definitivo).`);
+    this.state.lastAction = `Se reabre el Pique: los que pasaron deben decidir si igualan o pasan definitivamente.`;
+    this.broadcast("pique-reopen", {
+      pendingPlayerIds: Array.from(this.piqueReopenPendingIds),
+      currentMaxBet: this.state.currentMaxBet,
+    });
   }
 
   /**
@@ -1674,6 +1883,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
 
     this.piquePassPlayerIds.clear();
+    this.piquePreBetPasserIds.clear();
+    this.piqueReopenActive = false;
+    this.piqueReopenPendingIds.clear();
 
     // Rotar La Mano solo si no rotó ya durante esta partida
     if (!this.dealerRotatedThisGame) {
@@ -1880,6 +2092,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private startPhaseDescarte() {
     this.state.phase = "DESCARTE";
     console.log(`[MesaRoom] Iniciando Fase: Descarte`);
+    this.pasoPendienteIds.clear();
+    this.pendingPasoJuegoPlayerId = "";
+    this.pendingPasoJuegoPhase = "";
     this.state.players.forEach((p: Player) => p.hasActed = false);
 
     // Start from La Mano activa
@@ -1893,6 +2108,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private startPhaseApuesta4Cartas() {
     this.state.phase = "APUESTA_4_CARTAS";
     console.log(`[MesaRoom] Iniciando APUESTA_4_CARTAS: ronda de apuestas con 4 cartas`);
+    this.pasoPendienteIds.clear();
     this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
     this.state.currentMaxBet = 0;
     this.state.highestBetPlayerId = "";
@@ -2008,6 +2224,20 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   /**
    * Avance de turno unificado para todas las fases de apuesta (APUESTA_4_CARTAS, GUERRA, CANTICOS).
    * Un jugador "necesita actuar" si:
+  /**
+   * Retorna el callback de siguiente fase según la fase de apuestas actual.
+   */
+  private getNextPhaseCallback(phase: string): () => void {
+    switch (phase) {
+      case "APUESTA_4_CARTAS": return () => this.startPhaseDescarte();
+      case "GUERRA": return () => this.startPhase4Canticos();
+      case "CANTICOS": return () => this.startPhaseDeclararJuego();
+      case "GUERRA_JUEGO": return () => this.startPhase6Showdown();
+      default: return () => this.startPhase6Showdown();
+    }
+  }
+
+  /**
    *  - no se botó, no está restiado, está conectado
    *  - Y no ha actuado aún O su apuesta de ronda es menor que la máxima (ronda reabierta por raise)
    */
@@ -2054,6 +2284,24 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
     }
     // Nadie más necesita actuar — verificar apuesta no igualada
+    // Primero: ¿hay jugadores con paso pendiente que necesitan resolver?
+    if (this.pasoPendienteIds.size > 0) {
+      // Encontrar el primer pendiente en orden de asientos
+      for (const seatId of this.seatOrder) {
+        if (this.pasoPendienteIds.has(seatId)) {
+          const pp = this.state.players.get(seatId);
+          if (pp && pp.connected && !pp.isFolded) {
+            pp.hasActed = false;
+            this.state.turnPlayerId = seatId;
+            console.log(`[MesaRoom] Turno devuelto a ${pp.nickname} para resolver paso pendiente`);
+            return;
+          }
+          // Si ya no está conectado o foldeó, limpiar
+          this.pasoPendienteIds.delete(seatId);
+        }
+      }
+    }
+
     this.refundUncalledBet();
     {
       const remainingAfterRefund = Array.from(this.state.players.values() as IterableIterator<Player>)
@@ -2189,6 +2437,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
     this.state.phase = "CANTICOS";
     console.log(`[MesaRoom] Iniciando Fase 4: Cánticos`);
+    this.pendingPasoJuegoPlayerId = "";
+    this.pendingPasoJuegoPhase = "";
     this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
     this.state.currentMaxBet = 0;
     this.state.highestBetPlayerId = "";
@@ -2320,6 +2570,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private startPhase5Guerra() {
     this.state.phase = "GUERRA";
     console.log(`[MesaRoom] Iniciando Fase 5: Guerra Principal`);
+    this.pendingPasoJuegoPlayerId = "";
+    this.pendingPasoJuegoPhase = "";
     this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
     this.state.currentMaxBet = 0;
     this.state.highestBetPlayerId = "";

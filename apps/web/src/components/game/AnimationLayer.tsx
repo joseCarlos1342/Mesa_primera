@@ -59,8 +59,8 @@ export function AnimationLayer() {
     };
 
     const handleDiscard = (e: Event) => {
-      const customEvent = e as CustomEvent<{ fromPlayerId: string; cards: string[] }>;
-      const { fromPlayerId, cards } = customEvent.detail;
+      const customEvent = e as CustomEvent<{ fromPlayerId: string; cards: string[]; isFaceUp?: boolean }>;
+      const { fromPlayerId, cards, isFaceUp = true } = customEvent.detail;
       
       const deckEl = document.getElementById('deck-center');
       const seatEl = document.getElementById(`seat-${fromPlayerId}`);
@@ -81,7 +81,7 @@ export function AnimationLayer() {
         start: { x: startX, y: startY },
         end: { x: endX, y: endY },
         value: c,
-        isFaceUp: true, 
+        isFaceUp, 
       }));
 
       setFlyingCards(prev => [...prev, ...newFlyers]);

@@ -1,6 +1,7 @@
 "use client"
 
 import { m } from 'framer-motion'
+import { Hand } from 'lucide-react'
 
 interface ManoIconProps {
   size?: 'xs' | 'sm' | 'md';
@@ -14,15 +15,15 @@ interface ManoIconProps {
  */
 export function ManoIcon({ size = 'sm', className = '', animate = false }: ManoIconProps) {
   const sizes = {
-    xs: 'w-3.5 h-3.5',
+    xs: 'w-4 h-4',
     sm: 'w-5 h-5',
     md: 'w-7 h-7',
   };
 
   const iconSizes = {
-    xs: 'w-2 h-2',
-    sm: 'w-3 h-3',
-    md: 'w-4 h-4',
+    xs: 10,
+    sm: 14,
+    md: 20,
   };
 
   const Wrapper = animate ? m.div : 'div';
@@ -45,19 +46,13 @@ export function ManoIcon({ size = 'sm', className = '', animate = false }: ManoI
       `}
       {...animateProps}
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        className={iconSizes[size]}
-      >
-        {/* Raised hand silhouette */}
-        <path
-          d="M6.5 21V12.5C6.5 12.5 5 12.5 5 11V8.5C5 7 6 7 6 7L7 7V4.5C7 3.67 7.67 3 8.5 3S10 3.67 10 4.5V7H10.5V3.5C10.5 2.67 11.17 2 12 2S13.5 2.67 13.5 3.5V7H14V4C14 3.17 14.67 2.5 15.5 2.5S17 3.17 17 4V7.5H17.5V6C17.5 5.17 18.17 4.5 19 4.5S20.5 5.17 20.5 6V14C20.5 17.87 17.37 21 13.5 21H6.5Z"
-          fill="#2a1b04"
-          stroke="#1a1004"
-          strokeWidth="0.5"
-        />
-      </svg>
+      <Hand
+        size={iconSizes[size]}
+        strokeWidth={2.5}
+        stroke="#1a0f02"
+        fill="#2a1b04"
+        className="shrink-0"
+      />
     </Wrapper>
   );
 }

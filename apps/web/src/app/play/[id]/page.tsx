@@ -75,12 +75,35 @@ export default function GameRoomPage() {
   const [insufficientBalance, setInsufficientBalance] = useState<{ required: number; current: number; message: string } | null>(null)
   /** Opción válida de juego derivada por el servidor para DECLARAR_JUEGO */
   const [validJuegoOption, setValidJuegoOption] = useState<{ hasJuego: boolean; handType: string } | null>(null)
+  /** Si el servidor reabrió el Pique para que los que pasaron puedan igualar */
+  const [piqueReopenActive, setPiqueReopenActive] = useState(false)
+  /** Prompt de resolución inmediata: Llevo Juego / No Llevo (paso definitivo con juego en APUESTA_4_CARTAS) */
+  const [pasoJuegoChoice, setPasoJuegoChoice] = useState<{ handType: string } | null>(null)
   const hasAttemptedJoin = useRef(false)
   /** Marca si el jugador abandonó intencionalmente (evita auto-reconexión) */
   const abandonedRef = useRef(false)
 
   // Mantiene la pantalla encendida en móviles
   useWakeLock()
+
+  // ── Igualar fondo de html/body al verde del juego para evitar bordes y flashes ──
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const prevHtmlBg = html.style.backgroundColor
+    const prevBodyBg = body.style.backgroundColor
+    const prevOverscroll = body.style.overscrollBehavior
+
+    html.style.backgroundColor = '#073926'
+    body.style.backgroundColor = '#073926'
+    body.style.overscrollBehavior = 'none'
+
+    return () => {
+      html.style.backgroundColor = prevHtmlBg
+      body.style.backgroundColor = prevBodyBg
+      body.style.overscrollBehavior = prevOverscroll
+    }
+  }, [])
 
   // ── Detección de orientación: bloquear en portrait y auto-cancelar "Listo" ──
   const [isPortrait, setIsPortrait] = useState(false)
@@ -300,6 +323,14 @@ export default function GameRoomPage() {
           if (state.phase !== 'DECLARAR_JUEGO') {
             setValidJuegoOption(null);
           }
+          // Limpiar prompt de paso-juego cuando sale de APUESTA_4_CARTAS
+          if (state.phase !== 'APUESTA_4_CARTAS') {
+            setPasoJuegoChoice(null);
+          }
+          // Limpiar reapertura de pique cuando sale de PIQUE
+          if (state.phase !== 'PIQUE') {
+            setPiqueReopenActive(false);
+          }
 
           // Resync silencioso: si el servidor dice que tengo cartas pero localmente no las tengo
           const me = playersArray.find((p: any) => p.id === joinedRoom.sessionId);
@@ -325,6 +356,19 @@ export default function GameRoomPage() {
           setValidJuegoOption(data);
         })
 
+        // Prompt de resolución inmediata: Llevo Juego / No Llevo (paso definitivo con juego)
+        joinedRoom.onMessage("paso-juego-choice", (data: { handType: string }) => {
+          setPasoJuegoChoice(data);
+        })
+
+        // Animación: devolver cartas al mazo cuando un jugador no lleva juego
+        joinedRoom.onMessage("fold-return-cards", (data: { playerId: string; cardCount: number }) => {
+          const fakeCards = Array.from({ length: data.cardCount }, (_, i) => `fold-back-${Date.now()}-${i}`);
+          window.dispatchEvent(new CustomEvent('animate-discard', {
+            detail: { fromPlayerId: data.playerId, cards: fakeCards, isFaceUp: false }
+          }));
+        })
+
         // Configuración de la sala (chips deshabilitados, etc.)
         joinedRoom.onMessage("room-config", (config: { disabledChips?: number[] }) => {
           setDisabledChips(config.disabledChips || []);
@@ -343,7 +387,13 @@ export default function GameRoomPage() {
         // Evento de banda para animaciones
         joinedRoom.onMessage("banda", (data: any) => {
           setBandaEvent(data);
+          setPiqueReopenActive(false);
           setTimeout(() => setBandaEvent(null), 4000);
+        })
+
+        // Reapertura de Pique: jugadores que pasaron antes de la apuesta pueden igualar
+        joinedRoom.onMessage("pique-reopen", () => {
+          setPiqueReopenActive(true);
         })
 
         // Errores inline del servidor (ej: pique mínimo no alcanzado)
@@ -777,6 +827,9 @@ export default function GameRoomPage() {
             currentMaxBet={gameState.currentMaxBet}
             disabledChips={disabledChips}
             validJuegoOption={validJuegoOption}
+            piqueReopenActive={piqueReopenActive}
+            pasoJuegoChoice={pasoJuegoChoice}
+            onPasoJuegoResolved={() => setPasoJuegoChoice(null)}
           />
         )}
 

@@ -33,9 +33,15 @@ interface BoardProps {
   disabledChips?: number[];
   /** Opción válida de juego derivada por el servidor. */
   validJuegoOption?: { hasJuego: boolean; handType: string } | null;
+  /** Si se reabrió el Pique para que los que pasaron puedan igualar. */
+  piqueReopenActive?: boolean;
+  /** Prompt de resolución inmediata de paso definitivo con juego. */
+  pasoJuegoChoice?: { handType: string } | null;
+  /** Callback al resolver el prompt de paso-juego. */
+  onPasoJuegoResolved?: () => void;
 }
 
-export function Board({ room, phase, pot, piquePot, players, myCards = "", minPique = 500_000, currentMaxBet = 0, disabledChips = [], validJuegoOption = null }: BoardProps) {
+export function Board({ room, phase, pot, piquePot, players, myCards = "", minPique = 500_000, currentMaxBet = 0, disabledChips = [], validJuegoOption = null, piqueReopenActive = false, pasoJuegoChoice = null, onPasoJuegoResolved }: BoardProps) {
   useCardPreloader();
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
@@ -43,6 +49,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   const [manoMessage, setManoMessage] = useState<string | null>(null);
   const [manoTransfer, setManoTransfer] = useState<{ fromId: string; toId: string } | null>(null);
   const prevDealerIdRef = useRef<string>("");
+  const pendingManoRef = useRef<{ fromId: string; toId: string } | null>(null);
   const prevPlayersRef = useRef<any[]>([]);
   const prevMyCardsRef = useRef<string>("");
 
@@ -72,14 +79,25 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   // Intro shows only during the STARTING phase (server-controlled timing)
   const showIntro = phase === 'STARTING';
 
+  // Phases where a fullscreen reveal overlay blocks the table — defer mano transfer animation
+  const isRevealOverlayActive = phase === 'SHOWDOWN' || phase === 'PIQUE_REVEAL';
+
   // Detect dealerId changes to trigger Mano transfer animation + announcement
   useEffect(() => {
     const dealerId = room?.state?.dealerId || "";
     const prevDealerId = prevDealerIdRef.current;
 
     if (dealerId && prevDealerId && dealerId !== prevDealerId && !hideMano) {
+      if (isRevealOverlayActive) {
+        // Queue the transfer — will be flushed when the overlay closes
+        pendingManoRef.current = { fromId: prevDealerId, toId: dealerId };
+        prevDealerIdRef.current = dealerId;
+        return;
+      }
+
       const newMano = players.find(p => p.id === dealerId);
       if (newMano) {
+        pendingManoRef.current = null;
         setManoMessage(`${newMano.nickname} es la nueva mano`);
         setManoTransfer({ fromId: prevDealerId, toId: dealerId });
         const timer = setTimeout(() => {
@@ -92,7 +110,26 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
     }
 
     prevDealerIdRef.current = dealerId;
-  }, [room?.state?.dealerId, players, hideMano]);
+  }, [room?.state?.dealerId, players, hideMano, isRevealOverlayActive]);
+
+  // Flush pending mano transfer when the reveal overlay closes
+  useEffect(() => {
+    if (isRevealOverlayActive || !pendingManoRef.current) return;
+
+    const pending = pendingManoRef.current;
+    pendingManoRef.current = null;
+
+    const newMano = players.find(p => p.id === pending.toId);
+    if (newMano) {
+      setManoMessage(`${newMano.nickname} es la nueva mano`);
+      setManoTransfer(pending);
+      const timer = setTimeout(() => {
+        setManoMessage(null);
+        setManoTransfer(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isRevealOverlayActive, players]);
 
   useEffect(() => {
     const myId = room?.sessionId;
@@ -306,26 +343,54 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
 
       <GameAnnouncer phase={phase} customMessage={manoMessage} />
 
-      {/* Mano Transfer Animation: flying icon between players */}
+      {/* Mano Transfer Animation: flying icon from old seat to new seat */}
       <AnimatePresence>
-        {manoTransfer && (
-          <m.div
-            key={`mano-transfer-${manoTransfer.toId}`}
-            className="absolute inset-0 z-[95] pointer-events-none flex items-center justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+        {manoTransfer && (() => {
+          const fromEl = document.getElementById(`seat-${manoTransfer.fromId}`);
+          const toEl = document.getElementById(`seat-${manoTransfer.toId}`);
+
+          if (fromEl && toEl) {
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = toEl.getBoundingClientRect();
+            const startX = fromRect.left + fromRect.width / 2;
+            const startY = fromRect.top + fromRect.height / 2;
+            const endX = toRect.left + toRect.width / 2;
+            const endY = toRect.top + toRect.height / 2;
+
+            return (
+              <m.div
+                key={`mano-transfer-${manoTransfer.toId}`}
+                className="fixed z-[95] pointer-events-none"
+                initial={{ left: startX - 14, top: startY - 14, scale: 0.5, opacity: 0 }}
+                animate={{ left: endX - 14, top: endY - 14, scale: [0.5, 1.4, 1], opacity: [0, 1, 1] }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+              >
+                <ManoIcon size="md" animate />
+              </m.div>
+            );
+          }
+
+          // Fallback: centered pop if seats not found
+          return (
             <m.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: [0.5, 1.4, 1], opacity: [0, 1, 1] }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
+              key={`mano-transfer-${manoTransfer.toId}`}
+              className="absolute inset-0 z-[95] pointer-events-none flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
             >
-              <ManoIcon size="md" animate />
+              <m.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: [0.5, 1.4, 1], opacity: [0, 1, 1] }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+              >
+                <ManoIcon size="md" animate />
+              </m.div>
             </m.div>
-          </m.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* Admin Spectator Banner */}
@@ -623,6 +688,9 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   isAllIn={me?.isAllIn ?? false}
                   passedWithJuego={me?.passedWithJuego ?? false}
                   validJuegoOption={validJuegoOption}
+                  piqueReopenActive={piqueReopenActive}
+                  pasoJuegoChoice={pasoJuegoChoice}
+                  onPasoJuegoResolved={onPasoJuegoResolved}
                 />
               </div>
             </div>
