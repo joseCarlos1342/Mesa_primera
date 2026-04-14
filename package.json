@@ -18,7 +18,8 @@
     "dev": "turbo dev",
     "dev:web": "npm run dev --workspace=@mesa-primera/web",
     "dev:game": "npm run dev --workspace=game-server",
-    "test": "echo \"Testing placeholder...\"",
+    "test": "npm run test --workspace=web -- --ci --forceExit && npm run test --workspace=game-server",
+    "test:coverage": "npm run test:coverage --workspace=web && npm run test:coverage --workspace=game-server",
     "prepare": "husky"
   },
   "overrides": {

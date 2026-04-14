@@ -52,8 +52,8 @@ jobs:
           node-version: 20
           cache: "npm"
       - run: npm ci
-      - name: Run Jest tests
-        run: npm run test --workspace=web -- --ci --forceExit
+      - name: Run Jest tests with coverage
+        run: npm run test:coverage --workspace=web -- --ci --forceExit
 
   # ── Unit Tests: Game Server (Vitest 4) ──────────────────
   test-game-server:
@@ -66,8 +66,8 @@ jobs:
           node-version: 20
           cache: "npm"
       - run: npm ci
-      - name: Run Vitest tests
-        run: npm run test --workspace=game-server
+      - name: Run Vitest tests with coverage
+        run: npm run test:coverage --workspace=game-server
 
   # ── Build (solo si todos los checks pasan) ─────────────
   build:
