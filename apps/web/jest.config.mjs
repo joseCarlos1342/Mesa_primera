@@ -13,7 +13,22 @@ const config = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-  }
+  },
+  collectCoverageFrom: [
+    'src/app/actions/**/*.ts',
+    'src/utils/**/*.ts',
+    'src/hooks/**/*.ts',
+    'src/lib/**/*.ts',
+    '!src/**/*.d.ts',
+  ],
+  coverageThreshold: {
+    global: {
+      statements: 38,
+      branches: 38,
+      functions: 38,
+      lines: 38,
+    },
+  },
 }
 
 export default createJestConfig(config)
