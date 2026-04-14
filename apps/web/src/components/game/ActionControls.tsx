@@ -30,6 +30,12 @@ interface ActionControlsProps {
   passedWithJuego?: boolean;
   /** Opción válida de juego derivada por el servidor (null = aún no recibida). */
   validJuegoOption?: { hasJuego: boolean; handType: string } | null;
+  /** Si se reabrió el Pique para que los que pasaron puedan igualar. */
+  piqueReopenActive?: boolean;
+  /** Prompt de resolución inmediata: paso definitivo con juego en APUESTA_4_CARTAS. */
+  pasoJuegoChoice?: { handType: string } | null;
+  /** Callback al resolver el prompt de paso-juego. */
+  onPasoJuegoResolved?: () => void;
 }
 
 const EMPTY_CARDS: string[] = [];
@@ -40,10 +46,52 @@ export function ActionControls({
   room, phase, isMyTurn, selectedCards = EMPTY_CARDS, onClearSelection,
   totalBet = 0, onBetConfirm, onBetClear, minPique = 500_000,
   currentMaxBet = 0, myRoundBet = 0, myChips = 0, isAllIn = false,
-  passedWithJuego = false, validJuegoOption = null,
+  passedWithJuego = false, validJuegoOption = null, piqueReopenActive = false,
+  pasoJuegoChoice = null, onPasoJuegoResolved,
 }: ActionControlsProps) {
   if (!isMyTurn || !ACTIVE_PHASES.includes(phase)) return null;
   if (isAllIn && phase !== 'DECLARAR_JUEGO') return null; // Restiado players still declare juego
+
+  // Paso definitivo con juego: resolución inmediata (Llevo Juego / No Llevo)
+  if (pasoJuegoChoice && BETTING_PHASES_4CARDS.includes(phase)) {
+    return (
+      <AnimatePresence>
+        <m.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 20, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          className="flex flex-col items-center gap-1 z-[60] pointer-events-auto shrink-0 bg-[#0a180e]/95 rounded-tl-2xl border-t border-l border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] px-3 py-2 md:p-3"
+        >
+          <span className="text-[8px] md:text-[10px] text-[#d4af37] font-bold uppercase tracking-wider">
+            Tienes {pasoJuegoChoice.handType}
+          </span>
+          <div className="flex flex-row gap-1">
+            <button
+              onClick={() => {
+                if (navigator.vibrate) navigator.vibrate(50);
+                room.send('paso-juego-response', { llevaJuego: true });
+                onPasoJuegoResolved?.();
+              }}
+              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+            >
+              Llevo Juego
+            </button>
+            <button
+              onClick={() => {
+                if (navigator.vibrate) navigator.vibrate(50);
+                room.send('paso-juego-response', { llevaJuego: false });
+                onPasoJuegoResolved?.();
+              }}
+              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
+            >
+              No Llevo
+            </button>
+          </div>
+        </m.div>
+      </AnimatePresence>
+    );
+  }
 
   const is4CardBetting = BETTING_PHASES_4CARDS.includes(phase);
   const isPique = phase === 'PIQUE';
@@ -87,7 +135,7 @@ export function ActionControls({
             }}
             className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
           >
-            VOY ${formatAmount(currentMaxBet)}
+            {piqueReopenActive ? 'IGUALAR' : 'VOY'} ${formatAmount(currentMaxBet)}
           </button>
         )}
         {piqueFixed && !canAffordPique && myChips > 0 && (
