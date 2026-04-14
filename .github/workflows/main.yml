@@ -6,25 +6,90 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# ── Variables CI (placeholders seguros para build) ────────
+env:
+  NODE_ENV: test
+  NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+  NEXT_PUBLIC_GAME_SERVER_URL: http://localhost:2567
+  NEXT_PUBLIC_SOCKET_URL: http://localhost:2567
+
 jobs:
-  build:
-    name: Build and Check
+  # ── Lint ────────────────────────────────────────────────
+  lint:
+    name: ESLint
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: "npm"
+      - run: npm ci
+      - name: Lint web
+        run: npm run lint --workspace=web
 
-      - name: Install dependencies
-        run: npm ci
+  # ── Type Check ──────────────────────────────────────────
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - run: npm ci
+      - name: Typecheck web
+        run: npx tsc --noEmit -p apps/web/tsconfig.json
+      - name: Typecheck game-server
+        run: npx tsc --noEmit -p apps/game-server/tsconfig.json
 
-      - name: Build Monorepo
-        run: npm run build --workspaces
+  # ── Unit Tests: Web (Jest 30) ───────────────────────────
+  test-web:
+    name: Tests Web (Jest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - run: npm ci
+      - name: Run Jest tests
+        run: npm run test --workspace=web -- --ci --forceExit
+
+  # ── Unit Tests: Game Server (Vitest 4) ──────────────────
+  test-game-server:
+    name: Tests Game Server (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - run: npm ci
+      - name: Run Vitest tests
+        run: npm run test --workspace=game-server
+
+  # ── Build ───────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test-web, test-game-server]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - run: npm ci
+      - name: Build web
+        run: npm run build --workspace=web
