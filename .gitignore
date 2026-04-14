@@ -93,6 +93,8 @@ test-*.js
 test-*.ts
 native-test.ts
 simulate-game.ts
+google_oauth_test.mjs
+tatus
 
 # Internal documentation (business logic, sprints, deployment, anti-collusion)
 docs/
