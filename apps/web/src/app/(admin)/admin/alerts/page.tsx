@@ -60,8 +60,8 @@ export default function AdminAlertsPage() {
   const fetchRooms = useCallback(async () => {
     try {
       setRoomsLoading(true);
-      const rooms = await colyseusClient.getAvailableRooms('mesa');
-      setActiveRooms(rooms);
+      const response = await colyseusClient.http.get('/matchmake/mesa');
+      setActiveRooms(response.data ?? []);
     } catch (e) {
       console.warn('[Alerts] Error fetching rooms:', e);
       setActiveRooms([]);
