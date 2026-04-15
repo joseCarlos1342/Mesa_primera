@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { AlertTriangle, ShieldAlert, Wrench, HelpCircle, Clock, CheckCircle2, XCircle, Eye, ArrowLeft, Tv } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, Wrench, HelpCircle, Clock, CheckCircle2, XCircle, Eye, Tv } from 'lucide-react';
 import Link from 'next/link';
 
 interface HelpRequest {
@@ -146,10 +146,6 @@ export default function AdminAlertsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/5">
         <div>
-          <Link href="/admin" className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-300 text-xs font-bold uppercase tracking-widest mb-3 transition-colors">
-            <ArrowLeft className="w-3 h-3" />
-            Centro de Mando
-          </Link>
           <div className="flex items-center gap-3">
             <div className={`w-3 h-3 rounded-full ${pendingCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
             <h1 className="text-4xl font-black italic tracking-tighter bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent">

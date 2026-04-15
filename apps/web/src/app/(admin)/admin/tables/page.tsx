@@ -4,6 +4,7 @@ import { formatCurrency } from "@/utils/format";
 import { TableControls } from "@/components/admin/TableControls";
 import { PlayerControls } from "@/components/admin/PlayerControls";
 import { CreateTableModal } from "@/components/admin/CreateTableModal";
+import { ResponsiveDataView } from "@/components/admin/ResponsiveDataView";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -148,69 +149,130 @@ export default async function AdminTablesPage() {
              <p className="text-sm font-bold">No hay registros financieros aún.</p>
           </div>
         ) : (
-          <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
-             <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-300">
-                   <thead className="text-[10px] uppercase bg-slate-950/80 text-slate-500 font-black tracking-[0.2em] border-b border-white/5">
-                      <tr>
-                         <th className="px-6 py-5">Mesa</th>
-                         <th className="px-6 py-5 text-center">Partidas</th>
-                         <th className="px-6 py-5 text-center">Jugadores</th>
-                         <th className="px-6 py-5 text-right">Total Apostado</th>
-                         <th className="px-6 py-5 text-right">Premios</th>
-                         <th className="px-6 py-5 text-right">
-                           <span className="flex items-center justify-end gap-1">
-                             <TrendingUp className="w-3 h-3 text-emerald-400" />
-                             Rake Casa
-                           </span>
-                         </th>
-                         <th className="px-6 py-5 text-right">Última Actividad</th>
-                      </tr>
-                   </thead>
-                   <tbody className="divide-y divide-white/5">
-                      {financials.map(f => (
-                         <tr key={f.table_id} className="hover:bg-white/5 transition-colors">
-                            <td className="px-6 py-5">
-                               <div className="flex items-center gap-3">
-                                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                                     <DollarSign className="w-4 h-4 text-amber-400" />
-                                  </div>
-                                  <div>
-                                     <p className="font-black text-white text-sm tracking-tight">{f.table_name}</p>
-                                     <p className="text-[10px] font-mono text-slate-500 uppercase">{f.game_type}</p>
-                                  </div>
-                               </div>
-                            </td>
-                            <td className="px-6 py-5 text-center">
-                               <span className="bg-slate-800 text-white text-xs font-black px-3 py-1 rounded-full border border-white/10">
-                                 {f.total_games}
-                               </span>
-                            </td>
-                            <td className="px-6 py-5 text-center">
-                               <span className="text-sm font-bold text-slate-300">{f.unique_players}</span>
-                            </td>
-                            <td className="px-6 py-5 text-right font-black text-slate-300 text-sm">
-                               {formatCurrency(f.total_bets_cents)}
-                            </td>
-                            <td className="px-6 py-5 text-right font-black text-white text-sm">
-                               {formatCurrency(f.total_winnings_cents)}
-                            </td>
-                            <td className="px-6 py-5 text-right">
-                               <span className="font-black text-emerald-400 text-base">
-                                 {formatCurrency(f.total_rake_cents)}
-                               </span>
-                            </td>
-                            <td className="px-6 py-5 text-right text-xs text-slate-500">
-                               {f.last_activity
-                                 ? new Date(f.last_activity).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-                                 : 'Sin actividad'}
-                            </td>
-                         </tr>
-                      ))}
-                   </tbody>
-                </table>
-             </div>
-          </div>
+          <ResponsiveDataView
+            columns={[
+              {
+                key: "table",
+                header: "Mesa",
+                render: (f) => (
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
+                      <DollarSign className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="font-black text-white text-sm tracking-tight">{f.table_name}</p>
+                      <p className="text-[10px] font-mono text-slate-500 uppercase">{f.game_type}</p>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: "games",
+                header: "Partidas",
+                headerAlign: "center",
+                align: "center",
+                render: (f) => (
+                  <span className="bg-slate-800 text-white text-xs font-black px-3 py-1 rounded-full border border-white/10">
+                    {f.total_games}
+                  </span>
+                ),
+              },
+              {
+                key: "players",
+                header: "Jugadores",
+                headerAlign: "center",
+                align: "center",
+                render: (f) => (
+                  <span className="text-sm font-bold text-slate-300">{f.unique_players}</span>
+                ),
+              },
+              {
+                key: "bets",
+                header: "Total Apostado",
+                headerAlign: "right",
+                align: "right",
+                render: (f) => (
+                  <span className="font-black text-slate-300 text-sm">{formatCurrency(f.total_bets_cents)}</span>
+                ),
+              },
+              {
+                key: "winnings",
+                header: "Premios",
+                headerAlign: "right",
+                align: "right",
+                render: (f) => (
+                  <span className="font-black text-white text-sm">{formatCurrency(f.total_winnings_cents)}</span>
+                ),
+              },
+              {
+                key: "rake",
+                header: "Rake Casa",
+                headerAlign: "right",
+                align: "right",
+                render: (f) => (
+                  <span className="font-black text-emerald-400 text-base">{formatCurrency(f.total_rake_cents)}</span>
+                ),
+              },
+              {
+                key: "activity",
+                header: "Última Actividad",
+                headerAlign: "right",
+                align: "right",
+                render: (f) => (
+                  <span className="text-xs text-slate-500">
+                    {f.last_activity
+                      ? new Date(f.last_activity).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                      : 'Sin actividad'}
+                  </span>
+                ),
+              },
+            ]}
+            data={financials}
+            keyExtractor={(f) => f.table_id}
+            emptyMessage="No hay registros financieros aún."
+            renderCard={(f) => (
+              <div className="space-y-3">
+                {/* Header: table name */}
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
+                    <DollarSign className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="font-black text-white text-sm tracking-tight">{f.table_name}</p>
+                    <p className="text-[10px] font-mono text-slate-500 uppercase">{f.game_type}</p>
+                  </div>
+                </div>
+                {/* Stats grid */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Partidas</p>
+                    <p className="font-black text-white">{f.total_games}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Jugadores</p>
+                    <p className="font-bold text-slate-300">{f.unique_players}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Rake</p>
+                    <p className="font-black text-emerald-400">{formatCurrency(f.total_rake_cents)}</p>
+                  </div>
+                </div>
+                {/* Bottom: bets + winnings + date */}
+                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
+                  <span className="text-slate-400">
+                    Apostado: <span className="font-black text-slate-300">{formatCurrency(f.total_bets_cents)}</span>
+                    {" · "}
+                    Premios: <span className="font-black text-white">{formatCurrency(f.total_winnings_cents)}</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    {f.last_activity
+                      ? new Date(f.last_activity).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+            )}
+          />
         )}
       </section>
 
@@ -221,68 +283,124 @@ export default async function AdminTablesPage() {
            <h2 className="text-xl font-black italic tracking-tight text-white uppercase">Gestión de Mesas</h2>
         </div>
 
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
-           <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                 <thead className="text-[10px] uppercase bg-slate-950/80 text-slate-500 font-black tracking-[0.2em] border-b border-white/5">
-                    <tr>
-                       <th className="px-8 py-5">Identificador</th>
-                       <th className="px-8 py-5">Tipo de Juego</th>
-                       <th className="px-8 py-5">Capacidad</th>
-                       <th className="px-8 py-5">Mínimo Bet</th>
-                       <th className="px-8 py-5 text-right">Mantenimiento</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/5">
-                    {tables.map(table => (
-                       <tr key={table.id} className="hover:bg-white/5 transition-colors group/row">
-                          <td className="px-8 py-5">
-                             <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
-                                   <Gamepad2 className="w-5 h-5 text-indigo-400" />
-                                </div>
-                                <div>
-                                   <p className="font-black text-white text-base tracking-tight">{table.name}</p>
-                                   <p className="text-[10px] font-mono text-slate-500 uppercase">{table.id.substring(0,8)}</p>
-                                </div>
-                             </div>
-                          </td>
-                          <td className="px-8 py-5">
-                             <span className="bg-slate-800 text-slate-300 text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase">
-                                {table.game_type}
-                             </span>
-                          </td>
-                          <td className="px-8 py-5 font-bold text-slate-300">
-                             {table.max_players} Jugadores
-                          </td>
-                          <td className="px-8 py-5 font-black text-emerald-400 text-base">
-                             {formatCurrency(table.min_bet)}
-                          </td>
-                          <td className="px-8 py-5 text-right">
-                             <div className="flex justify-end gap-3 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                <button
-                                  className="p-3 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-                                  title="Editar (Próximamente)"
-                                >
-                                   <Settings2 className="w-5 h-5" />
-                                </button>
-                                <form action={async () => { "use server"; await deleteTable(table.id); }}>
-                                  <button
-                                    type="submit"
-                                    className="p-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all"
-                                    onClick={(e) => { if(!confirm("¿Eliminar configuración de mesa?")) e.preventDefault(); }}
-                                  >
-                                     <Trash2 className="w-5 h-5" />
-                                  </button>
-                                </form>
-                             </div>
-                          </td>
-                       </tr>
-                    ))}
-                 </tbody>
-              </table>
-           </div>
-        </div>
+        <ResponsiveDataView
+          columns={[
+            {
+              key: "name",
+              header: "Identificador",
+              render: (table) => (
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 shrink-0">
+                    <Gamepad2 className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="font-black text-white text-base tracking-tight">{table.name}</p>
+                    <p className="text-[10px] font-mono text-slate-500 uppercase">{table.id.substring(0,8)}</p>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "game_type",
+              header: "Tipo de Juego",
+              render: (table) => (
+                <span className="bg-slate-800 text-slate-300 text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase">
+                  {table.game_type}
+                </span>
+              ),
+            },
+            {
+              key: "capacity",
+              header: "Capacidad",
+              render: (table) => (
+                <span className="font-bold text-slate-300">{table.max_players} Jugadores</span>
+              ),
+            },
+            {
+              key: "min_bet",
+              header: "Mínimo Bet",
+              render: (table) => (
+                <span className="font-black text-emerald-400 text-base">{formatCurrency(table.min_bet)}</span>
+              ),
+            },
+            {
+              key: "actions",
+              header: "Mantenimiento",
+              headerAlign: "right",
+              align: "right",
+              render: (table) => (
+                <div className="flex justify-end gap-3">
+                  <button
+                    className="p-3 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                    title="Editar (Próximamente)"
+                  >
+                    <Settings2 className="w-5 h-5" />
+                  </button>
+                  <form action={async () => { "use server"; await deleteTable(table.id); }}>
+                    <button
+                      type="submit"
+                      className="p-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all"
+                      onClick={(e) => { if(!confirm("¿Eliminar configuración de mesa?")) e.preventDefault(); }}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </form>
+                </div>
+              ),
+            },
+          ]}
+          data={tables}
+          keyExtractor={(table) => table.id}
+          emptyMessage="No hay mesas configuradas."
+          renderCard={(table) => (
+            <div className="space-y-3">
+              {/* Header: name */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 shrink-0">
+                    <Gamepad2 className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="font-black text-white tracking-tight">{table.name}</p>
+                    <p className="text-[10px] font-mono text-slate-500 uppercase">{table.id.substring(0,8)}</p>
+                  </div>
+                </div>
+                <span className="bg-slate-800 text-slate-300 text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase">
+                  {table.game_type}
+                </span>
+              </div>
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Capacidad</p>
+                  <p className="font-bold text-slate-300">{table.max_players} Jugadores</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Mínimo Bet</p>
+                  <p className="font-black text-emerald-400">{formatCurrency(table.min_bet)}</p>
+                </div>
+              </div>
+              {/* Actions */}
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+                <button
+                  className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                  title="Editar (Próximamente)"
+                >
+                  <Settings2 className="w-4 h-4" />
+                </button>
+                <form action={async () => { "use server"; await deleteTable(table.id); }}>
+                  <button
+                    type="submit"
+                    className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all"
+                    onClick={(e) => { if(!confirm("¿Eliminar configuración de mesa?")) e.preventDefault(); }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+        />
       </section>
     </div>
   );

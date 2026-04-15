@@ -3,6 +3,7 @@ import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
 import { ArrowLeft, Film, Shield, BookOpen, Users, Trophy, Clock, Layers, Video, Download, Loader2, AlertCircle } from "lucide-react";
 import { AdminReplayViewer } from "./AdminReplayViewer";
+import { ResponsiveDataView } from "@/components/admin/ResponsiveDataView";
 
 export default async function AdminReplayDetailPage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = await params;
@@ -202,69 +203,128 @@ export default async function AdminReplayDetailPage({ params }: { params: Promis
       <AdminReplayViewer timeline={timeline} players={players} />
 
       {/* Financial Ledger */}
-      <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
-        <div className="px-6 py-4 border-b border-white/5 bg-slate-950/50">
-          <h3 className="font-bold text-white flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-emerald-400" />
-            Registros del Ledger ({ledger.length})
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="text-xs uppercase bg-slate-950/80 text-slate-500 font-black tracking-widest border-b border-white/5">
-              <tr>
-                <th className="px-6 py-4">Hora</th>
-                <th className="px-6 py-4">Usuario</th>
-                <th className="px-6 py-4">Tipo</th>
-                <th className="px-6 py-4 text-right">Débito</th>
-                <th className="px-6 py-4 text-right">Crédito</th>
-                <th className="px-6 py-4 text-right">Saldo</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {ledger.map(entry => {
-                const player = players.find(p => p.userId === entry.user_id);
-                return (
-                  <tr key={entry.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-3 text-xs font-mono text-slate-500">
-                      {new Date(entry.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </td>
-                    <td className="px-6 py-3 text-xs font-bold text-white">
-                      {player?.nickname || entry.user_id?.substring(0, 8)}
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                        entry.type === 'win' ? 'bg-emerald-500/20 text-emerald-400' :
-                        entry.type === 'bet' ? 'bg-red-500/20 text-red-400' :
-                        entry.type === 'rake' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-slate-500/20 text-slate-400'
-                      }`}>
-                        {entry.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-right font-black text-red-400 text-xs">
-                      {entry.direction === 'debit' ? formatCurrency(entry.amount_cents) : ''}
-                    </td>
-                    <td className="px-6 py-3 text-right font-black text-emerald-400 text-xs">
-                      {entry.direction === 'credit' ? formatCurrency(entry.amount_cents) : ''}
-                    </td>
-                    <td className="px-6 py-3 text-right font-mono text-xs text-slate-400">
-                      {formatCurrency(entry.balance_after_cents)}
-                    </td>
-                  </tr>
-                );
-              })}
-              {ledger.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500 font-medium">
-                    Sin registros financieros para esta partida.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ResponsiveDataView
+        columns={[
+          {
+            key: "time",
+            header: "Hora",
+            render: (entry) => (
+              <span className="text-xs font-mono text-slate-500">
+                {new Date(entry.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            ),
+          },
+          {
+            key: "user",
+            header: "Usuario",
+            render: (entry) => {
+              const player = players.find(p => p.userId === entry.user_id);
+              return (
+                <span className="text-xs font-bold text-white">
+                  {player?.nickname || entry.user_id?.substring(0, 8)}
+                </span>
+              );
+            },
+          },
+          {
+            key: "type",
+            header: "Tipo",
+            render: (entry) => (
+              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                entry.type === 'win' ? 'bg-emerald-500/20 text-emerald-400' :
+                entry.type === 'bet' ? 'bg-red-500/20 text-red-400' :
+                entry.type === 'rake' ? 'bg-blue-500/20 text-blue-400' :
+                'bg-slate-500/20 text-slate-400'
+              }`}>
+                {entry.type}
+              </span>
+            ),
+          },
+          {
+            key: "debit",
+            header: "Débito",
+            headerAlign: "right",
+            align: "right",
+            render: (entry) => (
+              <span className="font-black text-red-400 text-xs">
+                {entry.direction === 'debit' ? formatCurrency(entry.amount_cents) : ''}
+              </span>
+            ),
+          },
+          {
+            key: "credit",
+            header: "Crédito",
+            headerAlign: "right",
+            align: "right",
+            render: (entry) => (
+              <span className="font-black text-emerald-400 text-xs">
+                {entry.direction === 'credit' ? formatCurrency(entry.amount_cents) : ''}
+              </span>
+            ),
+          },
+          {
+            key: "balance",
+            header: "Saldo",
+            headerAlign: "right",
+            align: "right",
+            render: (entry) => (
+              <span className="font-mono text-xs text-slate-400">
+                {formatCurrency(entry.balance_after_cents)}
+              </span>
+            ),
+          },
+        ]}
+        data={ledger}
+        keyExtractor={(entry) => entry.id}
+        emptyMessage="Sin registros financieros para esta partida."
+        header={
+          <div className="px-6 py-4 border-b border-white/5 bg-slate-950/50">
+            <h3 className="font-bold text-white flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-emerald-400" />
+              Registros del Ledger ({ledger.length})
+            </h3>
+          </div>
+        }
+        renderCard={(entry) => {
+          const player = players.find(p => p.userId === entry.user_id);
+          return (
+            <div className="space-y-2">
+              {/* Header: user + type + time */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white text-sm">{player?.nickname || entry.user_id?.substring(0, 8)}</span>
+                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                    entry.type === 'win' ? 'bg-emerald-500/20 text-emerald-400' :
+                    entry.type === 'bet' ? 'bg-red-500/20 text-red-400' :
+                    entry.type === 'rake' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-slate-500/20 text-slate-400'
+                  }`}>
+                    {entry.type}
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-500">
+                  {new Date(entry.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              </div>
+              {/* Amount + balance */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">
+                    {entry.direction === 'debit' ? 'Débito' : 'Crédito'}
+                  </p>
+                  <p className={`font-black ${entry.direction === 'credit' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {entry.direction === 'credit' ? '+' : '-'}{formatCurrency(entry.amount_cents)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Saldo</p>
+                  <p className="font-mono text-slate-300">{formatCurrency(entry.balance_after_cents)}</p>
+                </div>
+              </div>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

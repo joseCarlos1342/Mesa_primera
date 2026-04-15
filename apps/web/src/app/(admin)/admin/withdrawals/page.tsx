@@ -1,7 +1,6 @@
 import { getPendingWithdrawals } from '@/app/actions/withdrawals'
 import { formatCurrency } from '@/utils/format'
-import { ArrowLeft, User, CheckCircle2, Clock, Wallet, AlertCircle } from 'lucide-react'
-import Link from 'next/link'
+import { User, CheckCircle2, Clock, Wallet, AlertCircle } from 'lucide-react'
 import { WithdrawalActions } from './WithdrawalActions'
 export default async function AdminWithdrawalsPage() {
   const result = await getPendingWithdrawals()
@@ -34,13 +33,6 @@ export default async function AdminWithdrawalsPage() {
               </p>
             </div>
           </div>
-          <Link 
-            href="/admin" 
-            className="group flex items-center gap-3 px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-400 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-200">Panel de Control</span>
-          </Link>
         </div>
       </header>
 

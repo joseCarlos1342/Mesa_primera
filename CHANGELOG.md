@@ -1,5 +1,17 @@
 # Changelog
 
+## [Sprint 6.6] - 2026-04-16
+
+### Added
+
+- **ResponsiveDataView compartido** (`ResponsiveDataView.tsx`):
+  Nuevo componente genérico `<ResponsiveDataView<T>>` que renderiza tabla en desktop (lg:+) y tarjetas verticales en mobile (<lg). Soporta `columns`, `renderCard`, slots `header`/`footer`, alignment por columna, y estados vacíos personalizados.
+
+### Changed
+
+- **Tablas admin → responsive** (users, ganancias, audit, ledger, tables, replays):
+  Todas las tablas del panel de administración migradas a `ResponsiveDataView`. En desktop se mantiene la tabla con alineación centrada vertical (`align-middle`) y texto sin truncamiento. En mobile se muestran tarjetas verticales con layout de grilla adaptado a cada vista. Corregido `truncate` → `wrap-break-word` en descripciones y razones de baneo para que el contenido sea siempre visible.
+
 ## [Sprint 6.5] - 2026-04-15
 
 ### Added
