@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { logAdminAction } from "./admin-audit";
 
 async function ensureAdmin(supabase: any) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -19,7 +20,7 @@ async function ensureAdmin(supabase: any) {
 
 export async function sendBroadcast(data: { title: string, body: string, type: string }) {
   const supabase = await createClient();
-  await ensureAdmin(supabase);
+  const adminId = await ensureAdmin(supabase);
 
   // Fetch all player IDs (excluding admins if preferred, but usually broadcast is for everyone)
   const { data: users, error: fetchError } = await supabase
@@ -44,6 +45,11 @@ export async function sendBroadcast(data: { title: string, body: string, type: s
     .insert(notifications);
 
   if (insertError) throw insertError;
+
+  await logAdminAction(adminId, 'broadcast_sent', 'broadcast', data.type, {
+    title: data.title,
+    audience_count: users.length,
+  }, { context: 'communications' });
 
   revalidatePath('/admin');
   return { success: true, count: users.length };

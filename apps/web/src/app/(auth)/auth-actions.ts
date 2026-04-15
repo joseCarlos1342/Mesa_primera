@@ -99,6 +99,41 @@ function isOtpProviderDisabled(errorMessage: string): boolean {
   return normalized.includes('signups not allowed for otp') || normalized.includes('otp_disabled')
 }
 
+/**
+ * Checks if a user has an active account-level sanction (full_suspension or permanent_ban).
+ * If blocked, signs out the user and returns a Spanish error message.
+ * Fail-open: if the RPC call fails, login proceeds normally.
+ */
+async function checkAccountSanction(
+  supabase: any,
+  userId: string
+): Promise<{ blocked: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('check_account_eligibility', {
+      p_user_id: userId,
+    })
+    if (error) throw error
+    if (data && data.blocked) {
+      await supabase.auth.signOut()
+      const expiresAt = data.expires_at
+        ? new Date(data.expires_at).toLocaleDateString('es-CO', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })
+        : null
+      const msg = expiresAt
+        ? `Tu cuenta está suspendida hasta ${expiresAt}. Motivo: ${data.reason || 'sanción administrativa'}`
+        : `Tu cuenta ha sido suspendida permanentemente. Motivo: ${data.reason || 'sanción administrativa'}`
+      return { blocked: true, error: msg }
+    }
+    return { blocked: false }
+  } catch {
+    // Fail-open: don't block login on DB errors
+    return { blocked: false }
+  }
+}
+
 async function getPhoneProfileCandidate(phone: string) {
   const { createAdminClient } = await import('@/utils/supabase/server')
   const adminSupabase = await createAdminClient()
@@ -291,6 +326,10 @@ export async function loginWithPin(prevState: unknown, formData: FormData) {
         .eq('user_id', data.user.id)
         .eq('device_id', deviceCookie)
 
+      // Check for account-level sanctions before completing login
+      const sanction = await checkAccountSanction(supabase, data.user.id)
+      if (sanction.blocked) return { error: sanction.error }
+
       await enforceSessionPolicy(data.user.id)
       await setAppLockBypassCookie()
       redirect('/')
@@ -433,12 +472,15 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       redirect(`/register/player/pin`)
     }
 
-    case 'device-verify':
+    case 'device-verify': {
       // User verified new device during login — register device + complete login
+      const dvSanction = await checkAccountSanction(supabase, data.user.id)
+      if (dvSanction.blocked) return { error: dvSanction.error }
       await registerTrustedDevice(data.user.id)
       await enforceSessionPolicy(data.user.id)
       await setAppLockBypassCookie()
       redirect('/')
+    }
 
     case 'recovery':
       // User verified for PIN recovery — redirect to set new PIN
@@ -448,11 +490,14 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       // Legacy user without PIN — verified via OTP, now redirect to set PIN
       redirect(`/register/player/pin`)
 
-    default:
+    default: {
       // Legacy login flow (backwards compat)
+      const defSanction = await checkAccountSanction(supabase, data.user.id)
+      if (defSanction.blocked) return { error: defSanction.error }
       await enforceSessionPolicy(data.user.id)
       await setAppLockBypassCookie()
       redirect('/')
+    }
   }
 }
 

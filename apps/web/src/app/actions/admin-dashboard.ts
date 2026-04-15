@@ -17,11 +17,13 @@ export type AdminDashboardStats = {
   volume24h: number;
   pendingSupport: number;
   pendingAlerts: number;
-  vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO";
+  vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO" | "DESCONOCIDO";
   vaultCoverage: number;
   vaultBalance: number;
   vaultTotalDeposits: number;
   vaultTotalWithdrawals: number;
+  warnings: string[];
+  fetchedAt: string;
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
@@ -42,6 +44,8 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   if (userRecord?.role !== "admin") {
     redirect("/dashboard");
   }
+
+  const warnings: string[] = [];
 
   // Fetch pending deposits count
   const { count: pendingDepositsCount } = await supabase
@@ -70,6 +74,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       activeGamesCount = rooms.filter((r: any) => r.clients > 0).length;
     }
   } catch {
+    warnings.push('Game server /matchmake/ no responde — usando fallback DB');
     // Fallback: count recent in-progress games in DB (created within last 24h)
     const { count } = await supabase
       .from("games")
@@ -88,6 +93,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   if (!usersSumError && usersData != null) {
       totalUsersBalance = usersData;
   } else {
+     warnings.push('get_total_users_balance RPC falló — usando fallback');
      // fallback if RPC doesn't exist yet
      const { data: allWallets } = await supabase.from("wallets").select("balance_cents");
      totalUsersBalance = allWallets?.reduce((acc, w) => acc + (Number(w.balance_cents) || 0), 0) || 0;
@@ -104,6 +110,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   if (!ledgerSumError && ledgerSumData != null) {
     totalLedgerBalance = ledgerSumData;
   } else {
+    warnings.push('get_ledger_net_balance RPC falló — usando fallback');
     // If RPC is missing, we will simulate it or fetch raw (not recommended for large tables, but okay for MVP)
     const { data: allLedger } = await supabase.from("ledger").select("amount_cents, direction").eq("status", "completed");
     if (allLedger) {
@@ -179,7 +186,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   let vaultBalance = 0;
   let vaultTotalDeposits = 0;
   let vaultTotalWithdrawals = 0;
-  let vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO" = "OPERATIVO";
+  let vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO" | "DESCONOCIDO" = "OPERATIVO";
 
   const { data: vaultData, error: vaultError } = await supabase.rpc("get_vault_status");
   if (!vaultError && vaultData) {
@@ -187,9 +194,13 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     vaultTotalWithdrawals = vaultData.total_withdrawals ?? 0;
     vaultBalance = vaultData.vault_balance ?? 0;
     vaultCoverage = vaultData.coverage ?? 100;
+  } else {
+    warnings.push('get_vault_status RPC falló — estado desconocido');
   }
 
-  if (vaultCoverage >= 100) {
+  if (vaultError) {
+    vaultStatus = "DESCONOCIDO";
+  } else if (vaultCoverage >= 100) {
     vaultStatus = "OPERATIVO";
   } else if (vaultCoverage >= 90) {
     vaultStatus = "ALERTA";
@@ -216,5 +227,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     vaultBalance,
     vaultTotalDeposits,
     vaultTotalWithdrawals,
+    warnings,
+    fetchedAt: new Date().toISOString(),
   };
 }

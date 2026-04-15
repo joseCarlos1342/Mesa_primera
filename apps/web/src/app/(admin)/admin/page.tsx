@@ -1,7 +1,9 @@
-import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film, ScrollText, Info } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film, ScrollText, Info, Search, Scale, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { getAdminDashboardStats } from "@/app/actions/admin-dashboard";
 import { formatCurrency } from "@/utils/format";
+import { DashboardWarnings } from "@/components/admin/DashboardWarnings";
+import { DashboardAutoRefresh } from "@/components/admin/DashboardAutoRefresh";
 
 export default async function AdminPage() {
   let statsData: Awaited<ReturnType<typeof getAdminDashboardStats>>;
@@ -53,6 +55,8 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-full space-y-10 animate-in fade-in duration-700">
+      <DashboardWarnings warnings={statsData.warnings} />
+
       {/* Welcome & Time Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/5">
         <div>
@@ -73,17 +77,21 @@ export default async function AdminPage() {
           <div className={`group relative backdrop-blur-xl border px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl cursor-help ${
             statsData.vaultStatus === "OPERATIVO" ? "bg-emerald-900/20 border-emerald-500/20" :
             statsData.vaultStatus === "ALERTA" ? "bg-amber-900/20 border-amber-500/20" :
+            statsData.vaultStatus === "DESCONOCIDO" ? "bg-slate-800/40 border-slate-600/30" :
             "bg-red-900/20 border-red-500/20"
           }`}>
             <div className="text-right">
               <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Status Bóveda</p>
               <div className="flex items-center justify-end gap-2 mt-0.5">
-                {statsData.vaultStatus === "OPERATIVO" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-red-400" />}
+                {statsData.vaultStatus === "OPERATIVO" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> :
+                  statsData.vaultStatus === "DESCONOCIDO" ? <HelpCircle className="w-4 h-4 text-slate-400" /> :
+                  <AlertTriangle className="w-4 h-4 text-red-400" />}
                 <p className={`font-bold text-sm ${
                   statsData.vaultStatus === "OPERATIVO" ? "text-emerald-400" :
                   statsData.vaultStatus === "ALERTA" ? "text-amber-400" :
+                  statsData.vaultStatus === "DESCONOCIDO" ? "text-slate-300" :
                   "text-red-400"
-                }`}>{statsData.vaultStatus} • {statsData.vaultCoverage}%</p>
+                }`}>{statsData.vaultStatus}{statsData.vaultStatus !== "DESCONOCIDO" ? ` • ${statsData.vaultCoverage}%` : ""}</p>
               </div>
             </div>
             {/* Tooltip */}
@@ -154,7 +162,7 @@ export default async function AdminPage() {
               <div className={`p-3 rounded-2xl bg-slate-950/50 border border-white/5 ${stat.color} group-hover:scale-110 transition-transform`}>
                 {stat.icon}
               </div>
-              <span className="text-[10px] font-bold text-slate-600 tracking-tighter">REFRESH: LIVE</span>
+              <DashboardAutoRefresh fetchedAt={statsData.fetchedAt} />
             </div>
             <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-1">{stat.label}</p>
             <p className="text-3xl font-black tracking-tight text-white">{stat.value}</p>
@@ -338,7 +346,43 @@ export default async function AdminPage() {
             <AlertTriangle className="w-20 h-20" />
           </div>
         </Link>
-      </div>
+        <Link href="/admin/consultas" className="group relative overflow-hidden bg-gradient-to-br from-teal-500/10 to-transparent backdrop-blur-2xl border border-teal-500/20 p-6 rounded-[2rem] hover:scale-[1.02] transition-all hover:border-teal-500/40 shadow-2xl">
+          <div className="relative z-10 flex gap-4 items-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-teal-500/20 flex items-center justify-center border border-teal-500/30">
+              <Search className="w-6 h-6 text-teal-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight text-white">Consultas</h3>
+            </div>
+          </div>
+          <div className="relative z-10">
+             <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-white">Investigar</span>
+             </div>
+          </div>
+          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Search className="w-20 h-20" />
+          </div>
+        </Link>
+
+        <Link href="/admin/disputes" className="group relative overflow-hidden bg-gradient-to-br from-pink-500/10 to-transparent backdrop-blur-2xl border border-pink-500/20 p-6 rounded-[2rem] hover:scale-[1.02] transition-all hover:border-pink-500/40 shadow-2xl">
+          <div className="relative z-10 flex gap-4 items-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-pink-500/20 flex items-center justify-center border border-pink-500/30">
+              <Scale className="w-6 h-6 text-pink-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight text-white">Disputas</h3>
+            </div>
+          </div>
+          <div className="relative z-10">
+             <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-white">Gestión</span>
+             </div>
+          </div>
+          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Scale className="w-20 h-20" />
+          </div>
+        </Link>      </div>
     </div>
   );
 }

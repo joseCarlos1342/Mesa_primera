@@ -8,6 +8,9 @@ const { mockInsert, mockFrom } = vi.hoisted(() => {
   };
 });
 
+// Also provide an async-friendly mock for emitAsync tests
+const mockInsertAsync = vi.fn().mockResolvedValue({ error: null });
+
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({
     from: mockFrom.mockReturnValue({
@@ -247,6 +250,78 @@ describe('AlertService', () => {
         expect.objectContaining({
           title: expect.stringContaining('1 pares'),
         }),
+      );
+    });
+  });
+
+  // ── emitAsync ───────────────────────────────────────────
+
+  describe('emitAsync', () => {
+    beforeEach(() => {
+      mockInsertAsync.mockResolvedValue({ error: null });
+      // Switch mockFrom to return the async insert for emitAsync tests
+      mockFrom.mockReturnValue({ insert: mockInsertAsync });
+    });
+
+    afterEach(() => {
+      // Restore the sync insert mock
+      mockFrom.mockReturnValue({ insert: mockInsert });
+    });
+
+    it('succeeds on first try without retries', async () => {
+      await AlertService.emitAsync({
+        severity: 'critical',
+        category: 'test',
+        title: 'First try OK',
+      });
+
+      expect(mockInsertAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries critical alerts up to 2 times on failure', async () => {
+      mockInsertAsync
+        .mockResolvedValueOnce({ error: { message: 'fail 1' } })
+        .mockResolvedValueOnce({ error: { message: 'fail 2' } })
+        .mockResolvedValueOnce({ error: null });
+
+      await AlertService.emitAsync({
+        severity: 'critical',
+        category: 'test',
+        title: 'Retry test',
+      });
+
+      expect(mockInsertAsync).toHaveBeenCalledTimes(3);
+    });
+
+    it('does NOT retry non-critical alerts', async () => {
+      mockInsertAsync.mockResolvedValueOnce({ error: { message: 'fail' } });
+
+      await AlertService.emitAsync({
+        severity: 'warning',
+        category: 'test',
+        title: 'No retry',
+      });
+
+      expect(mockInsertAsync).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to persist alert after retries'),
+        expect.any(String),
+      );
+    });
+
+    it('logs error after all retries exhausted', async () => {
+      mockInsertAsync.mockResolvedValue({ error: { message: 'persistent failure' } });
+
+      await AlertService.emitAsync({
+        severity: 'critical',
+        category: 'test',
+        title: 'Exhaust retries',
+      });
+
+      expect(mockInsertAsync).toHaveBeenCalledTimes(3);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to persist alert after retries'),
+        'persistent failure',
       );
     });
   });

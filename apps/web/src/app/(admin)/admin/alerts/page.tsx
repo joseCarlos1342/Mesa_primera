@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { AlertTriangle, ShieldAlert, Wrench, HelpCircle, Clock, CheckCircle2, XCircle, Eye, Tv } from 'lucide-react';
+import { client as colyseusClient } from '@/lib/colyseus';
+import { AlertTriangle, ShieldAlert, Wrench, HelpCircle, Clock, CheckCircle2, XCircle, Eye, Tv, Users, Gamepad2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 interface HelpRequest {
@@ -50,8 +51,30 @@ export default function AdminAlertsPage() {
   const [filter, setFilter] = useState<'active' | 'all'>('active');
   const [updating, setUpdating] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState<Record<string, string>>({});
+  const [activeRooms, setActiveRooms] = useState<any[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
 
   const supabase = createClient();
+
+  // Fetch active Colyseus rooms
+  const fetchRooms = useCallback(async () => {
+    try {
+      setRoomsLoading(true);
+      const rooms = await colyseusClient.getAvailableRooms('mesa');
+      setActiveRooms(rooms);
+    } catch (e) {
+      console.warn('[Alerts] Error fetching rooms:', e);
+      setActiveRooms([]);
+    } finally {
+      setRoomsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRooms();
+    const interval = setInterval(fetchRooms, 15_000); // Refresh every 15s
+    return () => clearInterval(interval);
+  }, [fetchRooms]);
 
   // Initial fetch
   useEffect(() => {
@@ -149,10 +172,10 @@ export default function AdminAlertsPage() {
           <div className="flex items-center gap-3">
             <div className={`w-3 h-3 rounded-full ${pendingCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
             <h1 className="text-4xl font-black italic tracking-tighter bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent">
-              ALERTAS DE MESA
+              SUPERVISIÓN DE MESAS
             </h1>
           </div>
-          <p className="text-slate-500 font-medium mt-1">Solicitudes de ayuda de jugadores en tiempo real.</p>
+          <p className="text-slate-500 font-medium mt-1">Mesas activas y solicitudes de ayuda en tiempo real.</p>
         </div>
 
         {/* Counters */}
@@ -167,6 +190,79 @@ export default function AdminAlertsPage() {
           </div>
         </div>
       </div>
+
+      {/* Active Rooms Section */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <h2 className="text-lg font-black italic tracking-tight text-white uppercase">
+              Mesas Activas
+            </h2>
+            <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-black">
+              {activeRooms.length} EN VIVO
+            </span>
+          </div>
+          <button
+            onClick={fetchRooms}
+            disabled={roomsLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/50 border border-white/5 text-slate-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3 h-3 ${roomsLoading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </button>
+        </div>
+
+        {roomsLoading && activeRooms.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : activeRooms.length === 0 ? (
+          <div className="text-center py-8 bg-slate-900/30 rounded-2xl border border-white/5">
+            <Gamepad2 className="w-10 h-10 text-slate-700 mx-auto mb-2" />
+            <p className="text-slate-600 font-bold text-xs uppercase tracking-widest">
+              Sin mesas activas
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {activeRooms.map((room) => (
+              <div
+                key={room.roomId}
+                className="backdrop-blur-lg bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-emerald-500/30 transition-all group"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      MESA {room.roomId.split('-')[0]}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Users className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-sm font-bold text-white">
+                        {room.clients || 0} jugadores
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 uppercase">
+                    {room.metadata?.phase || 'Activa'}
+                  </span>
+                </div>
+
+                <Link
+                  href={`/admin/spectate/${room.roomId}`}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/20 text-indigo-400 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 group-hover:bg-indigo-600/30"
+                >
+                  <Tv className="w-4 h-4" />
+                  Supervisar
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Divider */}
+      <div className="border-t border-white/5" />
 
       {/* Filters */}
       <div className="flex gap-2">

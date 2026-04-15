@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Hoisted: mock all external deps before module evaluation ──
-const { mockSchedule, mockRpc, mockFromInsert, mockQueueAdd } = vi.hoisted(() => {
+const { mockSchedule, mockRpc, mockFromInsert, mockQueueAdd, mockAlertEmitAsync } = vi.hoisted(() => {
   return {
     mockSchedule: vi.fn(),
     mockRpc: vi.fn(),
     mockFromInsert: vi.fn().mockResolvedValue({ error: null }),
     mockQueueAdd: vi.fn().mockResolvedValue(undefined),
+    mockAlertEmitAsync: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -27,6 +28,12 @@ vi.mock('../../workers/index', () => ({
   ledgerQueue: {
     add: mockQueueAdd,
     on: vi.fn(),
+  },
+}));
+
+vi.mock('../../services/AlertService', () => ({
+  AlertService: {
+    emitAsync: mockAlertEmitAsync,
   },
 }));
 
@@ -183,6 +190,40 @@ describe('integrityCheck cron', () => {
         expect.stringContaining('[CRON ERROR]'),
         expect.any(Error),
       );
+    });
+  });
+
+  describe('AlertService integration', () => {
+    let checkCallback: () => Promise<void>;
+
+    beforeEach(() => {
+      startIntegrityCron();
+      checkCallback = mockSchedule.mock.calls[0][1];
+    });
+
+    it('emits a discrepancy alert via AlertService when balance mismatch is found', async () => {
+      mockRpc
+        .mockResolvedValueOnce({ data: 500000 })   // get_total_users_balance
+        .mockResolvedValueOnce({ data: 300000 });   // get_ledger_net_balance
+
+      await checkCallback();
+
+      expect(mockAlertEmitAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          severity: 'critical',
+          category: 'discrepancy',
+        }),
+      );
+    });
+
+    it('does NOT emit alert when balances match', async () => {
+      mockRpc
+        .mockResolvedValueOnce({ data: 500000 })
+        .mockResolvedValueOnce({ data: 500000 });
+
+      await checkCallback();
+
+      expect(mockAlertEmitAsync).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { logAdminAction } from "./admin-audit";
 
 async function ensureAdmin(supabase: any) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -32,17 +33,25 @@ export async function updateRulebook(newContent: string) {
   const supabase = await createClient();
   const adminId = await ensureAdmin(supabase);
 
+  // Fetch current before updating
+  const { data: current } = await supabase
+    .from("site_settings")
+    .select("value")
+    .eq("id", "rulebook")
+    .single();
+
   const { error } = await supabase
     .from("site_settings")
     .upsert({ id: "rulebook", value: { content: newContent }, updated_by: adminId, updated_at: new Date().toISOString() });
 
   if (error) throw error;
   
-  // Log this action
-  await supabase.from("audit_logs").insert({
-     admin_id: adminId,
-     action: "UPDATE_RULEBOOK",
-     details: { length: newContent.length }
+  await logAdminAction(adminId, 'rulebook_updated', 'setting', 'rulebook', {
+    length: newContent.length,
+  }, {
+    context: 'settings',
+    before_state: { content: current?.value?.content?.slice(0, 500) || null },
+    after_state: { content: newContent.slice(0, 500) },
   });
 
   return { success: true };

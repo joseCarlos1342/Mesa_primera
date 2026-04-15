@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { createClient } from "@supabase/supabase-js";
 import { ledgerQueue } from "../workers/index";
+import { AlertService } from "../services/AlertService";
 
 // Basic Supabase Service Role client to bypass RLS for internal tasks
 const supabase = createClient(
@@ -35,6 +36,16 @@ export function startIntegrityCron() {
             discrepancy_cents: diff,
           }
         });
+
+        // Surface to admin dashboard via server_alerts table
+        await AlertService.emitAsync({
+          severity: 'critical',
+          category: 'discrepancy',
+          title: `Descuadre financiero: ${status}`,
+          message: `Diferencia de ${diff} centavos entre ledger y wallets`,
+          metadata: { discrepancy_cents: diff, totalUsersBalance: totalUsersBalance || 0, ledgerNetBalance: ledgerNetBalance || 0 },
+        });
+
         console.warn(`[CRON ALERT] Discrepancia detectada: ${diff} centavos.`);
       } else {
         console.log("[CRON] Verificación exitosa. Bóveda cuadrada al milímetro.");

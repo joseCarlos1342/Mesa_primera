@@ -177,9 +177,18 @@ export default async function AdminAuditPage() {
               {/* Admin + target */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Admin</p>
-                  <p className="font-bold text-white text-sm">{entry.admin?.display_name || 'Admin'}</p>
-                  <p className="text-[10px] font-mono text-slate-500 break-all">{entry.admin_id.substring(0, 8)}...</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Actor</p>
+                  {entry.actor_kind === 'system' ? (
+                    <>
+                      <p className="font-bold text-amber-400 text-sm flex items-center gap-1"><Bot className="w-3 h-3" /> Sistema</p>
+                      <p className="text-[10px] font-mono text-slate-500">{entry.actor_label || 'system'}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-bold text-white text-sm">{entry.admin?.display_name || 'Admin'}</p>
+                      <p className="text-[10px] font-mono text-slate-500 break-all">{entry.admin_id ? `${entry.admin_id.substring(0, 8)}...` : '—'}</p>
+                    </>
+                  )}
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Objetivo</p>

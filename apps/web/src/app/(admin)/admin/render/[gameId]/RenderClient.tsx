@@ -54,7 +54,7 @@ const PHASE_COLORS: Record<string, string> = {
  * - Señaliza data-render-done="true" al finalizar
  */
 export function RenderClient({ replay }: { replay: ReplayData }) {
-  const timeline = replay.admin_timeline || replay.timeline || [];
+  const timeline = replay.admin_timeline?.length ? replay.admin_timeline : (replay.timeline || []);
   const players = replay.players || [];
   const hands = replay.final_hands || {};
   const pot = replay.pot_breakdown || {};
@@ -65,6 +65,9 @@ export function RenderClient({ replay }: { replay: ReplayData }) {
 
   const event = timeline[currentStep];
   const progress = timeline.length > 1 ? (currentStep / (timeline.length - 1)) * 100 : 100;
+
+  // Observable render state for Playwright worker
+  const renderState: 'playing' | 'done' = done ? 'done' : 'playing';
 
   const getPlayerName = useCallback(
     (sessionId?: string) => {
@@ -95,7 +98,7 @@ export function RenderClient({ replay }: { replay: ReplayData }) {
     [getPlayerName],
   );
 
-  // Auto-play: avanzar cada 750ms (2x de lo normal)
+  // Auto-play: avanzar cada 250ms (captura rápida para MP4)
   useEffect(() => {
     if (done) return;
     if (currentStep >= timeline.length - 1) {
@@ -103,7 +106,7 @@ export function RenderClient({ replay }: { replay: ReplayData }) {
       const timer = setTimeout(() => setDone(true), 2000);
       return () => clearTimeout(timer);
     }
-    const timer = setTimeout(() => setCurrentStep((s) => s + 1), 750);
+    const timer = setTimeout(() => setCurrentStep((s) => s + 1), 250);
     return () => clearTimeout(timer);
   }, [currentStep, done, timeline.length]);
 
@@ -119,6 +122,9 @@ export function RenderClient({ replay }: { replay: ReplayData }) {
     <div
       ref={containerRef}
       data-render-done={done ? "true" : "false"}
+      data-render-state={renderState}
+      data-render-step={String(currentStep)}
+      data-render-total={String(timeline.length)}
       className="w-[1280px] h-[720px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden flex flex-col"
     >
       {/* Header */}
