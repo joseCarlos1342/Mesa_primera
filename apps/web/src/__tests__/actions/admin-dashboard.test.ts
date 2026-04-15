@@ -73,4 +73,73 @@ describe('Admin Dashboard Server Actions', () => {
     
     expect(result.ledgerIntegrityStatus).toBe('CRÍTICO');
   });
+
+  it('should include fetchedAt ISO timestamp', async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: 0 });
+
+    const result = await getAdminDashboardStats();
+
+    expect(result.fetchedAt).toBeDefined();
+    expect(() => new Date(result.fetchedAt)).not.toThrow();
+  });
+
+  it('should include empty warnings array when all RPCs succeed', async () => {
+    mockSupabase.rpc.mockImplementation((rpcName: string) => {
+      if (rpcName === 'get_total_users_balance') return Promise.resolve({ data: 10000, error: null });
+      if (rpcName === 'get_ledger_net_balance') return Promise.resolve({ data: 10000, error: null });
+      if (rpcName === 'get_vault_status') return Promise.resolve({ data: { total_deposits: 10000, total_withdrawals: 0, vault_balance: 10000, coverage: 100 }, error: null });
+      return Promise.resolve({ data: 0, error: null });
+    });
+    // Mock fetch to avoid matchmake fallback warning
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+    const result = await getAdminDashboardStats();
+
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('should add warning when get_total_users_balance RPC fails', async () => {
+    mockSupabase.rpc.mockImplementation((rpcName: string) => {
+      if (rpcName === 'get_total_users_balance') return Promise.resolve({ data: null, error: { message: 'RPC not found' } });
+      if (rpcName === 'get_ledger_net_balance') return Promise.resolve({ data: 10000, error: null });
+      return Promise.resolve({ data: 0, error: null });
+    });
+
+    const result = await getAdminDashboardStats();
+
+    expect(result.warnings).toContainEqual(expect.stringContaining('get_total_users_balance'));
+  });
+
+  it('should add warning when get_ledger_net_balance RPC fails', async () => {
+    mockSupabase.rpc.mockImplementation((rpcName: string) => {
+      if (rpcName === 'get_total_users_balance') return Promise.resolve({ data: 10000, error: null });
+      if (rpcName === 'get_ledger_net_balance') return Promise.resolve({ data: null, error: { message: 'RPC not found' } });
+      return Promise.resolve({ data: 0, error: null });
+    });
+
+    const result = await getAdminDashboardStats();
+
+    expect(result.warnings).toContainEqual(expect.stringContaining('get_ledger_net_balance'));
+  });
+
+  it('should show DESCONOCIDO vault status and warning when get_vault_status RPC fails', async () => {
+    mockSupabase.rpc.mockImplementation((rpcName: string) => {
+      if (rpcName === 'get_vault_status') return Promise.resolve({ data: null, error: { message: 'not found' } });
+      return Promise.resolve({ data: 0, error: null });
+    });
+
+    const result = await getAdminDashboardStats();
+
+    expect(result.vaultStatus).toBe('DESCONOCIDO');
+    expect(result.warnings).toContainEqual(expect.stringContaining('get_vault_status'));
+  });
+
+  it('should add warning when matchmake fetch fails', async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: 0, error: null });
+    global.fetch = jest.fn().mockRejectedValue(new Error('fetch failed'));
+
+    const result = await getAdminDashboardStats();
+
+    expect(result.warnings).toContainEqual(expect.stringContaining('matchmake'));
+  });
 });

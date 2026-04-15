@@ -978,9 +978,17 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     });
   }
 
-  onJoin(client: Client, options: any) {
+  async onJoin(client: Client, options: any) {
     // ── Spectator (admin) mode ──
     if (options.spectator === true) {
+      // Validate supervision token for authorized spectator access
+      const { valid } = await SupabaseService.validateSupervisionToken(
+        options.supervisionToken,
+        this.roomId
+      );
+      if (!valid) {
+        throw new Error("Token de supervisión inválido o expirado (code: 4003)");
+      }
       console.log(`[MesaRoom] Espectador (admin) conectado: ${client.sessionId}`);
       this.spectators.set(client.sessionId, client);
       // Spectators do NOT get a Player schema entry and NEVER receive private cards (Admin Blindness)
@@ -992,6 +1000,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     const requestedNickname = options.nickname || `Jugador_${client.sessionId}`;
     const deviceId = options.deviceId;
+
+    // ── Sanction enforcement: block players with active game/full/permanent sanctions ──
+    if (options.userId) {
+      const access = await SupabaseService.checkTableAccess(options.userId);
+      if (access.blocked) {
+        throw new Error(
+          `Acceso denegado: ${access.reason || 'sanción activa'} (code: 4004)`
+        );
+      }
+    }
 
     // Registrar cliente para mensajería privada
     this.clientMap.set(client.sessionId, client);

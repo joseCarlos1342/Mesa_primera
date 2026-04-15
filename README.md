@@ -200,6 +200,16 @@ Las suites E2E cubren:
 > [!IMPORTANT]
 > Los server actions requieren un mínimo de 80% de cobertura de tests.
 
+## Documentación del Administrador
+
+El panel administrativo cuenta con documentación técnica completa en tres niveles:
+
+| Documento | Descripción |
+| :--- | :--- |
+| [docs/ADMIN.md](docs/ADMIN.md) | Guía funcional completa — qué puede y qué no puede hacer el admin, por módulo |
+| [docs/ADMIN_SECURITY.md](docs/ADMIN_SECURITY.md) | Autenticación MFA, RLS, admin blindness, ledger inmutable y modelo de amenazas |
+| [docs/ADMIN_TECHNICAL.md](docs/ADMIN_TECHNICAL.md) | Referencia técnica: server actions, RPCs de Supabase, tipos TypeScript y componentes |
+
 ## Despliegue
 
 | Componente | Plataforma |

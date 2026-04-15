@@ -28,6 +28,8 @@ export interface AlertPayload {
  * can view them in the dashboard. Also keeps the console log for Docker.
  */
 export class AlertService {
+  private static readonly MAX_RETRIES = 2;
+
   /**
    * Emit a server alert. Fire-and-forget — never throws.
    */
@@ -54,6 +56,44 @@ export class AlertService {
       });
   }
 
+  /**
+   * Emit a server alert with retry for critical severity. Awaitable.
+   * Critical alerts retry up to MAX_RETRIES times; others get a single attempt.
+   */
+  static async emitAsync(payload: AlertPayload): Promise<void> {
+    const prefix = payload.severity === 'critical' ? '🚨' : payload.severity === 'warning' ? '⚠️' : 'ℹ️';
+    console.warn(`${prefix} [ServerAlert] [${payload.category}] ${payload.title}${payload.message ? ': ' + payload.message : ''}`);
+
+    if (!supabase) return;
+
+    const maxAttempts = payload.severity === 'critical' ? 1 + AlertService.MAX_RETRIES : 1;
+    let lastError: any = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const { error } = await supabase
+        .from('server_alerts')
+        .insert({
+          severity: payload.severity,
+          category: payload.category,
+          title: payload.title,
+          message: payload.message || null,
+          metadata: payload.metadata || {},
+          room_id: payload.room_id || null,
+          game_id: payload.game_id || null,
+          player_id: payload.player_id || null,
+        });
+
+      if (!error) return;
+
+      lastError = error;
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 200 * attempt));
+      }
+    }
+
+    console.error('[AlertService] Failed to persist alert after retries:', lastError?.message);
+  }
+
   // ── Convenience helpers ──
 
   static identity(nickname: string, sessionId: string, roomId?: string) {
@@ -67,8 +107,8 @@ export class AlertService {
     });
   }
 
-  static settlementFailed(nickname: string, userId: string, gameId: string, error: string, roomId?: string) {
-    AlertService.emit({
+  static async settlementFailed(nickname: string, userId: string, gameId: string, error: string, roomId?: string) {
+    await AlertService.emitAsync({
       severity: 'critical',
       category: 'settlement',
       title: 'Fallo en settlement',
@@ -80,8 +120,8 @@ export class AlertService {
     });
   }
 
-  static refundFailed(userId: string, amount: number, gameId: string | undefined, error: string, roomId?: string) {
-    AlertService.emit({
+  static async refundFailed(userId: string, amount: number, gameId: string | undefined, error: string, roomId?: string) {
+    await AlertService.emitAsync({
       severity: 'critical',
       category: 'refund',
       title: 'Fallo en reembolso',
@@ -93,8 +133,8 @@ export class AlertService {
     });
   }
 
-  static discrepancy(userId: string, walletBalance: number, ledgerBalance: number) {
-    AlertService.emit({
+  static async discrepancy(userId: string, walletBalance: number, ledgerBalance: number) {
+    await AlertService.emitAsync({
       severity: 'critical',
       category: 'discrepancy',
       title: 'Discrepancia ledger-wallet',

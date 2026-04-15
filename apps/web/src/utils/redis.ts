@@ -59,6 +59,14 @@ export const redis = {
 
     return redisClient.publish(channel, message)
   },
+
+  async setex(key: string, seconds: number, value: string) {
+    if (!redisClient) {
+      return null
+    }
+
+    return redisClient.setex(key, seconds, value)
+  },
 }
 
 /**

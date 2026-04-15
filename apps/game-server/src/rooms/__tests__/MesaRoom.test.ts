@@ -24,6 +24,8 @@ vi.mock('../../services/SupabaseService', () => {
       lookupUserByPhone: vi.fn().mockResolvedValue({ success: true, userId: 'u-found', name: 'Found User' }),
       saveReplay: vi.fn().mockResolvedValue(undefined),
       createGameSession: vi.fn().mockResolvedValue(undefined),
+      validateSupervisionToken: vi.fn().mockResolvedValue({ valid: true, adminId: 'admin-1' }),
+      checkTableAccess: vi.fn().mockResolvedValue({ blocked: false }),
     }
   };
 });
@@ -3379,7 +3381,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       // Join 3 players
       const p1 = await colyseus.connectTo(room, { nickname: 'P1', deviceId: 'dev-ak1', userId: 'supa-ak1', chips: 10_000_000 });
       const p2 = await colyseus.connectTo(room, { nickname: 'P2', deviceId: 'dev-ak2', userId: 'supa-ak2', chips: 10_000_000 });
-      const admin = await colyseus.connectTo(room, { spectator: true });
+      const admin = await colyseus.connectTo(room, { spectator: true, supervisionToken: 'valid-token' });
 
       await new Promise(r => setTimeout(r, 100));
 
@@ -3409,6 +3411,58 @@ describe('MesaRoom via Colyseus Testing', () => {
       // P2 should still be there
       expect(room.state.players.size).toBe(2);
       expect(room.state.players.has(p2.sessionId)).toBe(true);
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────
+  // Supervision token & sanction enforcement
+  // ───────────────────────────────────────────────────────────
+
+  describe('Spectator supervision token', () => {
+    it('authorized spectator with valid token joins successfully', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-sup-ok' });
+      const p1 = await colyseus.connectTo(room, { nickname: 'P1', deviceId: 'dev-sup1', userId: 'supa-sup1', chips: 10_000_000 });
+
+      // Default mock returns { valid: true }
+      const admin = await colyseus.connectTo(room, { spectator: true, supervisionToken: 'valid-token' });
+      await new Promise(r => setTimeout(r, 100));
+
+      expect(room.state.players.size).toBe(1); // spectator not counted as player
+    });
+
+    it('spectator without supervision token is rejected', async () => {
+      vi.mocked(SupabaseService.validateSupervisionToken).mockResolvedValueOnce({ valid: false });
+
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-sup-no' });
+
+      await expect(
+        colyseus.connectTo(room, { spectator: true })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('Sanction enforcement on join', () => {
+    it('player with active game_suspension is rejected from joining', async () => {
+      vi.mocked(SupabaseService.checkTableAccess).mockResolvedValueOnce({
+        blocked: true,
+        sanctionType: 'game_suspension',
+        reason: 'Conducta inapropiada',
+      });
+
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-sanc-block' });
+
+      await expect(
+        colyseus.connectTo(room, { nickname: 'Banned', deviceId: 'dev-ban1', userId: 'supa-banned', chips: 10_000_000 })
+      ).rejects.toThrow();
+    });
+
+    it('player without sanctions joins normally', async () => {
+      // Default mock returns { blocked: false }
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-sanc-ok' });
+      const p1 = await colyseus.connectTo(room, { nickname: 'Clean', deviceId: 'dev-clean1', userId: 'supa-clean1', chips: 10_000_000 });
+      await new Promise(r => setTimeout(r, 100));
+
+      expect(room.state.players.size).toBe(1);
     });
   });
 
@@ -3621,7 +3675,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-resync-admin' });
 
       const p1 = await colyseus.connectTo(room, { nickname: 'P1', deviceId: 'dev-rs1', userId: 'supa-rs1', chips: 10_000_000 });
-      const admin = await colyseus.connectTo(room, { spectator: true });
+      const admin = await colyseus.connectTo(room, { spectator: true, supervisionToken: 'valid-token' });
 
       await new Promise(r => setTimeout(r, 100));
 

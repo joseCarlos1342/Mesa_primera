@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { logAdminAction } from "./admin-audit";
 
 export type ServerAlert = {
   id: string;
@@ -55,6 +56,8 @@ export async function resolveAlert(alertId: string): Promise<void> {
     .eq("id", alertId);
 
   if (error) throw error;
+
+  await logAdminAction(userId, 'alert_resolved', 'server_alert', alertId, {}, { context: 'alerts' });
 }
 
 export async function getUnresolvedAlertCount(): Promise<number> {

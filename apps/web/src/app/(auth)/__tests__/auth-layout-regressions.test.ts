@@ -2,6 +2,24 @@ import fs from 'fs'
 import path from 'path'
 
 describe('auth layout regressions', () => {
+  it('admin login keeps simplified copy and mobile-friendly email input spacing', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../login/admin/page.tsx'),
+      'utf-8',
+    )
+
+    expect(source).toMatch(/>\s*Admin\s*</)
+    expect(source).not.toMatch(/Estación Admin/)
+    expect(source).not.toMatch(/Autenticación de Bóveda/)
+    expect(source).toMatch(/'Acceder'/)
+    expect(source).not.toMatch(/Acceder al Centro de Mando/)
+    expect(source).not.toMatch(/Authorized Personnel Only/)
+    expect(source).toMatch(/sm:h-16/)
+    expect(source).toMatch(/px-4 sm:px-6/)
+    expect(source).toMatch(/text-sm sm:text-base/)
+    expect(source).not.toMatch(/font-mono/)
+  })
+
   it('complete profile page allows long Google emails to wrap inside the card', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../register/player/complete/page.tsx'),

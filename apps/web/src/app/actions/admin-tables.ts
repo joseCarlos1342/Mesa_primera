@@ -2,6 +2,14 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { logAdminAction } from "./admin-audit";
+
+// ── Valid chip denominations (in centavos) ──
+const VALID_CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as const;
+
+// ── Types ───────────────────────────────────────────────────
+
+export type TableCategory = "common" | "custom";
 
 export type TableFinancials = {
   table_id: string;
@@ -40,6 +48,19 @@ export type AdminPlayerView = {
   display_name?: string;
 };
 
+export type LobbyTable = {
+  id: string;
+  name: string;
+  game_type: string;
+  max_players: number;
+  table_category: TableCategory;
+  lobby_slot: number | null;
+  min_entry_cents: number;
+  min_pique_cents: number;
+  disabled_chips: number[];
+  sort_order: number;
+};
+
 // Ensure admin
 async function ensureAdmin(supabase: any) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -55,17 +76,25 @@ async function ensureAdmin(supabase: any) {
   return userData.user.id;
 }
 
-export async function getTablesList() {
+export async function getTablesList(category?: TableCategory) {
   const supabase = await createClient();
   await ensureAdmin(supabase);
 
-  const { data: tables, error } = await supabase
+  let query = supabase
     .from("tables")
     .select(`
       id, name, min_bet, max_players, game_type, created_at,
+      table_category, lobby_slot, min_entry_cents, min_pique_cents,
+      disabled_chips, is_active, sort_order,
       games:games(count) 
     `)
-    .order("created_at", { ascending: false });
+    .order("sort_order", { ascending: true });
+
+  if (category) {
+    query = query.eq("table_category", category);
+  }
+
+  const { data: tables, error } = await query;
 
   if (error) throw error;
   return (tables || []).map(t => ({
@@ -148,6 +177,11 @@ export async function setGameStatus(gameId: string, status: "playing" | "paused"
 
   if (error) throw error;
   
+  await logAdminAction(adminId, 'game_status_changed', 'game', gameId, {
+    new_status: status,
+    reason: reason || null,
+  }, { context: 'tables' });
+
   // NOTE: In a full architecture, we must notify the Colyseus game server to actually implement the pause/close.
   // For now, updating the DB is the first step.
   
@@ -156,7 +190,7 @@ export async function setGameStatus(gameId: string, status: "playing" | "paused"
 
 export async function kickPlayer(gameId: string, playerId: string) {
   const supabase = await createClient();
-  await ensureAdmin(supabase);
+  const adminId = await ensureAdmin(supabase);
 
   const { error } = await supabase
     .from("players")
@@ -166,32 +200,164 @@ export async function kickPlayer(gameId: string, playerId: string) {
 
   if (error) throw error;
 
+  await logAdminAction(adminId, 'player_kicked', 'player', playerId, {
+    game_id: gameId,
+  }, { context: 'tables' });
+
   // NOTE: We should also call Colyseus backend to forcefully close the player's socket connection and refund if necessary.
   
   return { success: true };
 }
 
-export async function createTable(data: { name: string, min_bet: number, max_players: number, game_type?: string }) {
+export async function createTable(data: { name: string, max_players?: number, game_type?: string, lobby_slot?: number }) {
   const supabase = await createClient();
   const adminId = await ensureAdmin(supabase);
 
   const { error } = await supabase
     .from("tables")
     .insert({
-      ...data,
+      name: data.name,
+      max_players: data.max_players || 7,
+      game_type: data.game_type || 'primera_28',
+      min_bet: 1,
       created_by: adminId,
-      game_type: data.game_type || 'primera_28'
+      table_category: 'common',
+      min_entry_cents: 5000000,
+      min_pique_cents: 500000,
+      disabled_chips: [],
+      lobby_slot: data.lobby_slot || null,
     });
 
   if (error) throw error;
+
+  await logAdminAction(adminId, 'table_created', 'table', data.name, {
+    name: data.name,
+    max_players: data.max_players || 7,
+    game_type: data.game_type || 'primera_28',
+    table_category: 'common',
+  }, { context: 'tables' });
   
+  revalidatePath('/admin/tables');
+  return { success: true };
+}
+
+export async function createCustomTable(data: {
+  name: string;
+  max_players: number;
+  min_entry_cents: number;
+  min_pique_cents: number;
+  disabled_chips: number[];
+  game_type?: string;
+}) {
+  const supabase = await createClient();
+  const adminId = await ensureAdmin(supabase);
+
+  // Validation
+  if (!data.name || !data.name.trim()) {
+    throw new Error("El nombre de la mesa es requerido.");
+  }
+  if (data.max_players < 3 || data.max_players > 7) {
+    throw new Error("La capacidad debe estar entre 3 y 7 jugadores.");
+  }
+  if (data.min_entry_cents <= 0) {
+    throw new Error("El saldo mínimo de ingreso debe ser mayor a 0.");
+  }
+  if (data.min_pique_cents <= 0) {
+    throw new Error("El pique mínimo debe ser mayor a 0.");
+  }
+  // At least one chip denomination must remain enabled
+  const enabledCount = VALID_CHIP_DENOMS.length - data.disabled_chips.filter(d => (VALID_CHIP_DENOMS as readonly number[]).includes(d)).length;
+  if (enabledCount < 1) {
+    throw new Error("Debe haber al menos 1 ficha habilitada.");
+  }
+
+  const { error } = await supabase
+    .from("tables")
+    .insert({
+      name: data.name.trim(),
+      max_players: data.max_players,
+      game_type: data.game_type || 'primera_28',
+      min_bet: 1,
+      created_by: adminId,
+      table_category: 'custom',
+      min_entry_cents: data.min_entry_cents,
+      min_pique_cents: data.min_pique_cents,
+      disabled_chips: data.disabled_chips,
+    });
+
+  if (error) throw error;
+
+  await logAdminAction(adminId, 'table_created', 'table', data.name, {
+    name: data.name,
+    max_players: data.max_players,
+    table_category: 'custom',
+    min_entry_cents: data.min_entry_cents,
+  }, { context: 'tables' });
+
+  revalidatePath('/admin/tables');
+  return { success: true };
+}
+
+export async function updateTable(tableId: string, data: Partial<{
+  name: string;
+  max_players: number;
+  min_entry_cents: number;
+  min_pique_cents: number;
+  disabled_chips: number[];
+  sort_order: number;
+  is_active: boolean;
+}>) {
+  const supabase = await createClient();
+  await ensureAdmin(supabase);
+
+  // Fetch the table to check category
+  const { data: table, error: fetchError } = await supabase
+    .from("tables")
+    .select("id, table_category, is_active")
+    .eq("id", tableId)
+    .single();
+
+  if (fetchError || !table) throw new Error("Mesa no encontrada.");
+
+  // Common tables cannot change entry/pique/chips
+  if (table.table_category === 'common') {
+    const forbiddenFields = ['min_entry_cents', 'min_pique_cents', 'disabled_chips'] as const;
+    for (const field of forbiddenFields) {
+      if (data[field] !== undefined) {
+        throw new Error("No se pueden modificar los parámetros financieros de una mesa común.");
+      }
+    }
+  }
+
+  const { error } = await supabase
+    .from("tables")
+    .update(data)
+    .eq("id", tableId);
+
+  if (error) throw error;
+
+  revalidatePath('/admin/tables');
+  return { success: true };
+}
+
+export async function toggleTableActive(tableId: string, isActive: boolean) {
+  const supabase = await createClient();
+  await ensureAdmin(supabase);
+
+  const { error } = await supabase
+    .from("tables")
+    .update({ is_active: isActive })
+    .eq("id", tableId);
+
+  if (error) throw error;
+
   revalidatePath('/admin/tables');
   return { success: true };
 }
 
 export async function deleteTable(tableId: string) {
   const supabase = await createClient();
-  await ensureAdmin(supabase);
+  const adminId = await ensureAdmin(supabase);
 
   // Check if there are active games for this table
   const { data: activeGames } = await supabase
@@ -211,6 +377,8 @@ export async function deleteTable(tableId: string) {
 
   if (error) throw error;
 
+  await logAdminAction(adminId, 'table_deleted', 'table', tableId, {}, { context: 'tables' });
+
   revalidatePath('/admin/tables');
   return { success: true };
 }
@@ -223,4 +391,18 @@ export async function getTableFinancials(): Promise<TableFinancials[]> {
 
   if (error) throw error;
   return (data || []) as TableFinancials[];
+}
+
+export async function getLobbyTables(): Promise<{ common: LobbyTable[]; custom: LobbyTable[] }> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('get_lobby_tables');
+
+  if (error) throw error;
+
+  const tables = (data || []) as LobbyTable[];
+  return {
+    common: tables.filter(t => t.table_category === 'common'),
+    custom: tables.filter(t => t.table_category === 'custom'),
+  };
 }

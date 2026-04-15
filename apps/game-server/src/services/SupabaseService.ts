@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { ReplayFileService, type ReplayData } from './ReplayFileService';
 import { RenderQueue } from './RenderQueue';
+import { redis } from './redis';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -409,6 +410,59 @@ export class SupabaseService {
     } catch (e) {
       console.error('[SupabaseService] Error looking up user by phone:', e);
       return { success: false, error: String(e) };
+    }
+  }
+
+  /**
+   * Validates a short-lived supervision token stored in Redis.
+   * Tokens are single-use: consumed (deleted) after successful validation.
+   */
+  static async validateSupervisionToken(
+    token: string,
+    roomId: string
+  ): Promise<{ valid: boolean; adminId?: string }> {
+    if (!token) return { valid: false };
+    try {
+      const raw = await redis.get(`supervision:${token}`);
+      if (!raw) return { valid: false };
+
+      const payload = JSON.parse(raw);
+      if (payload.roomId !== roomId) return { valid: false };
+
+      // Consume the token (one-time use)
+      await redis.del(`supervision:${token}`);
+      return { valid: true, adminId: payload.adminId };
+    } catch (e) {
+      console.error('[SupabaseService] Error validating supervision token:', e);
+      return { valid: false };
+    }
+  }
+
+  /**
+   * Checks if a user has an active sanction that blocks table access.
+   * Fail-open: if the RPC call fails, the player is allowed through.
+   */
+  static async checkTableAccess(
+    userId: string
+  ): Promise<{ blocked: boolean; sanctionType?: string; reason?: string; expiresAt?: string }> {
+    if (!supabaseKey || !userId) return { blocked: false };
+    try {
+      const { data, error } = await supabase.rpc('check_table_access', {
+        p_user_id: userId,
+      });
+      if (error) throw error;
+      if (data && data.blocked) {
+        return {
+          blocked: true,
+          sanctionType: data.sanction_type,
+          reason: data.reason,
+          expiresAt: data.expires_at,
+        };
+      }
+      return { blocked: false };
+    } catch (e) {
+      console.error('[SupabaseService] Error checking table access (fail-open):', e);
+      return { blocked: false };
     }
   }
 }

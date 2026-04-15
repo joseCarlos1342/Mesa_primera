@@ -4,10 +4,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { client } from '@/lib/colyseus';
 import { Room } from '@colyseus/sdk';
-import { ArrowLeft, Eye, UserX, VolumeX, Ban, Loader2, Users, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Eye, UserX, VolumeX, Ban, Loader2, Users, AlertTriangle, Shield, X } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ManoIcon } from '@/components/game/ManoIcon';
+import { generateSupervisionToken } from '@/app/actions/admin-supervision';
+import { createSanction, type SanctionInput } from '@/app/actions/admin-sanctions';
 
 const VoiceChat = dynamic(
   () => import('@/components/VoiceChat').then(mod => mod.VoiceChat),
@@ -32,6 +34,20 @@ export default function SpectatePage() {
     countdown: -1,
   });
 
+  // Sanction modal state
+  const [sanctionModal, setSanctionModal] = useState<{
+    open: boolean;
+    playerId: string;
+    playerName: string;
+    playerUserId: string;
+  }>({ open: false, playerId: '', playerName: '', playerUserId: '' });
+  const [sanctionType, setSanctionType] = useState<'full_suspension' | 'game_suspension' | 'permanent_ban'>('game_suspension');
+  const [sanctionReason, setSanctionReason] = useState('');
+  const [sanctionDuration, setSanctionDuration] = useState('7');
+  const [sanctionDurationUnit, setSanctionDurationUnit] = useState<'days' | 'months'>('days');
+  const [sanctionSubmitting, setSanctionSubmitting] = useState(false);
+  const [sanctionResult, setSanctionResult] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
   const hasJoined = useRef(false);
 
   useEffect(() => {
@@ -42,7 +58,12 @@ export default function SpectatePage() {
 
     async function joinAsSpectator() {
       try {
-        const joinedRoom = await client.joinById(roomId, { spectator: true });
+        // Generate a one-time supervision token from the server
+        const { token } = await generateSupervisionToken(roomId);
+        const joinedRoom = await client.joinById(roomId, {
+          spectator: true,
+          supervisionToken: token,
+        });
         activeRoom = joinedRoom;
         setRoom(joinedRoom);
 
@@ -98,8 +119,57 @@ export default function SpectatePage() {
 
   function handleBan(playerId: string) {
     if (!room) return;
-    if (confirm('¿Banear a este jugador? Será retirado de la mesa.')) {
-      room.send('admin:ban', { playerId });
+    // Find the player to populate the modal
+    const player = gameState.players.find(p => p.id === playerId);
+    setSanctionModal({
+      open: true,
+      playerId,
+      playerName: player?.nickname || 'Jugador',
+      playerUserId: player?.supabaseUserId || '',
+    });
+    setSanctionResult(null);
+    setSanctionReason('');
+    setSanctionType('game_suspension');
+    setSanctionDuration('7');
+    setSanctionDurationUnit('days');
+  }
+
+  async function handleSanctionSubmit() {
+    setSanctionSubmitting(true);
+    setSanctionResult(null);
+
+    try {
+      // Calculate expiration
+      let expiresAt: string | undefined;
+      if (sanctionType !== 'permanent_ban') {
+        const durationNum = parseInt(sanctionDuration, 10) || 7;
+        const ms = sanctionDurationUnit === 'months'
+          ? durationNum * 30 * 24 * 60 * 60 * 1000
+          : durationNum * 24 * 60 * 60 * 1000;
+        expiresAt = new Date(Date.now() + ms).toISOString();
+      }
+
+      const input: SanctionInput = {
+        userId: sanctionModal.playerUserId,
+        sanctionType,
+        reason: sanctionReason || 'Sin motivo especificado',
+        expiresAt,
+        sourceRoomId: roomId,
+      };
+
+      await createSanction(input);
+
+      // Also kick from the room immediately
+      if (room) {
+        room.send('admin:kick', { playerId: sanctionModal.playerId });
+      }
+
+      setSanctionResult({ type: 'success', msg: 'Sanción aplicada exitosamente' });
+      setTimeout(() => setSanctionModal(prev => ({ ...prev, open: false })), 1500);
+    } catch (e: any) {
+      setSanctionResult({ type: 'error', msg: e.message || 'Error al aplicar sanción' });
+    } finally {
+      setSanctionSubmitting(false);
     }
   }
 
@@ -237,10 +307,10 @@ export default function SpectatePage() {
                   <button
                     onClick={() => handleBan(p.id)}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-900/20 hover:bg-red-900/40 border border-red-700/20 text-red-300 text-xs font-bold uppercase tracking-wider transition-all active:scale-95"
-                    title="Banear de la mesa"
+                    title="Aplicar sanción"
                   >
-                    <Ban className="w-3.5 h-3.5" />
-                    Ban
+                    <Shield className="w-3.5 h-3.5" />
+                    Sancionar
                   </button>
                 </div>
               </div>
@@ -248,6 +318,123 @@ export default function SpectatePage() {
           })}
         </div>
       </div>
+
+      {/* Sanction Modal */}
+      {sanctionModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Shield className="w-6 h-6 text-red-400" />
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">Aplicar Sanción</h3>
+              </div>
+              <button
+                onClick={() => setSanctionModal(prev => ({ ...prev, open: false }))}
+                className="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-slate-400 text-sm mb-6">
+              Jugador: <span className="text-white font-bold">{sanctionModal.playerName}</span>
+            </p>
+
+            {/* Sanction Type */}
+            <div className="space-y-3 mb-5">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tipo de Sanción</label>
+              <div className="space-y-2">
+                {[
+                  { value: 'game_suspension' as const, label: 'Suspensión de Juego', desc: 'No puede unirse a mesas' },
+                  { value: 'full_suspension' as const, label: 'Suspensión Total', desc: 'No puede iniciar sesión' },
+                  { value: 'permanent_ban' as const, label: 'Veto Permanente', desc: 'Acceso bloqueado indefinidamente' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSanctionType(opt.value)}
+                    className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                      sanctionType === opt.value
+                        ? 'bg-red-600/10 border-red-500/30 text-white'
+                        : 'bg-slate-900/50 border-white/5 text-slate-400 hover:border-white/10'
+                    }`}
+                  >
+                    <p className="font-bold text-sm">{opt.label}</p>
+                    <p className="text-xs text-slate-500">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Duration (for non-permanent) */}
+            {sanctionType !== 'permanent_ban' && (
+              <div className="flex gap-3 mb-5">
+                <div className="flex-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Duración</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={sanctionDuration}
+                    onChange={(e) => setSanctionDuration(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/30 border border-white/10 text-white font-bold focus:outline-none focus:border-indigo-500/50"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Unidad</label>
+                  <select
+                    value={sanctionDurationUnit}
+                    onChange={(e) => setSanctionDurationUnit(e.target.value as 'days' | 'months')}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/30 border border-white/10 text-white font-bold focus:outline-none focus:border-indigo-500/50"
+                  >
+                    <option value="days">Días</option>
+                    <option value="months">Meses</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Reason */}
+            <div className="mb-6">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Motivo</label>
+              <textarea
+                value={sanctionReason}
+                onChange={(e) => setSanctionReason(e.target.value)}
+                placeholder="Describe el motivo de la sanción..."
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 text-sm resize-none"
+              />
+            </div>
+
+            {/* Result message */}
+            {sanctionResult && (
+              <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-bold ${
+                sanctionResult.type === 'success'
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                  : 'bg-red-500/10 border border-red-500/20 text-red-400'
+              }`}>
+                {sanctionResult.msg}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSanctionModal(prev => ({ ...prev, open: false }))}
+                className="flex-1 px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/5 text-slate-300 font-bold text-sm uppercase tracking-widest transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSanctionSubmit}
+                disabled={sanctionSubmitting || !sanctionReason.trim()}
+                className="flex-1 px-4 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sanctionSubmitting ? 'Aplicando...' : 'Aplicar Sanción'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin Voice Chat - 2-way audio with the table */}
       <div className="fixed bottom-6 right-6 z-50">

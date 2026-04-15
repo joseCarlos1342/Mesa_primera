@@ -1,21 +1,16 @@
 "use client"
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { loginAdmin } from '../../auth-actions'
 import { ShieldCheck, Lock, Mail } from 'lucide-react'
 import { adminEmailSchema, adminPasswordSchema } from '@/lib/validations'
 
 export default function AdminLoginPage() {
   const [state, formAction, isPending] = useActionState(loginAdmin, null)
-  const [mounted, setMounted] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [emailTouched, setEmailTouched] = useState(false)
   const [passwordTouched, setPasswordTouched] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   function validateEmail(value: string) {
     const r = adminEmailSchema.safeParse(value.trim())
@@ -43,8 +38,8 @@ export default function AdminLoginPage() {
         <div className="absolute top-0 right-1/4 w-px h-full bg-gradient-to-b from-transparent via-indigo-500/20 to-transparent blur-sm" />
       </div>
       
-      <div className="w-full max-w-md space-y-10 z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-        <div className="text-center space-y-4">
+      <div className="w-full max-w-md space-y-8 sm:space-y-10 z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <div className="text-center space-y-3">
           <div className="flex justify-center">
             <div className="w-20 h-20 rounded-[2rem] bg-slate-900 border border-white/10 flex items-center justify-center shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500">
               <ShieldCheck className="w-10 h-10 text-red-500" />
@@ -52,15 +47,12 @@ export default function AdminLoginPage() {
           </div>
           <div>
             <h1 className="text-4xl font-black tracking-tighter uppercase italic bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent">
-              Estación Admin
+              Admin
             </h1>
-            <p className="text-red-500/60 font-black tracking-[0.4em] text-[10px] uppercase mt-2">
-              Autenticación de Bóveda
-            </p>
           </div>
         </div>
 
-        <div className="relative backdrop-blur-3xl bg-slate-900/60 border border-white/10 p-8 md:p-10 rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)] ring-1 ring-white/10 overflow-hidden">
+        <div className="relative backdrop-blur-3xl bg-slate-900/60 border border-white/10 p-6 sm:p-8 md:p-10 rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)] ring-1 ring-white/10 overflow-hidden">
           {/* Decorative Corner */}
           <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/10 blur-3xl rounded-full" />
 
@@ -82,7 +74,7 @@ export default function AdminLoginPage() {
                   name="email"
                   type="email"
                   required
-                  placeholder="id@terminal.auth"
+                  placeholder="admin@mesa.co"
                   onBlur={e => {
                     setEmailTouched(true)
                     validateEmail(e.target.value)
@@ -90,7 +82,7 @@ export default function AdminLoginPage() {
                   onChange={e => {
                     if (emailTouched) validateEmail(e.target.value)
                   }}
-                  className={`w-full h-16 px-6 bg-black/40 border rounded-2xl text-white placeholder-slate-700 focus:outline-none focus:ring-2 transition-all font-mono shadow-inner
+                  className={`w-full min-w-0 h-14 sm:h-16 px-4 sm:px-6 bg-black/40 border rounded-2xl text-sm sm:text-base text-white placeholder-slate-700 focus:outline-none focus:ring-2 transition-all shadow-inner
                     ${displayEmailError
                       ? 'border-red-500/60 focus:ring-red-500/30'
                       : emailValid
@@ -144,17 +136,10 @@ export default function AdminLoginPage() {
               disabled={isPending}
               className="group relative w-full h-16 mt-4 bg-white text-slate-950 font-black uppercase tracking-widest text-xs rounded-2xl transition-all duration-300 hover:bg-red-600 hover:text-white hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] active:scale-95 disabled:opacity-50 overflow-hidden"
             >
-              <span className="relative z-10">{isPending ? 'Verificando...' : 'Acceder al Centro de Mando'}</span>
+              <span className="relative z-10">{isPending ? 'Verificando...' : 'Acceder'}</span>
               <div className="absolute inset-0 bg-red-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-500" />
             </button>
           </form>
-        </div>
-
-        <div className="text-center">
-          <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em] leading-relaxed">
-            Authorized Personnel Only — TLS 1.3 Secure <br/>
-            E2E Encryption Enabled • Network: {mounted ? window.location.hostname : 'secure-node'}
-          </p>
         </div>
       </div>
     </div>
