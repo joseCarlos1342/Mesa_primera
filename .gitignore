@@ -49,6 +49,12 @@ login-page.yaml
 # Redis dump
 dump.rdb
 
+# Temporary test/debug files
+google_oauth_test.mjs
+test-update.js
+t\ --json\ number,title,headRefName,state\ --limit\ 10
+status
+
 # Misc
 .DS_Store
 *.pem

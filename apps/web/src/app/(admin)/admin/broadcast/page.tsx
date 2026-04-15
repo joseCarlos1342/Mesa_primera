@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { 
   Send, 
-  ArrowLeft, 
   AlertCircle, 
   CheckCircle2, 
   Info,
@@ -14,7 +13,6 @@ import {
   ShieldAlert,
   Settings
 } from "lucide-react";
-import Link from "next/link";
 import { sendBroadcast } from "@/app/actions/admin-broadcast";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -60,21 +58,6 @@ export default function AdminBroadcastPage() {
   return (
     <div className="min-h-screen pb-20 px-4 md:px-0">
       <div className="max-w-5xl mx-auto pt-8">
-        {/* Navigation Breadcrumb */}
-        <motion.div 
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="mb-8"
-        >
-          <Link 
-            href="/admin" 
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all text-xs font-semibold backdrop-blur-sm group"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
-            Volver al Panel
-          </Link>
-        </motion.div>
-
         {/* Header Section */}
         <header className="mb-12 relative">
           <motion.div
