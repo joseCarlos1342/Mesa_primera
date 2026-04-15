@@ -15,7 +15,7 @@ import type {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HEX_SEED_RE = /^[0-9a-f]{32,64}$/i
 
-export function detectIdentifier(raw: string): DetectedIdentifier {
+export async function detectIdentifier(raw: string): Promise<DetectedIdentifier> {
   const trimmed = raw.trim()
   if (!trimmed) return { raw, type: 'unknown', normalized: '' }
 
@@ -195,7 +195,7 @@ export async function globalSearch(query: string): Promise<ActionResult<AdminSea
   const { supabase, adminId, error: authError } = await verifyAdmin()
   if (authError || !supabase || !adminId) return { error: authError || 'No autenticado' }
 
-  const detected = detectIdentifier(query)
+  const detected = await detectIdentifier(query)
 
   let matches: SearchMatch[] = []
 

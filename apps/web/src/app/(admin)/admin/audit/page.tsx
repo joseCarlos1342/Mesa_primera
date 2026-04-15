@@ -1,5 +1,5 @@
 import { getAuditLog } from "@/app/actions/admin-audit";
-import { ScrollText, Shield, UserCog, CreditCard, Ban, Unlock, Sliders, MessageSquare } from "lucide-react";
+import { ScrollText, Shield, UserCog, CreditCard, Ban, Unlock, Sliders, MessageSquare, Bot } from "lucide-react";
 import { ResponsiveDataView } from "@/components/admin/ResponsiveDataView";
 
 const ACTION_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -93,7 +93,7 @@ export default async function AdminAuditPage() {
             render: (entry) => (
               <div className="flex flex-col">
                 <span className="font-bold text-white">{entry.admin?.display_name || 'Admin'}</span>
-                <span className="text-[10px] font-mono text-slate-500 break-all">{entry.admin_id.substring(0, 8)}...</span>
+                <span className="text-[10px] font-mono text-slate-500 break-all">{entry.admin_id?.substring(0, 8) ?? '—'}...</span>
               </div>
             ),
           },
