@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SignOutButton } from "@/components/auth/sign-out-button";
+import { AdminHeaderActions } from "@/components/admin/AdminHeaderActions";
 
 export default function AdminLayout({
   children,
@@ -8,14 +8,14 @@ export default function AdminLayout({
 }) {
   return (
     <div className="admin-layout min-h-screen bg-gray-900 text-white">
-      <header className="px-6 py-4 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-gray-900/80">
+      <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-gray-900/80 px-4 py-3.5 backdrop-blur-sm sm:px-6">
         <Link
           href="/admin"
-          className="text-xl md:text-2xl font-black tracking-tight text-white hover:text-indigo-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 rounded-sm"
+          className="rounded-sm text-lg font-black tracking-tight text-white transition-colors hover:text-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 sm:text-xl md:text-2xl"
         >
-          Panel Administrativo
+          Admin
         </Link>
-        <SignOutButton variant="danger" />
+        <AdminHeaderActions />
       </header>
       <main className="p-4">{children}</main>
     </div>

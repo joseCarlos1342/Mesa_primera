@@ -31,6 +31,12 @@ const TYPE_LABELS: Record<string, string> = {
   transfer_out: "Transferencia (salida)",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  completed: "Completado",
+  pending: "Pendiente",
+  failed: "Fallido",
+};
+
 export function UserLedgerTable({ entries }: { entries: LedgerEntry[] }) {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [directionFilter, setDirectionFilter] = useState<string>("all");
@@ -97,7 +103,7 @@ export function UserLedgerTable({ entries }: { entries: LedgerEntry[] }) {
                       : "bg-red-500/20 text-red-500"
                   }`}
                 >
-                  {entry.status}
+                  {STATUS_LABELS[entry.status] || entry.status}
                 </span>
               </div>
             );
@@ -181,6 +187,7 @@ export function UserLedgerTable({ entries }: { entries: LedgerEntry[] }) {
       data={filtered}
       keyExtractor={(entry) => entry.id}
       emptyMessage="No hay registros que coincidan con los filtros."
+      cardClassName={() => "mx-3 my-3 rounded-2xl border border-white/5 bg-slate-950/30 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.2)] first:mt-3 last:mb-3"}
       header={
         <div className="px-6 py-4 border-b border-white/5 bg-slate-950/50 flex flex-wrap justify-between items-center gap-3">
           <h3 className="font-bold text-white flex items-center gap-2">
@@ -234,38 +241,76 @@ export function UserLedgerTable({ entries }: { entries: LedgerEntry[] }) {
         const meta = entry.metadata || {};
         const isGame = ["win", "bet", "rake"].includes(entry.type);
         return (
-          <div className="space-y-2">
-            {/* Header: type + date */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {isGame ? (
-                  <Gamepad2 className="w-4 h-4 text-purple-400" />
-                ) : entry.direction === "credit" ? (
-                  <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <ArrowUpRight className="w-4 h-4 text-red-400" />
-                )}
-                <span className="font-bold text-white uppercase text-xs tracking-wider">
-                  {TYPE_LABELS[entry.type] || entry.type}
+          <div className="space-y-3">
+            <div className="border-b border-white/5 pb-2">
+              <p className="inline-flex items-center gap-2 whitespace-nowrap text-[10px] font-mono text-slate-300">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Fecha
                 </span>
-                <span
-                  className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded ${
-                    entry.status === "completed" ? "bg-emerald-500/20 text-emerald-400"
-                      : entry.status === "pending" ? "bg-amber-500/20 text-amber-500"
-                      : "bg-red-500/20 text-red-500"
-                  }`}
-                >
-                  {entry.status}
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-slate-500">
-                {new Date(entry.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}{" "}
-                {new Date(entry.created_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-              </span>
+                {new Date(entry.created_at).toLocaleString("es-ES", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
-            {/* Amount row */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Concepto
+                </p>
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-start gap-1.5">
+                    {isGame ? (
+                      <Gamepad2 className="mt-0.5 h-4 w-4 shrink-0 text-purple-400" />
+                    ) : entry.direction === "credit" ? (
+                      <ArrowDownLeft className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                    ) : (
+                      <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                    )}
+                    <p className="wrap-break-word text-xs font-bold uppercase tracking-wider text-white">
+                      {TYPE_LABELS[entry.type] || entry.type}
+                    </p>
+                  </div>
+                  <span
+                    className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[9px] font-black uppercase ${
+                      entry.status === "completed" ? "bg-emerald-500/20 text-emerald-400"
+                        : entry.status === "pending" ? "bg-amber-500/20 text-amber-500"
+                        : "bg-red-500/20 text-red-500"
+                    }`}
+                  >
+                    {STATUS_LABELS[entry.status] || entry.status}
+                  </span>
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Sala / Ref
+                </p>
+                {meta.room_id ? (
+                  <>
+                    <p className="text-xs font-mono text-purple-300">
+                      {String(meta.room_id).slice(0, 8)}...
+                    </p>
+                    {meta.table_name ? (
+                      <p className="mt-1 wrap-break-word text-[10px] text-slate-500">
+                        {meta.table_name}
+                      </p>
+                    ) : null}
+                  </>
+                ) : entry.reference_id ? (
+                  <p className="text-xs font-mono text-slate-500">
+                    {String(entry.reference_id).slice(0, 12)}...
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-600">—</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">
                   {entry.direction === "debit" ? "Débito" : "Crédito"}
                 </p>
@@ -273,24 +318,19 @@ export function UserLedgerTable({ entries }: { entries: LedgerEntry[] }) {
                   {entry.direction === "credit" ? "+" : "-"}{formatCurrency(entry.amount_cents)}
                 </p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Saldo</p>
                 <p className="font-mono text-slate-300 font-bold">{formatCurrency(entry.balance_after_cents)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Sala</p>
-                {meta.room_id ? (
-                  <p className="text-xs font-mono text-purple-300">{String(meta.room_id).slice(0, 8)}...</p>
-                ) : entry.reference_id ? (
-                  <p className="text-xs font-mono text-slate-500">{String(entry.reference_id).slice(0, 8)}...</p>
-                ) : (
-                  <p className="text-xs text-slate-600">—</p>
-                )}
               </div>
             </div>
             {/* Description */}
             {entry.description && (
-              <p className="text-[10px] text-slate-500 wrap-break-word pt-1 border-t border-white/5">{entry.description}</p>
+              <div className="border-t border-white/5 pt-2">
+                <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Descripción
+                </p>
+                <p className="wrap-break-word text-[10px] text-slate-500">{entry.description}</p>
+              </div>
             )}
           </div>
         );

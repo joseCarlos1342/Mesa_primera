@@ -6,8 +6,8 @@ import { AlertTriangle } from 'lucide-react';
  * Displays a banner when the dashboard has degraded data sources.
  * Each warning indicates a specific data source that failed.
  */
-export function DashboardWarnings({ warnings }: { warnings: string[] }) {
-  if (warnings.length === 0) return null;
+export function DashboardWarnings({ warnings = [] }: { warnings?: string[] }) {
+  if (!warnings.length) return null;
 
   return (
     <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 space-y-2">

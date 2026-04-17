@@ -17,6 +17,11 @@ export type AdminDashboardStats = {
   volume24h: number;
   pendingSupport: number;
   pendingAlerts: number;
+  vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO";
+  vaultCoverage: number;
+  vaultBalance: number;
+  vaultTotalDeposits: number;
+  vaultTotalWithdrawals: number;
   vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO" | "DESCONOCIDO";
   vaultCoverage: number;
   vaultBalance: number;
@@ -201,8 +206,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   if (vaultError) {
     vaultStatus = "DESCONOCIDO";
   } else if (vaultCoverage >= 100) {
-    vaultStatus = "OPERATIVO";
-  } else if (vaultCoverage >= 90) {
     vaultStatus = "ALERTA";
   } else {
     vaultStatus = "CRÍTICO";

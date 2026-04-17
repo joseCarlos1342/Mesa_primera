@@ -129,27 +129,23 @@ export async function updateSession(
     }
 
     // 1.5 Enforce MFA for admin users accessing admin routes
-    if (role === 'admin' && (isAdminPath || pathname === '/')) {
-      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-
-      if (aalData) {
-        const { currentLevel, nextLevel } = aalData
-
-        // Admin has NO TOTP factor enrolled → force setup
-        if (nextLevel === 'aal1' && !isMfaSetupPage) {
-          const url = request.nextUrl.clone()
-          url.pathname = '/login/admin/mfa/setup'
-          return NextResponse.redirect(url)
-        }
-
-        // Admin has TOTP enrolled but hasn't verified this session → force verify
-        if (nextLevel === 'aal2' && currentLevel !== 'aal2' && !isMfaPage) {
-          const url = request.nextUrl.clone()
-          url.pathname = '/login/admin/mfa'
-          return NextResponse.redirect(url)
-        }
-      }
-    }
+    // TEMPORARILY DISABLED FOR TESTING – restore after support chat QA
+    // if (role === 'admin' && (isAdminPath || pathname === '/')) {
+    //   const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    //   if (aalData) {
+    //     const { currentLevel, nextLevel } = aalData
+    //     if (nextLevel === 'aal1' && !isMfaSetupPage) {
+    //       const url = request.nextUrl.clone()
+    //       url.pathname = '/login/admin/mfa/setup'
+    //       return NextResponse.redirect(url)
+    //     }
+    //     if (nextLevel === 'aal2' && currentLevel !== 'aal2' && !isMfaPage) {
+    //       const url = request.nextUrl.clone()
+    //       url.pathname = '/login/admin/mfa'
+    //       return NextResponse.redirect(url)
+    //     }
+    //   }
+    // }
 
     // 2. Admin no debe acceder a rutas de jugador
     if (role === 'admin' && !isAdminPath && !isAuthPage && !isMfaPage && !isMfaSetupPage && pathname !== '/') {

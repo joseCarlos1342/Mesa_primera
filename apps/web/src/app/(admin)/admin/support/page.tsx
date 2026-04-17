@@ -1,18 +1,18 @@
 import { createClient } from '@/utils/supabase/server';
 import { SupportConversationList } from '@/components/admin/SupportConversationList';
-import { Headphones, Shield } from 'lucide-react';
+import { Headphones } from 'lucide-react';
 
 export default async function AdminSupportPage() {
   const supabase = await createClient();
 
-  // Fetch unique users who have sent messages and their latest message
-  const { data: messages, error } = await supabase
-    .from('support_messages')
+  // Fetch tickets with user profile info
+  const { data: tickets, error } = await supabase
+    .from('support_tickets')
     .select(`
       *,
-      user:profiles(username, full_name, avatar_url)
+      user:profiles!support_tickets_user_profiles_fkey(username, full_name, avatar_url)
     `)
-    .order('created_at', { ascending: false });
+    .order('updated_at', { ascending: false });
 
   if (error) {
     return (
@@ -25,37 +25,10 @@ export default async function AdminSupportPage() {
   // Get current admin user
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Process conversations: group by ticket_id and take the latest message
-  // Each ticket_id is a unique session.
-  const ticketConversations = new Map<string, any[]>();
-  messages?.forEach((msg) => {
-    // If ticket_id is null (legacy), we fall back to user_id for grouping
-    const tid = msg.ticket_id || msg.user_id;
-    if (!ticketConversations.has(tid)) {
-      ticketConversations.set(tid, []);
-    }
-    ticketConversations.get(tid)?.push(msg);
-  });
-
-  const conversations = Array.from(ticketConversations.entries()).map(([ticketId, msgs]) => ({
-    userId: msgs[0].user_id,
-    ticketId,
-    latestMessage: msgs[0],
-    messages: msgs.reverse(),
-    user: msgs[0].user,
-    pending: !msgs[0].from_admin && !msgs[0].is_resolved
-  }));
-
   return (
     <div className="space-y-8 animate-in fade-in duration-700 min-h-screen pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
         <div className="space-y-2">
-          <div className="flex items-center gap-3">
-             <div className="p-2 bg-indigo-600/20 rounded-lg border border-indigo-600/20">
-                <Shield className="w-5 h-5 text-indigo-400" />
-             </div>
-             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Panel de Control</p>
-          </div>
           <h1 className="text-3xl md:text-4xl font-black text-white italic uppercase tracking-tighter flex items-center gap-4">
             <Headphones className="w-8 h-8 md:w-10 md:h-10 text-indigo-500" />
             Soporte <span className="text-indigo-500">Técnico</span>
@@ -74,7 +47,7 @@ export default async function AdminSupportPage() {
       </div>
 
       <div className="bg-slate-900/20 border border-white/5 rounded-[2.5rem] p-4 lg:p-6 backdrop-blur-3xl shadow-3xl">
-        <SupportConversationList initialConversations={conversations} adminId={user?.id || ''} />
+        <SupportConversationList initialTickets={tickets || []} adminId={user?.id || ''} />
       </div>
     </div>
   );
