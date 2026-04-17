@@ -14,9 +14,11 @@ import {
   Settings
 } from "lucide-react";
 import { sendBroadcast } from "@/app/actions/admin-broadcast";
+import type { BroadcastInput, BroadcastType } from "@/lib/broadcast";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
-const NOTIFICATION_TYPES = [
+const NOTIFICATION_TYPES: Array<{ id: BroadcastType; label: string; icon: typeof Sparkles; color: string; bg: string; border: string }> = [
   { id: "system_announcement", label: "Anuncio del Sistema", icon: Sparkles, color: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
   { id: "maintenance", label: "Mantenimiento", icon: Settings, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
   { id: "promo", label: "Promoción / Bono", icon: Zap, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
@@ -26,7 +28,7 @@ const NOTIFICATION_TYPES = [
 export default function AdminBroadcastPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<BroadcastInput>({
     title: "",
     body: "",
     type: "system_announcement",
@@ -40,7 +42,7 @@ export default function AdminBroadcastPage() {
     setSuccess(null);
     try {
       const result = await sendBroadcast(formData);
-      setSuccess(result.count);
+      setSuccess(result.audienceCount);
       // Wait a bit before clearing so the user sees the success state clearly
       setTimeout(() => {
         setFormData({ title: "", body: "", type: "system_announcement" });
@@ -94,7 +96,7 @@ export default function AdminBroadcastPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="lg:col-span-12 xl:col-span-8"
+            className="lg:col-span-8"
           >
             <div className="relative group">
               {/* Outer Glow Decoration */}
@@ -170,10 +172,10 @@ export default function AdminBroadcastPage() {
                     <button 
                       type="submit" 
                       disabled={loading || !formData.title || !formData.body}
-                      className="group/btn relative w-full overflow-hidden"
+                      className="group/btn relative w-full overflow-hidden rounded-2xl disabled:opacity-50 disabled:grayscale"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-indigo-500 transition-transform group-hover/btn:scale-105 duration-300" />
-                      <div className="relative flex items-center justify-center gap-4 py-6 text-white font-black text-lg tracking-[0.2em] uppercase transition-all group-active/btn:scale-95 disabled:opacity-50 disabled:grayscale">
+                      <div className="relative flex items-center justify-center gap-4 py-6 text-white font-black text-lg tracking-[0.2em] uppercase transition-all group-active/btn:scale-95">
                         {loading ? (
                           <div className="flex items-center gap-3">
                             <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin" />
@@ -226,7 +228,7 @@ export default function AdminBroadcastPage() {
           </motion.div>
 
           {/* Side Panels */}
-          <div className="lg:col-span-12 xl:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-6">
             {/* Live Preview Card */}
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
@@ -281,9 +283,9 @@ export default function AdminBroadcastPage() {
                       ))}
                       <div className="w-6 h-6 rounded-full border-2 border-slate-950 bg-indigo-500 flex items-center justify-center text-[8px] font-black text-white">+1K</div>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-400 group">
+                    <Link href="/admin/broadcast/history" className="flex items-center gap-2 text-[10px] font-bold text-indigo-400 group hover:text-indigo-300 transition-colors">
                       DETALLES <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                    </div>
+                    </Link>
                   </div>
                 </div>
               </div>

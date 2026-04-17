@@ -7,6 +7,8 @@ import { BottomNav } from "@/components/navigation/BottomNav";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { PresenceTracker } from "@/components/PresenceTracker";
 import { PlayerAppLockWrapper } from "@/components/providers/PlayerAppLockWrapper";
+import { NotificationSocketProvider } from "@/components/providers/NotificationSocketProvider";
+import { BroadcastBanner } from "@/components/BroadcastBanner";
 import { OrientationPortrait } from "@/components/OrientationPortrait";
 import { createClient } from "@/utils/supabase/server";
 import { getAvatarSvg } from "@/utils/avatars";
@@ -95,6 +97,8 @@ export default async function PlayerLayout({
       <PWAInstallPrompt />
       {user && <PresenceTracker />}
       {user && <SupportChat userId={user.id} />}
+      {user && <NotificationSocketProvider userId={user.id} />}
+      {user && <BroadcastBanner userId={user.id} />}
     </div>
     </PlayerAppLockWrapper>
   );
