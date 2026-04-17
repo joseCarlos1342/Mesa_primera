@@ -88,6 +88,25 @@ describe('Admin layout header home link', () => {
     expect(signOutButton.className).toContain('w-11')
     expect(screen.queryByRole('link', { name: /nuevo broadcast/i })).not.toBeInTheDocument()
   })
+
+  it('shows a compact broadcast history return icon next to sign-out on broadcast history pages', async () => {
+    jest.mocked(usePathname).mockReturnValue('/admin/broadcast/history')
+
+    const { default: AdminLayout } = await import(
+      '@/app/(admin)/admin/layout'
+    )
+    render(<AdminLayout><p>historial</p></AdminLayout>)
+
+    const backLink = screen.getByRole('link', { name: /volver a broadcast/i })
+    const signOutButton = screen.getByRole('button', { name: /cerrar sesión/i })
+
+    expect(backLink).toBeInTheDocument()
+    expect(backLink).toHaveAttribute('href', '/admin/broadcast')
+    expect(backLink.className).toContain('h-11')
+    expect(backLink.className).toContain('w-11')
+    expect(signOutButton.className).toContain('h-11')
+    expect(signOutButton.className).toContain('w-11')
+  })
 })
 
 // ────────────────────────────────────────────────

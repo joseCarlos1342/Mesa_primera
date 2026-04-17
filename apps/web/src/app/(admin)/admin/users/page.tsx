@@ -150,10 +150,11 @@ export default async function AdminUsersPage(props: PageProps) {
         keyExtractor={(user) => user.id}
         emptyMessage="No hay usuarios registrados."
         rowClassName={(user) => user.is_banned ? 'bg-red-950/10' : ''}
+        cardClassName={() => "mx-3 my-3 rounded-2xl border border-white/5 bg-slate-950/30 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.2)] first:mt-3 last:mb-3"}
         renderCard={(user) => (
           <div className="space-y-3">
             {/* Header: avatar + name */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3 border-b border-white/5 pb-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner shrink-0 ${
                 user.role === 'admin' ? 'bg-indigo-600' : 'bg-slate-800'
               }`}>
@@ -164,12 +165,12 @@ export default async function AdminUsersPage(props: PageProps) {
                   {user.display_name}
                   {user.role === 'admin' && <span className="bg-indigo-500/20 text-indigo-400 text-[10px] px-2 py-0.5 rounded font-black">ADMIN</span>}
                 </p>
-                <p className="text-xs font-mono text-slate-500 break-all">{user.id.substring(0,8)}...</p>
+                <p className="text-xs font-mono text-slate-500 truncate">{user.id.substring(0,8)}...</p>
               </div>
               <span className="font-black text-emerald-400 text-lg whitespace-nowrap">{formatCurrency(user.balance_cents)}</span>
             </div>
             {/* Status & contact */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Status</p>
                 {user.is_banned ? (
@@ -199,10 +200,9 @@ export default async function AdminUsersPage(props: PageProps) {
             </div>
             {/* Actions */}
             {user.role !== 'admin' && (
-              <div className="flex items-center gap-3 pt-2 border-t border-white/5">
-                <UserBalanceControl userId={user.id} userName={user.display_name} currentBalance={user.balance_cents} />
-                <div className="w-px h-4 bg-white/10" />
-                <UserBanControl userId={user.id} isBanned={user.is_banned} userName={user.display_name} />
+              <div className="grid grid-cols-3 items-stretch gap-3 border-t border-white/5 pt-3">
+                <UserBalanceControl userId={user.id} userName={user.display_name} currentBalance={user.balance_cents} layout="mobile-split" />
+                <UserBanControl userId={user.id} isBanned={user.is_banned} userName={user.display_name} layout="mobile-split" />
               </div>
             )}
           </div>

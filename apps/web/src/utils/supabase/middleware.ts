@@ -128,24 +128,23 @@ export async function updateSession(
       return NextResponse.redirect(url)
     }
 
-    // 1.5 Enforce MFA for admin users accessing admin routes
-    // TEMPORARILY DISABLED FOR TESTING – restore after support chat QA
-    // if (role === 'admin' && (isAdminPath || pathname === '/')) {
-    //   const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    //   if (aalData) {
-    //     const { currentLevel, nextLevel } = aalData
-    //     if (nextLevel === 'aal1' && !isMfaSetupPage) {
-    //       const url = request.nextUrl.clone()
-    //       url.pathname = '/login/admin/mfa/setup'
-    //       return NextResponse.redirect(url)
-    //     }
-    //     if (nextLevel === 'aal2' && currentLevel !== 'aal2' && !isMfaPage) {
-    //       const url = request.nextUrl.clone()
-    //       url.pathname = '/login/admin/mfa'
-    //       return NextResponse.redirect(url)
-    //     }
-    //   }
-    // }
+    // 1.5 Enforce MFA for admin users in production
+    if (process.env.NODE_ENV === 'production' && role === 'admin' && (isAdminPath || pathname === '/')) {
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (aalData) {
+        const { currentLevel, nextLevel } = aalData
+        if (nextLevel === 'aal1' && !isMfaSetupPage) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/login/admin/mfa/setup'
+          return NextResponse.redirect(url)
+        }
+        if (nextLevel === 'aal2' && currentLevel !== 'aal2' && !isMfaPage) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/login/admin/mfa'
+          return NextResponse.redirect(url)
+        }
+      }
+    }
 
     // 2. Admin no debe acceder a rutas de jugador
     if (role === 'admin' && !isAdminPath && !isAuthPage && !isMfaPage && !isMfaSetupPage && pathname !== '/') {

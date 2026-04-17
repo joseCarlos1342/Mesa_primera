@@ -1,25 +1,49 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { DollarSign, TrendingUp, TrendingDown, X, Loader2, CheckCircle2 } from 'lucide-react'
 import { adjustUserBalance } from '@/app/actions/admin-users'
 import { formatCurrency } from '@/utils/format'
 
 type AdjustResult = { type: 'success' | 'error'; message: string }
 
-export function UserBalanceControl({ userId, userName, currentBalance }: { userId: string, userName: string, currentBalance: number }) {
+type UserBalanceControlProps = {
+  userId: string
+  userName: string
+  currentBalance: number
+  layout?: 'default' | 'mobile-split'
+}
+
+export function UserBalanceControl({ userId, userName, currentBalance, layout = 'default' }: UserBalanceControlProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<AdjustResult | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isMounted || !isOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isMounted, isOpen])
 
   const parsedAmount = Math.round(Number(amount) * 100)
 
@@ -55,24 +79,31 @@ export function UserBalanceControl({ userId, userName, currentBalance }: { userI
     setResult(null)
   }
 
+  const triggerClassName = layout === 'mobile-split'
+    ? 'flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5 text-xs font-bold text-emerald-400 transition-all duration-200 hover:bg-emerald-500/20 hover:border-emerald-500/40 active:scale-95'
+    : 'flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 transition-all duration-200 hover:scale-110 hover:border-emerald-500/60 hover:bg-emerald-500 hover:text-white active:scale-95'
+
   if (!isOpen) {
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-all duration-200 border border-emerald-500/20 hover:border-emerald-500/60 hover:scale-110 active:scale-95"
+        className={triggerClassName}
         title="Ajustar Saldo"
       >
         <DollarSign className="w-4 h-4" />
+        {layout === 'mobile-split' ? <span>Saldo</span> : null}
       </button>
     )
   }
 
-  return (
+  if (!isMounted) return null
+
+  return createPortal(
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/88 p-4 pt-8 md:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
-      <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-white/10 p-6 sm:p-8 rounded-2xl w-full max-w-sm shadow-2xl shadow-black/50 relative">
+      <div className="relative w-full max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900 to-slate-950 p-6 shadow-2xl shadow-black/50 sm:p-8">
         {/* Close button */}
         <button 
           onClick={handleClose} 
@@ -166,6 +197,7 @@ export function UserBalanceControl({ userId, userName, currentBalance }: { userI
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
