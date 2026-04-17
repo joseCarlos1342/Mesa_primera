@@ -67,12 +67,6 @@ export default function AdminBroadcastPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="h-px w-8 bg-indigo-500/50" />
-              <span className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.3em] font-mono">Operations Center</span>
-              <span className="h-px flex-1 bg-gradient-to-r from-indigo-500/50 to-transparent" />
-            </div>
-            
             <div className="flex flex-col md:flex-row md:items-center gap-6">
               <div className="flex-1">
                 <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white mb-3">
@@ -184,7 +178,7 @@ export default function AdminBroadcastPage() {
                         ) : (
                            <>
                              <Send className="w-6 h-6 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
-                             EJECUTAR COMANDO GLOBAL
+                             EJECUTAR
                            </>
                         )}
                       </div>

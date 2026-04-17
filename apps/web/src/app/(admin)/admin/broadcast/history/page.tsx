@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getBroadcastHistory, type BroadcastHistoryRow } from "@/app/actions/admin-broadcast";
-import { ArrowLeft, Bell, Settings, Zap, ShieldAlert, Sparkles, Mail, MailCheck, MailX, Eye } from "lucide-react";
-import Link from "next/link";
+import { Bell, Settings, Zap, ShieldAlert, Sparkles, Mail, MailCheck, MailX, Eye } from "lucide-react";
 
 const TYPE_META: Record<string, { icon: typeof Sparkles; color: string }> = {
   system_announcement: { icon: Sparkles, color: "text-indigo-400" },
@@ -38,12 +37,6 @@ export default function BroadcastHistoryPage() {
     <div className="min-h-screen pb-20 px-4 md:px-0">
       <div className="max-w-5xl mx-auto pt-8">
         <header className="mb-8">
-          <Link
-            href="/admin/broadcast"
-            className="inline-flex items-center gap-1.5 text-indigo-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-300 transition-colors mb-4"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Volver a Broadcast
-          </Link>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white">
             Historial de{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">

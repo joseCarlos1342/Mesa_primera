@@ -21,6 +21,8 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
   }
 
   const handleSignOut = async () => {
+    if (!window.confirm('¿Seguro que deseas cerrar sesión?')) return
+
     clearSessionValidated()
     // Si estamos en una ruta de admin o el pathname contiene admin, redirigir al login de admin
     const isAdmin = pathname?.includes('/admin')

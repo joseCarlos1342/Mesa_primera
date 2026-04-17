@@ -9,6 +9,7 @@ export function AdminHeaderActions() {
   const pathname = usePathname()
   const showBroadcastShortcut = pathname === '/admin'
   const showLedgerBackShortcut = pathname.startsWith('/admin/ledger/')
+  const showBroadcastHistoryBackShortcut = pathname === '/admin/broadcast/history'
 
   return (
     <div className="flex items-center gap-2 sm:gap-3">
@@ -17,6 +18,17 @@ export function AdminHeaderActions() {
           href="/admin/ledger"
           aria-label="Volver al libro mayor"
           title="Volver al libro mayor"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-100 transition-all duration-300 hover:border-white/20 hover:bg-white/10 active:scale-95 md:rounded-2xl shadow-[0_10px_30px_rgba(15,23,42,0.28)]"
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0 md:h-5 md:w-5" />
+        </Link>
+      ) : null}
+
+      {showBroadcastHistoryBackShortcut ? (
+        <Link
+          href="/admin/broadcast"
+          aria-label="Volver a broadcast"
+          title="Volver a broadcast"
           className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-100 transition-all duration-300 hover:border-white/20 hover:bg-white/10 active:scale-95 md:rounded-2xl shadow-[0_10px_30px_rgba(15,23,42,0.28)]"
         >
           <ArrowLeft className="h-4 w-4 shrink-0 md:h-5 md:w-5" />
