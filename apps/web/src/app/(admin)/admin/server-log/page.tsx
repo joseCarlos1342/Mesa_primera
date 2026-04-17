@@ -13,7 +13,7 @@ const SEVERITY_CONFIG: Record<string, { label: string; color: string; bg: string
 
 const CATEGORY_LABELS: Record<string, string> = {
   identity: "Identidad",
-  settlement: "Settlement",
+  settlement: "Liquidación",
   discrepancy: "Discrepancia",
   collusion: "Colusión",
   refund: "Reembolso",

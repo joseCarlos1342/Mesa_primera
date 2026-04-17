@@ -49,7 +49,7 @@ export default async function ConsultasPage({
         <div className="mt-6 grid gap-3 text-sm text-gray-400">
           <div className="flex items-center gap-2">
             <BadgeEntity entity="ledger" />
-            <span>UUID de transacción o referencia del ledger</span>
+            <span>UUID de transacción o referencia del libro mayor</span>
           </div>
           <div className="flex items-center gap-2">
             <BadgeEntity entity="replay" />

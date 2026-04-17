@@ -145,7 +145,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <p className="text-lg font-bold text-(--text-secondary)">Repetición no encontrada</p>
-        <Link href="/lobby" className="text-(--accent-gold) font-bold hover:underline">Volver al Lobby</Link>
+        <Link href="/lobby" className="text-(--accent-gold) font-bold hover:underline">Volver al Inicio</Link>
       </div>
     );
   }

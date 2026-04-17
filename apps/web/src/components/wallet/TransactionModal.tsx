@@ -173,7 +173,7 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
                     </div>
                     {publicUrl && (
                       <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-brand-gold hover:underline text-[10px] font-black uppercase tracking-widest">
-                        <span>Ver Full</span>
+                        <span>Ver completo</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     )}

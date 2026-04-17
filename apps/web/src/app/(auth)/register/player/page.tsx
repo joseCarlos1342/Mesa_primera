@@ -132,7 +132,7 @@ export default function PlayerRegisterPage() {
               {/* Apodo */}
               <div className="space-y-2 group">
                 <label className="text-xs font-black text-brand-gold/60 uppercase tracking-widest ml-2 group-focus-within:text-brand-gold transition-colors flex justify-between">
-                  <span>Apodo / Nickname</span>
+                  <span>Apodo</span>
                   <span className={`font-mono ${nicknameLen > 18 ? 'text-yellow-400' : 'text-white/20'}`}>
                     {nicknameLen}/20
                   </span>
