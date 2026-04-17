@@ -143,13 +143,11 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     .gte("created_at", yesterday.toISOString());
   const volume24h = recentLedger?.reduce((acc, entry) => acc + (entry.amount_cents || 0), 0) || 0;
 
-  // Pending Support Messages (Unique users with unresolved messages)
-  const { data: supportData } = await supabase
-    .from("support_messages")
-    .select("user_id")
-    .eq("is_resolved", false);
-
-  const pendingSupportCount = new Set(supportData?.map(m => m.user_id)).size;
+  // Pending support tickets visible to admins on the support board.
+  const { count: pendingSupportCount } = await supabase
+    .from("support_tickets")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
 
   // Pending table help requests ("Llamar al Admin")
   const { count: pendingAlertsCount } = await supabase
