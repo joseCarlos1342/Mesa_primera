@@ -43,6 +43,12 @@ const TYPE_LABELS: Record<string, string> = {
   transfer_out: "Transferencia (salida)",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  completed: "Completado",
+  pending: "Pendiente",
+  failed: "Fallido",
+};
+
 export function LedgerUsersFilter({ users }: { users: UserWithBalance[] }) {
   const [search, setSearch] = useState("");
 
@@ -67,7 +73,7 @@ export function LedgerUsersFilter({ users }: { users: UserWithBalance[] }) {
           Jugadores Registrados
           <span className="text-sm font-bold text-slate-500 ml-2">({filtered.length})</span>
         </h2>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
@@ -75,12 +81,12 @@ export function LedgerUsersFilter({ users }: { users: UserWithBalance[] }) {
               placeholder="Buscar jugador..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-slate-900/60 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 transition-colors w-60"
+              className="pl-10 pr-4 py-2 bg-slate-900/60 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 transition-colors w-full md:w-60"
             />
           </div>
-          <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+          <div className="flex w-full items-center justify-center gap-3 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl md:w-auto md:justify-start">
             <Wallet className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">
+            <span className="text-center text-[11px] font-black uppercase tracking-[0.18em] text-emerald-400 md:text-left md:text-xs md:tracking-widest">
               Total: {formatCurrency(totalBalance)}
             </span>
           </div>
@@ -156,6 +162,7 @@ export function LedgerUsersFilter({ users }: { users: UserWithBalance[] }) {
         data={filtered}
         keyExtractor={(user) => user.id}
         emptyMessage={search ? "No se encontraron jugadores." : "No hay usuarios registrados."}
+        cardClassName={() => "mx-3 my-3 rounded-2xl border border-white/5 bg-slate-950/30 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.2)] first:mt-3 last:mb-3"}
         renderCard={(user) => (
           <div className="space-y-3">
             {/* Header: player info + balance */}
@@ -255,7 +262,7 @@ export function LedgerTransactionsFilter({ entries }: { entries: LedgerEntry[] }
                       : "bg-red-500/20 text-red-500"
                   }`}
                 >
-                  {entry.status}
+                  {STATUS_LABELS[entry.status] || entry.status}
                 </span>
               </div>
             ),
@@ -300,6 +307,7 @@ export function LedgerTransactionsFilter({ entries }: { entries: LedgerEntry[] }
         data={filtered}
         keyExtractor={(entry) => entry.id}
         emptyMessage="No hay registros que coincidan con los filtros."
+        cardClassName={() => "mx-3 my-3 rounded-2xl border border-white/5 bg-slate-950/30 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.2)] first:mt-3 last:mb-3"}
         header={
           <div className="px-6 py-4 border-b border-white/5 bg-slate-950/50 flex flex-wrap justify-between items-center gap-3">
             <h3 className="font-bold text-white flex items-center gap-2">
@@ -351,50 +359,75 @@ export function LedgerTransactionsFilter({ entries }: { entries: LedgerEntry[] }
         }
         renderCard={(entry) => (
           <div className="space-y-2">
-            {/* Type badge + date */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {entry.direction === "credit" ? (
-                  <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <ArrowUpRight className="w-4 h-4 text-red-400" />
-                )}
-                <span className="font-bold text-white text-xs uppercase">
-                  {entry.type.replace(/_/g, " ")}
+            <div className="border-b border-white/5 pb-2">
+              <p className="inline-flex items-center gap-2 whitespace-nowrap text-[10px] font-mono text-slate-300">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Fecha
                 </span>
-                <span
-                  className={`text-[10px] uppercase font-black px-2 py-0.5 rounded ${
-                    entry.status === "completed" ? "bg-emerald-500/20 text-emerald-400"
-                      : entry.status === "pending" ? "bg-amber-500/20 text-amber-500"
-                      : "bg-red-500/20 text-red-500"
-                  }`}
-                >
-                  {entry.status}
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-slate-500">
-                {new Date(entry.created_at).toLocaleString()}
-              </span>
+                {new Date(entry.created_at).toLocaleString("es-ES", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
-            {/* Amount + balance + user */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Movimiento
+                </p>
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-start gap-1.5">
+                    {entry.direction === "credit" ? (
+                      <ArrowDownLeft className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                    ) : (
+                      <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                    )}
+                    <p className="wrap-break-word text-xs font-bold uppercase text-white">
+                      {entry.type.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                  <span
+                    className={`mt-1 inline-flex rounded px-2 py-0.5 text-[10px] font-black uppercase ${
+                      entry.status === "completed" ? "bg-emerald-500/20 text-emerald-400"
+                        : entry.status === "pending" ? "bg-amber-500/20 text-amber-500"
+                        : "bg-red-500/20 text-red-500"
+                    }`}
+                  >
+                    {STATUS_LABELS[entry.status] || entry.status}
+                  </span>
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Usuario
+                </p>
+                {entry.user_id ? (
+                  <>
+                    <p className="wrap-break-word text-sm font-bold text-white">
+                      {entry.user?.display_name || "Desconocido"}
+                    </p>
+                    <p className="mt-1 text-[10px] font-mono text-slate-500">
+                      {entry.user_id.substring(0, 8)}...
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs italic text-slate-500">SISTEMA / BÓVEDA</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Monto</p>
                 <p className={`font-black ${entry.direction === "credit" ? "text-emerald-400" : "text-red-400"}`}>
                   {entry.direction === "credit" ? "+" : "-"}{formatCurrency(entry.amount_cents)}
                 </p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Balance</p>
                 <p className="font-mono text-slate-300">{formatCurrency(entry.balance_after_cents)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Usuario</p>
-                {entry.user_id ? (
-                  <p className="font-bold text-white text-sm">{entry.user?.display_name || "Desconocido"}</p>
-                ) : (
-                  <p className="text-xs text-slate-500 italic">SISTEMA</p>
-                )}
               </div>
             </div>
           </div>

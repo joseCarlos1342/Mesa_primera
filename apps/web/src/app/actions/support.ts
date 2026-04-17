@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { logAdminAction } from './admin-audit'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -129,12 +128,6 @@ export async function appendSupportMessage(
   if (error) return { error: error.message }
   if (!data?.success) return { error: data?.error || 'Error desconocido' }
 
-  if (admin) {
-    await logAdminAction(user.id, 'support_message_sent', 'support_ticket', ticketId, {
-      message_length: trimmed.length,
-    }, { context: 'support' })
-  }
-
   return {
     data: {
       message_id: data.message_id!,
@@ -160,10 +153,6 @@ export async function closeSupportTicket(
 
   if (error) return { error: error.message }
   if (!data?.success) return { error: data?.error || 'Error desconocido' }
-
-  if (admin) {
-    await logAdminAction(user.id, 'support_ticket_closed', 'support_ticket', ticketId, {}, { context: 'support' })
-  }
 
   return { data: { closed_by_role: (data.closed_by_role as 'player' | 'admin') || (admin ? 'admin' : 'player') } }
 }

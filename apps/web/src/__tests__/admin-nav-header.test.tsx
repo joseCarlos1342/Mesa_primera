@@ -8,19 +8,85 @@
 import { render, screen } from '@testing-library/react'
 import fs from 'fs'
 import path from 'path'
+import { usePathname } from 'next/navigation'
+
+jest.mock('next/navigation', () => ({
+  usePathname: jest.fn(),
+}))
 
 // ────────────────────────────────────────────────
 // 1. Admin layout — clickable home title
 // ────────────────────────────────────────────────
 describe('Admin layout header home link', () => {
-  it('renders "Panel Administrativo" as a link to /admin', async () => {
+  beforeEach(() => {
+    jest.mocked(usePathname).mockReturnValue('/admin')
+  })
+
+  it('renders "Admin" as a link to /admin', async () => {
     const { default: AdminLayout } = await import(
       '@/app/(admin)/admin/layout'
     )
     render(<AdminLayout><p>dashboard</p></AdminLayout>)
-    const link = screen.getByRole('link', { name: /panel administrativo/i })
+    const link = screen.getByRole('link', { name: /^admin$/i })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute('href', '/admin')
+  })
+
+  it('shows the broadcast shortcut in the topbar on /admin', async () => {
+    const { default: AdminLayout } = await import(
+      '@/app/(admin)/admin/layout'
+    )
+    render(<AdminLayout><p>dashboard</p></AdminLayout>)
+
+    const broadcastLink = screen.getByRole('link', { name: /nuevo broadcast/i })
+    expect(broadcastLink).toBeInTheDocument()
+    expect(broadcastLink).toHaveAttribute('href', '/admin/broadcast')
+  })
+
+  it('keeps broadcast and sign-out controls on matching topbar sizes', async () => {
+    const { default: AdminLayout } = await import(
+      '@/app/(admin)/admin/layout'
+    )
+    render(<AdminLayout><p>dashboard</p></AdminLayout>)
+
+    const broadcastLink = screen.getByRole('link', { name: /nuevo broadcast/i })
+    const signOutButton = screen.getByRole('button', { name: /cerrar sesión/i })
+
+    expect(broadcastLink.className).toContain('h-11')
+    expect(broadcastLink.className).toContain('w-11')
+    expect(signOutButton.className).toContain('h-11')
+    expect(signOutButton.className).toContain('w-11')
+  })
+
+  it('hides the broadcast shortcut outside the admin dashboard root', async () => {
+    jest.mocked(usePathname).mockReturnValue('/admin/users')
+
+    const { default: AdminLayout } = await import(
+      '@/app/(admin)/admin/layout'
+    )
+    render(<AdminLayout><p>dashboard</p></AdminLayout>)
+
+    expect(screen.queryByRole('link', { name: /nuevo broadcast/i })).not.toBeInTheDocument()
+  })
+
+  it('shows a compact ledger return icon next to sign-out on ledger detail pages', async () => {
+    jest.mocked(usePathname).mockReturnValue('/admin/ledger/user-123')
+
+    const { default: AdminLayout } = await import(
+      '@/app/(admin)/admin/layout'
+    )
+    render(<AdminLayout><p>detalle</p></AdminLayout>)
+
+    const backLink = screen.getByRole('link', { name: /volver al libro mayor/i })
+    const signOutButton = screen.getByRole('button', { name: /cerrar sesión/i })
+
+    expect(backLink).toBeInTheDocument()
+    expect(backLink).toHaveAttribute('href', '/admin/ledger')
+    expect(backLink.className).toContain('h-11')
+    expect(backLink.className).toContain('w-11')
+    expect(signOutButton.className).toContain('h-11')
+    expect(signOutButton.className).toContain('w-11')
+    expect(screen.queryByRole('link', { name: /nuevo broadcast/i })).not.toBeInTheDocument()
   })
 })
 

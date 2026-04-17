@@ -10,7 +10,17 @@ import { RenderClient } from '../RenderClient';
 // ── Helpers ──
 
 function makeTimeline(length: number) {
-  const events = [{ event: 'start', time: 0 }];
+  const events: Array<{
+    event: string;
+    time: number;
+    action?: string;
+    player?: string;
+    amount?: number;
+    winner?: string;
+    payout?: number;
+    pot?: number;
+    rake?: number;
+  }> = [{ event: 'start', time: 0 }];
   for (let i = 1; i < length - 1; i++) {
     events.push({ event: 'action', action: 'voy', player: 'u1', amount: 100, time: i });
   }

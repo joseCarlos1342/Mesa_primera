@@ -550,7 +550,9 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
   await enforceSessionPolicy(data.user.id)
 
   // Admin sin TOTP configurado → forzar configuración de 2FA
-  redirect('/login/admin/mfa/setup')
+  // TEMPORARILY DISABLED FOR TESTING – restore after support chat QA
+  redirect('/admin')
+  // redirect('/login/admin/mfa/setup')
 }
 
 /**

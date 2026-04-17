@@ -4,7 +4,6 @@ import { createClient } from '@/utils/supabase/server'
 import { logAdminAction } from './admin-audit'
 import type {
   DetectedIdentifier,
-  IdentifierType,
   SearchMatch,
   AdminSearchReport,
   ActionResult,
@@ -15,7 +14,7 @@ import type {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HEX_SEED_RE = /^[0-9a-f]{32,64}$/i
 
-export async function detectIdentifier(raw: string): Promise<DetectedIdentifier> {
+export function detectIdentifier(raw: string): DetectedIdentifier {
   const trimmed = raw.trim()
   if (!trimmed) return { raw, type: 'unknown', normalized: '' }
 

@@ -1,7 +1,6 @@
 import { getUserLedger, getUserProfile } from "@/app/actions/admin-ledger";
-import { BookOpen, ArrowLeft, ArrowUpRight, ArrowDownLeft, Wallet, Hash } from "lucide-react";
+import { BookOpen, ArrowUpRight, ArrowDownLeft, Wallet, Hash } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
-import Link from "next/link";
 import { UserLedgerTable } from "@/components/admin/UserLedgerTable";
 
 export default async function UserLedgerDetailPage({ params }: { params: Promise<{ userId: string }> }) {
@@ -22,21 +21,15 @@ export default async function UserLedgerDetailPage({ params }: { params: Promise
     <div className="min-h-full space-y-8 animate-in fade-in duration-700">
       {/* Header */}
       <div className="pb-6 border-b border-white/5">
-        <Link
-          href="/admin/ledger"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-bold uppercase tracking-widest mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver al Ledger
-        </Link>
-
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <div>
-            <h1 className="text-3xl font-black italic tracking-tighter bg-linear-to-br from-white to-slate-500 bg-clip-text text-transparent flex items-center gap-4">
+          <div className="min-w-0 max-w-full">
+            <h1 className="flex min-w-0 max-w-full items-center gap-4 bg-linear-to-br from-white to-slate-500 bg-clip-text text-transparent">
               <BookOpen className="w-8 h-8 text-emerald-400" />
-              DESGLOSE: {profile?.full_name || profile?.username || 'Desconocido'}
+              <span className="min-w-0 flex-1 whitespace-nowrap text-[clamp(1rem,5vw,2.75rem)] font-black italic leading-none tracking-tighter">
+                {profile?.full_name || profile?.username || 'Desconocido'}
+              </span>
             </h1>
-            <p className="text-slate-500 font-medium mt-2 font-mono text-xs">
+            <p className="mt-2 whitespace-nowrap font-mono text-xs font-medium text-slate-500">
               ID: {userId}
             </p>
           </div>
