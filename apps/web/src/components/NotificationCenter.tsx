@@ -16,7 +16,7 @@ interface AppNotification {
   title: string;
   body: string;
   created_at: string;
-  is_read: boolean;
+  read_at: string | null;
   data?: any;
 }
 
@@ -43,7 +43,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
       if (data) {
         const typedNotifications = data as AppNotification[];
         setNotifications(typedNotifications);
-        setUnreadCount(typedNotifications.filter((notification) => !notification.is_read).length);
+        setUnreadCount(typedNotifications.filter((notification) => !notification.read_at).length);
       }
     };
 
@@ -83,12 +83,12 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
   const markAllRead = async () => {
     const { error } = await supabase
       .from('notifications')
-      .update({ is_read: true })
+      .update({ read_at: new Date().toISOString() })
       .eq('user_id', userId)
-      .eq('is_read', false);
+      .is('read_at', null);
 
     if (!error) {
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
       setUnreadCount(0);
     }
   };
@@ -99,7 +99,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     const res = await deleteNotification(id);
     if (res.success) {
       setNotifications(prev => prev.filter(n => n.id !== id));
-      setUnreadCount(prev => notifications.find(n => n.id === id && !n.is_read) ? Math.max(0, prev - 1) : prev);
+      setUnreadCount(prev => notifications.find(n => n.id === id && !n.read_at) ? Math.max(0, prev - 1) : prev);
     }
     setIsDeleting(null);
   };
@@ -109,7 +109,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     const res = await deleteNotification(n.id);
     if (res.success) {
       setNotifications(prev => prev.filter(item => item.id !== n.id));
-      if (!n.is_read) {
+      if (!n.read_at) {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     }
@@ -246,10 +246,10 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
                   key={n.id}
                   className="group relative rounded-xl transition-all duration-200"
                   style={{
-                    background: !n.is_read
+                    background: !n.read_at
                       ? 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.05) 100%)'
                       : 'rgba(255,255,255,0.04)',
-                    border: !n.is_read
+                    border: !n.read_at
                       ? '1px solid rgba(212,175,55,0.3)'
                       : '1px solid rgba(255,255,255,0.07)',
                   }}
@@ -268,7 +268,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
                           <Info className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d4af37' }} />
                         )}
                         <h4 className="text-xs font-black uppercase italic truncate"
-                          style={{ color: !n.is_read ? '#fdf0a6' : 'rgba(253,240,166,0.65)' }}
+                          style={{ color: !n.read_at ? '#fdf0a6' : 'rgba(253,240,166,0.65)' }}
                         >
                           {n.title}
                         </h4>

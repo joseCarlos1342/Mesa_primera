@@ -22,7 +22,8 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "WEBAUTHN_RP_ID",
         "WEBAUTHN_ORIGINS",
-        "RENDER_SECRET_TOKEN"
+        "RENDER_SECRET_TOKEN",
+        "INTERNAL_API_SECRET"
       ],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**"]

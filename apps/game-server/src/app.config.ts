@@ -5,6 +5,7 @@ import cors from "cors";
 import express from "express";
 import { MesaRoom } from "./rooms/MesaRoom";
 import { ReplayFileService } from "./services/ReplayFileService";
+import { emitBroadcastToClients } from "./services/socket";
 
 export default defineServer({
     transport: new WebSocketTransport({
@@ -71,5 +72,25 @@ export default defineServer({
         });
 
         app.use("/colyseus", monitor());
+
+        // ── Broadcast API: emit broadcast to all connected Socket.IO clients ──
+
+        app.post("/api/internal/broadcast", (req, res) => {
+            const secret = process.env.INTERNAL_API_SECRET;
+            const authHeader = req.headers["x-internal-secret"];
+            if (!secret || authHeader !== secret) {
+                res.status(403).json({ ok: false, error: "Forbidden" });
+                return;
+            }
+
+            const { broadcastId, type, title, body, createdAt } = req.body;
+            if (!broadcastId || !type || !title || !body) {
+                res.status(400).json({ ok: false, error: "Missing required fields" });
+                return;
+            }
+
+            emitBroadcastToClients({ broadcastId, type, title, body, createdAt: createdAt || new Date().toISOString() });
+            res.json({ ok: true });
+        });
     },
 });

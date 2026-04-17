@@ -1,5 +1,42 @@
-import { Server as SocketIOServer } from "socket.io";
+import { Server as SocketIOServer, Namespace } from "socket.io";
 import { createServer } from "http";
+import { enqueuePushNotification } from "./push-notifications";
+
+let notifNamespace: Namespace | null = null;
+
+/** Broadcast a notification to all connected clients in /notifications */
+export function emitBroadcastToClients(payload: {
+    broadcastId: string;
+    type: string;
+    title: string;
+    body: string;
+    createdAt: string;
+}) {
+    if (!notifNamespace) {
+        console.warn("[Socket.IO] /notifications namespace not initialized");
+        return;
+    }
+    notifNamespace.emit("notification", payload);
+    console.log(`[Socket.IO] Broadcast emitted to /notifications:`, payload.broadcastId);
+}
+
+/** Enqueue push notifications for a list of user IDs */
+export async function enqueueBroadcastPush(
+    userIds: string[],
+    payload: { title: string; body: string; broadcastId: string }
+) {
+    let queued = 0;
+    for (const uid of userIds) {
+        try {
+            await enqueuePushNotification(uid, payload);
+            queued++;
+        } catch (e) {
+            console.error(`[Socket.IO] Failed to enqueue push for ${uid}:`, e);
+        }
+    }
+    console.log(`[Socket.IO] Queued push for ${queued}/${userIds.length} users`);
+    return queued;
+}
 
 export function initializeSocketIOServer() {
     const httpServer = createServer();
@@ -12,26 +49,79 @@ export function initializeSocketIOServer() {
 
     // --- Support Chat Namespace ---
     const supportNamespace = io.of("/support");
-    
-    // Supabase client is no longer needed here as persistence moved to client side
-    let supabase: any = null;
-
 
     supportNamespace.on("connection", (socket) => {
         console.log(`[Socket.IO] New connection in /support: ${socket.id}`);
-        
-        socket.on("support:message", async (data) => {
-            // Broadcasts the incoming message to admins
-            socket.broadcast.emit("support:incoming", data);
-        });
-        
-        socket.on("support:reply", async (data) => {
-            // Broadcasts the reply back to players
-            socket.broadcast.emit("support:message", data);
+
+        // Player/Admin joins their ticket room for scoped broadcasts
+        socket.on("support:join", (ticketId: string) => {
+            socket.join(`ticket:${ticketId}`);
+            console.log(`[Socket.IO] ${socket.id} joined ticket:${ticketId}`);
         });
 
-        socket.on("support:resolve", (data) => {
-            // Broadcasts the resolution event to notify players the chat is closed
+        socket.on("support:leave", (ticketId: string) => {
+            socket.leave(`ticket:${ticketId}`);
+        });
+
+        // New ticket created by player — notify admins
+        socket.on("support:ticket-created", (data: {
+            ticketId: string;
+            userId: string;
+            username: string;
+            preview: string;
+        }) => {
+            socket.broadcast.emit("support:ticket-created", data);
+        });
+
+        // Message appended (player or admin) — broadcast to ticket room
+        socket.on("support:message-created", (data: {
+            ticketId: string;
+            messageId: string;
+            message: string;
+            from: "player" | "admin";
+            userId: string;
+            username?: string;
+            timestamp: string;
+        }) => {
+            socket.to(`ticket:${data.ticketId}`).emit("support:message-created", data);
+            // Also broadcast to all admins for list updates
+            socket.broadcast.emit("support:message-created", data);
+        });
+
+        // Ticket attended (auto-transition when admin replies)
+        socket.on("support:ticket-attended", (data: {
+            ticketId: string;
+        }) => {
+            socket.to(`ticket:${data.ticketId}`).emit("support:ticket-attended", data);
+            socket.broadcast.emit("support:ticket-attended", data);
+        });
+
+        // Ticket finalized (bilateral close)
+        socket.on("support:ticket-finalized", (data: {
+            ticketId: string;
+            closedByRole: "player" | "admin";
+        }) => {
+            socket.to(`ticket:${data.ticketId}`).emit("support:ticket-finalized", data);
+            socket.broadcast.emit("support:ticket-finalized", data);
+        });
+
+        // Attachment added
+        socket.on("support:attachment-added", (data: {
+            ticketId: string;
+            fileName: string;
+            mimeType: string;
+        }) => {
+            socket.to(`ticket:${data.ticketId}`).emit("support:attachment-added", data);
+        });
+
+        // Legacy event compatibility (temporary — remove after full migration)
+        socket.on("support:message", async (data: any) => {
+            socket.broadcast.emit("support:incoming", data);
+        });
+        socket.on("support:reply", async (data: any) => {
+            socket.broadcast.emit("support:message", data);
+        });
+        socket.on("support:resolve", (data: any) => {
             socket.broadcast.emit("support:resolved", data);
         });
 
@@ -41,42 +131,17 @@ export function initializeSocketIOServer() {
     });
 
     // --- Notifications Namespace ---
-    const notifNamespace = io.of("/notifications");
+    notifNamespace = io.of("/notifications");
     notifNamespace.on("connection", (socket) => {
         console.log(`[Socket.IO] New connection in /notifications: ${socket.id}`);
 
         socket.on("register", (userId) => {
-            // Join a room specifically for this user to receive targeted notifications
             socket.join(userId);
             console.log(`[Socket.IO] User ${userId} registered for notifications`);
         });
 
-        socket.on("admin:broadcast", async (data) => {
-            console.log(`[Socket.IO] Admin broadcast received:`, data);
-            
-            // 1. In-app real-time notification to all connected clients in this namespace
-            socket.broadcast.emit('notification', { title: data.title, body: data.body });
-            
-            // 2. Queue web pushes for offline/all users via BullMQ
-            try {
-                const { createClient } = require('@supabase/supabase-js');
-                const supabaseUrl = process.env.SUPABASE_URL || 'http://127.0.0.1:54321';
-                const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-                const supabase = createClient(supabaseUrl, supabaseKey);
-                
-                const { enqueuePushNotification } = require('./push-notifications');
-                
-                const { data: users } = await supabase.from('push_subscriptions').select('user_id');
-                if (users && users.length > 0) {
-                    const uniqueUsers = [...new Set(users.map((u: any) => u.user_id))];
-                    for (const uid of uniqueUsers) {
-                        await enqueuePushNotification(uid, { title: data.title, body: data.body });
-                    }
-                    console.log(`[Socket.IO] Queued push notifications for ${uniqueUsers.length} users.`);
-                }
-            } catch (e) {
-                console.error('[Socket.IO] Failed to queue broadcast push notifications:', e);
-            }
+        socket.on("disconnect", () => {
+            console.log(`[Socket.IO] Disconnected from /notifications: ${socket.id}`);
         });
     });
 
