@@ -1,10 +1,8 @@
 /**
  * @jest-environment node
  */
-import {
-  detectIdentifier,
-  globalSearch,
-} from '@/app/actions/admin-search'
+import { detectIdentifier } from '@/lib/detect-identifier'
+import { globalSearch } from '@/app/actions/admin-search'
 import { createClient } from '@/utils/supabase/server'
 import type { IdentifierType } from '@/types/admin-search'
 

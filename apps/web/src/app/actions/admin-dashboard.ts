@@ -17,11 +17,6 @@ export type AdminDashboardStats = {
   volume24h: number;
   pendingSupport: number;
   pendingAlerts: number;
-  vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO";
-  vaultCoverage: number;
-  vaultBalance: number;
-  vaultTotalDeposits: number;
-  vaultTotalWithdrawals: number;
   vaultStatus: "OPERATIVO" | "ALERTA" | "CRÍTICO" | "DESCONOCIDO";
   vaultCoverage: number;
   vaultBalance: number;
