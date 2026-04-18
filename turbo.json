@@ -23,7 +23,10 @@
         "WEBAUTHN_RP_ID",
         "WEBAUTHN_ORIGINS",
         "RENDER_SECRET_TOKEN",
-        "INTERNAL_API_SECRET"
+        "INTERNAL_API_SECRET",
+        "DEMO_OTP_BYPASS_ENABLED",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET"
       ],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**"]
