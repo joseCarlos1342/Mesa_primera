@@ -549,12 +549,8 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
   // Enforce single-session policy for admins too
   await enforceSessionPolicy(data.user.id)
 
-  // Admin sin TOTP configurado → forzar configuración de 2FA en producción
-  if (process.env.NODE_ENV === 'production') {
-    redirect('/login/admin/mfa/setup')
-  } else {
-    redirect('/admin')
-  }
+  // Admin sin TOTP configurado → forzar configuración de 2FA
+  redirect('/login/admin/mfa/setup')
 }
 
 /**
