@@ -3280,6 +3280,95 @@ describe('MesaRoom via Colyseus Testing', () => {
       // In LOBBY, chips update from options
       expect(newPlayer.chips).toBe(12_000_000);
     });
+
+    it('restores player state when deviceId differs but userId matches (enforceSessionPolicy scenario)', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-reconnect-userid' });
+
+      // Player 1 joins with deviceId from localStorage (Lobby flow)
+      const p1 = await colyseus.connectTo(room, { nickname: 'Dario', deviceId: 'dev_localStorage_abc', userId: 'supa-dario', chips: 10_000_000 });
+      const p2 = await colyseus.connectTo(room, { nickname: 'Ximena', deviceId: 'device-x', userId: 'supa-ximena', chips: 10_000_000 });
+      const p3 = await colyseus.connectTo(room, { nickname: 'Midudev', deviceId: 'device-m', userId: 'supa-midu', chips: 10_000_000 });
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const internalRoom = colyseus.getRoomById(room.roomId) as any;
+      const ids = Array.from(room.state.players.keys()) as string[];
+      const oldSessionId = p1.sessionId;
+      const oldPlayer = room.state.players.get(oldSessionId)!;
+
+      // Simulate mid-game state
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.dealerId = oldSessionId;
+      room.state.turnPlayerId = oldSessionId;
+      oldPlayer.chips = 7_500_000;
+      oldPlayer.cards = '01-O,03-C,05-E,07-B';
+      oldPlayer.cardCount = 4;
+      oldPlayer.isFolded = false;
+      oldPlayer.hasActed = true;
+      oldPlayer.connected = false; // Simular desconexión
+
+      // Reconnect with DIFFERENT deviceId (profiles.last_device_id from enforceSessionPolicy)
+      // but SAME userId — this is the real-world scenario when client.reconnect() fails
+      const newClient = await colyseus.connectTo(room, {
+        nickname: 'Dario',
+        deviceId: 'uuid-from-enforce-session-policy',
+        userId: 'supa-dario',
+        chips: 9_000_000,
+      });
+
+      await new Promise(r => setTimeout(r, 200));
+
+      const newSessionId = newClient.sessionId;
+      const newPlayer = room.state.players.get(newSessionId)!;
+
+      // Old session removed, new takes its place
+      expect(room.state.players.has(oldSessionId)).toBe(false);
+      expect(newPlayer).toBeTruthy();
+      expect(newPlayer.connected).toBe(true);
+
+      // Game state preserved (NOT treated as a new waiting player)
+      expect(newPlayer.chips).toBe(7_500_000);
+      expect(newPlayer.cards).toBe('01-O,03-C,05-E,07-B');
+      expect(newPlayer.cardCount).toBe(4);
+      expect(newPlayer.isWaiting).toBeFalsy();
+
+      // Seat and role transferred
+      expect(internalRoom.seatOrder).toContain(newSessionId);
+      expect(internalRoom.seatOrder).not.toContain(oldSessionId);
+      expect(room.state.dealerId).toBe(newSessionId);
+      expect(room.state.turnPlayerId).toBe(newSessionId);
+    });
+
+    it('cleans up clientMap for old session during ghost restoration', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-clientmap-cleanup' });
+
+      const p1 = await colyseus.connectTo(room, { nickname: 'P1', deviceId: 'dev-cm-1', userId: 'supa-cm1', chips: 10_000_000 });
+      const p2 = await colyseus.connectTo(room, { nickname: 'P2', deviceId: 'dev-cm-2', userId: 'supa-cm2', chips: 10_000_000 });
+      const p3 = await colyseus.connectTo(room, { nickname: 'P3', deviceId: 'dev-cm-3', userId: 'supa-cm3', chips: 10_000_000 });
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const internalRoom = colyseus.getRoomById(room.roomId) as any;
+      const oldSessionId = p1.sessionId;
+      const oldPlayer = room.state.players.get(oldSessionId)!;
+      oldPlayer.connected = false;
+      room.state.phase = 'GUERRA';
+
+      const newClient = await colyseus.connectTo(room, {
+        nickname: 'P1_new',
+        deviceId: 'dev-cm-1',
+        userId: 'supa-cm1',
+        chips: 10_000_000,
+      });
+
+      await new Promise(r => setTimeout(r, 200));
+
+      // Old session should be removed from clientMap
+      expect(internalRoom.clientMap.has(oldSessionId)).toBe(false);
+      // New session should be in clientMap
+      expect(internalRoom.clientMap.has(newClient.sessionId)).toBe(true);
+    });
   });
 
   // ───────────────────────────────────────────────────────────

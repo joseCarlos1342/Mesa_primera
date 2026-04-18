@@ -191,6 +191,8 @@ export default function GameRoomPage() {
         if (savedToken) {
           try {
             joinedRoom = await client.reconnect(savedToken);
+            // Save fresh token so subsequent reloads don't use a consumed one
+            sessionStorage.setItem(tokenKey, joinedRoom.reconnectionToken);
           } catch (e: any) {
             // No mostrar como error crítico si es solo que el token expiró (común tras reinicio de server o mucho tiempo offline)
             if (e.message?.includes("expired") || e.message?.includes("invalid")) {

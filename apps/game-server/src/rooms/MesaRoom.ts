@@ -1015,8 +1015,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.clientMap.set(client.sessionId, client);
 
     // Ghost player cleanup and state restoration:
+    // Match by deviceId first, then fall back to userId (handles enforceSessionPolicy
+    // scenario where profiles.last_device_id differs from the original localStorage deviceId)
     const existingPlayerEntry = Array.from(this.state.players.entries()).find(
-      ([_, p]) => (deviceId && (p as Player).deviceId === deviceId)
+      ([_, p]) => (deviceId && (p as Player).deviceId === deviceId) ||
+                  (options.userId && (p as Player).supabaseUserId === options.userId)
     );
 
     if (existingPlayerEntry) {
@@ -1058,6 +1061,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
 
       this.state.players.delete(oldSessionId);
+      this.clientMap.delete(oldSessionId);
       this.state.players.set(client.sessionId, newPlayer);
 
       // Actualizar el asiento en el orden estable para mantener la rotación correcta
