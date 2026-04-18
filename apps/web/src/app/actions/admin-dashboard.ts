@@ -66,7 +66,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   // Fetch active rooms from Colyseus matchmaker API (real-time, not stale DB records)
   let activeGamesCount = 0;
   try {
-    const gsUrl = process.env.GAME_SERVER_URL || process.env.NEXT_PUBLIC_GAME_SERVER_URL || 'https://vps23830.cubepath.net';
+    const gsUrl = process.env.GAME_SERVER_URL || process.env.NEXT_PUBLIC_GAME_SERVER_URL || 'https://vps24726.cubepath.net';
     const res = await fetch(`${gsUrl}/matchmake/`, { next: { revalidate: 0 }, signal: AbortSignal.timeout(5000) });
     if (res.ok) {
       const rooms = await res.json() as any[];
