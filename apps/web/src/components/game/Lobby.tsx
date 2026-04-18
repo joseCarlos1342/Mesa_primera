@@ -11,8 +11,13 @@ import { DepositModal } from '@/components/game/DepositModal'
 import { CustomMesaModal } from '@/components/game/CustomMesaModal'
 import Link from 'next/link'
 import { formatAmount } from '@/utils/format'
+import type { LobbyTable } from '@/app/actions/admin-tables'
 
-export function Lobby() {
+interface LobbyProps {
+  lobbyTables?: { common: LobbyTable[]; custom: LobbyTable[] };
+}
+
+export function Lobby({ lobbyTables }: LobbyProps) {
   const [rooms, setRooms] = useState<RoomAvailable[]>([])
   const [_loading, setLoading] = useState(true)
   const [_error, setError] = useState<string | null>(null)
@@ -247,19 +252,47 @@ export function Lobby() {
     }
   }
 
-  const fixedTableNames = ["Mesa #1", "Mesa #2"];
-  const fixedTablesToShow = fixedTableNames.map((name, idx) => {
-    const existing = rooms.find(r => (r.metadata as any)?.tableName === name);
-    if (existing) return existing;
+  // Build common tables from DB (with fallback to Mesa #1 / Mesa #2)
+  const commonTables: LobbyTable[] = (lobbyTables?.common && lobbyTables.common.length > 0)
+    ? lobbyTables.common
+    : [
+        { id: 'fallback-1', name: 'Mesa #1', game_type: 'primera_28', max_players: 7, table_category: 'common' as const, lobby_slot: 1, min_entry_cents: 5000000, min_pique_cents: 500000, disabled_chips: [], sort_order: 1 },
+        { id: 'fallback-2', name: 'Mesa #2', game_type: 'primera_28', max_players: 7, table_category: 'common' as const, lobby_slot: 2, min_entry_cents: 5000000, min_pique_cents: 500000, disabled_chips: [], sort_order: 2 },
+      ];
+
+  const customTables: LobbyTable[] = lobbyTables?.custom || [];
+
+  const fixedTableNames = commonTables.map(t => t.name);
+  const fixedTablesToShow = commonTables.map((dbTable) => {
+    const existing = rooms.find(r => (r.metadata as any)?.tableName === dbTable.name);
+    if (existing) return { ...existing, _dbConfig: dbTable };
     return {
-      roomId: `placeholder-${idx}`,
-      metadata: { tableName: name, isPlaceholder: true },
+      roomId: `placeholder-${dbTable.id}`,
+      metadata: { tableName: dbTable.name, isPlaceholder: true },
       clients: 0,
-      maxClients: 7
+      maxClients: dbTable.max_players,
+      _dbConfig: dbTable,
     } as any;
   });
 
-  const otherTables = rooms.filter(r => !fixedTableNames.includes((r.metadata as any)?.tableName));
+  // "Other tables" = custom DB tables (as placeholders if not live) + live rooms that aren't in fixedTableNames
+  const liveOtherRooms = rooms.filter(r => !fixedTableNames.includes((r.metadata as any)?.tableName));
+  const customPlaceholders = customTables
+    .filter(ct => !rooms.some(r => (r.metadata as any)?.tableName === ct.name))
+    .map(ct => ({
+      roomId: `custom-${ct.id}`,
+      metadata: { tableName: ct.name, isPlaceholder: true, isCustom: true },
+      clients: 0,
+      maxClients: ct.max_players,
+      _dbConfig: ct,
+    } as any));
+  const otherTables = [
+    ...liveOtherRooms.map(r => {
+      const dbMatch = customTables.find(ct => ct.name === (r.metadata as any)?.tableName);
+      return dbMatch ? { ...r, _dbConfig: dbMatch } : r;
+    }),
+    ...customPlaceholders,
+  ];
 
   return (
     <div className="min-h-screen w-full bg-table animate-in fade-in duration-1000">
@@ -499,13 +532,18 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
   userProfile: any
 }) {
   const isPlaceholder = room.metadata?.isPlaceholder;
+  const dbConfig = room._dbConfig as LobbyTable | undefined;
+  const meta = room.metadata as any;
+  const isCustom = meta?.isCustom === true || dbConfig?.table_category === 'custom';
+  const roomMinEntry = dbConfig?.min_entry_cents || meta?.minEntry || 5_000_000;
+  const roomMinPique = dbConfig?.min_pique_cents || meta?.minPique || 500_000;
+  const tableName = meta?.tableName || "Mesa VIP";
+  const displayTitle = tableName.toUpperCase().replace(/MESA\s*/i, "").trim();
 
   const handleAction = async () => {
-    // VALIDACIÓN DE SALDO MÍNIMO (usa min entry de la sala o $50,000 por defecto)
     const balance = userProfile?.balance_cents || 0;
-    const requiredMin = isPlaceholder ? 5_000_000 : roomMinEntry;
-    if (balance < requiredMin) {
-      alert(`Fondos insuficientes. Se requiere un saldo mínimo de $${formatAmount(requiredMin)} para entrar a esta mesa. Por favor, recargue su cuenta.`);
+    if (balance < roomMinEntry) {
+      alert(`Fondos insuficientes. Se requiere un saldo mínimo de $${formatAmount(roomMinEntry)} para entrar a esta mesa. Por favor, recargue su cuenta.`);
       return;
     }
 
@@ -520,15 +558,25 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
         localStorage.setItem('nickname', nick);
         localStorage.setItem('deviceId', deviceId);
 
-        const newRoom = await client.create("mesa", {
+        const roomOptions: any = {
           tableName: room.metadata.tableName,
-          maxPlayers: 7,
+          maxPlayers: dbConfig?.max_players || 7,
           nickname: nick,
           deviceId: deviceId,
           avatarUrl: avatarUrl,
           chips: userProfile?.balance_cents || 0,
-          userId: userProfile?.id || null
-        });
+          userId: userProfile?.id || null,
+        };
+
+        // Pass DB config to Colyseus room
+        if (dbConfig) {
+          roomOptions.minEntry = dbConfig.min_entry_cents;
+          roomOptions.minPique = dbConfig.min_pique_cents;
+          roomOptions.disabledChips = dbConfig.disabled_chips;
+          roomOptions.isCustom = dbConfig.table_category === 'custom';
+        }
+
+        const newRoom = await client.create("mesa", roomOptions);
 
         sessionStorage.setItem(`reconnectionToken_${newRoom.roomId}`, newRoom.reconnectionToken);
         sessionStorage.setItem(`nickname_${newRoom.roomId}`, nick);
@@ -548,13 +596,6 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
       onJoin(room.roomId);
     }
   };
-
-  const tableName = (room.metadata as any)?.tableName || "Mesa VIP";
-  const displayTitle = tableName.toUpperCase().replace(/MESA\s*/i, "").trim();
-  const meta = room.metadata as any;
-  const isCustom = meta?.isCustom === true;
-  const roomMinEntry = meta?.minEntry || 5_000_000;
-  const roomMinPique = meta?.minPique || 500_000;
 
   return (
     <div className={`group relative bg-black/40 backdrop-blur-3xl p-5 md:p-14 rounded-[2.5rem] md:rounded-[4.5rem] transition-all hover:bg-black/60 flex flex-col justify-between shadow-[0_30px_70px_rgba(0,0,0,0.6)] overflow-hidden border-2 md:aspect-auto md:min-h-[480px] w-full max-w-full ${isFixed ? 'border-brand-gold/20 hover:border-brand-gold/40 shadow-brand-gold/5' : 'border-white/5 hover:border-brand-gold/10 shadow-white/5'

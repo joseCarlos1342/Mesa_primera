@@ -108,6 +108,8 @@ export async function getActiveGames(): Promise<AdminGameView[]> {
   await ensureAdmin(supabase);
 
   // Bring games that are not finished or closed
+  // Filter out stale games older than 2 hours (orphaned from server restarts)
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
   const { data: games, error } = await supabase
     .from("games")
     .select(`
@@ -116,6 +118,7 @@ export async function getActiveGames(): Promise<AdminGameView[]> {
       players:game_participants(id, user_id, seat_number, joined_at, left_at)
     `)
     .in("status", ["waiting", "in_progress"])
+    .gte("started_at", twoHoursAgo)
     .order("started_at", { ascending: false });
 
   if (error) throw error;
@@ -383,12 +386,40 @@ export async function deleteTable(tableId: string) {
   return { success: true };
 }
 
+export async function cleanupStaleGames() {
+  const supabase = await createClient();
+  const adminId = await ensureAdmin(supabase);
+
+  // Mark games older than 2 hours with status waiting/in_progress as stale
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("games")
+    .update({ status: "cancelled" })
+    .in("status", ["waiting", "in_progress"])
+    .lt("started_at", twoHoursAgo)
+    .select("id");
+
+  if (error) throw error;
+
+  const count = data?.length || 0;
+  if (count > 0) {
+    await logAdminAction(adminId, 'stale_games_cleanup', 'system', 'games', {
+      cleaned: count,
+    }, { context: 'tables' });
+  }
+
+  revalidatePath('/admin/tables');
+  return { success: true, cleaned: count };
+}
+
 export async function getTableFinancials(): Promise<TableFinancials[]> {
   const supabase = await createClient();
   await ensureAdmin(supabase);
 
   const { data, error } = await supabase.rpc('get_table_financials');
 
+  // If the RPC doesn't exist yet (migration not applied), return empty
+  if (error?.code === 'PGRST202') return [];
   if (error) throw error;
   return (data || []) as TableFinancials[];
 }
@@ -396,11 +427,24 @@ export async function getTableFinancials(): Promise<TableFinancials[]> {
 export async function getLobbyTables(): Promise<{ common: LobbyTable[]; custom: LobbyTable[] }> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc('get_lobby_tables');
+  // Try RPC first, fall back to direct query if RPC not yet deployed
+  let tables: LobbyTable[] = [];
+  const { data: rpcData, error: rpcError } = await supabase.rpc('get_lobby_tables');
 
-  if (error) throw error;
+  if (!rpcError && rpcData) {
+    tables = rpcData as LobbyTable[];
+  } else {
+    // Fallback: direct table query
+    const { data, error } = await supabase
+      .from('tables')
+      .select('id, name, game_type, max_players, table_category, lobby_slot, min_entry_cents, min_pique_cents, disabled_chips, sort_order')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
 
-  const tables = (data || []) as LobbyTable[];
+    if (error) throw error;
+    tables = (data || []) as LobbyTable[];
+  }
+
   return {
     common: tables.filter(t => t.table_category === 'common'),
     custom: tables.filter(t => t.table_category === 'custom'),
