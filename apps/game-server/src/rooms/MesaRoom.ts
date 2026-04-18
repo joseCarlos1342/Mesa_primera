@@ -869,8 +869,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       if (this.spectators.has(client.sessionId)) return; // Admin blindness: no cards for spectators
       const player = this.state.players.get(client.sessionId);
       if (!player || !player.cards) return;
+      // Mantener clientMap actualizado: tras reconnect el transport cambia
+      this.clientMap.set(client.sessionId, client);
       console.log(`[MesaRoom] Resync cartas privadas → ${player.nickname}`);
-      this.sendPrivateCards(client.sessionId);
+      // Enviar directamente por el client live (no depender de clientMap lookup)
+      const cards = player.cards.split(',').filter(Boolean);
+      client.send("private-cards", cards);
     });
 
     // ── Lookup de jugador por teléfono (para transferencia en mesa sin HTTP) ──
@@ -1078,8 +1082,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
 
       // Re-enviar las cartas privadas al cliente reconectado (solo si hay partida activa)
+      // Actualizar clientMap primero: el client del ghost restore tiene transport nuevo
+      this.clientMap.set(client.sessionId, client);
       if (this.state.phase !== "LOBBY") {
-        this.sendPrivateCards(client.sessionId);
+        const cards = newPlayer.cards ? newPlayer.cards.split(',').filter(Boolean) : [];
+        client.send("private-cards", cards);
       }
 
       // Re-enviar configuración de la sala al cliente reconectado
@@ -1236,8 +1243,26 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       await this.allowReconnection(client, 300);
 
       player.connected = true;
+      // Actualizar clientMap: tras reconnect, Colyseus reutiliza el Client
+      // pero el transport interno cambia. Sin este set, sendPrivateCards() usa la ref muerta.
+      this.clientMap.set(client.sessionId, client);
       this.updateLobbyMetadata();
       console.log(`[MesaRoom] Cliente reconectado exitosamente: ${player.nickname} (${client.sessionId})`);
+
+      // Re-enviar cartas privadas tras reconexión exitosa
+      if (this.state.phase !== "LOBBY" && player.cards) {
+        const cards = player.cards.split(',').filter(Boolean);
+        client.send("private-cards", cards);
+      }
+
+      // Re-enviar configuración de la sala
+      const meta = this.metadata as MesaMetadata;
+      client.send("room-config", {
+        disabledChips: meta?.disabledChips || [],
+        minEntry: meta?.minEntry || MIN_BALANCE_CENTS,
+        minPique: meta?.minPique || 500_000,
+        isCustom: meta?.isCustom || false,
+      });
 
     } catch (e) {
       console.log(`[MesaRoom] Tiempo de reconexión expirado o abandono definitivo para ${player.nickname}`);

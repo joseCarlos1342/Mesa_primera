@@ -3751,13 +3751,16 @@ describe('MesaRoom via Colyseus Testing', () => {
       room.state.phase = 'GUERRA';
       players[0].cards = '01-O,03-C,05-E,07-B';
 
-      const sendSpy = vi.spyOn(internalRoom, 'sendPrivateCards');
+      // Capture actual message sent to the client
+      let receivedCards: string[] | null = null;
+      clients[0].onMessage('private-cards', (cards: string[]) => {
+        receivedCards = cards;
+      });
 
       clients[0].send('request-resync');
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 200));
 
-      expect(sendSpy).toHaveBeenCalledWith(ids[0]);
-      sendSpy.mockRestore();
+      expect(receivedCards).toEqual(['01-O', '03-C', '05-E', '07-B']);
     });
 
     it('spectator cannot request-resync (admin blindness)', async () => {

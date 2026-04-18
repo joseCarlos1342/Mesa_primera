@@ -419,6 +419,12 @@ export default function GameRoomPage() {
           router.push('/login/player?kicked=true');
         })
 
+        // Resincronización explícita tras reconexión:
+        // El servidor envía private-cards durante onJoin/allowReconnection,
+        // pero el mensaje puede llegar antes de que los listeners estén activos.
+        // Este request-resync garantiza la entrega después de registrar todos los handlers.
+        joinedRoom.send('request-resync');
+
       } catch (err: any) {
         console.error('Join Error:', err)
         setError(err.message || 'Error al conectar con la sala')
