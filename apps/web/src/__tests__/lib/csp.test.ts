@@ -1,6 +1,19 @@
 import { buildContentSecurityPolicy } from '@/lib/security/csp'
 
 describe('buildContentSecurityPolicy', () => {
+  const originalGameServerUrl = process.env.GAME_SERVER_URL
+  const originalSocketUrl = process.env.SOCKET_URL
+
+  beforeEach(() => {
+    process.env.GAME_SERVER_URL = 'https://vps24726.cubepath.net'
+    process.env.SOCKET_URL = 'https://vps24726.cubepath.net'
+  })
+
+  afterEach(() => {
+    process.env.GAME_SERVER_URL = originalGameServerUrl
+    process.env.SOCKET_URL = originalSocketUrl
+  })
+
   it('uses a nonce in production instead of unsafe script directives', () => {
     const csp = buildContentSecurityPolicy({
       nonce: 'test-nonce',
@@ -15,6 +28,9 @@ describe('buildContentSecurityPolicy', () => {
     )
     expect(csp).not.toContain("'unsafe-inline'")
     expect(csp).not.toContain("'unsafe-eval'")
+    expect(csp).toContain('https://vps24726.cubepath.net')
+    expect(csp).toContain('wss://vps24726.cubepath.net')
+    expect(csp).not.toContain('vps23830.cubepath.net')
   })
 
   it('allows unsafe-eval only in development', () => {
