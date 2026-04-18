@@ -255,11 +255,10 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   return (
                     <m.div 
                       key={`${p.id}-${cardStr}-${idx}`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: p.isFolded ? 0.3 : 1, scale: p.isFolded ? 0.85 : 1 }}
+                      initial={{ opacity: 0, scale: 0.8, x: transX, rotate: angle }}
+                      animate={{ opacity: p.isFolded ? 0.3 : 1, scale: p.isFolded ? 0.85 : 1, x: transX, rotate: angle }}
                       transition={{ delay: 0.45, duration: 0.3 }}
                       style={{ 
-                        transform: `translateX(${transX}px) rotate(${angle}deg)`,
                         transformOrigin: 'top center',
                         marginRight: idx !== arr.length - 1 ? '-35px' : '0px',
                         zIndex: idx,
@@ -301,11 +300,10 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                     return (
                       <m.div 
                         key={`${p.id}-back-${idx}`}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0, scale: 0.8, x: transX, rotate: angle }}
+                        animate={{ opacity: 1, scale: 1, x: transX, rotate: angle }}
                         transition={{ delay: 0.45, duration: 0.3 }}
                         style={{ 
-                          transform: `translateX(${transX}px) rotate(${angle}deg)`,
                           transformOrigin: 'top center',
                           marginRight: idx !== opponentCardCount - 1 ? '-35px' : '0px',
                           zIndex: idx,
@@ -635,8 +633,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                            <m.div 
                              key={cardStr + '-' + idx}
                              onClick={handleCardClick}
-                             initial={{ opacity: 0, y: 50 }}
-                             animate={{ opacity: 1, y: 0 }}
+                             initial={false}
                              style={{ 
                                position: 'absolute',
                                left: `calc(50% + ${offsetX}px)`,
