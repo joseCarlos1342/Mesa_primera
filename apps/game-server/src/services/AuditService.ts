@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-let supabase: ReturnType<typeof createClient> | null = null;
+let supabase: any = null;
 
 if (supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey, {
