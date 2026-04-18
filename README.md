@@ -5,7 +5,7 @@
 
 # Mesa de Primera
 
-*Motor de juego de cartas multijugador en tiempo real para la tradicional "Primera" colombiana*
+*Multiplayer real-time card game engine for the traditional Spanish "Primera"*
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/joseCarlos1342/Mesa_primera/main.yml?style=flat-square&label=Build)](https://github.com/joseCarlos1342/Mesa_primera/actions)
 ![Node version](https://img.shields.io/badge/Node.js->=20-3c873a?style=flat-square)
@@ -14,222 +14,212 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-V4-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
-[![PWA](https://img.shields.io/badge/PWA-Enabled-5A0FC8?style=flat-square&logo=pwa&logoColor=white)](#características)
+[![PWA](https://img.shields.io/badge/PWA-Enabled-5A0FC8?style=flat-square&logo=pwa&logoColor=white)](#features)
 
-[Descripción](#descripción) · [Características](#características) · [Arquitectura](#arquitectura) · [Inicio rápido](#inicio-rápido) · [Estructura del proyecto](#estructura-del-proyecto) · [Testing](#testing) · [Despliegue](#despliegue)
+[Overview](#overview) · [Features](#features) · [Architecture](#architecture) · [Getting started](#getting-started) · [Project structure](#project-structure) · [Testing](#testing) · [Deployment](#deployment)
 
 </div>
 
-## Descripción
+## Overview
 
-Mesa de Primera digitaliza el juego de cartas tradicional colombiano "Primera" (baraja española) en una plataforma multijugador full-stack en tiempo real. El motor de juego corre completamente en el servidor — los clientes son solo visuales — garantizando juego limpio mediante RNG criptográfico y aislamiento de estado.
+Mesa de Primera digitizes the traditional Colombian card game "Primera" (Spanish deck) into a full-stack, real-time multiplayer platform. The game engine runs entirely server-side — clients are visual-only — ensuring fair play through cryptographic RNG and state isolation.
 
-La plataforma sirve a dos grupos de usuarios distintos mediante una arquitectura **Dual-UI**:
+The platform serves two distinct user groups through a **Dual-UI** architecture:
 
-- **App del Jugador (PWA)** — Interfaz móvil táctil con botones grandes, alto contraste y flujos simplificados. Diseñada para **adultos mayores** siguiendo las pautas WCAG AAA.
-- **Panel de Administración** — Consola de gestión completa para usuarios, billeteras, mesas y auditoría.
+- **Player App (PWA)** — Touch-first mobile interface with large tap targets, high contrast, and simplified flows. Designed for **older adults** following WCAG AAA guidelines.
+- **Admin Dashboard** — Full management console for users, wallets, tables, and audit trails.
 
 > [!NOTE]
-> Cada decisión visual — botones sobredimensionados, tipografía en negrita, profundidad de navegación mínima — es una decisión deliberada de accesibilidad para usuarios con agudeza visual reducida o dificultades motrices finas.
+> Every visual choice — oversized buttons, bold typography, minimal navigation depth — is a deliberate accessibility decision for users with reduced visual acuity or fine motor difficulties.
 
-## Características
+## Features
 
-**Motor de Juego Autoritativo**
-- Lógica del lado del servidor vía salas Colyseus — el cliente nunca dicta el estado del juego
-- Barajado Fisher-Yates con RNG `crypto.randomBytes`
-- Aplicación automática de jerarquía de manos (Segunda > Chivo > Primera > Puntos)
-- Periodo de gracia de 60 segundos para reconexión con snapshots en Redis
+**Authoritative Game Engine**
+- Server-side logic via Colyseus rooms — the client never dictates game state
+- Fisher-Yates shuffle with `crypto.randomBytes` RNG
+- Automatic hand hierarchy enforcement (Segunda > Chivo > Primera > Puntos)
+- 60-second reconnection grace period with Redis state snapshots
 
-**Integridad Financiera**
-- Ledger inmutable (`INSERT-ONLY`) — saldo = `SUM(créditos) - SUM(débitos)`
-- Operaciones atómicas de apuesta/pago/comisión con RPCs de Supabase
-- Herramientas de reconciliación para detectar discrepancias
+**Financial Integrity**
+- Immutable ledger (`INSERT-ONLY`) — balance = `SUM(credits) - SUM(debits)`
+- Atomic bet/payout/commission operations with Supabase RPCs
+- Reconciliation tooling to detect drift
 
-**Seguridad Zero-Knowledge**
-- Row Level Security (RLS) impone **Admin Blindness**: los admins no pueden ver manos activas
-- Autenticación WebAuthn/passkey junto con PIN + OTP
-- Algoritmos de detección de colusión mediante análisis programado por cron
+**Zero-Knowledge Security**
+- Row Level Security (RLS) enforces **Admin Blindness**: admins cannot view active hands
+- WebAuthn/passkey authentication alongside PIN + OTP
+- Anti-collusion detection algorithms via scheduled cron analysis
 
-**Comunicación en Tiempo Real**
-- Chat de voz WebRTC vía LiveKit con latencia menor a 100ms
-- Canal de soporte Socket.IO y notificaciones push
-- Grabación y reproducción de partidas
+**Real-Time Communication**
+- LiveKit WebRTC voice chat with sub-100ms latency
+- Socket.IO support channel and push notifications
+- Game replay recording and playback
 
-## Arquitectura
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Clientes                                │
+│                         Clients                                 │
 │  ┌──────────────────┐          ┌──────────────────────────┐     │
-│  │  Player PWA      │          │  Panel Admin             │     │
+│  │  Player PWA      │          │  Admin Dashboard         │     │
 │  │  (Next.js 16)    │          │  (Next.js 16)            │     │
 │  └────────┬─────────┘          └────────────┬─────────────┘     │
 └───────────┼─────────────────────────────────┼───────────────────┘
             │ WebSocket + HTTPS               │ HTTPS
 ┌───────────▼─────────────────────────────────▼───────────────────┐
-│                      Infraestructura                             │
+│                      Infrastructure                              │
 │                                                                  │
 │  ┌──────────────────┐  ┌──────────────┐  ┌──────────────────┐   │
 │  │  Game Server      │  │  Redis 7     │  │  Supabase        │   │
-│  │  (Colyseus)       │◄─┤  (Sesiones)  │  │  (Postgres+RLS)  │   │
-│  │  Puerto 2567      │  │  Puerto 6380 │  │  Auth + Storage  │   │
+│  │  (Colyseus)       │◄─┤  (Sessions)  │  │  (Postgres+RLS)  │   │
+│  │  Port 2567        │  │  Port 6380   │  │  Auth + Storage  │   │
 │  └──────────────────┘  └──────────────┘  └──────────────────┘   │
 │                                                                  │
 │  ┌──────────────────┐  ┌──────────────────────────────────────┐ │
 │  │  LiveKit Cloud    │  │  BullMQ Workers (Cron, Replays)     │ │
-│  │  (Voz WebRTC)     │  │  web-push (Notificaciones)          │ │
+│  │  (Voice WebRTC)   │  │  web-push (Notifications)           │ │
 │  └──────────────────┘  └──────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-| Capa | Tecnología | Propósito |
+| Layer | Technology | Purpose |
 | :--- | :--- | :--- |
 | Frontend | Next.js 16, React 19, Tailwind V4 | SSR, PWA, Dual-UI |
-| Motor de Juego | Colyseus 0.17 | Salas multijugador autoritativas |
-| Base de Datos | Supabase (PostgreSQL) | RLS, Auth (OTP + WebAuthn), Ledger |
-| Caché | Redis 7 | Persistencia de sesiones, snapshots de reconexión |
-| Voz | LiveKit | Audio WebRTC en tiempo real |
-| Trabajos | BullMQ, node-cron | Limpieza de replays, escaneos anti-colusión |
-| Monorepo | Turborepo | Orquestación de builds, caché |
+| Game Engine | Colyseus 0.17 | Authoritative multiplayer rooms |
+| Database | Supabase (PostgreSQL) | RLS, Auth (OTP + WebAuthn), Ledger |
+| Cache | Redis 7 | Session persistence, reconnection snapshots |
+| Voice | LiveKit | Real-time WebRTC audio |
+| Jobs | BullMQ, node-cron | Replay cleanup, anti-collusion scans |
+| Monorepo | Turborepo | Build orchestration, caching |
 
-## Inicio rápido
+## Getting started
 
-### Prerrequisitos
+### Prerequisites
 
 - [Node.js](https://nodejs.org) >= 20
-- [Docker](https://www.docker.com) (para Redis)
-- Un proyecto de [Supabase](https://supabase.com) (local o en la nube)
+- [Docker](https://www.docker.com) (for Redis)
+- A [Supabase](https://supabase.com) project (local or cloud)
 
-### Configuración
+### Setup
 
 ```bash
-# Clonar e instalar
+# Clone and install
 git clone https://github.com/joseCarlos1342/Mesa_primera.git
 cd Mesa_primera
 npm install
 
-# Iniciar Redis
+# Start Redis
 docker compose up -d
 
-# Configurar entorno
+# Configure environment
 cp apps/web/.env.example apps/web/.env.local
 cp apps/game-server/.env.example apps/game-server/.env.local
-# Editar ambos archivos .env.local con tus credenciales de Supabase, Redis y LiveKit
+# Edit both .env.local files with your Supabase, Redis, and LiveKit credentials
 
-# Ejecutar migraciones de base de datos
+# Run database migrations
 npx supabase db reset
 npx supabase gen types typescript --local > apps/web/src/types/supabase.ts
 
-# Iniciar desarrollo (web + game server en paralelo)
+# Start development (web + game server in parallel)
 npm run dev
 ```
 
 > [!TIP]
-> El comando `npm run dev` usa Turborepo para iniciar la app Next.js y el servidor Colyseus concurrentemente.
+> The `npm run dev` command uses Turborepo to start both the Next.js app and the Colyseus game server concurrently.
 
-### Variables de entorno requeridas
+### Required environment variables
 
-| Variable | Descripción |
+| Variable | Description |
 | :--- | :--- |
-| `REDIS_URL` | Cadena de conexión Redis (puerto por defecto `6380`) |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anónima de Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clave de service role de Supabase |
-| `NEXT_PUBLIC_GAME_SERVER_URL` | URL del servidor Colyseus |
-| `TWILIO_*` | Credenciales de Twilio para SMS/OTP |
-| `LIVEKIT_*` | Credenciales de LiveKit para chat de voz |
+| `REDIS_URL` | Redis connection string (default port `6380`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
+| `NEXT_PUBLIC_GAME_SERVER_URL` | Colyseus server URL |
+| `TWILIO_*` | Twilio credentials for SMS/OTP |
+| `LIVEKIT_*` | LiveKit credentials for voice chat |
 
-## Estructura del proyecto
+## Project structure
 
 ```
 Mesa_primera/
 ├── apps/
-│   ├── web/                    # Frontend Next.js 16
+│   ├── web/                    # Next.js 16 frontend
 │   │   └── src/
 │   │       ├── app/
-│   │       │   ├── (admin)/    # Rutas del panel admin
-│   │       │   ├── (auth)/     # Login, registro, MFA, WebAuthn
-│   │       │   ├── (player)/   # Páginas del jugador
-│   │       │   ├── (legal)/    # Términos, privacidad
-│   │       │   ├── play/[id]/  # Mesa de juego en vivo
+│   │       │   ├── (admin)/    # Admin dashboard routes
+│   │       │   ├── (auth)/     # Login, register, MFA, WebAuthn
+│   │       │   ├── (player)/   # Player-facing pages
+│   │       │   ├── (legal)/    # Terms, privacy
+│   │       │   ├── play/[id]/  # Live game table
 │   │       │   └── actions/    # Server actions
-│   │       ├── components/     # Componentes React
-│   │       ├── hooks/          # Hooks personalizados
-│   │       └── lib/            # Utilidades
-│   └── game-server/            # Motor de juego Colyseus
+│   │       ├── components/     # React components
+│   │       ├── hooks/          # Custom hooks
+│   │       └── lib/            # Utilities
+│   └── game-server/            # Colyseus game engine
 │       └── src/
-│           ├── rooms/          # MesaRoom (lógica del juego)
-│           ├── schemas/        # Esquemas de sincronización de estado
-│           ├── services/       # Servicios Supabase, Replay
-│           ├── workers/        # Trabajos en segundo plano
-│           └── cron/           # Programador anti-colusión
+│           ├── rooms/          # MesaRoom (game logic)
+│           ├── schemas/        # State sync schemas
+│           ├── services/       # Supabase, Replay services
+│           ├── workers/        # Background jobs
+│           └── cron/           # Anti-collusion scheduler
 ├── packages/
-│   ├── eslint-config/          # Reglas de lint compartidas
-│   ├── typescript-config/      # Configs TS compartidas
-│   └── ui/                     # Librería de componentes compartida
+│   ├── eslint-config/          # Shared lint rules
+│   ├── typescript-config/      # Shared TS configs
+│   └── ui/                     # Shared component library
 ├── supabase/
-│   └── migrations/             # 40+ migraciones SQL (RLS, RPCs, Ledger)
-├── e2e/                        # Tests E2E con Playwright
-└── replays/                    # Archivo de replays de partidas
+│   └── migrations/             # 40+ SQL migrations (RLS, RPCs, Ledger)
+├── e2e/                        # Playwright E2E tests
+└── replays/                    # Game replay archive
 ```
 
 ## Testing
 
-El proyecto usa tres capas de testing:
+The project uses three testing layers:
 
 ```bash
-# Tests unitarios — Web (Jest 30)
+# Unit tests — Web (Jest 30)
 npm run test -- apps/web
 
-# Tests unitarios — Game Server (Vitest 4)
+# Unit tests — Game Server (Vitest 4)
 npm run test -- apps/game-server
 
 # End-to-end (Playwright)
 npx playwright test
 ```
 
-Las suites E2E cubren:
+E2E suites cover:
 
-| Suite | Qué verifica |
+| Suite | What it verifies |
 | :--- | :--- |
-| `admin-blindness` | RLS impide que el admin vea manos activas del jugador |
-| `gameplay` | Unirse a mesa, estado del lobby, recuperación por desconexión |
-| `security` | Rate limiting (50 clics rápidos), fingerprinting de dispositivos |
-| `social` | Renderizado del leaderboard, sistema de amigos, gates de auth |
+| `admin-blindness` | RLS prevents admin from seeing active player hands |
+| `gameplay` | Table join, lobby state, disconnection recovery |
+| `security` | Rate limiting (50 rapid clicks), device fingerprinting |
+| `social` | Leaderboard rendering, friends system, auth gates |
 
 > [!IMPORTANT]
-> Los server actions requieren un mínimo de 80% de cobertura de tests.
+> Server actions require a minimum of 80% test coverage.
 
-## Documentación del Administrador
+## Deployment
 
-El panel administrativo cuenta con documentación técnica completa en tres niveles:
-
-| Documento | Descripción |
-| :--- | :--- |
-| [docs/ADMIN.md](docs/ADMIN.md) | Guía funcional completa — qué puede y qué no puede hacer el admin, por módulo |
-| [docs/ADMIN_SECURITY.md](docs/ADMIN_SECURITY.md) | Autenticación MFA, RLS, admin blindness, ledger inmutable y modelo de amenazas |
-| [docs/ADMIN_TECHNICAL.md](docs/ADMIN_TECHNICAL.md) | Referencia técnica: server actions, RPCs de Supabase, tipos TypeScript y componentes |
-
-## Despliegue
-
-| Componente | Plataforma |
+| Component | Platform |
 | :--- | :--- |
 | Frontend (Next.js) | **Vercel** |
 | Game Server (Colyseus) | **VPS** (Docker + PM2) |
-| Base de Datos | **Supabase Cloud** |
-| Redis | **VPS** (Docker, puerto 6380) |
-| Voz | **LiveKit Cloud** |
+| Database | **Supabase Cloud** |
+| Redis | **VPS** (Docker, port 6380) |
+| Voice | **LiveKit Cloud** |
 
 ```bash
-# Desplegar migraciones de base de datos a producción
+# Deploy database migrations to production
 npx supabase db push
 
-# Build para producción
+# Build for production
 npm run build --workspace=web
 ```
 
 > [!CAUTION]
-> Siempre ejecuta `npx supabase db push` antes de desplegar cambios de frontend que dependan de nuevas migraciones.
+> Always run `npx supabase db push` before deploying frontend changes that depend on new migrations.
 
 Un cron job ejecuta esta verificación cada hora. Cualquier discrepancia bloquea automáticamente las transacciones del sistema y alerta al administrador.
 
