@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { registerPlayer } from '../../auth-actions'
 import { AvatarSelector } from '@/components/auth/avatar-selector'
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import Link from 'next/link'
 import { UserPlus } from 'lucide-react'
 import { fullNameSchema, nicknameSchema, phoneSchema } from '@/lib/validations'
@@ -198,6 +199,8 @@ export default function PlayerRegisterPage() {
 
             <AvatarSelector onSelect={setSelectedAvatar} selectedId={selectedAvatar} />
             <input type="hidden" name="avatarId" value={selectedAvatar} />
+
+            <TurnstileWidget />
 
             <button
               type="submit"

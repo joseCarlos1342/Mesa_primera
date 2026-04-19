@@ -21,6 +21,7 @@ import crypto from 'crypto'
 import { enforceSessionPolicy } from './auth-actions-helpers'
 import { normalizePhone } from '@/lib/phone'
 import { logAdminAction } from '@/app/actions/admin-audit'
+import { verifyTurnstile } from '@/lib/security/turnstile'
 
 const DEVICE_COOKIE_NAME = 'device_trusted_id'
 const DEVICE_TRUST_DAYS = 30
@@ -221,6 +222,9 @@ async function provisionMissingPhoneAuthUser(phone: string) {
  * Inicia el proceso de REGISTRO para un nuevo jugador.
  */
 export async function registerPlayer(prevState: unknown, formData: FormData) {
+  const turnstile = await verifyTurnstile(formData)
+  if (!turnstile.success) return { error: turnstile.error }
+
   const rl = await enforceRateLimiting('register_player', 3, 300)
   if (!rl.success) return { error: rl.error }
 
@@ -280,6 +284,9 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
  * 3. Si el dispositivo es desconocido, cierra la sesión parcial y envía OTP para 2FA.
  */
 export async function loginWithPin(prevState: unknown, formData: FormData) {
+  const turnstile = await verifyTurnstile(formData)
+  if (!turnstile.success) return { error: turnstile.error }
+
   const rl = await enforceRateLimiting('login_player', 5, 60)
   if (!rl.success) return { error: rl.error }
 
@@ -365,6 +372,9 @@ export async function loginWithPin(prevState: unknown, formData: FormData) {
  * Envía un OTP para autenticarse y después lo redirige a configurar su PIN.
  */
 export async function loginWithPhone(prevState: unknown, formData: FormData) {
+  const turnstile = await verifyTurnstile(formData)
+  if (!turnstile.success) return { error: turnstile.error }
+
   const rl = await enforceRateLimiting('login_player', 5, 60)
   if (!rl.success) return { error: rl.error }
 
@@ -831,6 +841,9 @@ export async function setPlayerPin(prevState: unknown, formData: FormData) {
  * Inicia la recuperación de PIN: valida que el teléfono exista y envía OTP.
  */
 export async function startPinRecovery(prevState: unknown, formData: FormData) {
+  const turnstile = await verifyTurnstile(formData)
+  if (!turnstile.success) return { error: turnstile.error }
+
   const rl = await enforceRateLimiting('pin_recovery', 3, 300)
   if (!rl.success) return { error: rl.error }
 

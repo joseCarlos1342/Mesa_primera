@@ -18,6 +18,7 @@ export function buildContentSecurityPolicy({
     `'nonce-${nonce}'`,
     `'strict-dynamic'`,
     'https://static.cloudflareinsights.com',
+    'https://challenges.cloudflare.com',
   ]
 
   if (isDevelopment) {
@@ -40,7 +41,7 @@ export function buildContentSecurityPolicy({
     `media-src 'self'`,
     `worker-src 'self' blob:`,
     `manifest-src 'self'`,
-    `frame-src 'self' ${livekitWss}`,
+    `frame-src 'self' ${livekitWss} https://challenges.cloudflare.com`,
     `form-action 'self'`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,

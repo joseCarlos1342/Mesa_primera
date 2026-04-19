@@ -5,6 +5,7 @@ import { startPinRecovery } from '../auth-actions'
 import Link from 'next/link'
 import { KeyRound } from 'lucide-react'
 import { phoneSchema } from '@/lib/validations'
+import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 
 export default function RecoveryPage() {
   const [state, formAction, isPending] = useActionState(startPinRecovery, null)
@@ -100,6 +101,8 @@ export default function RecoveryPage() {
                 </p>
               )}
             </div>
+
+            <TurnstileWidget />
 
             <button
               type="submit"
