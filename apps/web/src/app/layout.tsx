@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from 'next/headers'
-import { Playfair_Display, Outfit, Geist_Mono } from "next/font/google";
+import { Cinzel, Outfit, Geist_Mono } from "next/font/google";
 import { ClientErrorSuppressor } from "@/components/ClientErrorSuppressor";
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const cinzel = Cinzel({
   variable: "--font-display",
   subsets: ["latin"],
 });
@@ -171,7 +171,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${playfair.variable} ${outfit.variable} ${geistMono.variable} antialiased`}
+        className={`${cinzel.variable} ${outfit.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <ClientErrorSuppressor />
