@@ -48,7 +48,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
         zIndex: { delay: delay + 0.3 }
       }}
       className={`relative w-20 h-[8rem] md:w-28 md:h-[11rem] lg:w-32 lg:h-[13rem] landscape:h-[35vh] landscape:max-h-[140px] landscape:w-[24vh] landscape:max-w-[96px] lg:landscape:h-[13rem] lg:landscape:w-32 rounded-lg shadow-2xl transform-style-3d cursor-pointer ${className}`}
-      style={{ perspective: 1000, willChange: 'transform, opacity' }}
+      style={{ perspective: 1000 }}
     >
       <div
         className={`absolute inset-0 w-full h-full bg-white rounded-lg flex flex-col items-center justify-center overflow-hidden transition-opacity duration-300 ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
@@ -64,7 +64,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
             <img
               src={getCardImage()}
               alt={`${value} de ${suit}`}
-              className={`w-full h-full object-fill transition-opacity duration-150 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-full object-contain transition-opacity duration-150 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="eager"
               decoding="async"
               onLoad={() => setImgLoaded(true)}
