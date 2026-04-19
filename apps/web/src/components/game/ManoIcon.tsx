@@ -1,7 +1,6 @@
 "use client"
 
 import { m } from 'framer-motion'
-import { Hand } from 'lucide-react'
 
 interface ManoIconProps {
   size?: 'xs' | 'sm' | 'md';
@@ -10,20 +9,13 @@ interface ManoIconProps {
 }
 
 /**
- * Circular hand icon for indicating "La Mano" (dealer).
- * Replaces the old text "Mano" badge across all surfaces.
+ * Gold badge showing "MANO" text for indicating the dealer.
  */
 export function ManoIcon({ size = 'sm', className = '', animate = false }: ManoIconProps) {
   const sizes = {
-    xs: 'w-4 h-4',
-    sm: 'w-5 h-5',
-    md: 'w-7 h-7',
-  };
-
-  const iconSizes = {
-    xs: 10,
-    sm: 14,
-    md: 20,
+    xs: 'px-1.5 py-0.5 text-[6px]',
+    sm: 'px-2 py-0.5 text-[8px]',
+    md: 'px-2.5 py-1 text-[10px]',
   };
 
   const Wrapper = animate ? m.div : 'div';
@@ -46,13 +38,9 @@ export function ManoIcon({ size = 'sm', className = '', animate = false }: ManoI
       `}
       {...animateProps}
     >
-      <Hand
-        size={iconSizes[size]}
-        strokeWidth={2.5}
-        stroke="#1a0f02"
-        fill="#2a1b04"
-        className="shrink-0"
-      />
+      <span className="font-black uppercase tracking-wider text-[#1a0f02] leading-none select-none">
+        Mano
+      </span>
     </Wrapper>
   );
 }

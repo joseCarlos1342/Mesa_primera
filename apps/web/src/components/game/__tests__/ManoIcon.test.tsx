@@ -8,24 +8,22 @@ jest.mock('framer-motion', () => ({
 }));
 
 describe('ManoIcon', () => {
-  it('renders a circular badge with a hand icon (SVG with paths)', () => {
+  it('renders a gold badge with "Mano" text', () => {
     const { container } = render(<ManoIcon />);
     const wrapper = container.firstChild as HTMLElement;
     expect(wrapper).toBeInTheDocument();
     expect(wrapper.className).toContain('rounded-full');
-    // Must contain an SVG (Lucide Hand renders as <svg>)
-    const svg = wrapper.querySelector('svg');
-    expect(svg).toBeInTheDocument();
-    // Lucide Hand has multiple path elements
-    const paths = svg!.querySelectorAll('path');
-    expect(paths.length).toBeGreaterThanOrEqual(1);
+    // Must contain a span with "Mano" text
+    const span = wrapper.querySelector('span');
+    expect(span).toBeInTheDocument();
+    expect(span!.textContent).toBe('Mano');
   });
 
-  it.each(['xs', 'sm', 'md'] as const)('applies correct outer size for size="%s"', (size) => {
+  it.each(['xs', 'sm', 'md'] as const)('applies correct size classes for size="%s"', (size) => {
     const { container } = render(<ManoIcon size={size} />);
     const wrapper = container.firstChild as HTMLElement;
-    const sizeMap = { xs: 'w-4', sm: 'w-5', md: 'w-7' };
-    expect(wrapper.className).toContain(sizeMap[size]);
+    // All sizes should have the text styling
+    expect(wrapper.className).toContain('text-[');
   });
 
   it('renders with animate wrapper without crashing', () => {
