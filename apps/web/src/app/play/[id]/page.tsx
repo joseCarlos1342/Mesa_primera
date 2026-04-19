@@ -26,6 +26,7 @@ import { DepositModal } from '@/components/game/DepositModal'
 import { TableHelpModal } from '@/components/game/TableHelpModal'
 import { GameTransferModal } from '@/components/game/TransferModal'
 import { PermissionsGate } from '@/components/game/PermissionsGate'
+import { getPlayRoomShellClassName } from './play-room-shell'
 
 export default function GameRoomPage() {
   const params = useParams()
@@ -492,7 +493,7 @@ export default function GameRoomPage() {
 
   return (
     <PermissionsGate>
-      <div className={`flex flex-col font-sans relative bg-[#073926] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] before:from-transparent before:via-[rgba(0,0,0,0.1)] before:to-[rgba(0,0,0,0.5)] before:pointer-events-none ${phase === 'LOBBY' ? 'min-h-screen' : 'h-screen overflow-hidden'}`}>
+      <div className={getPlayRoomShellClassName(phase)}>
 
         {/* ── ORIENTATION WARNING (global, cubre LOBBY y GAME) ── */}
       {isPortrait && (
@@ -554,10 +555,6 @@ export default function GameRoomPage() {
         )}
         {phase === 'LOBBY' ? (
           <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center px-2 pt-14 pb-4 md:p-8 md:pt-20">
-            {/* Atmospheric Background Effects */}
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 pointer-events-none mix-blend-multiply" />
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-[#d4af37]/5 rounded-full blur-[150px] pointer-events-none" />
-
             {/* Main Panel */}
             <div className="relative z-10 w-full max-w-5xl bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/25 rounded-2xl md:rounded-[3rem] p-3 md:p-14 landscape:p-3 shadow-[0_40px_100px_rgba(0,0,0,0.6),_0_0_60px_rgba(212,175,55,0.04)] flex flex-col items-center max-h-[85vh] landscape:max-h-[80vh] overflow-hidden custom-scrollbar space-y-0">
               <div className="w-full flex flex-col items-center overflow-y-auto overflow-x-hidden custom-scrollbar space-y-4 md:space-y-12 py-2 md:py-2 px-1">
