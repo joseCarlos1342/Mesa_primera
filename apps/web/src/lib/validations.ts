@@ -8,11 +8,13 @@ const MESSAGES = {
   fullName: 'Solo letras, espacios y guiones. Entre 2 y 80 caracteres',
   nickname: 'Solo letras, números y guión bajo _. Entre 3 y 20 caracteres, sin espacios',
   otp: 'El código debe tener exactamente 6 dígitos',
+  recoveryCode: 'El código de recuperación debe tener formato XXXX-XXXX-XXXX',
   pin: 'La clave debe ser exactamente 6 dígitos numéricos',
   pinConfirm: 'Las claves no coinciden',
   email: 'Correo electrónico inválido',
   passwordMin: 'La contraseña debe tener al menos 8 caracteres',
   passwordMax: 'La contraseña no puede superar 100 caracteres',
+  passwordConfirm: 'Las contraseñas no coinciden',
   amountMin: 'El monto mínimo es $10.000 COP',
   amountMax: 'El monto máximo es $50.000.000 COP',
   amountInt: 'El monto debe ser un número entero positivo',
@@ -93,6 +95,32 @@ export const adminPasswordSchema = z
   .min(8, MESSAGES.passwordMin)
   .max(100, MESSAGES.passwordMax)
 
+export const adminPasswordResetSchema = z.object({
+  password: adminPasswordSchema,
+  passwordConfirm: adminPasswordSchema,
+}).refine(data => data.password === data.passwordConfirm, {
+  message: MESSAGES.passwordConfirm,
+  path: ['passwordConfirm'],
+})
+
+export const adminEmailChangeSchema = z.object({
+  email: adminEmailSchema,
+  code: otpTokenSchema,
+})
+
+export const adminTotpVerificationSchema = z.object({
+  code: otpTokenSchema,
+})
+
+export const adminRecoveryCodeSchema = z
+  .string({ error: MESSAGES.recoveryCode })
+  .trim()
+  .transform(value => value.toUpperCase().replace(/\s+/g, ''))
+  .refine(value => /^[A-HJ-NP-Z2-9-]+$/.test(value), MESSAGES.recoveryCode)
+  .transform(value => value.replace(/-/g, ''))
+  .refine(value => value.length === 12, MESSAGES.recoveryCode)
+  .transform(value => (value.match(/.{1,4}/g) ?? []).join('-'))
+
 /**
  * Monto de depósito en COP (sin centavos).
  * Mínimo $10.000 — Máximo $50.000.000.
@@ -164,6 +192,8 @@ export type LoginPlayerInput = z.infer<typeof loginPlayerSchema>
 export type LoginPlayerWithPinInput = z.infer<typeof loginPlayerWithPinSchema>
 export type SetPinInput = z.infer<typeof setPinSchema>
 export type LoginAdminInput = z.infer<typeof loginAdminSchema>
+export type AdminPasswordResetInput = z.infer<typeof adminPasswordResetSchema>
+export type AdminEmailChangeInput = z.infer<typeof adminEmailChangeSchema>
 export type DepositInput = z.infer<typeof depositSchema>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

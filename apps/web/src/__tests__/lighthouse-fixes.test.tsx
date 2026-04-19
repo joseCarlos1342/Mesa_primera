@@ -205,7 +205,7 @@ describe('Homepage contrast compliance', () => {
 describe('Homepage LCP optimization', () => {
   it('PlayerPage fetches wallet data server-side and passes initialData', () => {
     const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/(player)/page.tsx'),
+      path.resolve(__dirname, '../app/(player)/dashboard/page.tsx'),
       'utf-8'
     )
     expect(source).toMatch(/async/)

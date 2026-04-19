@@ -10,14 +10,17 @@ import {
   loginPlayerSchema,
   loginPlayerWithPinSchema,
   loginAdminSchema,
+  adminRecoveryCodeSchema,
   otpTokenSchema,
   setPinSchema,
   pinSchema,
   flattenZodErrors,
 } from '@/lib/validations'
+import { hashAdminRecoveryCode } from '@/lib/admin-recovery-codes'
 import crypto from 'crypto'
 import { enforceSessionPolicy } from './auth-actions-helpers'
 import { normalizePhone } from '@/lib/phone'
+import { logAdminAction } from '@/app/actions/admin-audit'
 
 const DEVICE_COOKIE_NAME = 'device_trusted_id'
 const DEVICE_TRUST_DAYS = 30
@@ -617,6 +620,85 @@ export async function verifyAdminTotp(prevState: unknown, formData: FormData) {
   }
 
   redirect('/admin')
+}
+
+export async function redeemAdminRecoveryCode(prevState: unknown, formData: FormData) {
+  const rl = await enforceRateLimiting('admin_recovery_code', 5, 300)
+  if (!rl.success) return { error: rl.error }
+
+  const code = (formData.get('code') as string ?? '').trim()
+  const parsed = adminRecoveryCodeSchema.safeParse(code)
+
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
+  const supabase = await createClient()
+  await supabase.auth.getUser()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) {
+    return { error: 'Sesión inválida. Inicia sesión de nuevo para usar un código de recuperación.' }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || profile?.role !== 'admin') {
+    return { error: 'Acceso denegado.' }
+  }
+
+  const codeHash = hashAdminRecoveryCode(parsed.data)
+  const { data: recoveryCode, error: recoveryCodeError } = await supabase
+    .from('admin_mfa_recovery_codes')
+    .select('id')
+    .eq('admin_id', user.id)
+    .eq('code_hash', codeHash)
+    .is('consumed_at', null)
+    .maybeSingle()
+
+  if (recoveryCodeError || !recoveryCode) {
+    return { error: 'Código de recuperación inválido o ya utilizado.' }
+  }
+
+  const { error: consumeError } = await supabase
+    .from('admin_mfa_recovery_codes')
+    .update({ consumed_at: new Date().toISOString() })
+    .eq('id', recoveryCode.id)
+
+  if (consumeError) {
+    return { error: 'No se pudo consumir el código de recuperación.' }
+  }
+
+  const { data: factors } = await supabase.auth.mfa.listFactors()
+  const totpFactor = factors?.totp?.find((factor) => factor.status === 'verified') ?? factors?.totp?.[0]
+
+  if (totpFactor) {
+    const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+      factorId: totpFactor.id,
+    })
+
+    if (unenrollError) {
+      return { error: unenrollError.message }
+    }
+  }
+
+  await logAdminAction(
+    user.id,
+    'admin_mfa_recovery_code_redeemed',
+    'admin_security',
+    user.id,
+    {
+      factor_id: totpFactor?.id ?? null,
+      recovery_code_id: recoveryCode.id,
+    },
+    { context: 'security' }
+  )
+
+  redirect('/login/admin/mfa/setup?recovery=1')
 }
 
 export async function enrollAdminTotp() {

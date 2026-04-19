@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/register/player",
   },
+  robots: { index: false, follow: true },
 };
 
 export default function RegisterLayout({

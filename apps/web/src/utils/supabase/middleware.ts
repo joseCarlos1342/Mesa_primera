@@ -56,11 +56,14 @@ export async function updateSession(
 
   const pathname = request.nextUrl.pathname
   const isAuthCallback = pathname === '/api/auth/callback'
+  const isAuthConfirmApi = pathname === '/api/auth/confirm'
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/recovery')
+  const isPublicPage = pathname === '/' || pathname === '/privacy' || pathname === '/terms'
   const isPublicSeoPage = pathname === '/primera-riverada-los-4-ases'
   const isAdminPath = pathname.startsWith('/admin')
   const isMfaPage = pathname === '/login/admin/mfa'
   const isMfaSetupPage = pathname === '/login/admin/mfa/setup'
+  const isAdminPasswordPage = pathname === '/login/admin/password'
   const isPinSetupPage = pathname === '/register/player/pin' || pathname === '/recovery/pin'
   const isBiometricSetupPage = pathname === '/register/player/biometric'
   const isGoogleCompletionPage = pathname === '/register/player/complete'
@@ -73,7 +76,7 @@ export async function updateSession(
   }
 
   // --- Caso 1: No Autenticado ---
-  if (!user && !isAuthPage && !isPublicSeoPage && !isAuthCallback) {
+  if (!user && !isAuthPage && !isPublicPage && !isPublicSeoPage && !isAuthCallback && !isAuthConfirmApi) {
     const url = request.nextUrl.clone()
     url.pathname = '/login/player'
     return NextResponse.redirect(url)
@@ -164,7 +167,7 @@ export async function updateSession(
     if (isAuthPage || isRootPage) {
       if (role === 'admin') {
         // Permitir que admins permanezcan en páginas MFA sin redirigir
-        if (isMfaPage || isMfaSetupPage) {
+        if (isMfaPage || isMfaSetupPage || isAdminPasswordPage) {
           return supabaseResponse
         }
         // Un admin logueado NO debe estar en páginas de auth genéricas o en el lobby del player
@@ -175,11 +178,17 @@ export async function updateSession(
           return NextResponse.redirect(url)
         }
       } else {
+        // Jugador autenticado en la raíz → redirigir al dashboard
+        if (isRootPage) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/dashboard'
+          return NextResponse.redirect(url)
+        }
         // Un jugador logueado NO debe estar en páginas de auth
         // EXCEPTO: páginas de configuración de PIN y biometría (requieren sesión activa)
         if (isAuthPage && !isPinSetupPage && !isBiometricSetupPage && !isGoogleCompletionPage && !isVerifyPage) {
           const url = request.nextUrl.clone()
-          url.pathname = '/'
+          url.pathname = '/dashboard'
           return NextResponse.redirect(url)
         }
       }
