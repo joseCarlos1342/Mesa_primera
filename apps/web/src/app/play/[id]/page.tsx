@@ -194,6 +194,10 @@ export default function GameRoomPage() {
             joinedRoom = await client.reconnect(savedToken);
             // Save fresh token so subsequent reloads don't use a consumed one
             sessionStorage.setItem(tokenKey, joinedRoom.reconnectionToken);
+            // Signal that we're hydrating a reconnect — overlay shows until private-cards arrive
+            setIsReconnecting(true);
+            // Safety timeout: clear overlay if private-cards never arrives
+            setTimeout(() => setIsReconnecting(false), 5000);
           } catch (e: any) {
             // No mostrar como error crítico si es solo que el token expiró (común tras reinicio de server o mucho tiempo offline)
             if (e.message?.includes("expired") || e.message?.includes("invalid")) {
@@ -322,6 +326,10 @@ export default function GameRoomPage() {
           if (state.phase !== 'LOBBY') {
             setInsufficientBalance(null);
           }
+          // If reconnecting into LOBBY/STARTING, no private-cards will arrive — clear overlay
+          if (state.phase === 'LOBBY' || state.phase === 'STARTING') {
+            setIsReconnecting(false);
+          }
           // Limpiar opción de juego cuando sale de DECLARAR_JUEGO
           if (state.phase !== 'DECLARAR_JUEGO') {
             setValidJuegoOption(null);
@@ -352,6 +360,8 @@ export default function GameRoomPage() {
         // Cartas privadas: solo el dueño recibe sus cartas reales
         joinedRoom.onMessage("private-cards", (cards: string[]) => {
           setMyCards(cards.join(','));
+          // Reconnect hydration complete — cards have been restored
+          setIsReconnecting(false);
         })
 
         // Opción válida de juego derivada por el servidor
@@ -853,7 +863,7 @@ export default function GameRoomPage() {
 
 
       <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
-      <ReconnectOverlay isVisible={isReconnecting} />
+      <ReconnectOverlay isVisible={isReconnecting} message="Sincronizando tu mesa..." />
       <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
       <GameTransferModal
         isOpen={showTransfer}
