@@ -37,14 +37,23 @@ export const metadata: Metadata = {
   keywords: [
     "Primera Riverada los 4 Ases",
     "primera riverada",
+    "primera riverada neiva",
+    "los 4 ases",
+    "los 4 ases neiva",
+    "mesa de juego Dario",
+    "tomadero neiva",
+    "tomadero con juegos de azar",
     "juego de primera",
     "juego de cartas online",
     "cartas multijugador",
     "primera cartas",
     "jugar a la primera",
-    "club de cartas",
-    "cartas en línea",
+    "club de cartas neiva",
+    "juegos de azar neiva",
     "mesa de cartas",
+    "domino neiva",
+    "club de cartas colombia",
+    "juegos de mesa neiva huila",
   ],
   authors: [{ name: "Primera Riverada los 4 Ases" }],
   creator: "Primera Riverada los 4 Ases",
@@ -112,6 +121,7 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "Primera Riverada los 4 Ases",
+    "alternateName": ["Los 4 Ases", "Mesa Primera", "Primera Riverada"],
     "url": "https://primerariveradalos4ases.com",
     "logo": "https://primerariveradalos4ases.com/icons/icon-512x512.png",
     "contactPoint": {
@@ -119,6 +129,36 @@ export default async function RootLayout({
       "contactType": "customer service",
       "availableLanguage": "es",
     },
+  };
+
+  const localBusinessJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "EntertainmentBusiness",
+    "name": "Primera Riverada los 4 Ases",
+    "alternateName": ["Los 4 Ases", "Mesa de Juego Dario", "Tomadero los 4 Ases"],
+    "description": "Club presencial y online de juego de cartas Primera, dominó, bebidas y entretenimiento en Neiva, Huila.",
+    "url": "https://primerariveradalos4ases.com",
+    "image": "https://primerariveradalos4ases.com/og-image.png",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Neiva",
+      "addressRegion": "Huila",
+      "addressCountry": "CO",
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 2.9273,
+      "longitude": -75.2819,
+    },
+    "priceRange": "$$",
+    "currenciesAccepted": "COP",
+    "paymentAccepted": "Efectivo, Transferencia",
+    "areaServed": {
+      "@type": "City",
+      "name": "Neiva",
+    },
+    "keywords": "juego de cartas, primera, dominó, tomadero, juegos de azar, club de cartas, neiva",
+    "sameAs": [],
   };
 
   const webAppJsonLd = {
@@ -135,6 +175,19 @@ export default async function RootLayout({
     },
     "inLanguage": "es",
     "description": "Club privado de cartas multijugador online. Juega a la Primera en tiempo real con amigos.",
+  };
+
+  const webSiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Primera Riverada los 4 Ases",
+    "alternateName": ["Los 4 Ases", "Primera Riverada", "Mesa Primera"],
+    "url": "https://primerariveradalos4ases.com",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://primerariveradalos4ases.com/?q={search_term_string}",
+      "query-input": "required name=search_term_string",
+    },
   };
 
   return (
@@ -166,7 +219,23 @@ export default async function RootLayout({
           suppressHydrationWarning
           type="application/ld+json"
           dangerouslySetInnerHTML={{
+            __html: JSON.stringify(localBusinessJsonLd),
+          }}
+        />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
             __html: JSON.stringify(webAppJsonLd),
+          }}
+        />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(webSiteJsonLd),
           }}
         />
       </head>

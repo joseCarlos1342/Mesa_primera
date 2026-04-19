@@ -58,7 +58,7 @@ export async function updateSession(
   const isAuthCallback = pathname === '/api/auth/callback'
   const isAuthConfirmApi = pathname === '/api/auth/confirm'
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/recovery')
-  const isPublicPage = pathname === '/' || pathname === '/privacy' || pathname === '/terms'
+  const isPublicPage = pathname === '/' || pathname === '/privacy' || pathname === '/terms' || pathname === '/rules'
   const isPublicSeoPage = pathname === '/primera-riverada-los-4-ases'
   const isAdminPath = pathname.startsWith('/admin')
   const isMfaPage = pathname === '/login/admin/mfa'

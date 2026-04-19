@@ -112,20 +112,20 @@ describe('Sitemap contains only public URLs', () => {
     expect(sitemapSource).toContain('/terms')
   })
 
-  it('does NOT include /login/player', () => {
-    expect(sitemapSource).not.toContain('/login/player')
+  it('includes /login/player (indexable for Google sitelinks)', () => {
+    expect(sitemapSource).toContain('/login/player')
   })
 
-  it('does NOT include /register/player', () => {
-    expect(sitemapSource).not.toContain('/register/player')
+  it('includes /register/player (indexable for Google sitelinks)', () => {
+    expect(sitemapSource).toContain('/register/player')
   })
 
   it('does NOT include /replays', () => {
     expect(sitemapSource).not.toContain('/replays')
   })
 
-  it('does NOT include /rules', () => {
-    expect(sitemapSource).not.toContain('/rules')
+  it('includes /rules (public page, indexable)', () => {
+    expect(sitemapSource).toContain('/rules')
   })
 
   it('does NOT include /primera-riverada-los-4-ases', () => {
