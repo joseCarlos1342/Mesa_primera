@@ -8,6 +8,24 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
+        disallow: [
+          // Auth-protected player routes (behind login)
+          "/dashboard",
+          "/replays",
+          "/friends",
+          "/leaderboard",
+          "/lobby",
+          "/profile",
+          "/stats",
+          "/wallet",
+          // Admin panel
+          "/admin",
+          // API and internal
+          "/api/",
+          "/play/",
+          // SEO redirect slug (already 301s to /)
+          "/primera-riverada-los-4-ases",
+        ],
       },
       // Block AI training crawlers (defense-in-depth, Cloudflare managed robots.txt also blocks these)
       { userAgent: "GPTBot", disallow: "/" },

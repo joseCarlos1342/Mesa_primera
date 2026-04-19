@@ -3,9 +3,9 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Iniciar Sesión — Primera Riverada los 4 Ases",
   description:
-    "Accede a tu cuenta de Primera Riverada los 4 Ases. Ingresa con tu número de celular y vuelve a la mesa de juego. Club de cartas en Neiva, Huila.",
+    "Accede a tu cuenta de Primera Riverada los 4 Ases. Ingresa con tu número de celular y clave para volver a la mesa. Acceso seguro con PIN, huella o Google.",
   alternates: {
-    canonical: "/login/player",
+    canonical: "https://primerariveradalos4ases.com/login/player",
   },
   keywords: [
     "iniciar sesión primera riverada",
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Iniciar Sesión — Primera Riverada los 4 Ases",
     description:
-      "Ingresa a tu cuenta y vuelve a la mesa. Club de cartas Primera en Neiva.",
+      "Accede a tu cuenta de Primera Riverada. Ingresa con PIN, huella digital o Google. Club de cartas en Neiva.",
     url: "https://primerariveradalos4ases.com/login/player",
     type: "website",
     locale: "es_CO",

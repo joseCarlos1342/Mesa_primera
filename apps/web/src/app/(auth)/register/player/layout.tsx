@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description:
     "Únete a Primera Riverada los 4 Ases. Crea tu cuenta gratis y comienza a jugar cartas online en el club más exclusivo de Neiva, Huila.",
   alternates: {
-    canonical: "/register/player",
+    canonical: "https://primerariveradalos4ases.com/register/player",
   },
   keywords: [
     "registrarse primera riverada",
