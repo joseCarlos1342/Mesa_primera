@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getGameModalOverlayClassName } from './modal-overlay'
 
 interface DepositModalProps {
   isOpen: boolean
@@ -20,7 +21,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
   return (
     <AnimatePresence mode="wait">
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4 bg-black/95 backdrop-blur-sm overflow-hidden">
+      <div className={getGameModalOverlayClassName()}>
           <motion.div 
           initial={{ opacity: 0, scale: 0.95, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
