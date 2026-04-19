@@ -8,7 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
   Facebook, Instagram, Mail, Smartphone, Grid2x2, Wine, Coffee,
   Spade, Dices, Menu, X, ChevronLeft, ChevronRight, ImageIcon,
-  Play, ArrowRight,
+  Play, ArrowRight, MapPin,
 } from 'lucide-react'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -328,7 +328,7 @@ export function LandingContent() {
 
   /* ── Render ─────────────────────────────────────── */
   return (
-    <div className="relative min-h-screen bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-hidden">
+    <div className="relative min-h-screen bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-clip">
       {/* ── Casino Background ─────────────────────── */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-bg-poker)_0%,#0a2a1f_100%)]" />
@@ -395,8 +395,10 @@ export function LandingContent() {
         </div>
 
         {/* Mobile menu */}
-        {mobileOpen && (
-          <div className="md:hidden bg-slate-950/95 backdrop-blur-xl border-t border-white/5">
+        <div className={`md:hidden overflow-hidden transition-all duration-300 ease-out ${
+          mobileOpen ? 'max-h-125 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+        }`}>
+          <div className="bg-slate-950/95 backdrop-blur-xl border-t border-white/5">
             <div className="px-6 py-4 flex flex-col gap-1">
               {NAV_SECTIONS.map((s) => (
                 <button
@@ -427,7 +429,7 @@ export function LandingContent() {
               </div>
             </div>
           </div>
-        )}
+        </div>
       </nav>
 
       {/* ── Animated Content ──────────────────────── */}
@@ -491,7 +493,7 @@ export function LandingContent() {
               data-hero-hint=""
               className="mt-10 mb-16 md:mb-20 flex justify-center"
             >
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-brand-gold/10 border border-brand-gold/25 backdrop-blur-sm hover:bg-brand-gold/15 hover:border-brand-gold/40 transition-all duration-300 group cursor-default">
+              <button onClick={() => document.getElementById('instalar-app')?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-brand-gold/10 border border-brand-gold/25 backdrop-blur-sm hover:bg-brand-gold/15 hover:border-brand-gold/40 transition-all duration-300 group cursor-pointer">
                 <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-gold/15 border border-brand-gold/20 group-hover:bg-brand-gold/25 transition-all">
                   <Smartphone className="w-5 h-5 text-brand-gold" />
                 </div>
@@ -503,12 +505,12 @@ export function LandingContent() {
                     Instálala desde tu navegador en cualquier celular
                   </p>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
 
           {/* Scroll indicator */}
-          <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-brand-gold/30 animate-bounce">
+            <div className="absolute bottom-4 md:bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-brand-gold/30 animate-bounce">
             <span className="text-[10px] tracking-widest uppercase">Scroll</span>
             <div className="w-px h-6 bg-linear-to-b from-brand-gold/30 to-transparent" />
           </div>
@@ -764,6 +766,7 @@ export function LandingContent() {
               {TUTORIALS.map((t) => (
                 <div
                   key={t.title}
+                  id={t.title === 'Cómo instalar la app' ? 'instalar-app' : undefined}
                   data-stagger-card=""
                   className="group bg-white/3 border border-white/8 rounded-2xl p-6 flex flex-col hover:border-brand-gold/20 transition-all duration-500"
                 >
@@ -818,6 +821,10 @@ export function LandingContent() {
               </p>
               <p className="text-text-secondary text-sm mt-2">
                 Club de cartas, dominó y entretenimiento.
+              </p>
+              <p className="flex items-center gap-1.5 text-text-secondary text-sm mt-1.5 justify-center md:justify-start">
+                <MapPin className="w-3.5 h-3.5 text-brand-gold/70 shrink-0" />
+                Cra. 7 #06-87, Neiva, Huila
               </p>
             </div>
 
