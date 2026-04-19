@@ -374,10 +374,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         const phase = this.state.phase;
         const advanceNext = () => this.advanceTurnBetting(
           undefined,
-          phase === "APUESTA_4_CARTAS" ? () => this.startPhaseDescarte()
-            : phase === "GUERRA" ? () => this.startPhase4Canticos()
-            : phase === "CANTICOS" ? () => this.startPhaseDeclararJuego()
-            : () => this.startPhase6Showdown()
+          this.getNextPhaseCallback(phase)
         );
 
         if (!["paso", "voy", "igualar", "resto"].includes(action)) {
@@ -401,29 +398,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           } else {
             // Hay apuesta activa y no hemos igualado
 
-            // En APUESTA_4_CARTAS: si quedan jugadores detrás por responder,
-            // el paso es provisional — se resolverá cuando el turno vuelva.
-            if (phase === 'APUESTA_4_CARTAS' && !this.pasoPendienteIds.has(client.sessionId)) {
-              const myIdx = this.seatOrder.indexOf(client.sessionId);
-              const hasPlayersBehind = myIdx !== -1 && this.seatOrder.some((id, idx) => {
-                if (idx <= myIdx) return false;
-                const pp = this.state.players.get(id);
-                return pp && pp.connected && !pp.isFolded && !pp.isAllIn && !pp.hasActed && !pp.passedWithJuego && !this.pasoPendienteIds.has(id);
-              });
-              if (hasPlayersBehind) {
-                this.pasoPendienteIds.add(client.sessionId);
-                player.hasActed = true;
-                this.state.lastAction = `${player.nickname} pasa (pendiente)`;
-                console.log(`[MesaRoom] ${player.nickname} pasa provisionalmente — quedan jugadores por actuar`);
-                advanceNext();
-                return;
-              }
-            }
-
             const hand = evaluateHand(player.cards);
             if (hand.type !== 'NINGUNA') {
-              this.pasoPendienteIds.delete(client.sessionId);
-
               // Resolución inmediata: preguntar Llevo Juego / No Llevo ahora mismo
               this.pendingPasoJuegoPlayerId = client.sessionId;
               this.pendingPasoJuegoPhase = phase;
@@ -436,13 +412,17 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
               // NO llamar advanceNext() — turn queda en este jugador hasta que responda
               return;
             } else {
-              // No tiene juego: fold
+              // No tiene juego: fold inmediato + recoger cartas al naipe
+              const wasMano = player.id === this.state.activeManoId;
               player.isFolded = true;
               player.hasActed = true;
-              this.pasoPendienteIds.delete(client.sessionId);
               this.state.lastAction = `${player.nickname} se bota`;
+
+              // Recoger cartas del jugador al naipe
+              this.collectPlayerCards(client.sessionId, phase === 'APUESTA_4_CARTAS' && wasMano && this.seatOrder.length === 7);
+
               this.attemptManoRotation(client.sessionId, "Mano se bota en apuestas");
-              if (player.id === this.state.activeManoId) this.transferMano();
+              if (wasMano) this.transferMano();
             }
           }
           advanceNext();
@@ -685,24 +665,45 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       const nextPhaseCallback = this.getNextPhaseCallback(resolvePhase);
 
       if (llevaJuego) {
-        // Lleva juego: revelar cartas, resolver pique inmediatamente
         player.hasActed = true;
         player.passedWithJuego = true;
-        player.revealedCards = player.cards;
-        this.state.lastAction = `¡${player.nickname} lleva juego!`;
-        console.log(`[MesaRoom] ${player.nickname} lleva juego inmediatamente en ${resolvePhase}`);
 
-        this.pendingLlevoJuegoPlayerId = client.sessionId;
-        this.phaseBeforePiqueReveal = resolvePhase;
+        if (resolvePhase === 'APUESTA_4_CARTAS') {
+          // En APUESTA_4_CARTAS: sale del pozo principal, compite solo por pique (diferido)
+          player.isFolded = true;
+          player.revealedCards = player.cards;
+          this.state.lastAction = `¡${player.nickname} lleva juego!`;
+          console.log(`[MesaRoom] ${player.nickname} lleva juego en APUESTA_4_CARTAS — sale del pozo principal, pique diferido`);
 
-        this.state.phase = "PIQUE_REVEAL";
-        this.state.turnPlayerId = client.sessionId;
+          this.broadcast("pique-fold-reveal", {
+            playerId: client.sessionId,
+            llevaJuego: true,
+            cards: player.cards
+          });
 
-        this.broadcast("pique-fold-reveal", {
-          playerId: client.sessionId,
-          llevaJuego: true,
-          cards: player.cards
-        });
+          this.attemptManoRotation(client.sessionId, "Lleva juego — sale del pozo principal");
+          if (player.id === this.state.activeManoId) this.transferMano();
+
+          // Continuar la ronda de apuestas (pique se resuelve al final)
+          this.advanceTurnBetting(undefined, nextPhaseCallback);
+        } else {
+          // Otras fases: revelar cartas, resolver pique inmediatamente via PIQUE_REVEAL
+          player.revealedCards = player.cards;
+          this.state.lastAction = `¡${player.nickname} lleva juego!`;
+          console.log(`[MesaRoom] ${player.nickname} lleva juego inmediatamente en ${resolvePhase}`);
+
+          this.pendingLlevoJuegoPlayerId = client.sessionId;
+          this.phaseBeforePiqueReveal = resolvePhase;
+
+          this.state.phase = "PIQUE_REVEAL";
+          this.state.turnPlayerId = client.sessionId;
+
+          this.broadcast("pique-fold-reveal", {
+            playerId: client.sessionId,
+            llevaJuego: true,
+            cards: player.cards
+          });
+        }
       } else {
         // No lleva juego: fold y devolver cartas al mazo
         player.isFolded = true;
@@ -710,21 +711,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         this.state.lastAction = `${player.nickname} no lleva juego — se bota`;
         console.log(`[MesaRoom] ${player.nickname} no lleva juego — fold inmediato en ${resolvePhase}`);
 
-        // Devolver sus 4 cartas al mazo (sin barajar el mazo completo)
-        const playerCards = player.cards ? player.cards.split(',').filter(Boolean) : [];
-        for (const card of playerCards) {
-          this.deck.push(card);
-        }
-        this.setPlayerCards(client.sessionId, "");
-
-        // Broadcast animation event for card return
-        this.broadcast("fold-return-cards", {
-          playerId: client.sessionId,
-          cardCount: playerCards.length
-        });
+        const wasMano = player.id === this.state.activeManoId;
+        this.collectPlayerCards(client.sessionId, resolvePhase === 'APUESTA_4_CARTAS' && wasMano && this.seatOrder.length === 7);
 
         this.attemptManoRotation(client.sessionId, "Mano no lleva juego");
-        if (player.id === this.state.activeManoId) this.transferMano();
+        if (wasMano) this.transferMano();
 
         // Continuar la ronda de apuestas con el callback correcto
         this.advanceTurnBetting(undefined, nextPhaseCallback);
@@ -2268,6 +2259,119 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }, 3000);
   }
 
+  // ── Resolución de pique diferido tras APUESTA_4_CARTAS ──
+
+  /** Resuelve el pique diferido y luego inicia DESCARTE o finaliza la mano. */
+  private resolveAndStartDescarte() {
+    this.resolvePiqueAfterApuesta4();
+
+    const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected);
+    if (remaining.length <= 1) {
+      this.endHandEarlyAfterFoldOut();
+    } else {
+      this.startPhaseDescarte();
+    }
+  }
+
+  /** Resuelve la competencia de pique entre jugadores que pasaron con juego en APUESTA_4_CARTAS. */
+  private resolvePiqueAfterApuesta4() {
+    if (this.state.piquePot <= 0) return;
+
+    const contestants = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => p.passedWithJuego);
+
+    if (contestants.length === 0) {
+      // Nadie pasó con juego → Mano gana pique por defecto
+      const manoId = this.state.activeManoId || this.state.dealerId;
+      const mano = this.state.players.get(manoId);
+      if (mano) {
+        this.awardPiqueToContestant(manoId);
+        console.log(`[MesaRoom] Nadie pasó con juego — Mano (${mano.nickname}) gana pique por defecto`);
+      }
+      return;
+    }
+
+    if (contestants.length === 1) {
+      this.awardPiqueToContestant(contestants[0].id);
+      contestants[0].revealedCards = "";
+      this.collectPlayerCards(contestants[0].id, false);
+      return;
+    }
+
+    // 2+ contestants: comparar por jerarquía de juego (SEGUNDA > CHIVO > PRIMERA)
+    const typeRank: Record<string, number> = { 'SEGUNDA': 3, 'CHIVO': 2, 'PRIMERA': 1 };
+    const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
+
+    let winner = contestants[0];
+    let winnerHand = evaluateHand(winner.cards);
+    let winnerRank = typeRank[winnerHand.type] || 0;
+    let winnerSeatDist = ((this.seatOrder.indexOf(winner.id) - manoSeatIdx) + this.seatOrder.length) % this.seatOrder.length;
+
+    for (let i = 1; i < contestants.length; i++) {
+      const p = contestants[i];
+      const h = evaluateHand(p.cards);
+      const rank = typeRank[h.type] || 0;
+      const seatDist = ((this.seatOrder.indexOf(p.id) - manoSeatIdx) + this.seatOrder.length) % this.seatOrder.length;
+
+      if (rank > winnerRank || (rank === winnerRank && seatDist < winnerSeatDist)) {
+        winner = p;
+        winnerHand = h;
+        winnerRank = rank;
+        winnerSeatDist = seatDist;
+      }
+    }
+
+    this.awardPiqueToContestant(winner.id);
+
+    // Recoger cartas de TODOS los contestants (ganador y perdedores)
+    for (const contestant of contestants) {
+      contestant.revealedCards = "";
+      this.collectPlayerCards(contestant.id, false);
+    }
+  }
+
+  /** Paga el pique al ganador con 5% rake. */
+  private awardPiqueToContestant(winnerId: string) {
+    const winner = this.state.players.get(winnerId);
+    if (!winner || this.state.piquePot <= 0) return;
+
+    const piqueRake = Math.ceil(this.state.piquePot * 0.05 / 100) * 100;
+    const piquePayout = this.state.piquePot - piqueRake;
+    winner.chips += piquePayout;
+    console.log(`[MesaRoom] ${winner.nickname} gana el pique (APUESTA_4_CARTAS): $${piquePayout} (Rake: $${piqueRake})`);
+    this.state.lastAction = `¡${winner.nickname} gana el Pique! (+$${(piquePayout / 100).toLocaleString()})`;
+
+    if (winner.supabaseUserId) {
+      SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
+    }
+    this.currentTimeline.push({ event: 'pique_won_apuesta4', winner: winnerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
+    this.state.piquePot = 0;
+  }
+
+  /** Recoge las cartas del jugador y las devuelve al naipe. Si shuffle=true, las baraja antes. */
+  private collectPlayerCards(playerId: string, shuffle: boolean) {
+    const player = this.state.players.get(playerId);
+    if (!player || !player.cards) return;
+
+    const cards = player.cards.split(',').filter(Boolean);
+    if (shuffle) {
+      for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cards[i], cards[j]] = [cards[j], cards[i]];
+      }
+    }
+    for (const card of cards) {
+      this.deck.push(card);
+    }
+    this.setPlayerCards(playerId, "");
+
+    this.broadcast("fold-return-cards", {
+      playerId,
+      cardCount: cards.length
+    });
+  }
+
   /**
    * Avance de turno unificado para todas las fases de apuesta (APUESTA_4_CARTAS, GUERRA, CANTICOS).
    * Un jugador "necesita actuar" si:
@@ -2276,7 +2380,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    */
   private getNextPhaseCallback(phase: string): () => void {
     switch (phase) {
-      case "APUESTA_4_CARTAS": return () => this.startPhaseDescarte();
+      case "APUESTA_4_CARTAS": return () => this.resolveAndStartDescarte();
       case "GUERRA": return () => this.startPhase4Canticos();
       case "CANTICOS": return () => this.startPhaseDeclararJuego();
       case "GUERRA_JUEGO": return () => this.startPhase6Showdown();
@@ -2295,7 +2399,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (activePlayers.length <= 1) {
       // Devolver apuesta no igualada antes de avanzar
       this.refundUncalledBet();
-      if (this.state.pot === 0 && activePlayers.length === 0) {
+
+      // En APUESTA_4_CARTAS, resolver pique diferido antes de avanzar
+      if (this.state.phase === 'APUESTA_4_CARTAS') {
+        this.resolvePiqueAfterApuesta4();
+      }
+
+      if (this.state.pot === 0 && activePlayers.length === 0 && this.state.piquePot === 0) {
         this.endHandEarlyAfterFoldOut();
         return;
       }
@@ -2331,23 +2441,6 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
     }
     // Nadie más necesita actuar — verificar apuesta no igualada
-    // Primero: ¿hay jugadores con paso pendiente que necesitan resolver?
-    if (this.pasoPendienteIds.size > 0) {
-      // Encontrar el primer pendiente en orden de asientos
-      for (const seatId of this.seatOrder) {
-        if (this.pasoPendienteIds.has(seatId)) {
-          const pp = this.state.players.get(seatId);
-          if (pp && pp.connected && !pp.isFolded) {
-            pp.hasActed = false;
-            this.state.turnPlayerId = seatId;
-            console.log(`[MesaRoom] Turno devuelto a ${pp.nickname} para resolver paso pendiente`);
-            return;
-          }
-          // Si ya no está conectado o foldeó, limpiar
-          this.pasoPendienteIds.delete(seatId);
-        }
-      }
-    }
 
     this.refundUncalledBet();
     {
