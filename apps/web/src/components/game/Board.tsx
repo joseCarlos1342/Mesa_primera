@@ -16,6 +16,7 @@ import { AnimationLayer } from './AnimationLayer'
 import { ShuffleAnimation } from './ShuffleAnimation'
 import { ManoIcon } from './ManoIcon'
 import { useCardPreloader } from '@/hooks/useCardPreloader'
+import { getArcCardLayout } from './hand-layout'
 
 interface BoardProps {
   room: Room | null;
@@ -216,11 +217,11 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
     "top-[38%] right-[0%] landscape:top-[6%] landscape:right-[0%] md:landscape:top-[30%] md:landscape:right-[2%] lg:top-[25%] lg:right-[3%]"
   ];
 
+  const isCompactViewport = typeof window !== 'undefined' && window.innerWidth < 1000;
+  const myHandDensity = isCompactViewport ? 'compact' : 'comfortable';
+
   const renderPlayerAtSeat = (p: any, seatIndex: number) => {
     const seatClass = opponentSeats[seatIndex];
-    
-    // Determine card fan direction based on seat
-    const isLeftSide = seatIndex < 3;
 
     // For opponents: use revealedCards during SORTEO/SHOWDOWN or when explicitly set (e.g. pique fold reveal), cardCount for backs otherwise
     const isRevealPhase = phase === 'SORTEO_MANO' || phase === 'SHOWDOWN';
@@ -243,36 +244,43 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
         />
         {/* Opponent's Cards: visible on mobile only during SORTEO_MANO, otherwise lg+ only */}
         {p ? (
-          <div className={`${phase === 'SORTEO_MANO' ? 'flex' : 'hidden lg:flex'} justify-center mt-0.5 md:mt-2 z-0 scale-50 lg:scale-60 landscape:scale-50 lg:landscape:scale-60 origin-top`}>
-            {isRevealPhase && opponentVisibleCards.length > 0
+          <div className={`${phase === 'SORTEO_MANO' ? 'flex' : 'hidden lg:flex'} relative justify-center mt-1 md:mt-2 z-0 h-28 w-48 md:h-32 md:w-56 scale-50 lg:scale-60 landscape:scale-50 lg:landscape:scale-60 origin-top`}>
+            {opponentVisibleCards.length > 0
               ? opponentVisibleCards.map((cardStr: string, idx: number, arr: any[]) => {
-                  const middle = (arr.length - 1) / 2;
-                  const angle = (idx - middle) * 10;
+                  const layout = getArcCardLayout({
+                    index: idx,
+                    count: arr.length,
+                    variant: 'opponent',
+                    density: 'compact',
+                  });
                   const playerIdx = getPlayerIndex(p.id);
                   const dealDelay = phase === 'SORTEO_MANO' ? (playerIdx * 0.4) + (idx * 2) : (playerIdx * 0.4) + (idx * 0.2);
-                  const transX = isLeftSide ? 30 : -30;
                   
                   return (
                     <m.div 
                       key={`${p.id}-${cardStr}-${idx}`}
-                      initial={{ opacity: 0, scale: 0.8, x: transX, rotate: angle }}
-                      animate={{ opacity: p.isFolded ? 0.3 : 1, scale: p.isFolded ? 0.85 : 1, x: transX, rotate: angle }}
+                      initial={{ opacity: 0, scale: 0.82, x: layout.offsetX * 0.7, y: layout.offsetY + 14, rotate: layout.angle * 0.7 }}
+                      animate={{ opacity: p.isFolded ? 0.3 : 1, scale: p.isFolded ? 0.88 : 1, x: layout.offsetX, y: layout.offsetY, rotate: layout.angle }}
                       transition={{ delay: 0.45, duration: 0.3 }}
                       style={{ 
+                        position: 'absolute',
+                        left: '50%',
+                        top: 0,
                         transformOrigin: 'top center',
-                        marginRight: idx !== arr.length - 1 ? '-35px' : '0px',
-                        zIndex: idx,
+                        zIndex: layout.zIndex,
                       }}
                       className={p.isFolded ? 'pointer-events-none grayscale' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
                     >
-                      <Card 
-                        suit={cardStr.split('-')[1] as any} 
-                        value={parseInt(cardStr.split('-')[0])} 
-                        delay={dealDelay}
-                        isHidden={false}
-                        originY={200}
-                        priority={true}
-                      />
+                      <div className="-translate-x-1/2">
+                        <Card 
+                          suit={cardStr.split('-')[1] as any} 
+                          value={parseInt(cardStr.split('-')[0])} 
+                          delay={dealDelay}
+                          isHidden={false}
+                          originY={200}
+                          priority={true}
+                        />
+                      </div>
                     </m.div>
                   )
                 })
@@ -293,28 +301,35 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                       <Card isHidden={true} originY={200} priority={true} />
                     </m.div>)
                   : Array.from({ length: opponentCardCount }).map((_, idx) => {
-                    const middle = (opponentCardCount - 1) / 2;
-                    const angle = (idx - middle) * 10;
-                    const transX = isLeftSide ? 30 : -30;
+                      const layout = getArcCardLayout({
+                        index: idx,
+                        count: opponentCardCount,
+                        variant: 'opponent',
+                        density: 'compact',
+                      });
                     
                     return (
                       <m.div 
                         key={`${p.id}-back-${idx}`}
-                        initial={{ opacity: 0, scale: 0.8, x: transX, rotate: angle }}
-                        animate={{ opacity: 1, scale: 1, x: transX, rotate: angle }}
+                        initial={{ opacity: 0, scale: 0.82, x: layout.offsetX * 0.7, y: layout.offsetY + 14, rotate: layout.angle * 0.7 }}
+                        animate={{ opacity: 1, scale: 1, x: layout.offsetX, y: layout.offsetY, rotate: layout.angle }}
                         transition={{ delay: 0.45, duration: 0.3 }}
                         style={{ 
+                          position: 'absolute',
+                          left: '50%',
+                          top: 0,
                           transformOrigin: 'top center',
-                          marginRight: idx !== opponentCardCount - 1 ? '-35px' : '0px',
-                          zIndex: idx,
+                          zIndex: layout.zIndex,
                         }}
                         className="drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]"
                       >
-                        <Card 
-                          isHidden={true}
-                          originY={200}
-                          priority={true}
-                        />
+                        <div className="-translate-x-1/2">
+                          <Card 
+                            isHidden={true}
+                            originY={200}
+                            priority={true}
+                          />
+                        </div>
                       </m.div>
                     )
                   })
@@ -619,9 +634,12 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   <div className="relative w-full h-full flex justify-center items-end">
                     {myCards && myCards.split(',').filter(Boolean).map((cardStr: string, idx: number, arr: any[]) => {
                         const isSelected = selectedCards.includes(cardStr);
-                        const middle = (arr.length - 1) / 2;
-                        const angle = (idx - middle) * 8; 
-                        const offsetX = (idx - middle) * (typeof window !== 'undefined' && window.innerWidth < 1000 ? 55 : 70); 
+                        const layout = getArcCardLayout({
+                          index: idx,
+                          count: arr.length,
+                          variant: 'self',
+                          density: myHandDensity,
+                        });
                         
                         const isDescarteTurn = phase === 'DESCARTE' && room.state.turnPlayerId === myId && !me?.passedWithJuego;
                         const handleCardClick = () => {
@@ -633,14 +651,15 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                            <m.div 
                              key={cardStr + '-' + idx}
                              onClick={handleCardClick}
-                             initial={false}
+                             initial={{ opacity: 0, y: 50 }}
+                             animate={{ opacity: 1, y: 0 }}
                              style={{ 
                                position: 'absolute',
-                               left: `calc(50% + ${offsetX}px)`,
+                               left: `calc(50% + ${layout.offsetX}px)`,
                                bottom: 0,
-                               transform: `translate(-50%, ${isSelected ? -45 : 0}px) scale(${isSelected ? 0.85 : 0.77}) rotate(${angle}deg)`,
+                               transform: `translate(-50%, ${layout.offsetY + (isSelected ? -45 : 0)}px) scale(${isSelected ? 0.85 : 0.77}) rotate(${layout.angle}deg)`,
                                transformOrigin: 'bottom center',
-                               zIndex: isSelected ? 50 + idx : idx,
+                               zIndex: isSelected ? 50 + idx : layout.zIndex,
                                transition: 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.35s ease'
                              }}
                              className={`
