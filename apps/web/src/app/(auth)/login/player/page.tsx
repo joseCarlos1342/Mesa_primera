@@ -10,6 +10,7 @@ import { phoneSchema, pinSchema } from '@/lib/validations'
 import { startAuthentication } from '@simplewebauthn/browser'
 import { setAuthBypass } from '@/lib/app-lock-session'
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 
 function PlayerLoginContent() {
   const [pinState, pinFormAction, isPinPending] = useActionState(loginWithPin, null)
@@ -261,6 +262,8 @@ function PlayerLoginContent() {
                 </p>
               </div>
             )}
+
+            <TurnstileWidget />
 
             <button
               type="submit"
