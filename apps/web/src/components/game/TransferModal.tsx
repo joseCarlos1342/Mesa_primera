@@ -6,6 +6,7 @@ import { X, Search, ArrowRightLeft, Check, AlertCircle, Loader2, User, ChevronLe
 import { getAvatarSvg } from '@/utils/avatars'
 import { formatAmount } from '@/utils/format'
 import type { Room } from '@colyseus/sdk'
+import { getGameModalOverlayClassName } from './modal-overlay'
 
 interface GameTransferModalProps {
   isOpen: boolean
@@ -120,7 +121,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
 
   return (
     <AnimatePresence mode="wait">
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4 bg-black/95 backdrop-blur-sm overflow-hidden">
+      <div className={getGameModalOverlayClassName()}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
