@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 
 export const metadata: Metadata = {
   robots: { index: true, follow: true },
@@ -8,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen flex flex-col items-center p-4 md:p-8 bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-hidden">
+    <div className="relative min-h-screen flex flex-col items-center bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-clip">
       {/* Premium Casino Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-bg-poker)_0%,#0a2a1f_100%)]" />
@@ -17,18 +16,19 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-3xl pt-4 pb-16">
-        {/* Back Button */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all text-sm font-semibold"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver al inicio
-        </Link>
+      <div className="relative z-10 w-full max-w-3xl px-4 md:px-8 pt-6 pb-16">
+        {/* Brand header */}
+        <div className="mb-6 text-center">
+          <Link
+            href="/"
+            className="inline-block font-display font-bold text-lg tracking-[0.15em] text-brand-gold hover:text-brand-gold-light transition-colors"
+          >
+            4 ASES
+          </Link>
+        </div>
 
         {/* Glassmorphic Card */}
-        <div className="backdrop-blur-2xl bg-black/40 border-2 border-brand-gold/20 p-6 md:p-10 rounded-4xl shadow-[0_40px_80px_rgba(0,0,0,0.7)]">
+        <div className="backdrop-blur-2xl bg-black/40 border border-brand-gold/15 p-5 md:p-10 rounded-2xl md:rounded-4xl shadow-[0_40px_80px_rgba(0,0,0,0.7)]">
           {children}
         </div>
 
