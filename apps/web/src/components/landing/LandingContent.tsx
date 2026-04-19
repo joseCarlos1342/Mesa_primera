@@ -294,20 +294,6 @@ export function LandingContent() {
         })
       })
 
-      // Final CTA — elastic entrance
-      gsap.from('[data-cta-final]', {
-        scale: 0.8,
-        opacity: 0,
-        y: 60,
-        duration: 1.2,
-        ease: 'elastic.out(1, 0.5)',
-        scrollTrigger: {
-          trigger: '[data-cta-final]',
-          start: 'top 80%',
-          toggleActions: 'play none none reverse',
-        },
-      })
-
       // Gold dividers
       gsap.utils.toArray<Element>('[data-divider]').forEach((el) => {
         gsap.from(el, {
@@ -786,26 +772,6 @@ export function LandingContent() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ═══ Final CTA ═══════════════════════════ */}
-        <section data-cta-final="" className="px-6 py-24 md:py-32 text-center">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">
-              ¿Listo para{' '}
-              <span className="text-brand-gold">jugar</span>?
-            </h2>
-            <p className="text-text-secondary text-lg mb-12 max-w-xl mx-auto">
-              Únete a la comunidad de jugadores de Primera más grande de Colombia.
-            </p>
-            <Link
-              href="/register/player"
-              className="group inline-flex items-center gap-2 px-12 py-5 rounded-2xl bg-linear-to-r from-brand-gold-light via-brand-gold to-brand-gold-dark text-slate-950 font-bold text-lg shadow-[0_4px_24px_rgba(226,176,68,0.35)] hover:shadow-[0_8px_40px_rgba(226,176,68,0.5)] hover:scale-[1.03] transition-all duration-300 active:scale-95"
-            >
-              Crear cuenta gratis
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
           </div>
         </section>
 
