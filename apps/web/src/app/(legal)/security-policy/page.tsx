@@ -125,6 +125,14 @@ export default function SecurityPolicyPage() {
               contigo una fecha de divulgación coordinada.
             </p>
           </div>
+          <div className="bg-black/30 border border-white/10 rounded-xl p-4">
+            <p className="text-text-secondary text-sm leading-relaxed">
+              Actualmente recibimos reportes por correo y mediante esta política pública. El campo de cifrado
+              (`Encryption`) de `security.txt` aún no está habilitado porque no hemos publicado una clave PGP pública.
+              Esta mejora puede incorporarse más adelante si necesitamos recibir reportes cifrados de vulnerabilidades
+              especialmente sensibles.
+            </p>
+          </div>
         </div>
       </section>
 
