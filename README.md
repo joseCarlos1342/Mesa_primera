@@ -16,7 +16,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-V4-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![PWA](https://img.shields.io/badge/PWA-Enabled-5A0FC8?style=flat-square&logo=pwa&logoColor=white)](#features)
 
-[Overview](#overview) · [Features](#features) · [Architecture](#architecture) · [Getting started](#getting-started) · [Project structure](#project-structure) · [Testing](#testing) · [Deployment](#deployment)
+[Overview](#overview) · [Player Guide](docs/product/player/README.md) · [Features](#features) · [Architecture](#architecture) · [Getting started](#getting-started) · [Project structure](#project-structure) · [Testing](#testing) · [Deployment](#deployment)
 
 </div>
 
@@ -28,6 +28,9 @@ The platform serves two distinct user groups through a **Dual-UI** architecture:
 
 - **Player App (PWA)** — Touch-first mobile interface with large tap targets, high contrast, and simplified flows. Designed for **older adults** following WCAG AAA guidelines.
 - **Admin Dashboard** — Full management console for users, wallets, tables, and audit trails.
+
+> [!TIP]
+> Looking for the end-user walkthrough? Start with the [Guía del Jugador](docs/product/player/README.md), which covers the full player journey from registration to the game table.
 
 > [!NOTE]
 > Every visual choice — oversized buttons, bold typography, minimal navigation depth — is a deliberate accessibility decision for users with reduced visual acuity or fine motor difficulties.

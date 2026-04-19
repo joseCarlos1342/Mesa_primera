@@ -425,6 +425,8 @@ export default function GameRoomPage() {
         // ── Single-session policy: force logout ──
         joinedRoom.onMessage("ForceLogout", (data: any) => {
           abandonedRef.current = true; // prevent auto-reconnection
+          // Clear reconnection token so the kicked session can't re-enter
+          sessionStorage.removeItem(`reconnectionToken_${roomId}`);
           alert(data?.message || "Se ha iniciado sesión en otro dispositivo. Tu sesión actual ha expirado.");
           joinedRoom?.leave(true);
           router.push('/login/player?kicked=true');
