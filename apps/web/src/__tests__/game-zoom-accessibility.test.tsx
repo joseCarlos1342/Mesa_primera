@@ -74,17 +74,21 @@ describe('PermissionsGate', () => {
 // 3. Game page shell — no global zoom-trapping layout
 // ────────────────────────────────────────────────
 describe('Game page layout shell', () => {
-  it('outer div must use min-h-screen for LOBBY and h-screen for gameplay', () => {
+  it('outer div must use min-h-screen for LOBBY and h-screen for gameplay via play-room-shell helper', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../app/play/[id]/page.tsx'),
       'utf-8'
     )
-    // The main shell must conditionally switch between min-h-screen (LOBBY)
-    // and h-screen (gameplay) — never a static h-screen + overflow-hidden
-    const staticShellPattern = /className="[^"]*\bh-screen\b[^"]*\boverflow-hidden\b[^"]*"/
-    expect(source).not.toMatch(staticShellPattern)
-    // Must include the conditional pattern
-    expect(source).toMatch(/min-h-screen.*h-screen overflow-hidden/)
+    // page.tsx must delegate shell className to the helper
+    expect(source).toMatch(/getPlayRoomShellClassName/)
+
+    // The helper must conditionally switch between min-h-screen (LOBBY) and h-screen (gameplay)
+    const shellSource = fs.readFileSync(
+      path.resolve(__dirname, '../app/play/[id]/play-room-shell.ts'),
+      'utf-8'
+    )
+    expect(shellSource).toMatch(/min-h-screen/)
+    expect(shellSource).toMatch(/h-screen overflow-hidden/)
   })
 
   it('loading state must not use h-screen + overflow-hidden together', () => {
