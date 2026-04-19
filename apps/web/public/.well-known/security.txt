@@ -1,8 +1,11 @@
 # Security Policy — Primera Riverada los 4 Ases
-# https://securitytxt.org/
+# Standard: RFC 9116 — https://securitytxt.org/
+# Last updated: 2026-04-19
 
 Contact: mailto:seguridad@primerariveradalos4ases.com
-Expires: 2027-04-01T00:00:00.000Z
-Preferred-Languages: es, en
+Contact: https://primerariveradalos4ases.com/security-policy#report
+Expires: 2027-04-19T00:00:00.000Z
 Canonical: https://primerariveradalos4ases.com/.well-known/security.txt
 Policy: https://primerariveradalos4ases.com/security-policy
+Preferred-Languages: es, en
+Acknowledgements: https://primerariveradalos4ases.com/security-policy#acknowledgements

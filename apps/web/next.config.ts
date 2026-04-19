@@ -41,6 +41,16 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns', 'framer-motion'],
   },
+  async redirects() {
+    return [
+      // RFC 9116: redirect the root-level fallback to the canonical .well-known location
+      {
+        source: '/security.txt',
+        destination: '/.well-known/security.txt',
+        permanent: true,
+      },
+    ]
+  },
   async headers() {
     return [
       {
