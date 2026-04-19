@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: 'Primera Riverada los 4 Ases | Club de Cartas, Dominó y Entretenimiento en Neiva',
   description:
     'Primera Riverada los 4 Ases — club presencial y online de juego de cartas Primera, dominó, bebidas y parqueo en Neiva, Huila. Mesa de juego Dario, tomadero con juegos de azar. Juega en tiempo real con amigos.',
-  alternates: { canonical: '/' },
+  alternates: { canonical: 'https://primerariveradalos4ases.com/' },
   keywords: [
     'primera riverada los 4 ases',
     'primera riverada',
