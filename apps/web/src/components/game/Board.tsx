@@ -135,6 +135,18 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   useEffect(() => {
     const myId = room?.sessionId;
 
+    // Skip animation diff on initial hydration (reconnect mid-game):
+    // prevPlayersRef is empty but we already have players in an active phase.
+    // Just snapshot the current state without firing spurious deal animations.
+    const isActivePhase = !['LOBBY', 'STARTING'].includes(currentPhase);
+    const isInitialHydration = prevPlayersRef.current.length === 0 && players.length > 0 && isActivePhase;
+
+    if (isInitialHydration) {
+      prevPlayersRef.current = players.map(p => ({ ...p }));
+      prevMyCardsRef.current = myCards;
+      return;
+    }
+
     players.forEach(p => {
       // Don't track empty/dummy players
       if (!p || !p.id) return;
@@ -147,10 +159,15 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
         const oldCards = prevMyCardsRef.current ? prevMyCardsRef.current.split(',').filter(Boolean) : [];
         const newCards = myCards ? myCards.split(',').filter(Boolean) : [];
 
+        // Suppress animation when cards arrive from resync (old was empty but
+        // the server state already has cardCount > 0, meaning this is hydration
+        // of existing cards, not a fresh deal).
+        const isResyncHydration = oldCards.length === 0 && newCards.length > 0 && isActivePhase && (prevP?.cardCount ?? 0) > 0;
+
         const added = newCards.filter((c: string) => !oldCards.includes(c));
         const removed = oldCards.filter((c: string) => !newCards.includes(c));
 
-        if (added.length > 0) {
+        if (added.length > 0 && !isResyncHydration) {
           window.dispatchEvent(new CustomEvent('animate-deal', { detail: { 
             toPlayerId: p.id, 
             cards: added,

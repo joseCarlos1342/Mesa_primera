@@ -37,6 +37,12 @@ export function useGamePermissions(): GamePermissions {
       setNotifications('unavailable')
     }
 
+    // Microphone: unavailable in insecure contexts (HTTP over IP)
+    if (!window.isSecureContext || !navigator.mediaDevices) {
+      setMicrophone('unavailable')
+      return
+    }
+
     // Microphone: query permission state
     if (navigator.permissions) {
       navigator.permissions.query({ name: 'microphone' as PermissionName }).then(result => {
@@ -62,7 +68,11 @@ export function useGamePermissions(): GamePermissions {
       }
     }
 
-    // 2. Microphone permission
+    // 2. Microphone permission — skip in insecure contexts
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setMicrophone('unavailable')
+      return
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       stream.getTracks().forEach(t => t.stop())
