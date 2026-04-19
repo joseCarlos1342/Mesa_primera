@@ -403,10 +403,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
               // Resolución inmediata: preguntar Llevo Juego / No Llevo ahora mismo
               this.pendingPasoJuegoPlayerId = client.sessionId;
               this.pendingPasoJuegoPhase = phase;
-              const clientObj = this.clientMap.get(client.sessionId);
-              if (clientObj) {
-                clientObj.send('paso-juego-choice', { handType: hand.type });
-              }
+              client.send('paso-juego-choice', { handType: hand.type });
               this.state.lastAction = `${player.nickname} decide si lleva juego...`;
               console.log(`[MesaRoom] ${player.nickname} paso definitivo con juego (${hand.type}) en ${phase} — esperando decisión inmediata`);
               // NO llamar advanceNext() — turn queda en este jugador hasta que responda
@@ -1012,6 +1009,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // Ghost player cleanup and state restoration:
     // Match by deviceId first, then fall back to userId (handles enforceSessionPolicy
     // scenario where profiles.last_device_id differs from the original localStorage deviceId)
+    console.log(`[MesaRoom] onJoin: buscando ghost para deviceId=${deviceId}, userId=${options.userId}. Players: ${Array.from(this.state.players.entries()).map(([id, p]) => `${(p as Player).nickname}(${id},dev=${(p as Player).deviceId},uid=${(p as Player).supabaseUserId},conn=${(p as Player).connected})`).join(', ')}`);
+
     const existingPlayerEntry = Array.from(this.state.players.entries()).find(
       ([_, p]) => (deviceId && (p as Player).deviceId === deviceId) ||
                   (options.userId && (p as Player).supabaseUserId === options.userId)
@@ -1019,7 +1018,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (existingPlayerEntry) {
       const [oldSessionId, oldPlayer] = existingPlayerEntry;
-      console.log(`[MesaRoom] Restaurando asiento de ${oldSessionId} hacia la nueva conexión ${client.sessionId}...`);
+      console.log(`[MesaRoom] Ghost match found: ${oldPlayer.nickname} (${oldSessionId}→${client.sessionId}), connected=${oldPlayer.connected}, phase=${this.state.phase}, dealerId=${this.state.dealerId}, activeManoId=${this.state.activeManoId}`);
 
       // Forzar cierre del socket viejo si seguía atascado
       if (oldPlayer.connected) {
@@ -1067,6 +1066,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
       if (this.state.dealerId === oldSessionId) {
         this.state.dealerId = client.sessionId;
+        console.log(`[MesaRoom] Ghost restore: dealerId remapped ${oldSessionId} → ${client.sessionId}`);
+      }
+      if (this.state.activeManoId === oldSessionId) {
+        this.state.activeManoId = client.sessionId;
+        console.log(`[MesaRoom] Ghost restore: activeManoId remapped ${oldSessionId} → ${client.sessionId}`);
       }
       if (this.state.turnPlayerId === oldSessionId) {
         this.state.turnPlayerId = client.sessionId;
@@ -1120,7 +1124,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // Si la partida está en curso, el jugador entra como "esperando"
     if (this.state.phase !== "LOBBY") {
       newPlayer.isWaiting = true;
-      console.log(`[MesaRoom] ${requestedNickname} entra como espectador (partida en curso). Esperará la próxima ronda.`);
+      console.log(`[MesaRoom] ⚠️ FRESH JOIN mid-game: ${requestedNickname} (deviceId=${deviceId}, userId=${options.userId}) entra como espectador (phase=${this.state.phase}). NO HUBO ghost match — este jugador no fue reconocido como existente.`);
     }
 
     this.state.players.set(client.sessionId, newPlayer);
@@ -1177,39 +1181,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (!player) return;
 
-    console.log(`[MesaRoom] Cliente desconectado: ${player.nickname} (${client.sessionId}). Code: ${code}, Consented: ${consented}`);
+    console.log(`[MesaRoom] Cliente desconectado: ${player.nickname} (${client.sessionId}). Code: ${code}, Consented: ${consented}, Phase: ${this.state.phase}, dealerId: ${this.state.dealerId}, activeManoId: ${this.state.activeManoId}`);
     player.connected = false;
     this.updateLobbyMetadata();
 
-    // TRANSFERIR ANFITRIÓN INMEDIATAMENTE SI SE DESCONECTA (siguiendo orden de asientos)
-    if (this.state.dealerId === client.sessionId) {
-      const currentSeatIdx = this.seatOrder.indexOf(client.sessionId);
-      let replaced = false;
-      if (currentSeatIdx !== -1) {
-        for (let i = 1; i < this.seatOrder.length; i++) {
-          const nextIdx = (currentSeatIdx + i) % this.seatOrder.length;
-          const nextId = this.seatOrder[nextIdx];
-          const p = this.state.players.get(nextId);
-          if (p && p.connected) {
-            this.state.dealerId = nextId;
-            this.dealerRotatedThisGame = true;
-            console.log(`[MesaRoom] El anfitrión se desconectó. Mano pasa a ${p.nickname} (orden de asientos).`);
-            replaced = true;
-            break;
-          }
-        }
-      }
-      if (!replaced) {
-        const fallback = Array.from(this.state.players.values()).find(p => p.connected && p.id !== client.sessionId);
-        if (fallback) {
-          this.state.dealerId = fallback.id;
-          this.dealerRotatedThisGame = true;
-        }
-      }
-    }
-
-    // Transferir la Mano Activa si el jugador desconectado era el activeManoId
-    if (this.state.activeManoId === client.sessionId) {
+    // Transferir activeManoId solo durante gameplay activo (para que la partida pueda continuar)
+    // NO transferir dealerId aquí — el dealer permanente se preserva durante el grace period
+    if (this.state.activeManoId === client.sessionId && this.state.phase !== "LOBBY") {
+      console.log(`[MesaRoom] activeManoId era ${player.nickname}, transfiriendo mano activa...`);
       this.transferMano();
     }
 
@@ -1223,10 +1202,39 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.checkStartCountdown();
 
     if (consented) {
+      // Solo en desconexión explícita (code 1000): transferir dealerId y remover jugador
+      if (this.state.dealerId === client.sessionId) {
+        const currentSeatIdx = this.seatOrder.indexOf(client.sessionId);
+        let replaced = false;
+        if (currentSeatIdx !== -1) {
+          for (let i = 1; i < this.seatOrder.length; i++) {
+            const nextIdx = (currentSeatIdx + i) % this.seatOrder.length;
+            const nextId = this.seatOrder[nextIdx];
+            const p = this.state.players.get(nextId);
+            if (p && p.connected) {
+              this.state.dealerId = nextId;
+              this.dealerRotatedThisGame = true;
+              console.log(`[MesaRoom] El anfitrión se fue (consented). Mano pasa a ${p.nickname}.`);
+              replaced = true;
+              break;
+            }
+          }
+        }
+        if (!replaced) {
+          const fallback = Array.from(this.state.players.values()).find(p => p.connected && p.id !== client.sessionId);
+          if (fallback) {
+            this.state.dealerId = fallback.id;
+            this.dealerRotatedThisGame = true;
+          }
+        }
+      }
       console.log(`[MesaRoom] Desconexión explícita o limpia para ${player.nickname}. Retirando de la mesa.`);
       this.removePlayer(client.sessionId);
       return;
     }
+
+    // Non-consented: dealerId NO se transfiere. Se preserva durante el grace period.
+    console.log(`[MesaRoom] dealerId preservado en ${this.state.dealerId} durante grace period para ${player.nickname}.`);
 
     try {
       console.log(`[MesaRoom] Otorgando 5 minutos de reconexión para ${player.nickname}...`);
@@ -1238,7 +1246,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       // pero el transport interno cambia. Sin este set, sendPrivateCards() usa la ref muerta.
       this.clientMap.set(client.sessionId, client);
       this.updateLobbyMetadata();
-      console.log(`[MesaRoom] Cliente reconectado exitosamente: ${player.nickname} (${client.sessionId})`);
+      console.log(`[MesaRoom] Cliente reconectado exitosamente (native): ${player.nickname} (${client.sessionId}). dealerId=${this.state.dealerId}, activeManoId=${this.state.activeManoId}`);
 
       // Re-enviar cartas privadas tras reconexión exitosa
       if (this.state.phase !== "LOBBY" && player.cards) {
@@ -1620,6 +1628,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Inicializar la Mano activa para el orden de turnos de esta partida
     this.state.activeManoId = this.state.dealerId;
+
+    // Safety guard: si el dealer está desconectado (en grace period), transferir mano activa
+    const dealerPlayer = this.state.players.get(this.state.activeManoId);
+    if (dealerPlayer && !dealerPlayer.connected) {
+      console.log(`[MesaRoom] startPhase2Pique: dealer ${dealerPlayer.nickname} desconectado, transfiriendo mano activa...`);
+      this.transferMano();
+    }
 
     // Reset folds (skip ante for now per user request: pot must start at 0)
     for (const [, p] of this.state.players) {

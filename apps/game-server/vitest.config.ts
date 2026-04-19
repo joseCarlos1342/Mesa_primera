@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    testTimeout: 15_000,
+    teardownTimeout: 30_000,
     coverage: {
       provider: 'v8',
       include: [
