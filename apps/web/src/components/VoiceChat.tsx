@@ -13,6 +13,7 @@ import {
 } from '@livekit/components-react';
 import { Track, ConnectionState } from 'livekit-client';
 import { Mic, MicOff, VolumeX } from 'lucide-react';
+import { useGamePermissions } from '@/hooks/useGamePermissions';
 
 interface VoiceChatProps {
   roomName: string;
@@ -114,16 +115,21 @@ export function VoiceChat({ roomName, username, showSpeakers = false }: VoiceCha
 function CustomMicToggle() {
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const connectionState = useConnectionState();
+  const { microphone: micPermission } = useGamePermissions();
   const [isPending, setIsPending] = useState(false);
 
   const isConnected = connectionState === ConnectionState.Connected;
+  const micUnavailable = micPermission === 'unavailable' || micPermission === 'denied';
 
   const toggleMic = async () => {
     if (!localParticipant || isPending || !isConnected) return;
-    
-    // Validar si el navegador soporta acceso al micrófono (requiere HTTPS o localhost)
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("Error: Tu navegador bloqueó el acceso al micrófono porque esta conexión no es segura (HTTPS). Si juegas en red local, usa 'localhost' o configura un túnel seguro.");
+
+    if (micUnavailable) {
+      alert(
+        micPermission === 'denied'
+          ? 'Denegaste el permiso del micrófono. Debes habilitarlo en los ajustes del navegador.'
+          : 'Error: Tu navegador bloqueó el acceso al micrófono porque esta conexión no es segura (HTTPS). Si juegas en red local, usa \'localhost\' o configura un túnel seguro.'
+      );
       return;
     }
 
@@ -132,11 +138,7 @@ function CustomMicToggle() {
       await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
     } catch (e: any) {
       console.error('Failed to toggle mic', e);
-      if (e.message?.includes("Permission denied")) {
-        alert("Denegaste el permiso del micrófono. Debes habilitarlo en los ajustes del navegador.");
-      } else {
-        alert("Error al intentar activar el micrófono. Verifica tus permisos o hardware.");
-      }
+      alert('Error al intentar activar el micrófono. Verifica tus permisos o hardware.');
     } finally {
       setIsPending(false);
     }
@@ -148,7 +150,7 @@ function CustomMicToggle() {
 
       <button 
         onClick={toggleMic}
-        disabled={isPending || !isConnected}
+        disabled={isPending || !isConnected || micUnavailable}
         className={`group relative flex items-center justify-center w-10 h-10 md:w-14 md:h-14 landscape:w-9 landscape:h-9 md:landscape:w-14 md:landscape:h-14 rounded-full transition-all hover:-translate-y-0.5 active:translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-[0_10px_20px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)]
           ${isMicrophoneEnabled 
             ? 'bg-gradient-to-b from-[#4ade80] via-[#16a34a] to-[#14532d] hover:from-[#86efac] hover:via-[#22c55e] border border-[#86efac]/50 border-b-[4px] border-b-[#064e3b] text-white' 

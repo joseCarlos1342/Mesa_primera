@@ -1018,7 +1018,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (existingPlayerEntry) {
       const [oldSessionId, oldPlayer] = existingPlayerEntry;
-      console.log(`[MesaRoom] Ghost match found: ${oldPlayer.nickname} (${oldSessionId}→${client.sessionId}), connected=${oldPlayer.connected}, phase=${this.state.phase}, dealerId=${this.state.dealerId}, activeManoId=${this.state.activeManoId}`);
+      console.log(`[RECONNECT:GHOST] ${oldPlayer.nickname} (${oldSessionId}→${client.sessionId}), connected=${oldPlayer.connected}, phase=${this.state.phase}, hasCards=${!!oldPlayer.cards}, dealerId=${this.state.dealerId}, activeManoId=${this.state.activeManoId}`);
 
       // Forzar cierre del socket viejo si seguía atascado
       if (oldPlayer.connected) {
@@ -1228,7 +1228,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           }
         }
       }
-      console.log(`[MesaRoom] Desconexión explícita o limpia para ${player.nickname}. Retirando de la mesa.`);
+      console.log(`[RECONNECT:ABANDON] ${player.nickname} (${client.sessionId}) — desconexión explícita (code=${code}), phase=${this.state.phase}`);
       this.removePlayer(client.sessionId);
       return;
     }
@@ -1246,7 +1246,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       // pero el transport interno cambia. Sin este set, sendPrivateCards() usa la ref muerta.
       this.clientMap.set(client.sessionId, client);
       this.updateLobbyMetadata();
-      console.log(`[MesaRoom] Cliente reconectado exitosamente (native): ${player.nickname} (${client.sessionId}). dealerId=${this.state.dealerId}, activeManoId=${this.state.activeManoId}`);
+      console.log(`[RECONNECT:NATIVE] ${player.nickname} (${client.sessionId}), phase=${this.state.phase}, hasCards=${!!player.cards}, dealerId=${this.state.dealerId}, activeManoId=${this.state.activeManoId}`);
 
       // Re-enviar cartas privadas tras reconexión exitosa
       if (this.state.phase !== "LOBBY" && player.cards) {
@@ -1264,7 +1264,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       });
 
     } catch (e) {
-      console.log(`[MesaRoom] Tiempo de reconexión expirado o abandono definitivo para ${player.nickname}`);
+      console.log(`[RECONNECT:GRACE_EXPIRED] ${player.nickname} (${client.sessionId}) — grace period agotado, phase=${this.state.phase}`);
       this.removePlayer(client.sessionId);
     }
   }
@@ -3350,10 +3350,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         (player as Player).deviceId !== newDeviceId
       ) {
         console.log(
-          `[MesaRoom] Force-disconnecting ${(player as Player).nickname} (session: ${sessionId}) — new login from device ${newDeviceId}`
+          `[RECONNECT:SESSION_KICK] ${(player as Player).nickname} (session: ${sessionId}) — replaced by device ${newDeviceId}`
         );
 
-        const targetClient = this.clientMap.get(sessionId);
+        const targetClient = this.clientMap.get(sessionId) || this.clients.find(c => c.sessionId === sessionId);
         if (targetClient) {
           targetClient.send("ForceLogout", {
             message: "Se ha iniciado sesión en otro dispositivo. Tu sesión actual ha expirado.",
