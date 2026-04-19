@@ -7,7 +7,7 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { label: 'Inicio', icon: Home, href: '/' },
+  { label: 'Inicio', icon: Home, href: '/dashboard' },
   { label: 'Billetera', icon: Wallet, href: '/wallet' },
   { label: 'Estadísticas', icon: BarChart2, href: '/stats' },
   { label: 'Amigos', icon: Users, href: '/friends' },

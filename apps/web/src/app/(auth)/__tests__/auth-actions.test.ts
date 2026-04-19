@@ -1,6 +1,14 @@
-import { loginWithPhone, registerPlayer } from '../auth-actions'
+import { loginWithPhone, redeemAdminRecoveryCode, registerPlayer } from '../auth-actions'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+
+jest.mock('@/lib/admin-recovery-codes', () => ({
+  hashAdminRecoveryCode: jest.fn((code: string) => `hash:${code}`),
+}))
+
+jest.mock('@/app/actions/admin-audit', () => ({
+  logAdminAction: jest.fn(),
+}))
 
 // Mock de enforceRateLimiting
 jest.mock('@/app/actions/anti-fraud', () => ({
@@ -101,6 +109,70 @@ describe('Auth Actions', () => {
 
       expect(result).toEqual({ error: 'Error de prueba de SMS' })
       expect(redirect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('redeemAdminRecoveryCode', () => {
+    it('consumes a valid recovery code and redirects the admin back to TOTP setup', async () => {
+      const updateEq = jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({ error: null }),
+      })
+      const recoveryCodeQuery = {
+        eq: jest.fn().mockReturnThis(),
+        is: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'recovery-1' }, error: null }),
+      }
+
+      const mockSupabase = {
+        auth: {
+          getUser: jest.fn().mockResolvedValue({
+            data: {
+              user: { id: 'admin-123', email: 'admin@mesa.test' },
+            },
+            error: null,
+          }),
+          mfa: {
+            listFactors: jest.fn().mockResolvedValue({
+              data: {
+                totp: [{ id: 'totp-1', factor_type: 'totp', status: 'verified' }],
+                phone: [],
+              },
+              error: null,
+            }),
+            unenroll: jest.fn().mockResolvedValue({ error: null }),
+          },
+        },
+        from: jest.fn((table: string) => {
+          if (table === 'profiles') {
+            return {
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }
+          }
+
+          if (table === 'admin_mfa_recovery_codes') {
+            return {
+              select: jest.fn().mockReturnValue(recoveryCodeQuery),
+              update: jest.fn().mockReturnValue({
+                eq: updateEq,
+              }),
+            }
+          }
+
+          throw new Error(`Unexpected table ${table}`)
+        }),
+      }
+      ;(createClient as any).mockResolvedValue(mockSupabase)
+
+      const formData = new FormData()
+      formData.append('code', 'ABCD-EFGH-JKLM')
+
+      await redeemAdminRecoveryCode(null, formData)
+
+      expect(mockSupabase.auth.mfa.unenroll).toHaveBeenCalledWith({ factorId: 'totp-1' })
+      expect(updateEq).toHaveBeenCalledWith('id', 'recovery-1')
+      expect(redirect).toHaveBeenCalledWith('/login/admin/mfa/setup?recovery=1')
     })
   })
 })

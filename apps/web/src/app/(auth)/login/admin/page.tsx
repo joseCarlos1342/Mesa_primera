@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useState } from 'react'
+import Link from 'next/link'
 import { loginAdmin } from '../../auth-actions'
 import { ShieldCheck, Lock, Mail } from 'lucide-react'
 import { adminEmailSchema, adminPasswordSchema } from '@/lib/validations'
@@ -139,6 +140,16 @@ export default function AdminLoginPage() {
               <span className="relative z-10">{isPending ? 'Verificando...' : 'Acceder'}</span>
               <div className="absolute inset-0 bg-red-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-500" />
             </button>
+
+            <div className="flex items-center justify-between gap-4 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+              <span>2FA obligatorio</span>
+              <Link
+                href="/login/admin/recovery"
+                className="text-red-400 transition-colors hover:text-red-300"
+              >
+                Restablecer acceso
+              </Link>
+            </div>
           </form>
         </div>
       </div>

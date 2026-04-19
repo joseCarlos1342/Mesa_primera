@@ -16,7 +16,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-V4-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![PWA](https://img.shields.io/badge/PWA-Enabled-5A0FC8?style=flat-square&logo=pwa&logoColor=white)](#features)
 
-[Overview](#overview) · [Player Guide](docs/product/player/README.md) · [Features](#features) · [Architecture](#architecture) · [Getting started](#getting-started) · [Project structure](#project-structure) · [Testing](#testing) · [Deployment](#deployment)
+[Overview](#overview) · [Player Guide](docs/product/player/README.md) · [Admin Guide](docs/admin/README.md) · [Features](#features) · [Architecture](#architecture) · [Getting started](#getting-started) · [Project structure](#project-structure) · [Testing](#testing) · [Deployment](#deployment)
 
 </div>
 
@@ -31,6 +31,9 @@ The platform serves two distinct user groups through a **Dual-UI** architecture:
 
 > [!TIP]
 > Looking for the end-user walkthrough? Start with the [Guía del Jugador](docs/product/player/README.md), which covers the full player journey from registration to the game table.
+
+> [!TIP]
+> Looking for the backoffice and supervision flow? Use the [Guía Operativa del Admin](docs/admin/README.md) for the full admin journey from login to live operations.
 
 > [!NOTE]
 > Every visual choice — oversized buttons, bold typography, minimal navigation depth — is a deliberate accessibility decision for users with reduced visual acuity or fine motor difficulties.
