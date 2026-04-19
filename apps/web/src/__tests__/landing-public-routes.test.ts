@@ -58,34 +58,30 @@ describe('Player dashboard route', () => {
 // 3. Public landing page
 // ────────────────────────────────────────────────
 describe('Public landing page', () => {
+  const landingContentPath = path.resolve(
+    __dirname,
+    '../components/landing/LandingContent.tsx',
+  )
+
   it('exists at app/page.tsx (root level)', () => {
     const landingPath = path.resolve(__dirname, '../app/page.tsx')
     expect(fs.existsSync(landingPath)).toBe(true)
   })
 
   it('contains registration and login CTAs', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/page.tsx'),
-      'utf-8',
-    )
+    const source = fs.readFileSync(landingContentPath, 'utf-8')
     expect(source).toContain('/register/player')
     expect(source).toContain('/login/player')
   })
 
   it('contains footer with privacy and terms links', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/page.tsx'),
-      'utf-8',
-    )
+    const source = fs.readFileSync(landingContentPath, 'utf-8')
     expect(source).toContain('/privacy')
     expect(source).toContain('/terms')
   })
 
   it('contains social media links', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/page.tsx'),
-      'utf-8',
-    )
+    const source = fs.readFileSync(landingContentPath, 'utf-8')
     expect(source).toContain('facebook')
     expect(source).toContain('instagram')
   })

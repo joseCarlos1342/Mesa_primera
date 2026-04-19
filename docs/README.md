@@ -18,6 +18,7 @@ Esta carpeta se organiza por dominio para evitar archivos sueltos en la raíz de
 - `deployment/vps_actualizacion_motor.md`: operación manual del VPS del motor de juego.
 - `admin/README.md`: guía operativa del panel admin desde el login hasta la supervisión.
 - `game/GAME_SCENARIOS.md`: cambios reglamentarios o escenarios del `MesaRoom`.
+- `deployment/email-soporte-profesional.md`: estado final del correo profesional de soporte con Cloudflare Email Routing + Brevo SMTP + Gmail.
 - `game/MESA_VERSIONS.md`: historial de versiones del motor.
 - `product/ROUTES.md`: estado y cobertura de rutas del producto.
 - `product/player/README.md`: guía del jugador desde el registro hasta la mesa.
