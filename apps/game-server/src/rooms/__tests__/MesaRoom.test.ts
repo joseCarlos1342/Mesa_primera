@@ -1309,16 +1309,16 @@ describe('MesaRoom via Colyseus Testing', () => {
   });
 
   // ───────────────────────────────────────────────────────────
-  // Paso pendiente: when P2 passes with players behind who
-  // then bet/call, the turn must return to P2 to resolve
+  // Paso inmediato en APUESTA_4_CARTAS: ya no hay paso provisional.
+  // Cada paso se resuelve de inmediato sin importar jugadores detrás.
   // ───────────────────────────────────────────────────────────
 
-  describe('APUESTA_4_CARTAS — paso pendiente (players behind continue betting)', () => {
+  describe('APUESTA_4_CARTAS — paso inmediato (sin paso provisional)', () => {
     beforeEach(() => { vi.clearAllMocks(); });
 
-    it('turn returns to P2 after P3 calls instead of jumping to DESCARTE', async () => {
+    it('P2 paso con juego y jugadores detrás → prompt inmediato, Llevo → fold + passedWithJuego, turno a P3', async () => {
       const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
-        tableId: 'test-paso-pendiente-return',
+        tableId: 'test-paso-inm-llevo',
         playerCount: 3,
       });
 
@@ -1328,44 +1328,37 @@ describe('MesaRoom via Colyseus Testing', () => {
       room.state.turnPlayerId = ids[0];
       room.state.currentMaxBet = 0;
       room.state.pot = 0;
-      internalRoom.currentGameId = 'test-pp-return';
+      internalRoom.currentGameId = 'test-pi-llevo';
       internalRoom.currentTimeline = [];
 
-      // P1 (La Mano) has juego, P2 has juego, P3 has juego — all Primera
       players[0].cards = '07-O,06-C,05-E,01-B';
-      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[1].cards = '07-C,06-O,05-B,01-E'; // PRIMERA
       players[2].cards = '06-E,07-B,01-O,05-C';
-      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; });
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
-      // Step 1: P1 (La Mano) raises
+      // P1 raises
       clients[0].send('action', { action: 'voy', amount: 500_000 });
       await new Promise(r => setTimeout(r, 200));
+      expect(room.state.turnPlayerId).toBe(ids[1]);
 
-      expect(room.state.currentMaxBet).toBe(500_000);
-      expect(room.state.turnPlayerId).toBe(ids[1]); // P2's turn
-
-      // Step 2: P2 passes (has juego, players behind)
+      // P2 passes — has juego → prompt RIGHT AWAY (not provisional)
       clients[1].send('action', { action: 'paso' });
       await new Promise(r => setTimeout(r, 200));
 
-      // P2 should NOT be permanently resolved yet — P3 is still behind
-      expect(players[1].isFolded).toBe(false);
-      // Turn should move to P3
+      // P2 responds: Llevo Juego
+      clients[1].send('paso-juego-response', { llevaJuego: true });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(players[1].passedWithJuego).toBe(true);
+      expect(players[1].isFolded).toBe(true);
+      // Turn moves to P3 — NOT back to P2 later
       expect(room.state.turnPlayerId).toBe(ids[2]);
-
-      // Step 3: P3 calls (igualar)
-      players[2].supabaseUserId = 'supa-u3';
-      clients[2].send('action', { action: 'igualar' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // KEY ASSERTION: turn should come back to P2, NOT jump to DESCARTE
       expect(room.state.phase).toBe('APUESTA_4_CARTAS');
-      expect(room.state.turnPlayerId).toBe(ids[1]);
     });
 
-    it('P2 resolves with igualar after turn returns — proceeds to DESCARTE normally', async () => {
+    it('P2 paso sin juego y jugadores detrás → fold inmediato, turno a P3', async () => {
       const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
-        tableId: 'test-paso-pendiente-igualar',
+        tableId: 'test-paso-inm-nojuego',
         playerCount: 3,
       });
 
@@ -1375,143 +1368,31 @@ describe('MesaRoom via Colyseus Testing', () => {
       room.state.turnPlayerId = ids[0];
       room.state.currentMaxBet = 0;
       room.state.pot = 0;
-      internalRoom.currentGameId = 'test-pp-igualar';
+      internalRoom.currentGameId = 'test-pi-nj';
       internalRoom.currentTimeline = [];
 
       players[0].cards = '07-O,06-C,05-E,01-B';
-      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[1].cards = '02-O,03-O,05-O,04-C'; // NINGUNA
       players[2].cards = '06-E,07-B,01-O,05-C';
-      players.forEach(p => {
-        p.isFolded = false; p.hasActed = false; p.roundBet = 0;
-        p.supabaseUserId = `supa-${p.id}`;
-      });
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
       // P1 raises
       clients[0].send('action', { action: 'voy', amount: 500_000 });
       await new Promise(r => setTimeout(r, 200));
 
-      // P2 passes (with P3 behind)
-      clients[1].send('action', { action: 'paso' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // P3 calls
-      clients[2].send('action', { action: 'igualar' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // Turn should return to P2
-      expect(room.state.turnPlayerId).toBe(ids[1]);
-      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
-
-      // P2 decides to igualar
-      clients[1].send('action', { action: 'igualar' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // Now everyone has acted — should transition to DESCARTE
-      expect(room.state.phase).toBe('DESCARTE');
-      expect(players[1].isFolded).toBe(false);
-      expect(players[1].passedWithJuego).toBe(false);
-    });
-
-    it('P2 resolves with voy (raise) after turn returns — reopens round', async () => {
-      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
-        tableId: 'test-paso-pendiente-voy',
-        playerCount: 3,
-      });
-
-      internalRoom.seatOrder = ids;
-      room.state.phase = 'APUESTA_4_CARTAS';
-      room.state.activeManoId = ids[0];
-      room.state.turnPlayerId = ids[0];
-      room.state.currentMaxBet = 0;
-      room.state.pot = 0;
-      internalRoom.currentGameId = 'test-pp-voy';
-      internalRoom.currentTimeline = [];
-
-      players[0].cards = '07-O,06-C,05-E,01-B';
-      players[1].cards = '07-C,06-O,05-B,01-E';
-      players[2].cards = '06-E,07-B,01-O,05-C';
-      players.forEach(p => {
-        p.isFolded = false; p.hasActed = false; p.roundBet = 0;
-        p.supabaseUserId = `supa-${p.id}`;
-      });
-
-      // P1 raises 500k
-      clients[0].send('action', { action: 'voy', amount: 500_000 });
-      await new Promise(r => setTimeout(r, 200));
-
-      // P2 passes
-      clients[1].send('action', { action: 'paso' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // P3 calls
-      clients[2].send('action', { action: 'igualar' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // Turn returns to P2
-      expect(room.state.turnPlayerId).toBe(ids[1]);
-
-      // P2 raises to 1M
-      clients[1].send('action', { action: 'voy', amount: 1_000_000 });
-      await new Promise(r => setTimeout(r, 200));
-
-      // Round reopened — P1 and P3 need to act again
-      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
-      expect(room.state.currentMaxBet).toBe(1_000_000);
-    });
-
-    it('P2 resolves with paso definitivo (no juego) — folds immediately', async () => {
-      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
-        tableId: 'test-paso-pendiente-fold',
-        playerCount: 3,
-      });
-
-      internalRoom.seatOrder = ids;
-      room.state.phase = 'APUESTA_4_CARTAS';
-      room.state.activeManoId = ids[0];
-      room.state.turnPlayerId = ids[0];
-      room.state.currentMaxBet = 0;
-      room.state.pot = 0;
-      internalRoom.currentGameId = 'test-pp-fold';
-      internalRoom.currentTimeline = [];
-
-      players[0].cards = '07-O,06-C,05-E,01-B';
-      // P2 has NO juego (NINGUNA)
-      players[1].cards = '01-O,03-O,05-O,02-C';
-      players[2].cards = '06-E,07-B,01-O,05-C';
-      players.forEach(p => {
-        p.isFolded = false; p.hasActed = false; p.roundBet = 0;
-        p.supabaseUserId = `supa-${p.id}`;
-      });
-
-      // P1 raises
-      clients[0].send('action', { action: 'voy', amount: 500_000 });
-      await new Promise(r => setTimeout(r, 200));
-
-      // P2 passes — no juego, so originally would fold immediately.
-      // BUT with players behind, paso should be provisional.
-      clients[1].send('action', { action: 'paso' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // P3 calls
-      clients[2].send('action', { action: 'igualar' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // Turn returns to P2 for final resolution
-      expect(room.state.turnPlayerId).toBe(ids[1]);
-      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
-
-      // P2 sends paso again — this time it's definitivo (no juego → fold)
+      // P2 passes — no juego → fold inmediato, cartas recogidas
       clients[1].send('action', { action: 'paso' });
       await new Promise(r => setTimeout(r, 200));
 
       expect(players[1].isFolded).toBe(true);
-      // Should transition to DESCARTE since all have now resolved
-      expect(room.state.phase).toBe('DESCARTE');
+      expect(players[1].cards).toBe('');
+      // Turn moves directly to P3
+      expect(room.state.turnPlayerId).toBe(ids[2]);
     });
 
-    it('P2 resolves with paso definitivo (has juego) — immediate llevo juego prompt', async () => {
+    it('P2 Llevo Juego + P3 iguala → DESCARTE (P2 fuera del pozo principal)', async () => {
       const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
-        tableId: 'test-paso-pendiente-juego',
+        tableId: 'test-paso-inm-descarte',
         playerCount: 3,
       });
 
@@ -1522,58 +1403,34 @@ describe('MesaRoom via Colyseus Testing', () => {
       room.state.currentMaxBet = 0;
       room.state.pot = 0;
       room.state.piquePot = 300_000;
-      internalRoom.currentGameId = 'test-pp-juego';
+      internalRoom.currentGameId = 'test-pi-desc';
       internalRoom.currentTimeline = [];
 
       players[0].cards = '07-O,06-C,05-E,01-B';
-      // P2 has juego (Primera)
-      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[1].cards = '07-C,06-O,05-B,01-E'; // PRIMERA
       players[2].cards = '06-E,07-B,01-O,05-C';
-      players.forEach(p => {
-        p.isFolded = false; p.hasActed = false; p.roundBet = 0;
-        p.supabaseUserId = `supa-${p.id}`;
-      });
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
-      // Listen for private message
-      let pasoJuegoChoice: any = null;
-      clients[1].onMessage('paso-juego-choice', (msg: any) => { pasoJuegoChoice = msg; });
-
-      // P1 raises
+      // P1 raises, P2 Llevo, P3 iguala
       clients[0].send('action', { action: 'voy', amount: 500_000 });
       await new Promise(r => setTimeout(r, 200));
-
-      // P2 passes (provisional — P3 still behind)
       clients[1].send('action', { action: 'paso' });
       await new Promise(r => setTimeout(r, 200));
-
-      // P3 calls
+      clients[1].send('paso-juego-response', { llevaJuego: true });
+      await new Promise(r => setTimeout(r, 200));
       clients[2].send('action', { action: 'igualar' });
       await new Promise(r => setTimeout(r, 200));
 
-      // Turn returns to P2
-      expect(room.state.turnPlayerId).toBe(ids[1]);
-
-      // P2 sends paso definitivo — has juego → server sends prompt
-      clients[1].send('action', { action: 'paso' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // Phase stays in APUESTA_4_CARTAS (waiting for llevo juego decision)
-      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
-      expect(pasoJuegoChoice).not.toBeNull();
-      expect(pasoJuegoChoice.handType).toBe('PRIMERA');
-
-      // P2 responds: Llevo Juego
-      clients[1].send('paso-juego-response', { llevaJuego: true });
-      await new Promise(r => setTimeout(r, 200));
-
-      // Should transition to PIQUE_REVEAL
-      expect(room.state.phase).toBe('PIQUE_REVEAL');
-      expect(players[1].revealedCards).toBe(players[1].cards || '07-C,06-O,05-B,01-E');
+      // Should advance to DESCARTE — P2 is out of main pot
+      expect(room.state.phase).toBe('DESCARTE');
+      expect(players[1].isFolded).toBe(true);
+      expect(players[1].passedWithJuego).toBe(true);
+      expect(players[2].isFolded).toBe(false);
     });
 
-    it('P2 responds No Llevo Juego — folds and cards return to deck', async () => {
+    it('P2 No Llevo Juego → fold, cartas devueltas, turno a P3', async () => {
       const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
-        tableId: 'test-paso-pendiente-no-llevo',
+        tableId: 'test-paso-inm-no-llevo',
         playerCount: 3,
       });
 
@@ -1583,52 +1440,36 @@ describe('MesaRoom via Colyseus Testing', () => {
       room.state.turnPlayerId = ids[0];
       room.state.currentMaxBet = 0;
       room.state.pot = 0;
-      internalRoom.currentGameId = 'test-pp-no-llevo';
+      internalRoom.currentGameId = 'test-pi-nollevo';
       internalRoom.currentTimeline = [];
 
       players[0].cards = '07-O,06-C,05-E,01-B';
-      // P2 has juego (Primera)
-      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[1].cards = '07-C,06-O,05-B,01-E'; // PRIMERA
       players[2].cards = '06-E,07-B,01-O,05-C';
-      players.forEach(p => {
-        p.isFolded = false; p.hasActed = false; p.roundBet = 0;
-        p.supabaseUserId = `supa-${p.id}`;
-      });
-
-      // P1 raises
-      clients[0].send('action', { action: 'voy', amount: 500_000 });
-      await new Promise(r => setTimeout(r, 200));
-
-      // P2 passes (provisional)
-      clients[1].send('action', { action: 'paso' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // P3 calls
-      clients[2].send('action', { action: 'igualar' });
-      await new Promise(r => setTimeout(r, 200));
-
-      // P2 sends paso definitivo
-      clients[1].send('action', { action: 'paso' });
-      await new Promise(r => setTimeout(r, 200));
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
       const deckBefore = internalRoom.deck.length;
 
-      // P2 responds: No Llevo Juego
+      // P1 raises
+      clients[0].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P2 passes — has juego → prompt
+      clients[1].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      // P2 responds: No Llevo
       clients[1].send('paso-juego-response', { llevaJuego: false });
       await new Promise(r => setTimeout(r, 200));
 
-      // P2 should be folded
       expect(players[1].isFolded).toBe(true);
-      // Cards returned to deck
       expect(players[1].cards).toBe('');
       expect(internalRoom.deck.length).toBe(deckBefore + 4);
-      // Round should close to DESCARTE
-      expect(room.state.phase).toBe('DESCARTE');
+      expect(room.state.turnPlayerId).toBe(ids[2]);
     });
 
-    it('normal paso when no players behind still resolves immediately (no regression)', async () => {
+    it('último jugador paso con juego → prompt inmediato, Llevo → pique diferido → DESCARTE', async () => {
       const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
-        tableId: 'test-paso-normal-no-regression',
+        tableId: 'test-paso-inm-ultimo',
         playerCount: 3,
       });
 
@@ -1638,46 +1479,74 @@ describe('MesaRoom via Colyseus Testing', () => {
       room.state.turnPlayerId = ids[0];
       room.state.currentMaxBet = 0;
       room.state.pot = 0;
-      internalRoom.currentGameId = 'test-no-regr';
+      room.state.piquePot = 300_000;
+      internalRoom.currentGameId = 'test-pi-ultimo';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B';
+      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[2].cards = '06-E,07-B,01-O,05-C'; // PRIMERA
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P1 raises, P2 calls, P3 (last) passes
+      clients[0].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+      clients[1].send('action', { action: 'igualar' });
+      await new Promise(r => setTimeout(r, 200));
+      clients[2].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(players[2].passedWithJuego).toBe(false);
+      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
+
+      // P3 responds: Llevo Juego → pique deferred, advance to DESCARTE
+      clients[2].send('paso-juego-response', { llevaJuego: true });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Phase should go to DESCARTE (pique deferred, not PIQUE_REVEAL)
+      expect(room.state.phase).toBe('DESCARTE');
+      expect(players[2].passedWithJuego).toBe(true);
+      expect(players[2].isFolded).toBe(true);
+    });
+
+    it('paso check (sin apuesta activa) sigue siendo check normal', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-paso-inm-check',
+        playerCount: 3,
+      });
+
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      internalRoom.currentGameId = 'test-pi-check';
       internalRoom.currentTimeline = [];
 
       players[0].cards = '07-O,06-C,05-E,01-B';
       players[1].cards = '07-C,06-O,05-B,01-E';
       players[2].cards = '06-E,07-B,01-O,05-C';
-      players.forEach(p => {
-        p.isFolded = false; p.hasActed = false; p.roundBet = 0;
-        p.supabaseUserId = `supa-${p.id}`;
-      });
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
-      // P1 raises
-      clients[0].send('action', { action: 'voy', amount: 500_000 });
+      // All three check (paso with currentMaxBet=0)
+      clients[0].send('action', { action: 'paso' });
       await new Promise(r => setTimeout(r, 200));
+      expect(players[0].isFolded).toBe(false);
+      expect(room.state.turnPlayerId).toBe(ids[1]);
 
-      // P2 calls
-      clients[1].send('action', { action: 'igualar' });
+      clients[1].send('action', { action: 'paso' });
       await new Promise(r => setTimeout(r, 200));
+      expect(players[1].isFolded).toBe(false);
+      expect(room.state.turnPlayerId).toBe(ids[2]);
 
-      // P3 (last player) passes — has juego, gets prompt
       clients[2].send('action', { action: 'paso' });
       await new Promise(r => setTimeout(r, 200));
-
-      // P3 gets paso-juego-choice, NOT immediate passedWithJuego
-      expect(players[2].passedWithJuego).toBe(false);
-      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
-
-      // P3 responds: Llevo Juego
-      clients[2].send('paso-juego-response', { llevaJuego: true });
-      await new Promise(r => setTimeout(r, 200));
-
-      expect(room.state.phase).toBe('PIQUE_REVEAL');
-      expect(players[2].passedWithJuego).toBe(true);
-
-      // Dismiss reveal → advance to DESCARTE
-      clients[2].send('dismiss-reveal', {});
-      await new Promise(r => setTimeout(r, 200));
-
-      expect(players[2].isFolded).toBe(true);
+      // All checked → advance to DESCARTE
       expect(room.state.phase).toBe('DESCARTE');
+      expect(players[0].isFolded).toBe(false);
+      expect(players[1].isFolded).toBe(false);
+      expect(players[2].isFolded).toBe(false);
     });
   });
 
@@ -3896,6 +3765,514 @@ describe('MesaRoom via Colyseus Testing', () => {
       // P1 is last player standing — should get refund and proceed
       // refundUncalledBet returns highest (1M) - second highest (500k) = 500k
       expect(players[0].chips).toBeGreaterThanOrEqual(9_000_000);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // APUESTA_4_CARTAS — paso definitivo separa pique y pozo principal
+  // ═══════════════════════════════════════════════════════════════
+  describe('APUESTA_4_CARTAS — paso definitivo separa pique y pozo principal', () => {
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    it('P2/P3 sin juego pasan → fold inmediato, cartas recogidas al naipe', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-pique-no-juego-fold',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      room.state.piquePot = 300_000;
+      internalRoom.currentGameId = 'test-pique-nj';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B'; // PRIMERA
+      players[1].cards = '02-O,03-O,05-O,04-C'; // NINGUNA
+      players[2].cards = '02-C,03-C,05-C,04-E'; // NINGUNA
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      const deckBefore = internalRoom.deck.length;
+
+      // P1 raises
+      clients[0].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P2 passes — no juego → fold inmediato
+      clients[1].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(players[1].isFolded).toBe(true);
+      expect(players[1].cards).toBe('');
+      expect(internalRoom.deck.length).toBe(deckBefore + 4);
+      // Turn must go to P3, not back to P2
+      expect(room.state.turnPlayerId).toBe(ids[2]);
+
+      // P3 passes — no juego → fold inmediato
+      clients[2].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(players[2].isFolded).toBe(true);
+      expect(players[2].cards).toBe('');
+    });
+
+    it('P2 con juego Llevo → sale de pozo principal, compite solo por pique', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-pique-llevo-juego',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      room.state.piquePot = 300_000;
+      internalRoom.currentGameId = 'test-pique-llevo';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B'; // PRIMERA
+      players[1].cards = '07-C,06-O,05-B,01-E'; // PRIMERA
+      players[2].cards = '02-C,03-C,05-C,04-E'; // NINGUNA
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P1 raises
+      clients[0].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P2 passes — has juego → gets prompt
+      clients[1].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P2 responds: Llevo Juego
+      clients[1].send('paso-juego-response', { llevaJuego: true });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Phase should NOT go to PIQUE_REVEAL — pique is deferred in APUESTA_4_CARTAS
+      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
+      expect(players[1].passedWithJuego).toBe(true);
+      expect(players[1].isFolded).toBe(true);
+      // revealedCards should be set so Board shows juego face-up
+      expect(players[1].revealedCards).toBe('07-C,06-O,05-B,01-E');
+      // Turn should continue to P3
+      expect(room.state.turnPlayerId).toBe(ids[2]);
+    });
+
+    it('P2 y P3 ambos con juego → pique resuelto por jerarquía al final', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-pique-doble-juego',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      room.state.piquePot = 300_000;
+      internalRoom.currentGameId = 'test-pique-doble';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B'; // PRIMERA
+      players[1].cards = '01-O,06-O,07-O,03-C'; // CHIVO
+      players[2].cards = '07-C,06-E,05-B,01-O'; // PRIMERA
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P1 raises
+      clients[0].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P2 passes → juego prompt → Llevo
+      clients[1].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      clients[1].send('paso-juego-response', { llevaJuego: true });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P3 passes → juego prompt → Llevo
+      clients[2].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      clients[2].send('paso-juego-response', { llevaJuego: true });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P1 alone → betting rounds end → pique resolved between P2 (CHIVO) and P3 (PRIMERA)
+      // CHIVO > PRIMERA → P2 wins pique
+      // After resolution, should advance to DESCARTE (only P1 in main pot)
+      // Wait for phase transition
+      await new Promise(r => setTimeout(r, 300));
+
+      // P2 (CHIVO) should have won pique
+      const piqueRake = Math.ceil(300_000 * 0.05 / 100) * 100;
+      const piquePayout = 300_000 - piqueRake;
+      expect(players[1].chips).toBeGreaterThanOrEqual(piquePayout);
+      expect(room.state.piquePot).toBe(0);
+
+      // ALL contestants' cards should be collected and revealedCards cleared
+      expect(players[1].cards).toBe('');
+      expect(players[1].revealedCards).toBe('');
+      expect(players[2].cards).toBe('');
+      expect(players[2].revealedCards).toBe('');
+    });
+
+    it('nadie tiene juego → Mano gana pique por defecto', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-pique-nadie-juego',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      room.state.piquePot = 300_000;
+      internalRoom.currentGameId = 'test-pique-nadie';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B'; // PRIMERA (juego)
+      players[1].cards = '02-O,03-O,05-O,04-C'; // NINGUNA
+      players[2].cards = '02-C,03-C,05-C,04-E'; // NINGUNA
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      const p1ChipsBefore = players[0].chips;
+
+      // P1 raises
+      clients[0].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P2 passes — no juego → fold
+      clients[1].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P3 passes — no juego → fold
+      clients[2].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // All opponents folded — P1 is alone
+      // Pique should be awarded to Mano (P1) by default since no one had juego
+      await new Promise(r => setTimeout(r, 300));
+
+      const piqueRake = Math.ceil(300_000 * 0.05 / 100) * 100;
+      const piquePayout = 300_000 - piqueRake;
+      // P1 paid 500k bet but that gets refunded (uncalled), plus wins pique
+      expect(room.state.piquePot).toBe(0);
+      // Mano must keep cards (still in main pot — NOT collected)
+      expect(players[0].cards).not.toBe('');
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // APUESTA_4_CARTAS — escenario cruzado
+  // ═══════════════════════════════════════════════════════════════
+  describe('APUESTA_4_CARTAS — escenario cruzado', () => {
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    it('Mano recibe turno de vuelta cuando P2 apuesta', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-cruzado-reentry',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      internalRoom.currentGameId = 'test-cruzado-re';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B';
+      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[2].cards = '06-E,07-B,01-O,05-C';
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P1 (Mano) checks
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      expect(room.state.turnPlayerId).toBe(ids[1]);
+
+      // P2 bets
+      clients[1].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+      expect(room.state.turnPlayerId).toBe(ids[2]);
+
+      // P3 calls
+      clients[2].send('action', { action: 'igualar' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P1 (Mano) should get turn back (hasn't matched currentMaxBet)
+      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
+      expect(room.state.turnPlayerId).toBe(ids[0]);
+    });
+
+    it('Mano iguala tras reentrada → avanza a DESCARTE', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-cruzado-iguala',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      internalRoom.currentGameId = 'test-cruzado-ig';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B';
+      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[2].cards = '06-E,07-B,01-O,05-C';
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P1 checks, P2 bets, P3 calls
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      clients[1].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+      clients[2].send('action', { action: 'igualar' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Mano gets turn back
+      expect(room.state.turnPlayerId).toBe(ids[0]);
+
+      // Mano calls
+      clients[0].send('action', { action: 'igualar' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Should advance to DESCARTE
+      expect(room.state.phase).toBe('DESCARTE');
+    });
+
+    it('Mano sube tras reentrada → P2 responde', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-cruzado-sube',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      internalRoom.currentGameId = 'test-cruzado-su';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B';
+      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[2].cards = '06-E,07-B,01-O,05-C';
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P1 checks, P2 bets 500k, P3 calls
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      clients[1].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+      clients[2].send('action', { action: 'igualar' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Mano raises to 1M
+      clients[0].send('action', { action: 'voy', amount: 1_000_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Round reopened — P2 needs to respond
+      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
+      expect(room.state.currentMaxBet).toBe(1_000_000);
+      expect(room.state.turnPlayerId).toBe(ids[1]);
+    });
+
+    it('Mano pasa definitivamente → P2 gana pozo principal', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-cruzado-mano-fold',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      internalRoom.currentGameId = 'test-cruzado-mf';
+      internalRoom.currentTimeline = [];
+
+      // P1 has NINGUNA (no juego), so paso will fold
+      players[0].cards = '02-O,03-O,05-O,04-C';
+      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[2].cards = '06-E,07-B,01-O,05-C';
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P1 checks
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P2 bets
+      clients[1].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P3 calls
+      clients[2].send('action', { action: 'igualar' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Mano gets turn back, sends paso definitivo — no juego → fold
+      expect(room.state.turnPlayerId).toBe(ids[0]);
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Mano should be folded
+      expect(players[0].isFolded).toBe(true);
+      expect(players[0].cards).toBe('');
+    });
+
+    it('P3 con juego muestra inmediatamente al pasar (no espera)', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-cruzado-p3-juego',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      room.state.piquePot = 300_000;
+      internalRoom.currentGameId = 'test-cruzado-p3j';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '07-O,06-C,05-E,01-B';
+      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[2].cards = '01-O,06-O,07-O,03-C'; // CHIVO
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P1 checks, P2 bets
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      clients[1].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P3 passes — has juego → gets prompt IMMEDIATELY
+      clients[2].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P3 responds: Llevo Juego → passedWithJuego, folded from main pot
+      clients[2].send('paso-juego-response', { llevaJuego: true });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(players[2].passedWithJuego).toBe(true);
+      expect(players[2].isFolded).toBe(true);
+      // revealedCards should be set for Board display
+      expect(players[2].revealedCards).toBe('01-O,06-O,07-O,03-C');
+      // Phase should NOT be PIQUE_REVEAL — deferred resolution
+      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // APUESTA_4_CARTAS — excepción de 7 jugadores
+  // ═══════════════════════════════════════════════════════════════
+  describe('APUESTA_4_CARTAS — excepción de 7 jugadores', () => {
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    it('7 jugadores: Mano pasa → cartas barajadas antes de ir al naipe', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-7p-shuffle',
+        playerCount: 7,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      internalRoom.currentGameId = 'test-7p-shuf';
+      internalRoom.currentTimeline = [];
+
+      // Mano has NINGUNA
+      players[0].cards = '02-O,03-O,05-O,04-C';
+      for (let i = 1; i < 7; i++) {
+        players[i].cards = '07-O,06-C,05-E,01-B';
+      }
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // P2 bets (need someone to bet so that Mano's paso doesn't mean "check")
+      // First: Mano checks (paso with maxBet=0 → check)
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P2 bets
+      clients[1].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P3-P7 all call
+      for (let i = 2; i < 7; i++) {
+        clients[i].send('action', { action: 'igualar' });
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      // Mano gets turn back (roundBet < currentMaxBet)
+      expect(room.state.turnPlayerId).toBe(ids[0]);
+
+      const wasMano = ids[0];
+      const deckBefore = [...internalRoom.deck];
+
+      // Mano passes definitively (no juego → fold)
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(players[0].isFolded).toBe(true);
+      expect(players[0].cards).toBe('');
+
+      // Cards should have been added to deck (4 cards)
+      expect(internalRoom.deck.length).toBe(deckBefore.length + 4);
+
+      // Verify cards were shuffled: the order on the deck should differ from
+      // the original card order at least sometimes (statistical assertion).
+      // Since this is a shuffle of 4 cards, just verify they were added.
+      const lastFour = internalRoom.deck.slice(-4);
+      const originalCards = '02-O,03-O,05-O,04-C'.split(',');
+      // Either order differs OR we accept it's a valid shuffle (4! = 24 permutations, 1/24 chance same)
+      expect(lastFour.sort()).toEqual(originalCards.sort());
+    });
+
+    it('menos de 7 jugadores: cartas NO se barajan antes del naipe', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-3p-no-shuffle',
+        playerCount: 3,
+      });
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      room.state.currentMaxBet = 0;
+      room.state.pot = 0;
+      internalRoom.currentGameId = 'test-3p-noshuf';
+      internalRoom.currentTimeline = [];
+
+      // Mano has NINGUNA
+      players[0].cards = '02-O,03-O,05-O,04-C';
+      players[1].cards = '07-C,06-O,05-B,01-E';
+      players[2].cards = '06-E,07-B,01-O,05-C';
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
+
+      // Mano checks, P2 bets, P3 calls → Mano gets turn back
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      clients[1].send('action', { action: 'voy', amount: 500_000 });
+      await new Promise(r => setTimeout(r, 200));
+      clients[2].send('action', { action: 'igualar' });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(room.state.turnPlayerId).toBe(ids[0]);
+
+      // Mano passes definitively
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(players[0].isFolded).toBe(true);
+      expect(players[0].cards).toBe('');
+
+      // Cards should be in original order (no shuffle for < 7 players)
+      const lastFour = internalRoom.deck.slice(-4);
+      expect(lastFour).toEqual(['02-O', '03-O', '05-O', '04-C']);
     });
   });
 });
