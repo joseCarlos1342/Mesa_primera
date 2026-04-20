@@ -10,7 +10,7 @@ import { test, expect, Page } from '@playwright/test';
 const BASE = 'http://localhost:3000';
 
 async function loginAsAdmin(page: Page) {
-  await page.goto(`${BASE}/admin/login`);
+  await page.goto(`${BASE}/login/admin`);
   await page.fill('input[type="email"], input[name="email"]', 'gomezjose7042@gmail.com');
   await page.fill('input[type="password"], input[name="password"]', 'Bvf79h1010152653');
   await page.click('button[type="submit"]');
