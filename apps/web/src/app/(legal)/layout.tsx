@@ -28,7 +28,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Glassmorphic Card */}
-        <div className="backdrop-blur-2xl bg-black/40 border border-brand-gold/15 p-5 md:p-10 rounded-2xl md:rounded-4xl shadow-[0_40px_80px_rgba(0,0,0,0.7)]">
+        <div className="backdrop-blur-2xl bg-black/40 border border-brand-gold/15 p-5 md:p-10 rounded-2xl md:rounded-4xl shadow-[0_40px_80px_rgba(0,0,0,0.7)] overflow-hidden [overflow-wrap:anywhere]">
           {children}
         </div>
 

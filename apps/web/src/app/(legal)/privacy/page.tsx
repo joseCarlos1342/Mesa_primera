@@ -267,7 +267,7 @@ export default function PrivacyPage() {
             <p className="text-text-premium font-semibold">Primera Riverada los 4 Ases</p>
             <p className="text-sm">
               Correo electrónico:{' '}
-              <a href="mailto:soporte@primerariveradalos4ases.com" className="text-brand-gold hover:underline">
+              <a href="mailto:soporte@primerariveradalos4ases.com" className="text-brand-gold hover:underline break-all">
                 soporte@primerariveradalos4ases.com
               </a>
             </p>

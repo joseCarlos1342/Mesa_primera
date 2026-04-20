@@ -496,7 +496,7 @@ export function LandingContent() {
           </div>
 
           {/* Scroll indicator */}
-            <div className="absolute bottom-4 md:bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-brand-gold/30 animate-bounce">
+            <div className="absolute bottom-8 md:bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-brand-gold/30 animate-bounce">
             <span className="text-[10px] tracking-widest uppercase">Scroll</span>
             <div className="w-px h-6 bg-linear-to-b from-brand-gold/30 to-transparent" />
           </div>
@@ -794,16 +794,16 @@ export function LandingContent() {
               </p>
             </div>
 
-            <nav className="flex gap-6" aria-label="Enlaces legales">
+            <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2" aria-label="Enlaces legales">
               <Link
                 href="/privacy"
-                className="text-sm text-text-secondary hover:text-brand-gold transition-colors"
+                className="text-sm text-text-secondary hover:text-brand-gold transition-colors whitespace-nowrap"
               >
                 Política de privacidad
               </Link>
               <Link
                 href="/terms"
-                className="text-sm text-text-secondary hover:text-brand-gold transition-colors"
+                className="text-sm text-text-secondary hover:text-brand-gold transition-colors whitespace-nowrap"
               >
                 Términos y condiciones
               </Link>
