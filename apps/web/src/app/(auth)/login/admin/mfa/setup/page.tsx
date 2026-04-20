@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { enrollAdminTotp, verifyAdminTotpSetup } from '../../../../auth-actions'
 
 export default function AdminMFASetupPage() {
+  const router = useRouter()
   const [factorId, setFactorId] = useState('')
   const [qrCode, setQrCode] = useState('')
   const [secret, setSecret] = useState('')
@@ -15,6 +17,10 @@ export default function AdminMFASetupPage() {
   useEffect(() => {
     async function enroll() {
       const result = await enrollAdminTotp()
+      if ('sessionExpired' in result && result.sessionExpired) {
+        router.replace('/login/admin')
+        return
+      }
       if (result.error) {
         setError(result.error)
       } else if (result.factorId && result.qrCode && result.secret) {

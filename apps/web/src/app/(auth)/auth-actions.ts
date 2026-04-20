@@ -713,8 +713,12 @@ export async function redeemAdminRecoveryCode(prevState: unknown, formData: Form
 
 export async function enrollAdminTotp() {
   const supabase = await createClient()
-  // Hydrate session from cookies before MFA calls
-  await supabase.auth.getUser()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return { error: 'Sesión expirada. Inicia sesión de nuevo.', sessionExpired: true }
+  }
+
   const { data, error } = await supabase.auth.mfa.enroll({
     factorType: 'totp',
     issuer: 'Mesa Primera',
@@ -736,8 +740,12 @@ export async function enrollAdminTotp() {
  */
 export async function verifyAdminTotpSetup(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
-  // Hydrate session from cookies before MFA calls
-  await supabase.auth.getUser()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return { error: 'Sesión expirada. Inicia sesión de nuevo.' }
+  }
+
   const factorId = formData.get('factorId') as string
   const code = formData.get('code') as string
 
@@ -760,10 +768,7 @@ export async function verifyAdminTotpSetup(prevState: unknown, formData: FormDat
   if (verifyError) return { error: 'Código inválido. Asegúrate de ingresar el código actual de tu app.' }
 
   // Enforce single-session policy after successful MFA setup
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    await enforceSessionPolicy(user.id)
-  }
+  await enforceSessionPolicy(user.id)
 
   redirect('/admin')
 }
