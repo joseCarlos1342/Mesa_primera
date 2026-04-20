@@ -539,15 +539,7 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
     return { error: error.message }
   }
 
-  // Verificar MFA TOTP
-  const { data: factors } = await supabase.auth.mfa.listFactors()
-  const totpFactor = factors?.totp?.[0]
-
-  if (totpFactor) {
-    redirect('/login/admin/mfa')
-  }
-
-  // Verificar que sea admin (antes de redirigir a MFA setup)
+  // Verificar que sea admin ANTES de decidir MFA/setup
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
@@ -559,10 +551,17 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
     return { error: 'Acceso denegado: Se requiere rol de administrador' }
   }
 
-  // Enforce single-session policy for admins too
-  await enforceSessionPolicy(data.user.id)
+  // Verificar MFA TOTP
+  const { data: factors } = await supabase.auth.mfa.listFactors()
+  const totpFactor = factors?.totp?.find((f) => f.status === 'verified') ?? factors?.totp?.[0]
+
+  if (totpFactor) {
+    // Do NOT enforceSessionPolicy here — defer until MFA is verified
+    redirect('/login/admin/mfa')
+  }
 
   // Admin sin TOTP configurado → forzar configuración de 2FA
+  // Do NOT enforceSessionPolicy here — defer until setup is verified
   redirect('/login/admin/mfa/setup')
 }
 
@@ -601,11 +600,15 @@ export async function registerAdmin(prevState: unknown, formData: FormData) {
 export async function verifyAdminTotp(prevState: unknown, formData: FormData) {
   const supabase = await createClient()
   // Hydrate session from cookies before MFA calls
-  await supabase.auth.getUser()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
   const code = formData.get('code') as string
 
+  if (userError || !user) {
+    return { error: 'Sesión inválida. Inicia sesión de nuevo.' }
+  }
+
   const { data: factors } = await supabase.auth.mfa.listFactors()
-  const totpFactor = factors?.totp?.[0]
+  const totpFactor = factors?.totp?.find((f) => f.status === 'verified') ?? factors?.totp?.[0]
 
   if (!totpFactor) return { error: 'No hay factor TOTP configurado' }
 
@@ -624,10 +627,7 @@ export async function verifyAdminTotp(prevState: unknown, formData: FormData) {
   if (verifyError) return { error: verifyError.message }
 
   // Enforce single-session policy after successful MFA
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    await enforceSessionPolicy(user.id)
-  }
+  await enforceSessionPolicy(user.id)
 
   redirect('/admin')
 }
@@ -717,6 +717,8 @@ export async function enrollAdminTotp() {
   await supabase.auth.getUser()
   const { data, error } = await supabase.auth.mfa.enroll({
     factorType: 'totp',
+    issuer: 'Mesa Primera',
+    friendlyName: 'Mesa Primera Admin',
   })
 
   if (error) return { error: error.message }

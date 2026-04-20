@@ -107,11 +107,14 @@ export async function updateSession(
     }
 
     // ── Single-session policy: compare device cookie vs DB ──
+    // Exempt admin MFA pages — device cookie isn't set until MFA completes
     const sessionDeviceCookie = request.cookies.get('session_device_id')?.value
     if (
       lastDeviceId &&
       sessionDeviceCookie &&
-      sessionDeviceCookie !== lastDeviceId
+      sessionDeviceCookie !== lastDeviceId &&
+      !isMfaPage &&
+      !isMfaSetupPage
     ) {
       // This session is stale — another device logged in
       await supabase.auth.signOut()
