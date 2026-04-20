@@ -33,6 +33,9 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
+  // Disable Cloudflare Email Address Obfuscation — its injected script
+  // violates our strict-dynamic CSP and there is no way to nonce it.
+  { key: "X-Email-Obfuscation", value: "off" },
 ];
 
 const nextConfig: NextConfig = {

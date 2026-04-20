@@ -99,7 +99,7 @@ export default function SecurityPolicyPage() {
             Envía un correo a{' '}
             <a
               href="mailto:seguridad@primerariveradalos4ases.com"
-              className="text-brand-gold hover:text-brand-gold-light transition-colors font-bold"
+              className="text-brand-gold hover:text-brand-gold-light transition-colors font-bold break-all"
             >
               seguridad@primerariveradalos4ases.com
             </a>{' '}
