@@ -1,5 +1,16 @@
 # Changelog
 
+## [Sprint 6.7] - 2026-04-23
+
+### Fixed
+
+- **Turnstile no aparecía en login/register/recovery en producción** (`turnstile-widget.tsx`, `turnstile-env.ts`, `layout.tsx`, `turnstile.ts`):
+  Se corrigió el drift entre variables build-time y runtime para `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, agregando fallback por `window.__MESA_PRIMERA_RUNTIME_ENV__` y normalización con `trim()`. Además, se endureció la validación server-side para rechazar tokens vacíos con espacios y normalizar `TURNSTILE_SECRET_KEY` antes de `siteverify`.
+
+### Added
+
+- **Tests de seguridad Turnstile** (`turnstile-env.test.ts`, `turnstile.test.ts`): cobertura para resolución de key pública en runtime y para validación de token/secret en servidor.
+
 ## [Sprint 6.6] - 2026-04-16
 
 ### Added

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import Script from 'next/script'
+import { getPublicTurnstileSiteKey } from '@/lib/security/turnstile-env'
 
 declare global {
   interface Window {
@@ -17,23 +18,23 @@ declare global {
   }
 }
 
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
-
 export function TurnstileWidget() {
+  const siteKey = useMemo(() => getPublicTurnstileSiteKey(), [])
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
+  const [scriptFailed, setScriptFailed] = useState(false)
 
   const renderWidget = useCallback(() => {
     if (!window.turnstile || !containerRef.current || widgetIdRef.current) return
 
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
-      sitekey: SITE_KEY,
+      sitekey: siteKey,
       theme: 'dark',
       size: 'flexible',
       language: 'es',
       'response-field-name': 'cf-turnstile-response',
     })
-  }, [])
+  }, [siteKey])
 
   useEffect(() => {
     // If turnstile script already loaded (e.g. back-forward cache)
@@ -49,17 +50,24 @@ export function TurnstileWidget() {
     }
   }, [renderWidget])
 
-  if (!SITE_KEY) return null
+  if (!siteKey || scriptFailed) {
+    return (
+      <p className="text-red-400 text-xs font-bold text-center" role="alert">
+        No se pudo cargar la verificación de seguridad. Recarga la página e intenta de nuevo.
+      </p>
+    )
+  }
 
   return (
     <>
       <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit"
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
         onReady={() => {
-          window.onTurnstileLoad = renderWidget
-          // If script loaded before onReady fires
           renderWidget()
+        }}
+        onError={() => {
+          setScriptFailed(true)
         }}
       />
       <div ref={containerRef} className="flex justify-center" />

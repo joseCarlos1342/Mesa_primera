@@ -142,6 +142,8 @@ npm run dev
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
 | `NEXT_PUBLIC_GAME_SERVER_URL` | Colyseus server URL |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile public site key |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile secret key (server-side verification) |
 | `TWILIO_*` | Twilio credentials for SMS/OTP |
 | `LIVEKIT_*` | LiveKit credentials for voice chat |
 
