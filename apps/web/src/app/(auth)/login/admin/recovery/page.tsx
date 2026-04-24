@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { useActionState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { ArrowLeft, Mail, ShieldAlert } from 'lucide-react'
+import { Mail, ShieldAlert } from 'lucide-react'
 import { requestAdminPasswordReset } from '@/app/actions/admin-security'
 
 export default function AdminRecoveryPage() {
@@ -13,15 +12,7 @@ export default function AdminRecoveryPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
-      <div className="mx-auto flex max-w-xl flex-col gap-8">
-        <Link
-          href="/login/admin"
-          className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver al login
-        </Link>
-
+      <div className="mx-auto flex max-w-xl flex-col">
         <div className="rounded-[2.5rem] border border-white/10 bg-slate-900/70 p-8 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
           <div className="mb-8 flex items-start gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] border border-red-500/30 bg-red-500/10">

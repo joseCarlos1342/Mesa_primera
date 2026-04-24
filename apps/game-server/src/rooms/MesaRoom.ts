@@ -6,6 +6,7 @@ import { createRedisSubscriber } from "../services/redis";
 import type Redis from "ioredis";
 import * as crypto from "crypto";
 import { evaluateHand, compareHands, HandEvaluation } from "./combinations";
+import { SnapshotBuilder, type AnimationHint, type StateLike } from "../services/ReplayV2";
 
 const MIN_BALANCE_CENTS = 5_000_000; // $50,000 en centavos
 
@@ -30,6 +31,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private countdownTimer?: any;
   private currentGameId: string = crypto.randomUUID();
   private currentTimeline: any[] = [];
+  /** Snapshots normalizados por evento para reconstruir visualmente la partida (Replay v2). */
+  private snapshotBuilder = new SnapshotBuilder();
   /** RNG state tracker: incremented per action for admin audit trail */
   private rngCounter: number = 0;
   /**
@@ -227,7 +230,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
         player.hasActed = true;
 
-        this.currentTimeline.push({ event: 'action', phase: 'PIQUE', player: client.sessionId, action, time: Date.now(), rng_state: this.getRngState() });
+        this.recordEvent({ event: 'action', phase: 'PIQUE', player: client.sessionId, action, time: Date.now(), rng_state: this.getRngState() });
 
         if (action === "paso") {
           player.isFolded = true;
@@ -347,7 +350,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       } else if (this.state.phase === "DESCARTE") {
         const { action, droppedCards } = message;
         player.hasActed = true;
-        this.currentTimeline.push({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, time: Date.now(), rng_state: this.getRngState() });
+        this.recordEvent({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, time: Date.now(), rng_state: this.getRngState() });
 
         if (action === "discard") {
           if (droppedCards && Array.isArray(droppedCards) && droppedCards.length > 0) {
@@ -382,7 +385,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           return;
         }
 
-        this.currentTimeline.push({ event: 'action', phase, player: client.sessionId, action, amount, time: Date.now(), rng_state: this.getRngState() });
+        this.recordEvent({ event: 'action', phase, player: client.sessionId, action, amount, time: Date.now(), rng_state: this.getRngState() });
 
         if (action === "paso") {
           if (this.state.currentMaxBet === 0 || player.roundBet >= this.state.currentMaxBet) {
@@ -579,7 +582,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           if (player.supabaseUserId) {
             SupabaseService.awardPot(player.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
           }
-          this.currentTimeline.push({ event: 'pique_won', winner: playerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
+          this.recordEvent({ event: 'pique_won', winner: playerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
           this.state.piquePot = 0;
 
           // Retirar al jugador del pot principal
@@ -626,7 +629,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.state.lastAction = `¡${player.nickname} lleva juego!`;
       console.log(`[MesaRoom] ${player.nickname} declara Llevo Juego en DESCARTE`);
 
-      this.currentTimeline.push({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action: 'llevo-juego', time: Date.now(), rng_state: this.getRngState() });
+      this.recordEvent({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action: 'llevo-juego', time: Date.now(), rng_state: this.getRngState() });
 
       // Guardar referencia para procesar en dismiss-reveal
       this.pendingLlevoJuegoPlayerId = client.sessionId;
@@ -656,7 +659,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.pendingPasoJuegoPlayerId = "";
       this.pendingPasoJuegoPhase = "";
 
-      this.currentTimeline.push({ event: 'action', phase: resolvePhase, player: client.sessionId, action: llevaJuego ? 'llevo-juego-inmediato' : 'no-llevo-juego', time: Date.now(), rng_state: this.getRngState() });
+      this.recordEvent({ event: 'action', phase: resolvePhase, player: client.sessionId, action: llevaJuego ? 'llevo-juego-inmediato' : 'no-llevo-juego', time: Date.now(), rng_state: this.getRngState() });
 
       // Callback de siguiente fase según la fase actual
       const nextPhaseCallback = this.getNextPhaseCallback(resolvePhase);
@@ -762,7 +765,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
       player.hasActed = true;
       player.declaredJuego = tiene;
-      this.currentTimeline.push({ event: 'declarar_juego', player: client.sessionId, tiene, clientClaimed: message?.tiene, serverOverride: message?.tiene !== tiene, time: Date.now(), rng_state: this.getRngState() });
+      this.recordEvent({ event: 'declarar_juego', player: client.sessionId, tiene, clientClaimed: message?.tiene, serverOverride: message?.tiene !== tiene, time: Date.now(), rng_state: this.getRngState() });
 
       if (tiene) {
         const hand = evaluateHand(player.cards);
@@ -1486,8 +1489,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.pendingShowdownData = null;
     this.currentGameId = crypto.randomUUID();
     this.currentTimeline = [];
+    this.snapshotBuilder.reset();
     this.rngCounter = 0;
-    this.currentTimeline.push({ event: 'start', seed, time: Date.now() });
+    this.recordEvent({ event: 'start', seed, time: Date.now() });
 
     // Reset pots and visual state to guarantee no carry-over from previous games
     this.state.pot = 0;
@@ -1923,7 +1927,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           details: bandaDetails
         });
 
-        this.currentTimeline.push({
+        this.recordEvent({
           event: 'banda',
           winner: voyPlayer.id,
           bandaPerPlayer: bandaAmount,
@@ -1954,7 +1958,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     const newMano = this.state.players.get(this.state.dealerId);
     this.state.lastAction = `Pocos jugadores fueron. La Mano pasa a ${newMano?.nickname}. Repartiendo...`;
 
-    this.currentTimeline.push({ event: 'pique_restart', reason: 'less_than_2_voy', newDealerId: this.state.dealerId, time: Date.now(), rng_state: this.getRngState() });
+    this.recordEvent({ event: 'pique_restart', reason: 'less_than_2_voy', newDealerId: this.state.dealerId, time: Date.now(), rng_state: this.getRngState() });
 
     // Reiniciar pique sin cobrar ante de nuevo
     this.startPhase2Pique(true);
@@ -2051,7 +2055,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (winner.supabaseUserId) {
       SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
     }
-    this.currentTimeline.push({ event: 'pique_won', winner: winnerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
+    this.recordEvent({ event: 'pique_won', winner: winnerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
     this.state.piquePot = 0;
 
     // El ganador del pique ya no juega por el pot principal — se retira
@@ -2243,7 +2247,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       if (winner.supabaseUserId) {
         SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
       }
-      this.currentTimeline.push({ event: 'pique_won_early', winner: winner.id, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
+      this.recordEvent({ event: 'pique_won_early', winner: winner.id, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
     }
 
     // Limpiar estado y volver al lobby tras un breve delay para que el cliente vea el mensaje
@@ -2360,7 +2364,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (winner.supabaseUserId) {
       SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
     }
-    this.currentTimeline.push({ event: 'pique_won_apuesta4', winner: winnerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
+    this.recordEvent({ event: 'pique_won_apuesta4', winner: winnerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
     this.state.piquePot = 0;
   }
 
@@ -2766,7 +2770,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           this.state.lastAction = `¡${winner.nickname} gana! (${evaluateHand(winner.cards).type})`;
           this.state.showdownTimer = 0;
           // Persistir replay / stats antes de esperar dismiss
-          this.currentTimeline.push({ event: 'end', winner: winner.id, pot: 0, payout: 0, rake: 0, time: Date.now(), rng_state: this.getRngState() });
+          this.recordEvent({ event: 'end', winner: winner.id, pot: 0, payout: 0, rake: 0, time: Date.now(), rng_state: this.getRngState() });
           const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
             userId: p.supabaseUserId || p.id, sessionId: p.id, nickname: p.nickname, cards: p.cards, chips: p.chips
           }));
@@ -2777,7 +2781,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
               finalHands[p.supabaseUserId || p.id] = { cards: p.cards, handType: h.type, handPoints: h.points, nickname: p.nickname };
             }
           });
-          SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, this.currentTimeline.map(({ rng_state, ...e }) => e), playersSnapshot, [...this.currentTimeline], { totalPot: 0, mainPot: 0, piquePot: 0, payout: 0, rake: 0 }, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP').catch(console.error);
+          SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, this.currentTimeline.map(({ rng_state, ...e }) => e), playersSnapshot, [...this.currentTimeline], { totalPot: 0, mainPot: 0, piquePot: 0, payout: 0, rake: 0 }, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP', this.snapshotBuilder.build()).catch(console.error);
           // Se queda en SHOWDOWN — dismiss-showdown caso 2 limpiará al LOBBY
           return;
         }
@@ -2911,7 +2915,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       totalRake += piqueRake;
     }
 
-    this.currentTimeline.push({ event: 'end', winner: overallWinnerId, pot: totalPot, payout: totalPayout, rake: totalRake, sidePots: potWinners, time: Date.now(), rng_state: this.getRngState() });
+    this.recordEvent({ event: 'end', winner: overallWinnerId, pot: totalPot, payout: totalPayout, rake: totalRake, sidePots: potWinners, time: Date.now(), rng_state: this.getRngState() });
 
     const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
       userId: p.supabaseUserId || p.id,
@@ -2977,7 +2981,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // Save replay
     const adminTimeline = [...this.currentTimeline];
     const playerTimeline = this.currentTimeline.map(({ rng_state, ...event }) => event);
-    SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, playerTimeline, playersSnapshot, adminTimeline, potBreakdown, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP').catch(console.error);
+    const replayFrames = this.snapshotBuilder.build();
+    SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, playerTimeline, playersSnapshot, adminTimeline, potBreakdown, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP', replayFrames).catch(console.error);
 
     // Update stats for all participating players
     Array.from(this.state.players.values()).forEach(p => {
@@ -3063,7 +3068,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     winner.chips += payout;
     console.log(`[MesaRoom] Ganador único: ${winner.nickname} ganó $${payout} (Rake: $${rake})`);
 
-    this.currentTimeline.push({ event: 'end', winner: winnerId, pot: totalPot, payout, rake, time: Date.now(), rng_state: this.getRngState() });
+    this.recordEvent({ event: 'end', winner: winnerId, pot: totalPot, payout, rake, time: Date.now(), rng_state: this.getRngState() });
 
     const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
       userId: p.supabaseUserId || p.id,
@@ -3095,7 +3100,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     });
     const adminTimeline = [...this.currentTimeline];
     const playerTimeline = this.currentTimeline.map(({ rng_state, ...event }) => event);
-    SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, playerTimeline, playersSnapshot, adminTimeline, potBreakdown, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP').catch(console.error);
+    SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, playerTimeline, playersSnapshot, adminTimeline, potBreakdown, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP', this.snapshotBuilder.build()).catch(console.error);
 
     // Update stats
     Array.from(this.state.players.values()).forEach(p => {
@@ -3418,6 +3423,62 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.redisSub.unsubscribe("session_kick").catch(() => {});
       this.redisSub.disconnect();
       this.redisSub = undefined;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // Replay v2 — captura de eventos + frames para reconstruccion visual
+  // ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Empuja un evento al timeline y captura un frame con el estado actual.
+   * Sustituye el uso directo de `this.currentTimeline.push(...)`.
+   */
+  private recordEvent(event: any): void {
+    this.currentTimeline.push(event);
+    const hint = this.deriveHint(event);
+    this.snapshotBuilder.captureFrame(
+      this.state as unknown as StateLike,
+      this.currentTimeline.length - 1,
+      hint,
+    );
+  }
+
+  /** Deriva una pista de animacion a partir del evento para el reproductor visual. */
+  private deriveHint(event: any): AnimationHint | undefined {
+    if (!event || typeof event !== 'object') return undefined;
+    switch (event.event) {
+      case 'start':
+        return { kind: 'phase_change' };
+      case 'action': {
+        if (Array.isArray(event.droppedCards) && event.droppedCards.length > 0) {
+          return { kind: 'discard', targetPlayerId: event.player, cards: event.droppedCards };
+        }
+        if (event.action === 'bote' || event.action === 'botarse' || event.action === 'me-boto') {
+          return { kind: 'fold', targetPlayerId: event.player };
+        }
+        if (event.action === 'paso' || event.action === 'pasar') {
+          return { kind: 'pass', targetPlayerId: event.player };
+        }
+        if (typeof event.amount === 'number' && event.amount > 0) {
+          return { kind: 'bet', targetPlayerId: event.player, amount: event.amount };
+        }
+        return { kind: 'pass', targetPlayerId: event.player };
+      }
+      case 'declarar_juego':
+        return { kind: 'reveal', targetPlayerId: event.player };
+      case 'pique_won':
+      case 'pique_won_early':
+      case 'pique_won_apuesta4':
+        return { kind: 'pique_award', targetPlayerId: event.winner, amount: event.payout };
+      case 'pique_restart':
+        return { kind: 'phase_change' };
+      case 'banda':
+        return { kind: 'pot_award', targetPlayerId: event.winner, amount: event.totalBanda };
+      case 'end':
+        return { kind: 'pot_award', targetPlayerId: event.winner, amount: event.payout };
+      default:
+        return undefined;
     }
   }
 }

@@ -86,6 +86,11 @@ describe('Admin Security Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     ;(headers as any).mockResolvedValue(buildHeaders())
+    delete process.env.APP_URL
+  })
+
+  afterEach(() => {
+    delete process.env.APP_URL
   })
 
   it('sends an admin recovery email to the password reset page', async () => {
@@ -99,7 +104,41 @@ describe('Admin Security Actions', () => {
 
     expect(result).toEqual({ success: 'Revisa tu correo para continuar el restablecimiento.' })
     expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('admin@mesa.test', {
-      redirectTo: 'http://localhost:3000/api/auth/confirm?next=/login/admin/password',
+      redirectTo: 'http://localhost:3000/login/admin/password',
+    })
+  })
+
+  it('prefers APP_URL over forwarded headers for admin recovery links', async () => {
+    process.env.APP_URL = 'https://primerariveradalos4ases.com'
+    ;(headers as any).mockResolvedValue(buildHeaders('staging.mesa.test', 'https'))
+
+    const supabase = buildAdminSupabase()
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('email', 'admin@mesa.test')
+
+    await requestAdminPasswordReset(null, formData)
+
+    expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('admin@mesa.test', {
+      redirectTo: 'https://primerariveradalos4ases.com/login/admin/password',
+    })
+  })
+
+  it('keeps localhost as the recovery origin during local development even when APP_URL is configured', async () => {
+    process.env.APP_URL = 'https://primerariveradalos4ases.com'
+    ;(headers as any).mockResolvedValue(buildHeaders('localhost:3000', 'http'))
+
+    const supabase = buildAdminSupabase()
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('email', 'admin@mesa.test')
+
+    await requestAdminPasswordReset(null, formData)
+
+    expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('admin@mesa.test', {
+      redirectTo: 'http://localhost:3000/login/admin/password',
     })
   })
 
@@ -142,6 +181,44 @@ describe('Admin Security Actions', () => {
       challengeId: 'challenge-1',
       code: '123456',
     })
+    expect(supabase.auth.updateUser).toHaveBeenCalledWith(
+      { email: 'nuevo-admin@mesa.test' },
+      { emailRedirectTo: 'http://localhost:3000/api/auth/confirm?next=/admin/security' }
+    )
+  })
+
+  it('prefers APP_URL over forwarded headers for admin email change links', async () => {
+    process.env.APP_URL = 'https://primerariveradalos4ases.com'
+    ;(headers as any).mockResolvedValue(buildHeaders('staging.mesa.test', 'https'))
+
+    const supabase = buildAdminSupabase()
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('email', 'nuevo-admin@mesa.test')
+    formData.append('code', '123456')
+
+    await requestAdminEmailChange(null, formData)
+
+    expect(supabase.auth.updateUser).toHaveBeenCalledWith(
+      { email: 'nuevo-admin@mesa.test' },
+      { emailRedirectTo: 'https://primerariveradalos4ases.com/api/auth/confirm?next=/admin/security' }
+    )
+  })
+
+  it('keeps localhost as the email confirmation origin during local development even when APP_URL is configured', async () => {
+    process.env.APP_URL = 'https://primerariveradalos4ases.com'
+    ;(headers as any).mockResolvedValue(buildHeaders('localhost:3000', 'http'))
+
+    const supabase = buildAdminSupabase()
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('email', 'nuevo-admin@mesa.test')
+    formData.append('code', '123456')
+
+    await requestAdminEmailChange(null, formData)
+
     expect(supabase.auth.updateUser).toHaveBeenCalledWith(
       { email: 'nuevo-admin@mesa.test' },
       { emailRedirectTo: 'http://localhost:3000/api/auth/confirm?next=/admin/security' }
