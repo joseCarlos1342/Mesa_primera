@@ -48,12 +48,32 @@ function hasAuthenticatedAdmin(
   return 'user' in value
 }
 
+function normalizeOrigin(origin: string) {
+  return origin.trim().replace(/\/+$/, '')
+}
+
+function isLocalHost(host: string) {
+  return /^localhost(?::\d+)?$/i.test(host)
+    || /^127(?:\.\d{1,3}){3}(?::\d+)?$/.test(host)
+    || /^\[::1\](?::\d+)?$/i.test(host)
+}
+
 async function getRequestOrigin() {
   const headerList = await headers()
   const host = headerList.get('x-forwarded-host') ?? headerList.get('host') ?? 'localhost:3000'
   const protocol = headerList.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https')
+  const requestOrigin = normalizeOrigin(`${protocol}://${host}`)
+  const appUrl = process.env.APP_URL?.trim()
 
-  return `${protocol}://${host}`
+  if (isLocalHost(host)) {
+    return requestOrigin
+  }
+
+  if (appUrl) {
+    return normalizeOrigin(appUrl)
+  }
+
+  return requestOrigin
 }
 
 async function getAuthenticatedAdmin(supabase: SupabaseServerClient): Promise<AuthenticatedAdmin | AdminSecurityActionState> {
@@ -182,7 +202,7 @@ export async function requestAdminPasswordReset(
   const supabase = await createClient()
   const origin = await getRequestOrigin()
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${origin}/api/auth/confirm?next=/login/admin/password`,
+    redirectTo: `${origin}/login/admin/password`,
   })
 
   if (error) {

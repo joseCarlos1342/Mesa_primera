@@ -1,5 +1,12 @@
 # Changelog
 
+## [Sprint 6.8] - 2026-04-23
+
+### Fixed
+
+- **Recuperación admin usaba el origen equivocado y el enlace no avanzaba** (`admin-security.ts`, `recovery/page.tsx`, `password/page.tsx`, `admin-security.test.ts`, `recovery-password-pages.test.tsx`, `admin-security.spec.ts`):
+  Las acciones de seguridad admin ahora priorizan `APP_URL` al construir enlaces firmados de recuperación/cambio de correo, evitando que el flujo caiga a hosts reenviados o `localhost` cuando el correo se abre fuera del entorno local. Además, la pantalla de nueva contraseña redirige automáticamente al login admin tras éxito y se retiraron los botones de volver de las dos vistas del flujo para simplificar la experiencia.
+
 ## [Sprint 6.7] - 2026-04-23
 
 ### Fixed

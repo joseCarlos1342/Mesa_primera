@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Hoisted: set env vars + create mock refs BEFORE module evaluation ──
-const { mockRpc, mockFrom, mockReplayFileSave, mockReplayGetMonthDir, mockRenderQueueEnqueue } = vi.hoisted(() => {
+const { mockRpc, mockFrom, mockReplayFileSave, mockReplayGetMonthDir } = vi.hoisted(() => {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
   process.env.SUPABASE_URL = 'http://localhost:54321';
 
@@ -10,7 +10,6 @@ const { mockRpc, mockFrom, mockReplayFileSave, mockReplayGetMonthDir, mockRender
     mockFrom: vi.fn(),
     mockReplayFileSave: vi.fn().mockReturnValue(true),
     mockReplayGetMonthDir: vi.fn().mockReturnValue('2026-04'),
-    mockRenderQueueEnqueue: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -33,12 +32,6 @@ vi.mock('../ReplayFileService', () => ({
   ReplayFileService: {
     save: mockReplayFileSave,
     getMonthDirFor: mockReplayGetMonthDir,
-  },
-}));
-
-vi.mock('../RenderQueue', () => ({
-  RenderQueue: {
-    enqueue: mockRenderQueueEnqueue,
   },
 }));
 
@@ -294,7 +287,7 @@ describe('SupabaseService — Extended Coverage', () => {
   // ── saveReplay ────────────────────────────────────────────
 
   describe('saveReplay', () => {
-    it('saves to filesystem and enqueues render on success', async () => {
+    it('saves to filesystem and inserts replay row on success', async () => {
       mockReplayFileSave.mockReturnValue(true);
       mockReplayGetMonthDir.mockReturnValue('2026-04');
 
@@ -326,9 +319,6 @@ describe('SupabaseService — Extended Coverage', () => {
       );
 
       expect(mockReplayFileSave).toHaveBeenCalled();
-      expect(mockRenderQueueEnqueue).toHaveBeenCalledWith(
-        expect.objectContaining({ gameId: 'game-1' }),
-      );
       expect(mockInsert).toHaveBeenCalledWith(
         expect.objectContaining({
           game_id: 'game-1',
@@ -337,10 +327,9 @@ describe('SupabaseService — Extended Coverage', () => {
       );
     });
 
-    it('does not enqueue render when filesystem save fails', async () => {
+    it('logs CRITICAL when filesystem save fails', async () => {
       mockReplayFileSave.mockReturnValue(false);
 
-      // Still need from() calls
       const mockSelectSingle = vi.fn().mockResolvedValue({ data: { id: 'table-1' }, error: null });
       mockFrom.mockImplementation((table: string) => {
         if (table === 'tables') {
@@ -351,7 +340,6 @@ describe('SupabaseService — Extended Coverage', () => {
 
       await SupabaseService.saveReplay('game-2', 'seed-2', [], []);
 
-      expect(mockRenderQueueEnqueue).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('CRITICAL'),
       );

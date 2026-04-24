@@ -1,6 +1,7 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "globalEnv": ["APP_URL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -22,7 +23,6 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "WEBAUTHN_RP_ID",
         "WEBAUTHN_ORIGINS",
-        "RENDER_SECRET_TOKEN",
         "INTERNAL_API_SECRET",
         "DEMO_OTP_BYPASS_ENABLED",
         "GOOGLE_CLIENT_ID",

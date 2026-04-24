@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { ReplayFileService, type ReplayData } from './ReplayFileService';
-import { RenderQueue } from './RenderQueue';
 import { redis } from './redis';
+import { REPLAY_VERSION, type ReplayFrame } from './ReplayV2';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -205,9 +205,11 @@ export class SupabaseService {
     potBreakdown?: Record<string, any>,
     finalHands?: Record<string, any>,
     roomId?: string,
-    tableName?: string
+    tableName?: string,
+    frames?: ReplayFrame[],
   ) {
     const replayData: ReplayData = {
+      version: REPLAY_VERSION,
       game_id: gameId,
       round_number: 1,
       rng_seed: seed,
@@ -219,24 +221,13 @@ export class SupabaseService {
       room_id: roomId || null,
       table_name: tableName || null,
       created_at: new Date().toISOString(),
+      frames: frames || [],
     };
 
     // 1. Siempre guardar en filesystem (VPS) — es la fuente primaria de almacenamiento
     const fileSaved = ReplayFileService.save(replayData);
     if (!fileSaved) {
       console.error(`[SupabaseService] CRITICAL: Failed to save replay to filesystem for game: ${gameId}`);
-    }
-
-    // 1b. Encolar render de MP4 si el JSON se guardó correctamente
-    if (fileSaved) {
-      const monthDir = ReplayFileService.getMonthDirFor(replayData.created_at);
-      RenderQueue.enqueue({
-        gameId,
-        replayPath: `${monthDir}/${gameId}.json`,
-        createdAt: replayData.created_at,
-      }).catch(err => {
-        console.error(`[SupabaseService] Failed to enqueue MP4 render for game ${gameId}:`, err);
-      });
     }
 
     // 2. Guardar en Supabase para consultas y RLS
@@ -268,7 +259,6 @@ export class SupabaseService {
         final_hands: finalHands || {},
         room_id: roomId || null,
         table_name: tableName || null,
-        mp4_status: fileSaved ? 'pending' : null,
       });
 
       if (replayErr) throw replayErr;

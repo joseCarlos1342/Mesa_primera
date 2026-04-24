@@ -41,9 +41,9 @@ test.describe('Admin Password Recovery', () => {
     await expect(page.locator('text=Restablecer acceso')).toBeVisible();
     await expect(page.locator('input[name="email"]')).toBeVisible();
 
-    // "Volver al login" link exists
+    // Recovery flow no longer renders a back-to-login link in this screen
     const backLink = page.locator('a[href="/login/admin"]');
-    await expect(backLink).toBeVisible();
+    await expect(backLink).toHaveCount(0);
 
     // Submit with a valid admin email
     await page.fill('input[name="email"]', 'gomezjose7042@gmail.com');
@@ -77,7 +77,7 @@ test.describe('Admin Password Recovery', () => {
 
 test.describe('Admin Password Reset Page', () => {
   test('password reset page renders form fields', async ({ page }) => {
-    // This page is reached via confirm route, but we can verify UI structure
+    // This page is reached via the Supabase recovery link, but we can verify UI structure directly
     await page.goto(`${BASE}/login/admin/password`);
 
     await expect(page.locator('text=Definir nueva clave')).toBeVisible();
@@ -99,11 +99,11 @@ test.describe('Admin Password Reset Page', () => {
     expect(hasError).toBe(true);
   });
 
-  test('password reset has back link to admin login', async ({ page }) => {
+  test('password reset page no longer renders a back link to admin login', async ({ page }) => {
     await page.goto(`${BASE}/login/admin/password`);
 
     const backLink = page.locator('a[href="/login/admin"]');
-    await expect(backLink).toBeVisible();
+    await expect(backLink).toHaveCount(0);
   });
 });
 
@@ -305,19 +305,14 @@ test.describe('Middleware Route Access', () => {
 /* ------------------------------------------------------------------ */
 
 test.describe('Admin Security Navigation', () => {
-  test('admin login → recovery → back to login roundtrip', async ({ page }) => {
+  test('admin login navigates to recovery screen without a back link', async ({ page }) => {
     await page.goto(`${BASE}/login/admin`);
     await expect(page.locator('text=Admin')).toBeVisible();
 
-    // Click recovery link
     await page.click('a[href="/login/admin/recovery"]');
     await page.waitForURL(/\/login\/admin\/recovery/);
     await expect(page.locator('text=Restablecer acceso')).toBeVisible();
-
-    // Click back to login
-    await page.click('a[href="/login/admin"]');
-    await page.waitForURL(/\/login\/admin$/);
-    await expect(page.locator('text=Admin')).toBeVisible();
+    await expect(page.locator('a[href="/login/admin"]')).toHaveCount(0);
   });
 
   test('confirm route redirects to recovery on invalid token', async ({ page }) => {

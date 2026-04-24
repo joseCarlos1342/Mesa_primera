@@ -1,8 +1,9 @@
-import { getAdminReplayDetail, getAdminMp4DownloadUrl } from "@/app/actions/replays";
+import { getAdminReplayDetail } from "@/app/actions/replays";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
-import { ArrowLeft, Film, Shield, BookOpen, Users, Trophy, Clock, Layers, Video, Download, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Film, Shield, BookOpen, Users, Trophy, Clock, Layers } from "lucide-react";
 import { AdminReplayViewer } from "./AdminReplayViewer";
+import { ReplayController } from "@/components/replay/ReplayController";
 import { ResponsiveDataView } from "@/components/admin/ResponsiveDataView";
 
 export default async function AdminReplayDetailPage({ params }: { params: Promise<{ gameId: string }> }) {
@@ -19,8 +20,6 @@ export default async function AdminReplayDetailPage({ params }: { params: Promis
       </div>
     );
   }
-
-  const mp4DownloadUrl = replay.mp4_status === 'ready' ? await getAdminMp4DownloadUrl(gameId) : null;
 
   const players = replay.players || [];
   const pot = replay.pot_breakdown || {};
@@ -115,68 +114,6 @@ export default async function AdminReplayDetailPage({ params }: { params: Promis
         </div>
       </div>
 
-      {/* MP4 Video Status */}
-      {replay.mp4_status && (
-        <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Video className="w-5 h-5 text-purple-400" />
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Video MP4</h3>
-              {replay.mp4_status === 'ready' && (
-                <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 tracking-widest">
-                  Listo
-                </span>
-              )}
-              {replay.mp4_status === 'processing' && (
-                <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 tracking-widest flex items-center gap-1">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Procesando
-                </span>
-              )}
-              {replay.mp4_status === 'pending' && (
-                <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 tracking-widest">
-                  En Cola
-                </span>
-              )}
-              {replay.mp4_status === 'failed' && (
-                <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 tracking-widest flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  Error
-                </span>
-              )}
-            </div>
-            {mp4DownloadUrl && (
-              <a
-                href={mp4DownloadUrl}
-                download
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all"
-              >
-                <Download className="w-4 h-4" />
-                Descargar MP4
-              </a>
-            )}
-          </div>
-          {replay.mp4_status === 'ready' && (
-            <div className="flex gap-6 mt-3 text-[10px] text-slate-500">
-              {replay.mp4_size_bytes && (
-                <span>Tamaño: {(replay.mp4_size_bytes / 1024 / 1024).toFixed(1)} MB</span>
-              )}
-              {replay.mp4_duration_ms && (
-                <span>Duración: {Math.round(replay.mp4_duration_ms / 1000)}s</span>
-              )}
-              {replay.mp4_rendered_at && (
-                <span>Renderizado: {new Date(replay.mp4_rendered_at).toLocaleString('es-ES')}</span>
-              )}
-            </div>
-          )}
-          {replay.mp4_status === 'failed' && replay.mp4_error && (
-            <p className="mt-3 text-xs text-red-400/80 font-mono bg-red-500/5 rounded-xl p-3 border border-red-500/10">
-              {replay.mp4_error}
-            </p>
-          )}
-        </div>
-      )}
-
       {/* Final Hands */}
       {Object.keys(hands).length > 0 && (
         <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
@@ -196,6 +133,14 @@ export default async function AdminReplayDetailPage({ params }: { params: Promis
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Visual replay (v2): reconstrucción de la mesa desde frames */}
+      {replay.version === 2 && replay.frames && replay.frames.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Reconstrucción Visual</h2>
+          <ReplayController frames={replay.frames as any} />
         </div>
       )}
 
