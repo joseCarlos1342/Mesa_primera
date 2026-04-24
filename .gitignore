@@ -23,6 +23,11 @@ test-results/
 
 # Vercel
 .vercel
+# Vercel env exports (e.g. `vercel env pull .vercel-env-production`)
+.vercel-env-*
+vercel-env-*
+.env.vercel
+.env.*.vercel
 
 # Build Outputs
 .next/
@@ -93,6 +98,13 @@ workbox-*.js.map
 *.secret
 .env*.local
 .ssh_mesa/
+# Extra belt-and-braces patterns for exported env snapshots and credential dumps
+*.env.backup
+*.env.bak
+*credentials*.json
+*service-account*.json
+*.p12
+*.pfx
 
 # Local Debug & Test Scripts
 test-*.js
