@@ -10,10 +10,11 @@ const SUPABASE_ADMIN_ENV_NAMES = [
 
 type PublicEnvName = (typeof SUPABASE_PUBLIC_ENV_NAMES)[number]
 type EnvName = (typeof SUPABASE_ADMIN_ENV_NAMES)[number]
+type RuntimePublicEnvName = PublicEnvName | 'NEXT_PUBLIC_TURNSTILE_SITE_KEY'
 
 declare global {
   interface Window {
-    __MESA_PRIMERA_RUNTIME_ENV__?: Partial<Record<PublicEnvName, string>>
+    __MESA_PRIMERA_RUNTIME_ENV__?: Partial<Record<RuntimePublicEnvName, string>>
   }
 }
 

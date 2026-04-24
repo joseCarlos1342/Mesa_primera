@@ -1,5 +1,5 @@
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
-const SECRET_KEY = process.env.TURNSTILE_SECRET_KEY ?? ''
+const SECRET_KEY = (process.env.TURNSTILE_SECRET_KEY ?? '').trim()
 
 type TurnstileResult = { success: true } | { success: false; error: string }
 
@@ -10,7 +10,9 @@ export async function verifyTurnstile(formData: FormData): Promise<TurnstileResu
   }
 
   const token = formData.get('cf-turnstile-response')
-  if (!token || typeof token !== 'string') {
+  const normalizedToken = typeof token === 'string' ? token.trim() : ''
+
+  if (!normalizedToken) {
     return { success: false, error: 'Verificación de seguridad requerida. Recarga la página e intenta de nuevo.' }
   }
 
@@ -19,7 +21,7 @@ export async function verifyTurnstile(formData: FormData): Promise<TurnstileResu
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       secret: SECRET_KEY,
-      response: token,
+      response: normalizedToken,
     }),
   })
 
