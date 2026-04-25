@@ -49,11 +49,10 @@ test.describe('Admin Password Recovery', () => {
     await page.fill('input[name="email"]', 'gomezjose7042@gmail.com');
     await page.click('button[type="submit"]');
 
-    // Should show either success or error - not crash
-    await page.waitForTimeout(3_000);
-    const hasSuccess = await page.locator('text=enlace').isVisible().catch(() => false);
-    const hasError = await page.locator('[class*="red"]').isVisible().catch(() => false);
-    expect(hasSuccess || hasError).toBe(true);
+    // Should show either success or a backend error message, but not leave the flow hanging
+    await expect(
+      page.getByText(/revisa tu correo|rate limit|email rate limit exceeded|correo inválido/i)
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('recovery page shows invalid link error from query param', async ({ page }) => {

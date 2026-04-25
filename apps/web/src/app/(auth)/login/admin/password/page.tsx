@@ -7,6 +7,28 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { completeAdminPasswordReset } from '@/app/actions/admin-security'
 import { createClient as createBrowserClient } from '@/utils/supabase/client'
 
+function getRecoveryTokensFromHash() {
+  const hash = window.location.hash.replace(/^#/, '')
+
+  if (!hash) {
+    return null
+  }
+
+  const params = new URLSearchParams(hash)
+  const accessToken = params.get('access_token')
+  const refreshToken = params.get('refresh_token')
+  const type = params.get('type')
+
+  if (!accessToken || !refreshToken || type !== 'recovery') {
+    return null
+  }
+
+  return {
+    accessToken,
+    refreshToken,
+  }
+}
+
 export default function AdminPasswordResetPage() {
   const router = useRouter()
   const [state, formAction, isPending] = useActionState(completeAdminPasswordReset, null)
@@ -17,6 +39,28 @@ export default function AdminPasswordResetPage() {
     const supabase = createBrowserClient()
 
     const syncRecoverySession = async () => {
+      const recoveryTokens = getRecoveryTokensFromHash()
+
+      if (recoveryTokens) {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: recoveryTokens.accessToken,
+          refresh_token: recoveryTokens.refreshToken,
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        if (error) {
+          setRecoverySessionStatus('invalid')
+          return
+        }
+
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`)
+        setRecoverySessionStatus(data.session ? 'ready' : 'invalid')
+        return
+      }
+
       const { data, error } = await supabase.auth.getSession()
 
       if (!isMounted) {

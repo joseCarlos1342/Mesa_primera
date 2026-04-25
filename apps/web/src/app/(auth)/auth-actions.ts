@@ -97,6 +97,26 @@ function isMissingPhoneAuthUser(errorMessage: string): boolean {
     normalized.includes('can only use shouldcreateuser: true')
 }
 
+/**
+ * Detecta fallos de configuración de claves de Supabase: `Legacy API keys are
+ * disabled` aparece cuando el proyecto deshabilitó las claves antiguas y el
+ * deploy sigue usando `anon`/`service_role`. `Invalid API key` aparece cuando
+ * la clave configurada no pertenece al proyecto. En ambos casos el usuario no
+ * puede hacer nada: es un error de infraestructura que debemos mostrar con un
+ * mensaje en español y registrar técnicamente para soporte.
+ */
+function isSupabaseLegacyKeyDisabled(errorMessage: string): boolean {
+  const normalized = errorMessage.toLowerCase()
+  return (
+    normalized.includes('legacy api keys are disabled') ||
+    normalized.includes('invalid api key') ||
+    normalized.includes('no api key found')
+  )
+}
+
+const SUPABASE_KEY_OUTAGE_MESSAGE =
+  'No pudimos contactar al servidor de autenticación. Inténtalo de nuevo en unos minutos o contacta soporte si el problema persiste.'
+
 function isOtpProviderDisabled(errorMessage: string): boolean {
   const normalized = errorMessage.toLowerCase()
 
@@ -263,6 +283,10 @@ export async function registerPlayer(prevState: unknown, formData: FormData) {
   if (error) {
     console.error('[AUTH_ERROR] Error en registro (%s): %s', phone, error.message, error)
 
+    if (isSupabaseLegacyKeyDisabled(error.message)) {
+      return { error: SUPABASE_KEY_OUTAGE_MESSAGE }
+    }
+
     if (isOtpProviderDisabled(error.message)) {
       return { error: 'El servicio de SMS no está disponible en este momento. Por favor, inténtalo más tarde.' }
     }
@@ -309,6 +333,9 @@ export async function loginWithPin(prevState: unknown, formData: FormData) {
 
   if (error) {
     console.error('[AUTH_ERROR] Error en login PIN (%s): %s', phone, error.message)
+    if (isSupabaseLegacyKeyDisabled(error.message)) {
+      return { error: SUPABASE_KEY_OUTAGE_MESSAGE }
+    }
     if (error.message.toLowerCase().includes('invalid login credentials')) {
       return { error: 'Número o clave incorrectos. Verifica tus datos.' }
     }
@@ -358,6 +385,9 @@ export async function loginWithPin(prevState: unknown, formData: FormData) {
   if (otpError) {
     console.error('[AUTH_ERROR] Error enviando OTP para 2FA (%s): %s', phone, otpError.message)
 
+    if (isSupabaseLegacyKeyDisabled(otpError.message)) {
+      return { error: SUPABASE_KEY_OUTAGE_MESSAGE }
+    }
     if (isOtpProviderDisabled(otpError.message)) {
       return { error: 'El servicio de SMS no está disponible. Inténtalo más tarde.' }
     }
@@ -419,6 +449,10 @@ export async function loginWithPhone(prevState: unknown, formData: FormData) {
 
   if (error) {
     console.error('[AUTH_ERROR] Error en login (%s): %s', phone, error.message)
+
+    if (isSupabaseLegacyKeyDisabled(error.message)) {
+      return { error: SUPABASE_KEY_OUTAGE_MESSAGE }
+    }
 
     if (isMissingPhoneAuthUser(error.message)) {
       return { error: 'Si el número está registrado, recibirás un SMS. De lo contrario, regístrate primero.' }
@@ -536,6 +570,10 @@ export async function loginAdmin(prevState: unknown, formData: FormData) {
   })
 
   if (error) {
+    console.error('[AUTH_ERROR] Error en login admin (%s): %s', parsed.data.email, error.message)
+    if (isSupabaseLegacyKeyDisabled(error.message)) {
+      return { error: SUPABASE_KEY_OUTAGE_MESSAGE }
+    }
     return { error: error.message }
   }
 
@@ -887,6 +925,9 @@ export async function startPinRecovery(prevState: unknown, formData: FormData) {
   }
 
   if (error) {
+    if (isSupabaseLegacyKeyDisabled(error.message)) {
+      return { error: SUPABASE_KEY_OUTAGE_MESSAGE }
+    }
     if (isOtpProviderDisabled(error.message)) {
       return { error: 'El servicio de SMS no está disponible. Inténtalo más tarde.' }
     }
@@ -898,12 +939,35 @@ export async function startPinRecovery(prevState: unknown, formData: FormData) {
 
 /**
  * Comprueba si un teléfono tiene PIN configurado (usado por el UI de login).
+ *
+ * Devuelve:
+ *  - `true`  → la cuenta tiene PIN y debe mostrarse el formulario de clave.
+ *  - `false` → la cuenta existe pero aún no tiene PIN (flujo legacy por SMS).
+ *  - `null`  → no fue posible determinarlo (RPC falló o backend caído). La UI
+ *              debe tratar este caso como "desconocido" y mostrar el flujo de
+ *              PIN por defecto, nunca afirmar que la cuenta no tiene clave.
  */
-export async function checkPhoneHasPin(phone: string): Promise<boolean> {
-  const supabase = await createClient()
-  const normalized = normalizePhone(phone)
-  const { data } = await supabase.rpc('user_has_pin', { p_phone: normalized })
-  return data === true
+export async function checkPhoneHasPin(phone: string): Promise<boolean | null> {
+  try {
+    const supabase = await createClient()
+    const normalized = normalizePhone(phone)
+    const { data, error } = await supabase.rpc('user_has_pin', { p_phone: normalized })
+
+    if (error) {
+      console.error(
+        '[AUTH_ERROR] user_has_pin RPC falló para %s: %s',
+        normalized,
+        error.message,
+      )
+      return null
+    }
+
+    return data === true
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    console.error('[AUTH_ERROR] checkPhoneHasPin excepción: %s', message)
+    return null
+  }
 }
 
 // ─── Google OAuth: Complete Registration ─────────────────────────────────────

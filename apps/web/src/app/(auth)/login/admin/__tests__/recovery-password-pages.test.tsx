@@ -34,21 +34,29 @@ describe('Admin recovery and password reset pages', () => {
   const formAction = jest.fn()
   const unsubscribe = jest.fn()
   const getSession = jest.fn()
+  const setSession = jest.fn()
   const onAuthStateChange = jest.fn()
 
   beforeEach(() => {
     jest.clearAllMocks()
+    window.history.replaceState({}, '', '/login/admin/password')
     mockUseRouter.mockReturnValue({ push })
     mockUseSearchParams.mockReturnValue({ get: jest.fn().mockReturnValue(null) })
     mockUseActionState.mockReturnValue([null, formAction, false])
     getSession.mockResolvedValue({ data: { session: { user: { id: 'admin-123' } } }, error: null })
+    setSession.mockResolvedValue({ data: { session: { user: { id: 'admin-123' } } }, error: null })
     onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe } } })
     mockCreateClient.mockReturnValue({
       auth: {
         getSession,
+        setSession,
         onAuthStateChange,
       },
     })
+  })
+
+  afterEach(() => {
+    window.history.replaceState({}, '', '/login/admin/password')
   })
 
   it('does not render a back-to-login link on the recovery page', () => {
@@ -88,6 +96,26 @@ describe('Admin recovery and password reset pages', () => {
       expect(mockCreateClient).toHaveBeenCalled()
       expect(getSession).toHaveBeenCalled()
       expect(onAuthStateChange).toHaveBeenCalled()
+    })
+  })
+
+  it('hydrates a recovery session from the URL hash before showing the link as invalid', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/login/admin/password#access_token=token-123&refresh_token=refresh-456&type=recovery'
+    )
+    getSession
+      .mockResolvedValueOnce({ data: { session: null }, error: null })
+      .mockResolvedValue({ data: { session: { user: { id: 'admin-123' } } }, error: null })
+
+    render(<AdminPasswordResetPage />)
+
+    await waitFor(() => {
+      expect(setSession).toHaveBeenCalledWith({
+        access_token: 'token-123',
+        refresh_token: 'refresh-456',
+      })
     })
   })
 })

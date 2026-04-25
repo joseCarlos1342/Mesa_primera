@@ -49,7 +49,9 @@ function PlayerLoginContent() {
     const isValid = validatePhone(value)
 
     if (isValid && value.length === 10) {
-      // Check if user has a PIN configured
+      // Check if user has a PIN configured. `null` significa "desconocido"
+      // (p.ej. RPC caído): la UI trata ese caso como si tuviera PIN para no
+      // mostrar el mensaje engañoso "tu cuenta no tiene clave".
       startCheckingPin(async () => {
         const result = await checkPhoneHasPin(value)
         setHasPin(result)
