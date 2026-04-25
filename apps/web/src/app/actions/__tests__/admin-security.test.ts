@@ -6,7 +6,7 @@ import {
   rotateAdminRecoveryCodes,
   revokeOtherAdminSessions,
 } from '../admin-security'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { headers } from 'next/headers'
 import { logAdminAction } from '../admin-audit'
 
@@ -18,6 +18,7 @@ jest.mock('@/lib/admin-recovery-codes', () => ({
 
 jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }))
 
 jest.mock('next/headers', () => ({
@@ -78,6 +79,20 @@ function buildAdminSupabase(overrides: Record<string, unknown> = {}) {
       eq: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
     }),
+    ...overrides,
+  }
+}
+
+function buildAdminServiceSupabase(overrides: Record<string, unknown> = {}) {
+  return {
+    auth: {
+      admin: {
+        updateUserById: jest.fn().mockResolvedValue({
+          data: { user: { id: 'admin-123', email: 'admin@mesa.test' } },
+          error: null,
+        }),
+      },
+    },
     ...overrides,
   }
 }
@@ -144,7 +159,9 @@ describe('Admin Security Actions', () => {
 
   it('updates the admin password from a recovery session and records the audit event', async () => {
     const supabase = buildAdminSupabase()
+    const adminSupabase = buildAdminServiceSupabase()
     ;(createClient as any).mockResolvedValue(supabase)
+    ;(createAdminClient as any).mockResolvedValue(adminSupabase)
 
     const formData = new FormData()
     formData.append('password', 'NuevaClave123')
@@ -153,7 +170,10 @@ describe('Admin Security Actions', () => {
     const result = await completeAdminPasswordReset(null, formData)
 
     expect(result).toEqual({ success: 'Contraseña actualizada. Ya puedes volver al panel.' })
-    expect(supabase.auth.updateUser).toHaveBeenCalledWith({ password: 'NuevaClave123' })
+    expect(adminSupabase.auth.admin.updateUserById).toHaveBeenCalledWith('admin-123', {
+      password: 'NuevaClave123',
+    })
+    expect(supabase.auth.updateUser).not.toHaveBeenCalled()
     expect(logAdminAction).toHaveBeenCalledWith(
       'admin-123',
       'admin_password_reset_completed',

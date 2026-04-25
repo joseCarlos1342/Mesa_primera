@@ -1,5 +1,20 @@
 # Changelog
 
+## [Sprint 6.9] - 2026-04-24
+
+### Fixed
+
+- **Login bloqueado por "Legacy API keys are disabled" y mensaje engañoso de PIN** (`utils/supabase/env.ts`, `app/layout.tsx`, `app/(auth)/auth-actions.ts`, `app/(auth)/login/player/page.tsx`, `turbo.json`, `docs/deployment/deployment.md`):
+  - `getPublicSupabaseEnv` y `getAdminSupabaseEnv` ahora aceptan las claves nuevas de Supabase (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`) con fallback a los nombres legacy (`ANON_KEY` / `SERVICE_ROLE_KEY`). La inyección runtime en `layout.tsx` expone ambos nombres públicos para que el navegador pueda resolver el primero disponible.
+  - `checkPhoneHasPin()` ya no degrada silenciosamente a `false`: distingue `true` / `false` / `null` (desconocido) y loguea los errores RPC. El UI de `/login/player` trata `null` como "desconocido" y deja el formulario de clave por defecto, evitando el mensaje "tu cuenta aún no tiene clave" cuando en realidad el backend está caído.
+  - `loginWithPhone`, `loginWithPin`, `loginAdmin`, `registerPlayer` y `startPinRecovery` detectan `Legacy API keys are disabled` / `Invalid API key` y muestran un mensaje operativo en español en lugar del texto crudo del proveedor.
+  - Documentación de despliegue alineada con la configuración real: `TWILIO_VERIFY_SERVICE_SID` en lugar de `TWILIO_PHONE_NUMBER`, y guía explícita sobre las claves `publishable` / `secret`.
+
+### Added
+
+- **Tests de resolución de variables Supabase** (`utils/supabase/__tests__/env.test.ts`): cobertura para el orden de preferencia nueva > legacy y mensajes de error.
+- **Tests de `checkPhoneHasPin` y mapeo de error legacy** (`app/(auth)/__tests__/auth-actions.test.ts`): aseguran que fallos de RPC devuelven `null` y que `loginWithPhone` no filtra el mensaje crudo del proveedor.
+
 ## [Sprint 6.8] - 2026-04-23
 
 ### Fixed

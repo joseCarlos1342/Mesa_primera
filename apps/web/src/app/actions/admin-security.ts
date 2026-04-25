@@ -2,7 +2,7 @@
 
 import crypto from 'crypto'
 import { headers } from 'next/headers'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import {
   adminEmailChangeSchema,
   adminEmailSchema,
@@ -227,11 +227,12 @@ export async function completeAdminPasswordReset(
   const supabase = await createClient()
   const admin = await getAuthenticatedAdmin(supabase)
 
-    if (!hasAuthenticatedAdmin(admin)) {
+  if (!hasAuthenticatedAdmin(admin)) {
     return admin
   }
 
-  const { error } = await supabase.auth.updateUser({
+  const adminSupabase = await createAdminClient()
+  const { error } = await adminSupabase.auth.admin.updateUserById(admin.user.id, {
     password: parsed.data.password,
   })
 

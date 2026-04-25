@@ -109,9 +109,19 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const nonce = (await headers()).get('x-nonce') ?? undefined
+  // Inyectamos tanto el nombre nuevo (`PUBLISHABLE_KEY`) como el legacy
+  // (`ANON_KEY`) para que el runtime funcione sin importar cuál esté configurado
+  // en Vercel. El cliente resuelve el primero no vacío en `getPublicSupabaseEnv`.
+  const publishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    "";
+  const legacyAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
   const runtimePublicSupabaseEnv = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: legacyAnonKey,
     NEXT_PUBLIC_GAME_SERVER_URL: process.env.NEXT_PUBLIC_GAME_SERVER_URL ?? process.env.GAME_SERVER_URL ?? "",
     NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.SOCKET_URL ?? "",
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",

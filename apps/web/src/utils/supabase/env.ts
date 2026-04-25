@@ -1,16 +1,29 @@
-const SUPABASE_PUBLIC_ENV_NAMES = [
-  'NEXT_PUBLIC_SUPABASE_URL',
+/**
+ * Resolución central de variables de Supabase para la web app.
+ *
+ * Admite el esquema nuevo de claves de Supabase (`publishable` / `secret`) y
+ * mantiene compatibilidad con los nombres legacy (`ANON_KEY` / `SERVICE_ROLE_KEY`).
+ * Si ambos nombres conviven, se prefiere el nuevo. Esto permite migrar sin
+ * riesgo cuando el proyecto Supabase deshabilita las legacy API keys.
+ */
+
+const SUPABASE_PUBLIC_KEY_NAMES = [
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
 ] as const
 
-const SUPABASE_ADMIN_ENV_NAMES = [
-  ...SUPABASE_PUBLIC_ENV_NAMES,
+const SUPABASE_SECRET_KEY_NAMES = [
+  'SUPABASE_SECRET_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
 ] as const
 
-type PublicEnvName = (typeof SUPABASE_PUBLIC_ENV_NAMES)[number]
-type EnvName = (typeof SUPABASE_ADMIN_ENV_NAMES)[number]
-type RuntimePublicEnvName = PublicEnvName | 'NEXT_PUBLIC_TURNSTILE_SITE_KEY'
+type PublicKeyName = (typeof SUPABASE_PUBLIC_KEY_NAMES)[number]
+type SecretKeyName = (typeof SUPABASE_SECRET_KEY_NAMES)[number]
+type EnvName = 'NEXT_PUBLIC_SUPABASE_URL' | PublicKeyName | SecretKeyName
+type RuntimePublicEnvName =
+  | 'NEXT_PUBLIC_SUPABASE_URL'
+  | PublicKeyName
+  | 'NEXT_PUBLIC_TURNSTILE_SITE_KEY'
 
 declare global {
   interface Window {
@@ -18,63 +31,77 @@ declare global {
   }
 }
 
-function getEnvValue(name: EnvName) {
+const RUNTIME_PUBLIC_ENV_NAMES: ReadonlySet<string> = new Set<RuntimePublicEnvName>([
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+])
+
+function getEnvValue(name: EnvName): string | null {
   const processValue = process.env[name]?.trim()
+  if (processValue) return processValue
 
-  if (processValue) {
-    return processValue
-  }
+  if (typeof window === 'undefined') return null
+  if (!RUNTIME_PUBLIC_ENV_NAMES.has(name)) return null
 
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  if (name === 'NEXT_PUBLIC_SUPABASE_URL' || name === 'NEXT_PUBLIC_SUPABASE_ANON_KEY') {
-    return window.__MESA_PRIMERA_RUNTIME_ENV__?.[name]?.trim() ?? null
-  }
-
-  return null
+  return (
+    window.__MESA_PRIMERA_RUNTIME_ENV__?.[name as RuntimePublicEnvName]?.trim() ?? null
+  )
 }
 
-function getMissingEnv(names: readonly EnvName[]) {
-  return names.filter((name) => !getEnvValue(name))
+function resolveFirst(names: readonly EnvName[]): string | null {
+  for (const name of names) {
+    const value = getEnvValue(name)
+    if (value) return value
+  }
+  return null
 }
 
 function buildMissingEnvMessage(missingEnv: readonly string[]) {
   return `Missing required Supabase environment variables: ${missingEnv.join(', ')}. Configure them in Vercel Project Settings -> Environment Variables and redeploy.`
 }
 
-function getRequiredEnv(name: EnvName) {
-  const value = getEnvValue(name)
+export function getPublicSupabaseEnv() {
+  const url = getEnvValue('NEXT_PUBLIC_SUPABASE_URL')
+  const anonKey = resolveFirst(SUPABASE_PUBLIC_KEY_NAMES)
 
-  if (!value) {
-    throw new Error(buildMissingEnvMessage([name]))
+  const missing: string[] = []
+  if (!url) missing.push('NEXT_PUBLIC_SUPABASE_URL')
+  if (!anonKey) missing.push(SUPABASE_PUBLIC_KEY_NAMES[0])
+
+  if (missing.length > 0) {
+    throw new Error(buildMissingEnvMessage(missing))
   }
 
-  return value
-}
-
-export function getPublicSupabaseEnv() {
   return {
-    url: getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL'),
-    anonKey: getRequiredEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+    url: url as string,
+    anonKey: anonKey as string,
   }
 }
 
 export function getAdminSupabaseEnv() {
+  const base = getPublicSupabaseEnv()
+  const serviceRoleKey = resolveFirst(SUPABASE_SECRET_KEY_NAMES)
+
+  if (!serviceRoleKey) {
+    throw new Error(buildMissingEnvMessage([SUPABASE_SECRET_KEY_NAMES[0]]))
+  }
+
   return {
-    ...getPublicSupabaseEnv(),
-    serviceRoleKey: getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'),
+    ...base,
+    serviceRoleKey,
   }
 }
 
 export function getSupabaseEnvErrorMessage(includeServiceRole = false) {
-  const names = includeServiceRole ? SUPABASE_ADMIN_ENV_NAMES : SUPABASE_PUBLIC_ENV_NAMES
-  const missingEnv = getMissingEnv(names)
-
-  if (missingEnv.length === 0) {
-    return null
+  const missing: string[] = []
+  if (!getEnvValue('NEXT_PUBLIC_SUPABASE_URL')) missing.push('NEXT_PUBLIC_SUPABASE_URL')
+  if (!resolveFirst(SUPABASE_PUBLIC_KEY_NAMES)) missing.push(SUPABASE_PUBLIC_KEY_NAMES[0])
+  if (includeServiceRole && !resolveFirst(SUPABASE_SECRET_KEY_NAMES)) {
+    missing.push(SUPABASE_SECRET_KEY_NAMES[0])
   }
 
-  return buildMissingEnvMessage(missingEnv)
+  if (missing.length === 0) return null
+  return buildMissingEnvMessage(missing)
 }

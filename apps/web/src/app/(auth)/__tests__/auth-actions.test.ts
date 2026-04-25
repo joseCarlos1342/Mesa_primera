@@ -1,4 +1,4 @@
-import { loginAdmin, loginWithPhone, redeemAdminRecoveryCode, registerPlayer, verifyAdminTotp } from '../auth-actions'
+import { loginAdmin, loginWithPhone, redeemAdminRecoveryCode, registerPlayer, verifyAdminTotp, checkPhoneHasPin } from '../auth-actions'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { enforceSessionPolicy } from '../auth-actions-helpers'
@@ -115,6 +115,66 @@ describe('Auth Actions', () => {
 
       expect(result).toEqual({ error: 'Error de prueba de SMS' })
       expect(redirect).not.toHaveBeenCalled()
+    })
+
+    it('muestra un mensaje operativo cuando Supabase rechaza legacy API keys', async () => {
+      ;(mockSignInWithOtp as jest.Mock).mockResolvedValueOnce({
+        error: { message: 'Legacy API keys are disabled' },
+      })
+
+      const formData = new FormData()
+      formData.append('phone', '3205802918')
+
+      const result = await loginWithPhone({}, formData)
+
+      expect(result).toEqual({
+        error: expect.stringContaining('servidor de autenticación'),
+      })
+      // Nunca filtramos el mensaje crudo del proveedor al usuario final
+      expect((result as { error: string }).error).not.toContain('Legacy API keys')
+      expect(redirect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('checkPhoneHasPin', () => {
+    it('devuelve true cuando la RPC responde con data=true', async () => {
+      const mockSupabase = {
+        auth: { signInWithOtp: jest.fn() },
+        rpc: jest.fn().mockResolvedValue({ data: true, error: null }),
+      }
+      ;(createClient as any).mockResolvedValue(mockSupabase)
+
+      await expect(checkPhoneHasPin('3205802918')).resolves.toBe(true)
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('user_has_pin', { p_phone: '+573205802918' })
+    })
+
+    it('devuelve false cuando la RPC responde con data=false', async () => {
+      const mockSupabase = {
+        auth: { signInWithOtp: jest.fn() },
+        rpc: jest.fn().mockResolvedValue({ data: false, error: null }),
+      }
+      ;(createClient as any).mockResolvedValue(mockSupabase)
+
+      await expect(checkPhoneHasPin('3205802918')).resolves.toBe(false)
+    })
+
+    it('devuelve null (desconocido) cuando la RPC retorna un error — no debe caer a false silenciosamente', async () => {
+      const mockSupabase = {
+        auth: { signInWithOtp: jest.fn() },
+        rpc: jest.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'Legacy API keys are disabled' },
+        }),
+      }
+      ;(createClient as any).mockResolvedValue(mockSupabase)
+
+      await expect(checkPhoneHasPin('3205802918')).resolves.toBeNull()
+    })
+
+    it('devuelve null cuando createClient falla (sin env Supabase)', async () => {
+      ;(createClient as any).mockRejectedValueOnce(new Error('Missing required Supabase environment variables'))
+
+      await expect(checkPhoneHasPin('3205802918')).resolves.toBeNull()
     })
   })
 
