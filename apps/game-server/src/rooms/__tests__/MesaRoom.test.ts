@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import { ColyseusTestServer, boot } from '@colyseus/testing';
+import { CloseCode } from '@colyseus/sdk';
 import { MesaRoom } from '../MesaRoom';
 import { SupabaseService } from '../../services/SupabaseService';
 import { AlertService } from '../../services/AlertService';
@@ -62,12 +63,14 @@ describe('MesaRoom via Colyseus Testing', () => {
   let colyseus: ColyseusTestServer;
 
   beforeAll(async () => {
+    const testPort = Number(process.env.COLYSEUS_TEST_PORT ?? 2568);
+
     colyseus = await boot({
       initializeGameServer: (gameServer) => {
         gameServer.define('mesa_primera', MesaRoom);
       }
-    });
-  });
+    }, testPort);
+  }, 30_000);
 
   afterAll(async () => {
     await colyseus.cleanup();
@@ -10180,9 +10183,10 @@ describe('MesaRoom via Colyseus Testing', () => {
       // Mock allowReconnection to resolve immediately
       internalRoom.allowReconnection = vi.fn().mockResolvedValue(undefined);
 
-      // Simulate non-consented leave (code !== 1000)
-      // Use client.leave() without code — defaults to non-consented
-      clients[0].leave();
+      // Simulate non-consented leave (code !== CloseCode.CONSENTED).
+      // El SDK usa consented=true por defecto (close 4000); para emular un
+      // refresh/desconexión real hay que pasar `false`.
+      clients[0].leave(false);
       await new Promise(r => setTimeout(r, 500));
 
       expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 300);
@@ -11345,13 +11349,48 @@ describe('MesaRoom via Colyseus Testing', () => {
       // Mock allowReconnection to resolve immediately
       internalRoom.allowReconnection = vi.fn().mockResolvedValue(undefined);
 
-      // Non-consented leave
-      clients[0].leave();
+      // Non-consented leave (forzamos consented=false para emular refresh).
+      clients[0].leave(false);
       await new Promise(r => setTimeout(r, 500));
 
       expect(internalRoom.allowReconnection).toHaveBeenCalled();
       // After the mock resolves, the success path should run
       // Check that connected was restored (may not work if client.send throws)
+    });
+
+    it('preserves mano and current turn while the reconnect window is open', async () => {
+      const { internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'reconn-preserve-turn-b5', playerCount: 3
+      });
+
+      internalRoom.state.phase = 'APUESTA_4_CARTAS';
+      internalRoom.state.dealerId = ids[0];
+      internalRoom.state.activeManoId = ids[0];
+      internalRoom.state.turnPlayerId = ids[0];
+      internalRoom.seatOrder = [...ids];
+
+      for (const player of players) {
+        player.connected = true;
+        player.isFolded = false;
+        player.isWaiting = false;
+      }
+
+      let resolveReconnection!: () => void;
+      internalRoom.allowReconnection = vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
+        resolveReconnection = resolve;
+      }));
+
+      const leavePromise = internalRoom.onLeave({ sessionId: ids[0] } as any, 1006);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 300);
+      expect(internalRoom.state.activeManoId).toBe(ids[0]);
+      expect(internalRoom.state.turnPlayerId).toBe(ids[0]);
+      expect(internalRoom.state.players.has(ids[0])).toBe(true);
+
+      resolveReconnection();
+      await leavePromise;
+      await Promise.all(clients.map((client) => client.leave()));
     });
   });
 
@@ -11688,7 +11727,7 @@ describe('MesaRoom via Colyseus Testing', () => {
   // ██  BATCH 7 — Consented Leave, Deep Branches, Pique Resolve ██
   // ═══════════════════════════════════════════════════════════════
 
-  describe('Batch 7: consented onLeave path (code=1000)', () => {
+  describe('Batch 7: consented onLeave path (code=4000)', () => {
     it('consented leave transfers dealer via seatOrder', async () => {
       const { internalRoom, ids, players } = await createMesaTestContext(colyseus, {
         tableId: 'consent-leave-1', playerCount: 3
@@ -11702,7 +11741,7 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       // Fake a connected client for the leaving player
       const fakeClient = { sessionId: ids[0] };
-      await internalRoom.onLeave(fakeClient as any, 1000);
+      await internalRoom.onLeave(fakeClient as any, CloseCode.CONSENTED);
 
       // Dealer should transfer to ids[1] (next in seatOrder)
       expect(internalRoom.state.dealerId).toBe(ids[1]);
@@ -11721,7 +11760,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       players[2].connected = true;
       // Ensure clientMap has entry so removePlayer works
       const fakeClient = { sessionId: ids[0] };
-      await internalRoom.onLeave(fakeClient as any, 1000);
+      await internalRoom.onLeave(fakeClient as any, CloseCode.CONSENTED);
 
       // Should use fallback: any connected player != ids[0]
       expect([ids[1], ids[2]]).toContain(internalRoom.state.dealerId);
@@ -11739,7 +11778,7 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       // Player 1 leaves (not the dealer)
       const fakeClient = { sessionId: ids[1] };
-      await internalRoom.onLeave(fakeClient as any, 1000);
+      await internalRoom.onLeave(fakeClient as any, CloseCode.CONSENTED);
 
       // Dealer should remain unchanged
       expect(internalRoom.state.dealerId).toBe(ids[0]);
@@ -11756,7 +11795,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       players[2].connected = true; // connected but NOT in seatOrder
 
       const fakeClient = { sessionId: ids[0] };
-      await internalRoom.onLeave(fakeClient as any, 1000);
+      await internalRoom.onLeave(fakeClient as any, CloseCode.CONSENTED);
 
       // seatOrder loop fails (ids[1] disconnected), fallback finds ids[2]
       expect(internalRoom.state.dealerId).toBe(ids[2]);
