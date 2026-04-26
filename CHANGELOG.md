@@ -1,5 +1,64 @@
 # Changelog
 
+## [Sprint 6.10c] - 2026-04-25
+
+### Fixed
+
+- **Cartas reveladas en `SHOWDOWN`/`SHOWDOWN_WAIT` se veían translúcidas y desaturadas para jugadores foldeados** (`apps/web/src/components/replay/ReplayBoard.tsx`, `apps/web/src/components/game/Board.tsx`):
+  - Tanto la mesa de replay como la mesa viva aplicaban `opacity: 0.3` + `grayscale` a las cartas reveladas de jugadores `isFolded`, sin tener en cuenta la fase. En `SHOWDOWN` esto producía manos visibles pero "fantasma" (mal contraste, difíciles de leer) durante la revelación.
+  - Nuevo gating: el tratamiento atenuado solo se aplica fuera de las fases de revelación (`!isRevealPhase`). En showdown las cartas de cualquier jugador (foldeado o no) se ven nítidas, a 100% de opacidad y sin filtro grayscale.
+- **`parseCard` rechazaba el formato compacto histórico de cartas** (`apps/web/src/types/replay.ts`):
+  - El parser exigía `valor-Palo` con guion (`"7-O"`); replays antiguos persistidos en VPS que pudieran haberse grabado en formato compacto (`"7O"`) caían a `null` y se renderizaban como dorsos.
+  - Ahora el parser acepta ambos: `"7-O"`/`"12-Copas"` (canónico actual) y `"3O"`/`"12C"` (compacto histórico). Garantiza retrocompatibilidad sin tener que regrabar replays.
+
+### Changed
+
+- **Layout móvil del replay: clúster central anclado abajo y anclas separadas avatar/cartas** (`apps/web/src/components/replay/ReplayBoard.tsx`):
+  - El bloque central de Apuesta Principal + Pique + mazo + bottom card pasó de centrado vertical (`inset-0 items-center`) a anclado al tercio inferior (`inset-x-0 bottom-[14%] md:bottom-[18%]`). En móvil con 7 jugadores esto libera la franja superior para las manos de arriba y acerca el clúster a los controles del replay.
+  - Cada `PlayerSeat` expone `data-seat-zone="avatar"` y `data-seat-zone="cards"` para distinguir explícitamente las dos zonas del asiento (avatar perimetral, cartas hacia el centro), siguiendo el esquema visual solicitado por producto.
+  - Nuevo `data-testid="replay-center-cluster"` para validar layout vía tests.
+
+### Tests
+
+- 9 nuevos tests en `apps/web/src/components/replay/__tests__/ReplayBoard.test.tsx` cubriendo: parser tolerante a formatos canónico y compacto, render face-up de cartas con formato compacto, ausencia de `grayscale` en `SHOWDOWN`/`SHOWDOWN_WAIT` para foldeados con cartas reveladas, mantención del tratamiento atenuado fuera de fases de revelación, y anclas separadas avatar/cartas + clúster central no centrado vertical.
+- 470/470 tests passing en `apps/web`.
+
+## [Sprint 6.10b] - 2026-04-25
+
+### Fixed
+
+- **Fullscreen del replay scope mal aplicado** (`apps/web/src/hooks/useFullscreen.ts`, `apps/web/src/components/replay/ReplayController.tsx`):
+  - El fullscreen se invocaba sobre `document.documentElement`, llevándose a la pantalla completa la NAV superior, sidebars y todo el shell de la app.
+  - `useFullscreen(targetRef?)` ahora acepta un `RefObject<HTMLElement>` opcional; si no se pasa argumento, conserva el comportamiento previo (target = `document.documentElement`), por lo que `game-header.tsx` no se ve afectado.
+  - `ReplayController` envuelve la mesa + controles flotantes en un nuevo contenedor `data-testid="replay-fullscreen-target"` que es el target del fullscreen. Cuando está activo aplica `fixed inset-0 z-[1000] w-screen h-screen` y la mesa expande con `!h-full !min-h-0 !rounded-none !border-0` para ocupar 100vw/100vh sin márgenes.
+  - La barra de progreso y el control bar de escritorio se ocultan en fullscreen; solo permanecen visibles los controles flotantes (Anterior, Play/Pause, Siguiente, Salir), tal como exige el requerimiento de "Persistencia de Controles".
+  - Los floating controls se movieron DENTRO del target fullscreen porque el navegador oculta cualquier nodo fuera del elemento en pantalla completa.
+
+## [Sprint 6.10] - 2026-04-25
+
+### Fixed
+
+- **Replay filtraba cartas de SHOWDOWN al primer paso del timeline** (`apps/web/src/components/replay/ReplayController.tsx`, `apps/web/src/components/replay/ReplayBoard.tsx`):
+  - `ReplayController` reemplaza el mapa global de cartas (que se construía recorriendo todos los frames y `final_hands`) por una memoria progresiva indexada por frame: en el paso `i` el fallback solo conoce los frames `0..i`. Esto evita que el primer paso muestre cartas reveladas al final.
+  - `final_hands` deja de ser fuente de verdad para pasos intermedios; solo se usa en el resumen final.
+- **La mesa del replay no soportaba 7 asientos y solapaba cartas con el avatar** (`apps/web/src/components/replay/ReplayBoard.tsx`):
+  - Layout dinámico de 3 a 7 asientos distribuidos por todo el perímetro (alineado con `MesaRoom.maxClients = 7` y `GameState.maxPlayers = 7`).
+  - La mano de los asientos inferiores ahora renderiza por encima del bote/pique central (`z-30`) para no quedar tapada por el badge.
+  - Se eliminaron los slots vacíos cuando hay menos jugadores que asientos.
+- **Manos finales con grid rígido** (`apps/web/src/app/(player)/replays/[gameId]/page.tsx`, `apps/web/src/app/(admin)/admin/replays/[gameId]/page.tsx`):
+  - Grid adaptativo que reparte el espacio según el número real de manos (de 1 a 7+), evitando huecos blancos al haber pocas manos.
+
+### Added
+
+- **Fullscreen móvil para el replay con controles flotantes** (`apps/web/src/components/replay/ReplayController.tsx`):
+  - Al pulsar Play en pantallas ≤1024px se solicita fullscreen (best-effort, fallback webkit) reutilizando `useFullscreen`.
+  - Mientras el reproductor está en fullscreen aparece una barra flotante con los controles de anterior, play/pause, siguiente y salir; "salir" devuelve a la vista normal del replay.
+- **Tests de fidelidad temporal y geometría** (`apps/web/src/components/replay/__tests__/ReplayController.test.tsx`, `apps/web/src/components/replay/__tests__/ReplayBoard.test.tsx`):
+  - El primer paso no filtra cartas privadas de frames futuros.
+  - `final_hands` no se usa como fallback en pasos intermedios.
+  - El board renderiza 3 y 7 asientos correctamente, sin slots vacíos.
+  - Pulsar Play en móvil dispara `requestFullscreen` y muestra los controles flotantes.
+
 ## [Sprint 6.9] - 2026-04-24
 
 ### Fixed

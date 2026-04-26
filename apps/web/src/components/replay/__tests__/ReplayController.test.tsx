@@ -141,4 +141,88 @@ describe('ReplayController', () => {
     render(<ReplayController frames={[]} />);
     expect(screen.getByTestId('replay-empty')).toBeInTheDocument();
   });
+
+  it('no filtra cartas privadas de frames futuros al frame inicial', () => {
+    // Bug histórico: el controller construía un mapa global recorriendo todos
+    // los frames, lo que hacía que el primer frame mostrara cartas reveladas
+    // en SHOWDOWN. La fuente de verdad debe ser progresiva (0..index).
+    const frame0 = baseFrame(0, 'BARAJANDO', 0);
+    // limpia privateCards y cardCount para frame inicial
+    frame0.players = frame0.players.map(p => ({ ...p, cardCount: 0, privateCards: undefined }));
+    const frame3 = baseFrame(3, 'SHOWDOWN', 5000);
+    frame3.players = [
+      { ...frame3.players[0], privateCards: ['12-O', '11-C', '10-E', '01-B'] },
+      { ...frame3.players[1], privateCards: ['07-O', '05-C', '03-E', '06-B'] },
+    ];
+    const frames: ReplayFrame[] = [frame0, baseFrame(1, 'PIQUE', 0), baseFrame(2, 'DESCARTE', 0), frame3];
+
+    render(<ReplayController frames={frames} />);
+
+    // Index 0 no debe pintar ninguna carta de frente.
+    expect(document.querySelectorAll('[data-card-hidden="false"]').length).toBe(0);
+  });
+
+  it('no usa final_hands como fallback en pasos intermedios', () => {
+    const frame0 = baseFrame(0, 'BARAJANDO', 0);
+    frame0.players = frame0.players.map(p => ({ ...p, cardCount: 0, privateCards: undefined }));
+    const frames: ReplayFrame[] = [frame0, baseFrame(1, 'PIQUE', 0)];
+    const finalHands = {
+      u1: { cards: '12-O,11-C,10-E,01-B', nickname: 'Alice' },
+      u2: { cards: '07-O,05-C,03-E,06-B', nickname: 'Bob' },
+    };
+
+    render(<ReplayController frames={frames} finalHands={finalHands} />);
+
+    expect(document.querySelectorAll('[data-card-hidden="false"]').length).toBe(0);
+  });
+
+  it('en móvil, pulsar play solicita fullscreen y muestra controles flotantes', async () => {
+    const requestFullscreen = jest.fn().mockResolvedValue(undefined);
+    // El fullscreen NO debe pedirse sobre documentElement (toda la app),
+    // sino sobre el contenedor de la mesa. Mockeamos el prototipo de
+    // HTMLDivElement para capturar la llamada del target específico.
+    const originalProtoRfs = (HTMLElement.prototype as any).requestFullscreen;
+    (HTMLElement.prototype as any).requestFullscreen = requestFullscreen;
+    const originalMm = window.matchMedia;
+    (window as any).matchMedia = jest.fn().mockImplementation((q: string) => ({
+      matches: q.includes('max-width'),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    }));
+
+    try {
+      render(<ReplayController frames={FRAMES} intervalMs={1000} />);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('replay-play'));
+      });
+      expect(requestFullscreen).toHaveBeenCalled();
+      // El primer argumento `this` (target) debe ser el wrapper, no el HTML root.
+      const callTarget = requestFullscreen.mock.instances[0] as HTMLElement;
+      expect(callTarget).not.toBe(document.documentElement);
+      expect(callTarget?.getAttribute('data-testid')).toBe('replay-fullscreen-target');
+
+      // Simula entrada en fullscreen para que aparezcan controles flotantes
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        get: () => callTarget,
+      });
+      await act(async () => {
+        document.dispatchEvent(new Event('fullscreenchange'));
+      });
+      expect(screen.getByTestId('replay-floating-controls')).toBeInTheDocument();
+      expect(screen.getByTestId('replay-floating-exit')).toBeInTheDocument();
+    } finally {
+      (HTMLElement.prototype as any).requestFullscreen = originalProtoRfs;
+      (window as any).matchMedia = originalMm;
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        get: () => null,
+      });
+    }
+  });
 });

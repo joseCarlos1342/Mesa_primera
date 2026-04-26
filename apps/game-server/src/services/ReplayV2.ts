@@ -127,12 +127,27 @@ function iteratePlayers(players: StateLike['players']): PlayerLike[] {
  * Snapshot frame sin la parte privada de las cartas. `privateCards` solo se
  * rellena en fases donde el juego ya las revelo (SHOWDOWN).
  */
-function snapshotPlayer(player: PlayerLike, dealerId: string, state: StateLike): ReplayPlayerFrame {
-  const shouldExposeHand =
-    state.phase === 'SHOWDOWN' ||
-    state.phase === 'SHOWDOWN_WAIT' ||
-    state.phase === 'REVELAR_CARTA' ||
-    state.phase === 'GUERRA_JUEGO';
+function snapshotPlayer(
+  player: PlayerLike,
+  dealerId: string,
+  _state: StateLike,
+  lastKnownCards: Map<string, string>,
+): ReplayPlayerFrame {
+  // En las repeticiones (post-partida) el contenido es publico: siempre exponemos
+  // la mano completa cuando el motor la conoce. La fidelidad visual del replay
+  // requiere ver todas las cartas, no dorsos.
+  const shouldExposeHand = true;
+
+  // Si el jugador acaba de descartar/foldar y `cards` queda vacio, recurrimos a
+  // las ultimas cartas conocidas de ese jugador para preservar la fidelidad
+  // visual del replay (ver siempre cuatro cartas mientras la partida lo permita).
+  const liveCardsCsv = player.cards ?? '';
+  if (liveCardsCsv && liveCardsCsv.length > 0) {
+    lastKnownCards.set(player.id, liveCardsCsv);
+  }
+  const effectiveCardsCsv = liveCardsCsv && liveCardsCsv.length > 0
+    ? liveCardsCsv
+    : (lastKnownCards.get(player.id) ?? '');
 
   const frame: ReplayPlayerFrame = {
     id: player.id,
@@ -142,7 +157,7 @@ function snapshotPlayer(player: PlayerLike, dealerId: string, state: StateLike):
     chips: player.chips,
     turnOrder: player.turnOrder,
     roundBet: player.roundBet,
-    cardCount: splitCards(player.cards).length || player.cardCount,
+    cardCount: splitCards(effectiveCardsCsv).length || player.cardCount,
     revealedCards: splitCards(player.revealedCards),
     isDealer: player.id === dealerId,
     isFolded: player.isFolded,
@@ -152,8 +167,8 @@ function snapshotPlayer(player: PlayerLike, dealerId: string, state: StateLike):
     hasActed: player.hasActed,
   };
 
-  if (shouldExposeHand && player.cards) {
-    frame.privateCards = splitCards(player.cards);
+  if (shouldExposeHand && effectiveCardsCsv) {
+    frame.privateCards = splitCards(effectiveCardsCsv);
   }
 
   return frame;
@@ -166,6 +181,8 @@ function snapshotPlayer(player: PlayerLike, dealerId: string, state: StateLike):
 export class SnapshotBuilder {
   private _frames: ReplayFrame[] = [];
   private _seq: number = 0;
+  /** Memoria de las ultimas cartas conocidas por jugador (para preservar la mano tras un fold). */
+  private _lastKnownCards: Map<string, string> = new Map();
 
   get frames(): ReplayFrame[] {
     return this._frames;
@@ -173,6 +190,11 @@ export class SnapshotBuilder {
 
   get nextSeq(): number {
     return this._seq;
+  }
+
+  /** Devuelve las ultimas cartas conocidas de cada jugador (por playerId). */
+  get lastKnownCards(): Map<string, string> {
+    return this._lastKnownCards;
   }
 
   /**
@@ -192,7 +214,7 @@ export class SnapshotBuilder {
         }
         return a.id.localeCompare(b.id);
       })
-      .map(p => snapshotPlayer(p, state.dealerId, state));
+      .map(p => snapshotPlayer(p, state.dealerId, state, this._lastKnownCards));
 
     const frame: ReplayFrame = {
       seq: this._seq,

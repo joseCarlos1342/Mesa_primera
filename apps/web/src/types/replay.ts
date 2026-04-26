@@ -61,21 +61,42 @@ export interface ReplayFrame {
   hint?: AnimationHint;
 }
 
-/** Parse "valor-Palo" (e.g. "07-O" o "12-Copas") → { value, suit }. */
+/** Parse "valor-Palo" (e.g. "07-O" o "12-Copas") o el formato compacto histórico
+ *  ("3O", "7B") → { value, suit }. Devuelve null si la cadena no es interpretable.
+ *
+ *  Mantenemos retrocompatibilidad con replays antiguos persistidos en VPS que
+ *  pudieran haberse grabado en formato compacto. El formato canónico actual del
+ *  motor (`MesaRoom.createDeck`) es "valor-Palo" con palo de una letra.
+ */
 export function parseCard(card: string): { value: number; suit: 'Oros' | 'Copas' | 'Espadas' | 'Bastos' } | null {
-  if (!card) return null;
-  const parts = card.split('-');
-  if (parts.length !== 2) return null;
-  const value = parseInt(parts[0], 10);
-  if (!Number.isFinite(value)) return null;
-  const suitKey = parts[1];
-  const map: Record<string, 'Oros' | 'Copas' | 'Espadas' | 'Bastos'> = {
+  if (!card || typeof card !== 'string') return null;
+  const suitMap: Record<string, 'Oros' | 'Copas' | 'Espadas' | 'Bastos'> = {
     O: 'Oros', Oros: 'Oros',
     C: 'Copas', Copas: 'Copas',
     E: 'Espadas', Espadas: 'Espadas',
     B: 'Bastos', Bastos: 'Bastos',
   };
-  const suit = map[suitKey];
+
+  let valueStr = '';
+  let suitKey = '';
+
+  if (card.includes('-')) {
+    const parts = card.split('-');
+    if (parts.length !== 2) return null;
+    valueStr = parts[0];
+    suitKey = parts[1];
+  } else {
+    // Formato compacto: "3O", "12C". Suit es la última 1 letra (O/C/E/B).
+    const match = card.match(/^(\d{1,2})([OCEB])$/);
+    if (!match) return null;
+    valueStr = match[1];
+    suitKey = match[2];
+  }
+
+  if (!valueStr) return null;
+  const value = parseInt(valueStr, 10);
+  if (!Number.isFinite(value)) return null;
+  const suit = suitMap[suitKey];
   if (!suit) return null;
   return { value, suit };
 }
