@@ -1,8 +1,15 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, type RefObject } from 'react'
 
-export function useFullscreen() {
+/**
+ * Maneja el estado de pantalla completa del navegador.
+ *
+ * @param targetRef Opcional. Si se provee, el fullscreen apunta a ese elemento
+ * en lugar de a `document.documentElement`. Útil para enfocar solo un componente
+ * (por ejemplo, la mesa del replay) sin meter en fullscreen toda la app.
+ */
+export function useFullscreen(targetRef?: RefObject<HTMLElement | null>) {
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
@@ -20,10 +27,10 @@ export function useFullscreen() {
   const toggle = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
-        const el = document.documentElement as any
-        if (el.requestFullscreen) {
+        const el = (targetRef?.current ?? document.documentElement) as any
+        if (el?.requestFullscreen) {
           await el.requestFullscreen({ navigationUI: 'hide' })
-        } else if (el.webkitRequestFullscreen) {
+        } else if (el?.webkitRequestFullscreen) {
           await el.webkitRequestFullscreen()
         }
       } else {
@@ -37,7 +44,7 @@ export function useFullscreen() {
     } catch {
       // Fullscreen not supported or denied
     }
-  }, [])
+  }, [targetRef])
 
   const isSupported = typeof document !== 'undefined' && (
     !!document.documentElement.requestFullscreen ||

@@ -1,69 +1,20 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
-import { formatAmount } from '@/utils/format';
 import { ReplayController } from '@/components/replay/ReplayController';
-import { Trophy, Clock, Users, Copy, Check, Coins, Hand, Timer, Swords, Ban, Layers } from 'lucide-react';
-
-type TimelineEvent = {
-  event: string;
-  phase?: string;
-  player?: string;
-  action?: string;
-  amount?: number;
-  combination?: string;
-  droppedCards?: string[];
-  winner?: string;
-  pot?: number;
-  payout?: number;
-  rake?: number;
-  seed?: string;
-  time: number;
-  rng_state?: string;
-};
-
-type PlayerSnapshot = {
-  userId: string;
-  sessionId?: string;
-  nickname: string;
-  cards: string;
-  chips: number;
-};
-
-const PHASE_COLORS: Record<string, string> = {
-  PIQUE: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  DESCARTE: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-  APUESTA_4_CARTAS: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  CANTICOS: 'text-pink-400 bg-pink-500/10 border-pink-500/20',
-  GUERRA: 'text-red-400 bg-red-500/10 border-red-500/20',
-};
-
-const ACTION_ICONS: Record<string, typeof Coins> = {
-  voy: Coins,
-  paso: Ban,
-  discard: Layers,
-};
-
-function formatCard(card: string): string {
-  const [value, suit] = card.split('-');
-  const suitMap: Record<string, string> = { O: '🪙', C: '🏆', E: '⚔️', B: '🪵' };
-  return `${value}${suitMap[suit] || suit}`;
-}
+import { LandscapeLockOverlay } from '@/components/replay/LandscapeLockOverlay';
+import { Copy, Check, Trophy, Users, Coins, Layers, Clock } from 'lucide-react';
+import { formatCurrency } from '@/utils/format';
 
 export default function ReplayViewer({ params }: { params: Promise<{ gameId: string }> }) {
   const supabase = createClient();
   const [gameId, setGameId] = useState<string>('');
   const [replay, setReplay] = useState<any>(null);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showRng, setShowRng] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [speed, setSpeed] = useState(1);
   const [seedCopied, setSeedCopied] = useState(false);
-  const SPEEDS = [0.5, 1, 2, 4];
 
   useEffect(() => {
     params.then(p => setGameId(p.gameId));
@@ -114,31 +65,6 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
     fetchData();
   }, [gameId, supabase]);
 
-  // Autoplay timer
-  useEffect(() => {
-    if (!isPlaying || !replay) return;
-    const timeline = replay.timeline || [];
-    if (currentStep >= timeline.length - 1) {
-      setIsPlaying(false);
-      return;
-    }
-    const timer = setTimeout(() => setCurrentStep(s => s + 1), 1500 / speed);
-    return () => clearTimeout(timer);
-  }, [isPlaying, currentStep, replay, speed]);
-
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!replay) return;
-    const len = ((replay.admin_timeline || replay.timeline) ?? []).length;
-    if (e.key === 'ArrowRight') setCurrentStep(s => Math.min(len - 1, s + 1));
-    if (e.key === 'ArrowLeft') setCurrentStep(s => Math.max(0, s - 1));
-    if (e.key === ' ') { e.preventDefault(); setIsPlaying(p => !p); }
-  }, [replay]);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -160,36 +86,81 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
   }
 
   // Admin sees admin_timeline (with rng_state), player sees timeline
-  const timeline: TimelineEvent[] = (isAdmin && replay.admin_timeline)
-    ? replay.admin_timeline
+  const players: any[] = replay.players || [];
+  const pot = replay.pot_breakdown || {};
+  const hands = replay.final_hands || {};
+  const timeline: any[] = isAdmin
+    ? (replay.admin_timeline || replay.timeline || [])
     : (replay.timeline || []);
+  const frames: any[] = Array.isArray(replay.frames) ? replay.frames : [];
 
-  const event = timeline[Math.min(currentStep, timeline.length - 1)];
-  const players: PlayerSnapshot[] = replay.players || [];
-  const progress = timeline.length > 1 ? (currentStep / (timeline.length - 1)) * 100 : 100;
+  // Mapa sessionId -> nickname (los eventos del timeline usan sessionId, no userId).
+  const sessionIdToNickname: Record<string, string> = {};
+  for (const f of frames) {
+    for (const p of (f?.players ?? [])) {
+      if (p?.id && p?.nickname && !sessionIdToNickname[p.id]) {
+        sessionIdToNickname[p.id] = p.nickname;
+      }
+    }
+  }
+  for (const p of players) {
+    if (p?.userId && p?.nickname && !sessionIdToNickname[p.userId]) {
+      sessionIdToNickname[p.userId] = p.nickname;
+    }
+  }
 
-  const getPlayerName = (sessionId?: string) => {
-    if (!sessionId) return 'Desconocido';
-    // Priority: sessionId (new format), then userId (old format)
-    const p = players.find(pl => pl.sessionId === sessionId || pl.userId === sessionId);
-    return p?.nickname || sessionId.substring(0, 8);
+  const getPlayerName = (id: string) => {
+    if (!id) return '—';
+    if (sessionIdToNickname[id]) return sessionIdToNickname[id];
+    const p = players.find((pl: any) => pl.userId === id);
+    return p?.nickname || id.substring(0, 6);
   };
 
-  // Build a descriptive label for the current event
-  const getEventDescription = (ev: TimelineEvent): string => {
-    if (ev.event === 'start') return 'Inicio de Partida';
-    if (ev.event === 'end') {
-      return `${getPlayerName(ev.winner)} gana ${ev.payout ? `$${formatAmount(ev.payout)}` : ''}`;
+  // Traducciones de acciones del motor a etiquetas legibles.
+  const ACTION_LABELS: Record<string, string> = {
+    voy: 'Voy',
+    paso: 'Paso',
+    pasar: 'Paso',
+    bote: 'Se botó',
+    botarse: 'Se botó',
+    'me-boto': 'Se botó',
+    igualar: 'Igualó',
+    apostar: 'Apuesta',
+    'apuesta-pique': 'Apuesta Pique',
+    descartar: 'Descarta',
+    'llevo-juego': 'Lleva Juego',
+    'llevo-juego-inmediato': 'Lleva Juego',
+    'no-llevo-juego': 'No lleva Juego',
+  };
+  const EVENT_LABELS: Record<string, string> = {
+    start: 'Inicio',
+    action: 'Acción',
+    pique_won: 'Gana Pique',
+    pique_restart: 'Pique reinicia',
+    declarar_juego: 'Declara Juego',
+    end: 'Fin',
+  };
+  const eventLabel = (e: any): string => {
+    if (e?.action && ACTION_LABELS[e.action]) return ACTION_LABELS[e.action];
+    if (e?.action) return String(e.action).toUpperCase();
+    if (e?.event && EVENT_LABELS[e.event]) return EVENT_LABELS[e.event];
+    return String(e?.event ?? e?.type ?? 'Evento');
+  };
+  const eventDetail = (e: any): string => {
+    const parts: string[] = [];
+    if (typeof e?.amount === 'number' && e.amount > 0) parts.push(formatCurrency(e.amount));
+    if (typeof e?.payout === 'number' && e.payout > 0) parts.push(`Pago ${formatCurrency(e.payout)}`);
+    if (Array.isArray(e?.droppedCards) && e.droppedCards.length > 0) {
+      parts.push(`Descarta ${e.droppedCards.join(', ')}`);
     }
-    const name = getPlayerName(ev.player);
-    const actionLabel = ev.action === 'voy' ? 'Apuesta' : ev.action === 'paso' ? 'Pasa' : ev.action === 'discard' ? 'Descarta' : ev.action || '';
-    const amountStr = ev.amount ? ` $${formatAmount(ev.amount)}` : '';
-    const comboStr = ev.combination ? ` (${ev.combination})` : '';
-    return `${name} → ${actionLabel}${amountStr}${comboStr}`;
+    if (e?.phase) parts.push(String(e.phase));
+    if (typeof e?.tiene === 'boolean') parts.push(e.tiene ? 'Tiene Juego' : 'No Juego');
+    return parts.join(' · ');
   };
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-screen text-(--text-primary)">
+      <LandscapeLockOverlay />
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
@@ -228,259 +199,155 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
         </div>
 
         {isAdmin && (
-          <button
-            onClick={() => setShowRng(!showRng)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
-              showRng
-                ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
-            }`}
+          <span
+            className="px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border bg-red-500/15 text-red-400 border-red-500/30"
           >
-            {showRng ? '🔒 Ocultar RNG' : '🔍 Auditar RNG'}
-          </button>
+            Modo admin · vista completa
+          </span>
         )}
       </div>
 
-      {/* Visual replay (v2): reconstrucción de la mesa desde frames */}
-      {replay.version === 2 && Array.isArray(replay.frames) && replay.frames.length > 0 && (
-        <div className="mb-6 space-y-2">
+      {/* Reconstrucción visual (v2): única vista del replay */}
+      {replay.version === 2 && Array.isArray(replay.frames) && replay.frames.length > 0 ? (
+        <div className="space-y-3">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">Reconstrucción Visual</h2>
-          <ReplayController frames={replay.frames} />
+          <ReplayController frames={replay.frames} finalHands={hands} />
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-white/10 bg-black/30 p-6 md:p-8 text-center">
+          <p className="text-sm font-bold text-slate-400">
+            Esta repetición es de versión 1 (legacy) y no incluye frames visuales reproducibles.
+          </p>
         </div>
       )}
 
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/10">
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{
-              width: `${progress}%`,
-              background: 'linear-gradient(to right, #c5a059, #f59e0b)',
-            }}
-          />
-        </div>
-        <div className="flex justify-between mt-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          <span>Paso {currentStep + 1} de {timeline.length}</span>
-          <span>{new Date(event.time).toLocaleTimeString('es-ES')}</span>
-        </div>
-      </div>
-
-      {/* Main Event Display */}
-      <div className="bg-(--bg-card) border border-(--border-glow) rounded-4xl p-6 md:p-8 mb-6 shadow-2xl">
-        {/* Event Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            {/* Action Icon */}
-            <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0 border ${
-              event.event === 'start' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
-              event.event === 'end' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-              'bg-(--accent-gold)/10 border-(--accent-gold)/20 text-(--accent-gold)'
-            }`}>
-              {event.event === 'start' ? <Timer className="w-6 h-6 md:w-7 md:h-7" /> :
-               event.event === 'end' ? <Trophy className="w-6 h-6 md:w-7 md:h-7" /> :
-               (() => { const Icon = ACTION_ICONS[event.action || ''] || Hand; return <Icon className="w-6 h-6 md:w-7 md:h-7" />; })()}
+      {/* Resumen final */}
+      <section className="mt-10 space-y-6">
+        <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">Resumen Final</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-1">
+            <div className="flex items-center gap-2 text-slate-400">
+              <Users className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Jugadores</span>
             </div>
-            <div>
-              <p className="text-xl md:text-2xl font-black italic tracking-tight text-white">
-                {getEventDescription(event)}
-              </p>
-              <div className="flex items-center gap-2 mt-1.5">
-                {event.phase && (
-                  <span className={`inline-block text-[10px] font-black uppercase px-3 py-1 rounded-full border tracking-widest ${PHASE_COLORS[event.phase] || 'text-slate-400 bg-slate-500/10 border-slate-500/20'}`}>
-                    {event.phase}
-                  </span>
-                )}
-                {event.amount && event.amount > 0 && (
-                  <span className="inline-block text-[10px] font-black uppercase px-3 py-1 rounded-full border tracking-widest bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                    ${formatAmount(event.amount)}
-                  </span>
-                )}
-              </div>
-            </div>
+            <p className="text-2xl font-black text-white">{players.length}</p>
           </div>
-
-          {event.event === 'end' && (
-            <div className="flex gap-6 text-right">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pozo Total</p>
-                <p className="text-xl font-black text-white">${formatAmount(event.pot || 0)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rake</p>
-                <p className="text-xl font-black text-emerald-400">${formatAmount(event.rake || 0)}</p>
-              </div>
+          <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-1">
+            <div className="flex items-center gap-2 text-slate-400">
+              <Trophy className="w-3.5 h-3.5 text-(--accent-gold)" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Bote</span>
             </div>
-          )}
+            <p className="text-xl font-black text-(--accent-gold)">
+              {formatCurrency(pot.totalPot || 0)}
+            </p>
+          </div>
+          <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-1">
+            <div className="flex items-center gap-2 text-slate-400">
+              <Coins className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Pique</span>
+            </div>
+            <p className="text-xl font-black text-emerald-400">
+              {formatCurrency(pot.piquePot || 0)}
+            </p>
+          </div>
+          <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-1">
+            <div className="flex items-center gap-2 text-slate-400">
+              <Layers className="w-3.5 h-3.5 text-purple-300" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Eventos</span>
+            </div>
+            <p className="text-2xl font-black text-white">{timeline.length}</p>
+          </div>
         </div>
 
-        {/* Dropped Cards (DESCARTE) */}
-        {event.droppedCards && event.droppedCards.length > 0 && (
-          <div className="mb-4 p-4 bg-purple-500/5 rounded-xl border border-purple-500/10">
-            <p className="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">Cartas Descartadas</p>
-            <div className="flex gap-2">
-              {event.droppedCards.map((card, i) => (
-                <span key={i} className="px-3 py-1.5 bg-purple-500/20 rounded-lg text-sm font-black text-purple-300 border border-purple-500/20">
-                  {formatCard(card)}
-                </span>
+        {/* Manos finales */}
+        {Object.keys(hands).length > 0 && (() => {
+          const handsCount = Object.keys(hands).length;
+          const gridCls =
+            handsCount <= 1 ? 'grid-cols-1'
+            : handsCount === 2 ? 'grid-cols-1 sm:grid-cols-2'
+            : handsCount === 3 ? 'grid-cols-1 sm:grid-cols-3'
+            : handsCount === 4 ? 'grid-cols-2 lg:grid-cols-4'
+            : handsCount <= 6 ? 'grid-cols-2 sm:grid-cols-3'
+            : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
+          return (
+          <div className="bg-black/30 border border-white/10 rounded-3xl p-5 md:p-6">
+            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">
+              Manos Finales
+            </h3>
+            <div className={`grid ${gridCls} gap-3`}>
+              {Object.entries(hands).map(([userId, hand]: [string, any]) => (
+                <div
+                  key={userId}
+                  className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2"
+                >
+                  <p className="font-black text-white text-sm">{hand.nickname}</p>
+                  {hand.handType && (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-(--accent-gold)">
+                      {hand.handType}
+                    </p>
+                  )}
+                  <div className="flex gap-1 flex-wrap">
+                    {hand.cards?.split(',').filter(Boolean).map((card: string, i: number) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-black/50 rounded-lg text-xs font-black text-(--accent-gold) border border-(--accent-gold)/20"
+                      >
+                        {card}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-        )}
+          );
+        })()}
+      </section>
 
-        {/* Admin RNG State */}
-        {isAdmin && showRng && event.rng_state && (
-          <div className="p-4 bg-red-500/5 rounded-xl border border-red-500/10">
-            <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">Estado RNG (Admin)</p>
-            <code className="text-sm font-mono text-red-300 select-all">{event.rng_state}</code>
-          </div>
-        )}
-      </div>
-
-      {/* Playback Controls */}
-      <div className="flex items-center justify-center gap-3 mb-8">
-        <button
-          onClick={() => setCurrentStep(0)}
-          disabled={currentStep === 0}
-          className="p-3 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-white/5"
-          title="Inicio"
-        >
-          ⏮
-        </button>
-        <button
-          onClick={() => setCurrentStep(s => Math.max(0, s - 1))}
-          disabled={currentStep === 0}
-          className="px-5 py-3 rounded-xl bg-white/5 text-slate-300 font-black hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-white/5"
-        >
-          ◀ Anterior
-        </button>
-        <button
-          onClick={() => setIsPlaying(!isPlaying)}
-          className={`px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all border ${
-            isPlaying
-              ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-              : 'bg-(--accent-gold) text-black border-(--accent-gold)'
-          }`}
-        >
-          {isPlaying ? '⏸ Pausar' : '▶ Reproducir'}
-        </button>
-        <button
-          onClick={() => setCurrentStep(s => Math.min(timeline.length - 1, s + 1))}
-          disabled={currentStep >= timeline.length - 1}
-          className="px-5 py-3 rounded-xl bg-white/5 text-slate-300 font-black hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-white/5"
-        >
-          Siguiente ▶
-        </button>
-        <button
-          onClick={() => setCurrentStep(timeline.length - 1)}
-          disabled={currentStep >= timeline.length - 1}
-          className="p-3 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-white/5"
-          title="Final"
-        >
-          ⏭
-        </button>
-      </div>
-
-      {/* Speed Controls */}
-      <div className="flex items-center justify-center gap-2 mb-8">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">Velocidad</span>
-        {SPEEDS.map(s => (
-          <button
-            key={s}
-            onClick={() => setSpeed(s)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border ${
-              speed === s
-                ? 'bg-(--accent-gold) text-black border-(--accent-gold)'
-                : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            {s}x
-          </button>
-        ))}
-      </div>
-
-      {/* Timeline Mini-Map */}
-      <div className="bg-black/30 border border-white/5 rounded-4xl p-6 mb-6 shadow-2xl backdrop-blur-md">
-        <h2 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-4 flex items-center gap-2">
-          <Clock className="w-4 h-4" /> Línea de Tiempo
-        </h2>
-        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(40px, 1fr))' }}>
-          {timeline.map((ev, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentStep(i)}
-              className={`h-10 rounded-xl text-xs font-black transition-all border flex items-center justify-center ${
-                i === currentStep
-                  ? 'bg-(--accent-gold) text-black border-(--accent-gold) scale-110 shadow-[0_0_15px_rgba(234,179,8,0.4)]'
-                  : i < currentStep
-                  ? 'bg-(--accent-gold)/10 text-(--accent-gold) border-(--accent-gold)/20 hover:bg-(--accent-gold)/20'
-                  : 'bg-black/40 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white/80'
-              }`}
-              title={`${ev.event}${ev.phase ? ` (${ev.phase})` : ''}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Players State */}
-      <div className="bg-black/30 border border-white/5 rounded-4xl p-6 shadow-2xl backdrop-blur-md mb-8">
-        <h2 className="text-xs font-black uppercase tracking-widest text-(--accent-gold) mb-5 flex items-center gap-2">
-          <Users className="w-4 h-4" /> Estado Final de Jugadores
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {players.map((p, i) => {
-            const isWinner = event.event === 'end' && event.winner === p.userId;
-            return (
-              <div
-                key={i}
-                className={`p-5 rounded-2xl border transition-all relative overflow-hidden ${
-                  isWinner
-                    ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_4px_24px_-8px_rgba(16,185,129,0.2)]'
-                    : 'bg-black/40 border-white/5 hover:bg-white/5'
-                }`}
-              >
-                {isWinner && (
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-emerald-500/50 to-emerald-400" />
-                )}
-                
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-lg font-black text-white italic truncate pr-2">{p.nickname}</span>
-                  {isWinner ? (
-                    <span className="text-emerald-400 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20">
-                      <Trophy className="w-4 h-4" />
+      {/* Línea de tiempo */}
+      {timeline.length > 0 && (
+        <section className="mt-10 space-y-3">
+          <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
+            Línea de Tiempo
+          </h2>
+          <ol className="bg-gradient-to-b from-black/40 to-black/20 border border-white/10 rounded-3xl divide-y divide-white/5 overflow-hidden shadow-xl">
+            {timeline.map((event: any, idx: number) => {
+              const playerId = event?.player || event?.winner || event?.userId;
+              const detail = eventDetail(event);
+              const time = event?.time || event?.timestamp;
+              return (
+                <li
+                  key={idx}
+                  className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] md:grid-cols-[2.5rem_8rem_8rem_minmax(0,1fr)_auto] items-center gap-3 px-4 md:px-5 py-2.5 text-xs hover:bg-white/[0.04] transition-colors"
+                >
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {String(idx + 1).padStart(2, '0')}
+                  </span>
+                  <span className="font-black uppercase tracking-widest text-[10px] text-(--accent-gold) hidden md:inline">
+                    {eventLabel(event)}
+                  </span>
+                  <span className="font-bold text-slate-200 truncate hidden md:inline">
+                    {playerId ? `@${getPlayerName(playerId)}` : ''}
+                  </span>
+                  <span className="md:hidden font-bold text-slate-200 truncate">
+                    <span className="text-(--accent-gold) uppercase tracking-widest text-[10px] mr-2">{eventLabel(event)}</span>
+                    {playerId ? `@${getPlayerName(playerId)}` : ''}
+                  </span>
+                  <span className="text-slate-400 truncate hidden md:inline">{detail}</span>
+                  {time ? (
+                    <span className="text-[10px] font-mono text-slate-500 hidden md:flex items-center gap-1 justify-end">
+                      <Clock className="w-3 h-3" />
+                      {new Date(time).toLocaleTimeString('es-ES', {
+                        hour: '2-digit', minute: '2-digit', second: '2-digit',
+                      })}
                     </span>
-                  ) : null}
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-2 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#8b9b91]">Fichas</span>
-                    <span className="text-sm font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">${formatAmount(p.chips)}</span>
-                  </div>
-                  {p.cards && (
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Cartas</p>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {p.cards.split(',').filter(Boolean).map((card, ci) => (
-                          <span key={ci} className="px-2.5 py-1 bg-black/50 rounded-lg text-xs font-black text-(--accent-gold) border border-(--accent-gold)/20">
-                            {formatCard(card)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Keyboard Shortcuts Hint */}
-      <p className="text-center text-[10px] text-slate-400 mt-6 font-bold uppercase tracking-widest">
-        ◀ ▶ para navegar &middot; Espacio para reproducir/pausar &middot; Controles de velocidad arriba
-      </p>
+                  ) : <span className="hidden md:inline" />}
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
     </div>
   );
 }

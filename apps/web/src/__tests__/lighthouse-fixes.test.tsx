@@ -650,51 +650,9 @@ describe('Lobby page contrast compliance', () => {
 })
 
 // ── Replay viewer fixes ─────────────────────────────────────────────
-
-const replaySource = fs.readFileSync(
-  path.resolve(__dirname, '../app/(player)/replays/[gameId]/page.tsx'),
-  'utf-8'
-)
-
-describe('Replay viewer heading order', () => {
-  it('Timeline heading uses h2 instead of h3', () => {
-    expect(replaySource).toMatch(/<h2[^>]*>[\s\S]*?Línea de Tiempo/)
-    expect(replaySource).not.toMatch(/<h3[^>]*>[\s\S]*?Línea de Tiempo/)
-  })
-
-  it('Players heading uses h2 instead of h3', () => {
-    expect(replaySource).toMatch(/<h2[^>]*>[\s\S]*?Estado Final de Jugadores/)
-    expect(replaySource).not.toMatch(/<h3[^>]*>[\s\S]*?Estado Final de Jugadores/)
-  })
-})
-
-describe('Replay viewer contrast compliance', () => {
-  it('Progress step labels use text-slate-400 instead of text-slate-500', () => {
-    const stepIdx = replaySource.indexOf('Paso {currentStep + 1}')
-    const context = replaySource.substring(stepIdx - 100, stepIdx)
-    expect(context).toContain('text-slate-400')
-    expect(context).not.toContain('text-slate-500')
-  })
-
-  it('Speed label uses text-slate-400', () => {
-    const speedIdx = replaySource.indexOf('>Velocidad</span>')
-    const context = replaySource.substring(speedIdx - 100, speedIdx)
-    expect(context).toContain('text-slate-400')
-    expect(context).not.toContain('text-slate-500')
-  })
-
-  it('Future timeline buttons use text-slate-400 instead of text-slate-500', () => {
-    expect(replaySource).toContain("'bg-black/40 text-slate-400 border-white/5")
-    expect(replaySource).not.toContain("'bg-black/40 text-slate-500 border-white/5")
-  })
-
-  it('Keyboard shortcuts hint uses text-slate-400 instead of text-slate-600', () => {
-    const hintIdx = replaySource.indexOf('para navegar')
-    const context = replaySource.substring(hintIdx - 80, hintIdx)
-    expect(context).toContain('text-slate-400')
-    expect(context).not.toContain('text-slate-600')
-  })
-})
+// Nota: el reproductor textual fue retirado en favor de la reconstrucci\u00f3n
+// visual basada en frames v2 (`<ReplayController>` + `<ReplayBoard>`).
+// Los chequeos de heading order y contraste de aquel viewer ya no aplican.
 
 // ────────────────────────────────────────────────
 // 20. Wallet modals — mobile overlay & content visibility

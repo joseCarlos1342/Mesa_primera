@@ -2,7 +2,6 @@ import { getAdminReplayDetail } from "@/app/actions/replays";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
 import { ArrowLeft, Film, Shield, BookOpen, Users, Trophy, Clock, Layers } from "lucide-react";
-import { AdminReplayViewer } from "./AdminReplayViewer";
 import { ReplayController } from "@/components/replay/ReplayController";
 import { ResponsiveDataView } from "@/components/admin/ResponsiveDataView";
 
@@ -115,10 +114,19 @@ export default async function AdminReplayDetailPage({ params }: { params: Promis
       </div>
 
       {/* Final Hands */}
-      {Object.keys(hands).length > 0 && (
+      {Object.keys(hands).length > 0 && (() => {
+        const handsCount = Object.keys(hands).length;
+        const gridCls =
+          handsCount <= 1 ? 'grid-cols-1'
+          : handsCount === 2 ? 'grid-cols-1 sm:grid-cols-2'
+          : handsCount === 3 ? 'grid-cols-1 sm:grid-cols-3'
+          : handsCount === 4 ? 'grid-cols-2 lg:grid-cols-4'
+          : handsCount <= 6 ? 'grid-cols-2 sm:grid-cols-3'
+          : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
+        return (
         <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Manos Finales</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className={`grid ${gridCls} gap-4`}>
             {Object.entries(hands).map(([userId, hand]: [string, any]) => (
               <div key={userId} className="bg-white/5 border border-white/5 rounded-2xl p-4">
                 <p className="font-black text-white text-sm mb-1">{hand.nickname}</p>
@@ -134,18 +142,22 @@ export default async function AdminReplayDetailPage({ params }: { params: Promis
             ))}
           </div>
         </div>
-      )}
+        );
+      })()}
 
-      {/* Visual replay (v2): reconstrucción de la mesa desde frames */}
-      {replay.version === 2 && replay.frames && replay.frames.length > 0 && (
+      {/* Visual replay (v2): única vista del replay */}
+      {replay.version === 2 && replay.frames && replay.frames.length > 0 ? (
         <div className="space-y-3">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Reconstrucción Visual</h2>
           <ReplayController frames={replay.frames as any} />
         </div>
+      ) : (
+        <div className="rounded-3xl border border-white/10 bg-black/30 p-6 md:p-8 text-center">
+          <p className="text-sm font-bold text-slate-400">
+            Esta repetición es de versión 1 (legacy) y no incluye frames visuales reproducibles.
+          </p>
+        </div>
       )}
-
-      {/* Interactive Timeline Viewer */}
-      <AdminReplayViewer timeline={timeline} players={players} />
 
       {/* Financial Ledger */}
       <ResponsiveDataView

@@ -277,7 +277,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                     <m.div 
                       key={`${p.id}-${cardStr}-${idx}`}
                       initial={{ opacity: 0, scale: 0.82, x: layout.offsetX * 0.7, y: layout.offsetY + 14, rotate: layout.angle * 0.7 }}
-                      animate={{ opacity: p.isFolded ? 0.3 : 1, scale: p.isFolded ? 0.88 : 1, x: layout.offsetX, y: layout.offsetY, rotate: layout.angle }}
+                      animate={{ opacity: (p.isFolded && !isRevealPhase) ? 0.3 : 1, scale: (p.isFolded && !isRevealPhase) ? 0.88 : 1, x: layout.offsetX, y: layout.offsetY, rotate: layout.angle }}
                       transition={{ delay: 0.45, duration: 0.3 }}
                       style={{ 
                         position: 'absolute',
@@ -286,7 +286,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                         transformOrigin: 'top center',
                         zIndex: layout.zIndex,
                       }}
-                      className={p.isFolded ? 'pointer-events-none grayscale' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
+                      className={(p.isFolded && !isRevealPhase) ? 'pointer-events-none grayscale' : 'drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)]'}
                     >
                       <div className="-translate-x-1/2">
                         <Card 
