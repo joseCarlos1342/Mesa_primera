@@ -9,6 +9,7 @@ import { evaluateHand, compareHands, HandEvaluation } from "./combinations";
 import { SnapshotBuilder, type AnimationHint, type StateLike } from "../services/ReplayV2";
 
 const MIN_BALANCE_CENTS = 5_000_000; // $50,000 en centavos
+const COLYSEUS_CONSENTED_CLOSE_CODE = 4000;
 
 export interface MesaMetadata {
   tableName: string;
@@ -1179,21 +1180,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    const consented = (code === 1000);
+    const consented = (code === COLYSEUS_CONSENTED_CLOSE_CODE);
     const player = this.state.players.get(client.sessionId);
 
     if (!player) return;
 
+    const shouldTransferActiveMano = this.state.activeManoId === client.sessionId && this.state.phase !== "LOBBY";
+
     console.log(`[MesaRoom] Cliente desconectado: ${player.nickname} (${client.sessionId}). Code: ${code}, Consented: ${consented}, Phase: ${this.state.phase}, dealerId: ${this.state.dealerId}, activeManoId: ${this.state.activeManoId}`);
     player.connected = false;
     this.updateLobbyMetadata();
-
-    // Transferir activeManoId solo durante gameplay activo (para que la partida pueda continuar)
-    // NO transferir dealerId aquí — el dealer permanente se preserva durante el grace period
-    if (this.state.activeManoId === client.sessionId && this.state.phase !== "LOBBY") {
-      console.log(`[MesaRoom] activeManoId era ${player.nickname}, transfiriendo mano activa...`);
-      this.transferMano();
-    }
 
     // Si TODOS los jugadores están desconectados, resetear la sala a estado limpio
     const anyoneConnected = Array.from(this.state.players.values()).some((p: Player) => p.connected);
@@ -1205,7 +1201,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.checkStartCountdown();
 
     if (consented) {
-      // Solo en desconexión explícita (code 1000): transferir dealerId y remover jugador
+      if (shouldTransferActiveMano) {
+        console.log(`[MesaRoom] activeManoId era ${player.nickname}, transfiriendo mano activa por salida definitiva...`);
+        this.transferMano();
+      }
+
+      // Solo en desconexión explícita (CloseCode.CONSENTED = 4000): transferir dealerId y remover jugador
       if (this.state.dealerId === client.sessionId) {
         const currentSeatIdx = this.seatOrder.indexOf(client.sessionId);
         let replaced = false;
@@ -1268,6 +1269,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     } catch (e) {
       console.log(`[RECONNECT:GRACE_EXPIRED] ${player.nickname} (${client.sessionId}) — grace period agotado, phase=${this.state.phase}`);
+
+      if (shouldTransferActiveMano) {
+        console.log(`[MesaRoom] Grace period agotado para ${player.nickname}, transfiriendo mano activa...`);
+        this.transferMano();
+      }
+
       this.removePlayer(client.sessionId);
     }
   }
@@ -2966,14 +2973,19 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       sidePots: potWinners
     };
     const finalHands: Record<string, any> = {};
+    const lastKnownCardsByPlayerId = this.snapshotBuilder.lastKnownCards;
     Array.from(this.state.players.values()).forEach(p => {
-      if (p.cards) {
-        const hand = evaluateHand(p.cards);
+      const cardsCsv = (p.cards && p.cards.length > 0)
+        ? p.cards
+        : (lastKnownCardsByPlayerId.get(p.id) ?? '');
+      if (cardsCsv) {
+        const hand = evaluateHand(cardsCsv);
         finalHands[p.supabaseUserId || p.id] = {
-          cards: p.cards,
+          cards: cardsCsv,
           handType: hand.type,
           handPoints: hand.points,
-          nickname: p.nickname
+          nickname: p.nickname,
+          isFolded: p.isFolded,
         };
       }
     });
