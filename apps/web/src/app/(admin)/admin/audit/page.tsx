@@ -2,6 +2,9 @@ import { getAuditLog } from "@/app/actions/admin-audit";
 import { ScrollText, Shield, UserCog, CreditCard, Ban, Unlock, Sliders, MessageSquare, Bot } from "lucide-react";
 import { ResponsiveDataView } from "@/components/admin/ResponsiveDataView";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const ACTION_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   deposit_approved:      { label: 'Depósito Aprobado',     color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: CreditCard },
   deposit_rejected:      { label: 'Depósito Rechazado',    color: 'text-red-400 bg-red-500/10 border-red-500/20', icon: CreditCard },

@@ -6,6 +6,9 @@ import { DashboardWarnings } from "@/components/admin/DashboardWarnings";
 import { DashboardAutoRefresh } from "@/components/admin/DashboardAutoRefresh";
 import { AdminStatusCard, type AdminStatusTone } from "@/components/admin/AdminStatusCard";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminPage() {
   let statsData: Awaited<ReturnType<typeof getAdminDashboardStats>>;
   try {
