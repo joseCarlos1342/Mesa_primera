@@ -140,6 +140,10 @@ export default async function RootLayout({
       "contactType": "customer service",
       "availableLanguage": "es",
     },
+    "sameAs": [
+      "https://facebook.com/primerariveradalos4ases",
+      "https://instagram.com/primerariveradalos4ases",
+    ],
   };
 
   const localBusinessJsonLd = {
@@ -169,7 +173,10 @@ export default async function RootLayout({
       "name": "Neiva",
     },
     "keywords": "juego de cartas, primera, dominó, tomadero, juegos de azar, club de cartas, neiva",
-    "sameAs": [],
+    "sameAs": [
+      "https://facebook.com/primerariveradalos4ases",
+      "https://instagram.com/primerariveradalos4ases",
+    ],
   };
 
   const webAppJsonLd = {
@@ -199,6 +206,45 @@ export default async function RootLayout({
       "target": "https://primerariveradalos4ases.com/?q={search_term_string}",
       "query-input": "required name=search_term_string",
     },
+  };
+
+  const faqPageJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "¿Cómo me registro para jugar Primera online?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Puedes crear tu cuenta gratis desde el botón de registro, validar tu celular y entrar a jugar en pocos minutos.",
+        },
+      },
+      {
+        "@type": "Question",
+        "name": "¿Puedo jugar y también visitar el establecimiento en Neiva?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sí. Primera Riverada los 4 Ases combina experiencia presencial en Neiva con partidas online en tiempo real.",
+        },
+      },
+      {
+        "@type": "Question",
+        "name": "¿Qué tan seguro es el manejo de fondos?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "La plataforma usa controles de seguridad y políticas de juego limpio para proteger a la comunidad y los fondos de los jugadores.",
+        },
+      },
+      {
+        "@type": "Question",
+        "name": "¿Dónde puedo ver reglas y políticas de seguridad?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Puedes consultar reglas del juego y políticas de seguridad en las páginas públicas de reglas y seguridad del sitio.",
+        },
+      },
+    ],
   };
 
   return (
@@ -247,6 +293,14 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(webSiteJsonLd),
+          }}
+        />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(faqPageJsonLd),
           }}
         />
       </head>

@@ -2,14 +2,21 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
   Facebook, Instagram, Mail, Smartphone, Grid2x2, Wine, Coffee,
   Spade, Dices, Menu, X, ChevronLeft, ChevronRight, ImageIcon,
-  Play, ArrowRight, MapPin,
+  Play, ArrowRight, MapPin, Navigation,
 } from 'lucide-react'
+import { LOCAL_LOCATION } from '@/components/landing/LocationMap'
+
+const LocationMap = dynamic(
+  () => import('@/components/landing/LocationMap').then((m) => ({ default: m.LocationMapInner })),
+  { ssr: false },
+)
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -34,6 +41,25 @@ const TUTORIALS = [
   { title: 'Cómo jugar tu primera partida', desc: 'Únete a una mesa y empieza a jugar.' },
   { title: 'Cómo usar tu billetera', desc: 'Deposita, retira y controla tus fondos.' },
   { title: 'Cómo instalar la app', desc: 'Agrega Mesa Primera a tu celular como app.' },
+]
+
+const FAQ_ITEMS = [
+  {
+    q: '¿Dónde queda Primera Riverada los 4 Ases?',
+    a: 'Nuestro establecimiento está en Neiva, Huila, y también puedes jugar online en tiempo real desde la plataforma.',
+  },
+  {
+    q: '¿Puedo tomar bebidas y jugar en el mismo lugar?',
+    a: 'Sí. El club combina mesas de juego con zona de bebidas para una experiencia social completa.',
+  },
+  {
+    q: '¿Cómo empiezo a jugar en línea?',
+    a: 'Crea tu cuenta, valida tu número de celular y entra a una mesa activa de Primera con otros jugadores.',
+  },
+  {
+    q: '¿Dónde reviso reglas y seguridad del sitio?',
+    a: 'Puedes revisar reglas del juego, políticas de seguridad y términos desde las páginas públicas oficiales.',
+  },
 ]
 
 const STEPS = [
@@ -76,6 +102,8 @@ const NAV_SECTIONS = [
   { id: 'servicios', label: 'Servicios' },
   { id: 'como-jugar', label: 'Cómo jugar' },
   { id: 'tutoriales', label: 'Tutoriales' },
+  { id: 'faq', label: 'FAQ' },
+  { id: 'ubicacion', label: 'Ubicación' },
 ]
 
 /* ── Component ──────────────────────────────────────────────────── */
@@ -721,6 +749,21 @@ export function LandingContent() {
                 </div>
               ))}
             </div>
+
+            <p
+              data-reveal=""
+              className="mt-12 text-center text-text-secondary text-sm md:text-base"
+            >
+              Antes de jugar, revisa nuestras{' '}
+              <Link href="/rules" className="text-brand-gold hover:text-brand-gold-light underline underline-offset-4">
+                reglas oficiales
+              </Link>{' '}
+              y la{' '}
+              <Link href="/security-policy" className="text-brand-gold hover:text-brand-gold-light underline underline-offset-4">
+                política de seguridad
+              </Link>
+              .
+            </p>
           </div>
         </section>
 
@@ -771,6 +814,103 @@ export function LandingContent() {
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══ FAQ ════════════════════════════════ */}
+        <section id="faq" className="px-6 py-20 md:py-28">
+          <div className="max-w-4xl mx-auto">
+            <h2
+              data-reveal-right=""
+              className="text-3xl md:text-5xl font-display font-bold text-center mb-4"
+            >
+              Preguntas{' '}
+              <span className="text-brand-gold">frecuentes</span>
+            </h2>
+            <p
+              data-reveal=""
+              className="text-center text-text-secondary mb-12 max-w-2xl mx-auto text-lg"
+            >
+              Respuestas rápidas para jugadores que buscan un buen sitio para tomar bebidas y jugar Primera en Neiva.
+            </p>
+
+            <div className="space-y-4">
+              {FAQ_ITEMS.map((item) => (
+                <article
+                  key={item.q}
+                  data-stagger-card=""
+                  className="bg-white/3 border border-white/8 rounded-2xl p-6"
+                >
+                  <h3 className="text-lg font-bold text-text-premium">{item.q}</h3>
+                  <p className="mt-2 text-text-secondary leading-relaxed">{item.a}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Gold Divider ── */}
+        <div data-divider="" className="flex items-center justify-center gap-3 py-4">
+          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-brand-gold/30" />
+          <span className="text-brand-gold/25 text-lg">⚔</span>
+          <span className="text-brand-gold/25 text-lg">🏆</span>
+          <span className="text-brand-gold/25 text-lg">⚜</span>
+          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-brand-gold/30" />
+        </div>
+
+        {/* ═══ Ubicación ═══════════════════════════ */}
+        <section id="ubicacion" className="px-6 py-20 md:py-28 bg-black/20">
+          <div className="max-w-5xl mx-auto">
+            <h2
+              data-reveal-right=""
+              className="text-3xl md:text-5xl font-display font-bold text-center mb-4"
+            >
+              Cómo{' '}
+              <span className="text-brand-gold">llegarnos</span>
+            </h2>
+            <p
+              data-reveal=""
+              className="text-center text-text-secondary mb-4 max-w-2xl mx-auto text-lg"
+            >
+              Visítanos en nuestro establecimiento en Neiva, Huila.
+            </p>
+            <p
+              data-reveal=""
+              className="flex items-center justify-center gap-2 text-text-secondary mb-10 text-sm"
+            >
+              <MapPin className="w-4 h-4 text-brand-gold shrink-0" />
+              {LOCAL_LOCATION.address}
+            </p>
+
+            {/* Mapa interactivo */}
+            <div data-reveal="" className="mb-8">
+              <LocationMap />
+            </div>
+
+            {/* Botones Google Maps */}
+            <div
+              data-reveal=""
+              className="flex flex-col sm:flex-row justify-center gap-4"
+            >
+              <a
+                href="https://maps.google.com/maps?q=2.9268522,-75.2866714"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl border border-brand-gold/30 text-brand-gold font-bold hover:bg-brand-gold/10 hover:border-brand-gold/50 transition-all duration-300 active:scale-95"
+              >
+                <MapPin className="w-4 h-4" />
+                Ver en Google Maps
+              </a>
+              <a
+                href="https://maps.google.com/maps/dir/?api=1&destination=2.9268522,-75.2866714"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-linear-to-r from-brand-gold-light via-brand-gold to-brand-gold-dark text-slate-950 font-bold shadow-[0_4px_24px_rgba(226,176,68,0.25)] hover:shadow-[0_8px_40px_rgba(226,176,68,0.4)] hover:scale-[1.03] transition-all duration-300 active:scale-95"
+              >
+                <Navigation className="w-4 h-4" />
+                Cómo llegar
+              </a>
             </div>
           </div>
         </section>

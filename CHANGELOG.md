@@ -1,5 +1,43 @@
 # Changelog
 
+## [Sprint 6.10e] - 2026-04-26
+
+### Added
+
+- **FAQPage JSON-LD en layout global** (`apps/web/src/app/layout.tsx`):
+  - Nuevo bloque `FAQPage` con 4 preguntas frecuentes orientadas a búsquedas GEO: establecimiento físico en Neiva, juego de Primera con bebidas, registro online y página de reglas/seguridad.
+  - Se agregaron arrays `sameAs` en los schemas `Organization` y `LocalBusiness` apuntando a Facebook e Instagram.
+
+- **Sección FAQ visible en landing page** (`apps/web/src/components/landing/LandingContent.tsx`):
+  - Nuevo `<section id="faq">` con 4 `<article>` de preguntas/respuestas para jugadores que buscan "un buen sitio para tomar bebidas y jugar Primera en Neiva".
+  - Entrada `{ id: 'faq', label: 'FAQ' }` añadida a `NAV_SECTIONS`.
+
+- **Trust links contextuales tras "Cómo jugar"** (`apps/web/src/components/landing/LandingContent.tsx`):
+  - Párrafo con enlaces a `/rules` ("reglas oficiales") y `/security-policy` ("política de seguridad") para facilitar descubrimiento por AI crawlers.
+
+- **Página 404 personalizada** (`apps/web/src/app/not-found.tsx`):
+  - Nueva página "Página no encontrada" con links de recuperación a `/`, `/login/player` y `/register/player`.
+
+- **Tests GEO Phase 2/3** (`apps/web/src/__tests__/landing-geo-phase2.test.ts`):
+  - 3 contratos TDD: FAQPage JSON-LD en layout, sección FAQ + trust links en landing, existencia de not-found.tsx.
+
+## [Sprint 6.10d] - 2026-04-26
+
+### Changed
+
+- **GEO de landing: bots de IA con acceso solo a rutas públicas de marketing/legal** (`apps/web/src/app/robots.ts`, `apps/web/src/app/__tests__/robots.test.ts`):
+  - Se reemplazó el bloqueo total a crawlers de IA por una política de allowlist limitada a ` /`, `/rules`, `/privacy`, `/terms` y `/security-policy`.
+  - Se mantienen bloqueadas rutas autenticadas de jugador, admin e internas (`/api`, `/play`, etc.), preservando aislamiento de áreas privadas.
+  - Tests de robots actualizados en TDD para asegurar el contrato de rastreo GEO.
+
+- **PWA start_url alineado a la home pública** (`apps/web/public/manifest.json`):
+  - `start_url` pasa de `/lobby` a `/` para coherencia con señal de entrada pública e indexación.
+
+### Fixed
+
+- **Asset OG faltante en metadata social** (`apps/web/public/og-image.png`):
+  - Se agregó el archivo esperado por metadata para evitar referencia rota en `openGraph` y `twitter`.
+
 ## [Sprint 6.10c] - 2026-04-25
 
 ### Fixed
