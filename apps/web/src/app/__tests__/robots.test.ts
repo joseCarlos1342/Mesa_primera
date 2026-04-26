@@ -19,15 +19,29 @@ describe('robots metadata', () => {
     );
   });
 
-  it('keeps AI training crawlers blocked and preserves the sitemap', () => {
+  it('allows only public marketing and legal routes for GEO crawlers and preserves the sitemap', () => {
     const config = robots();
     const rules = Array.isArray(config.rules) ? config.rules : [config.rules];
+    const geoCrawlerRule = rules.find((rule) => rule.userAgent === 'GPTBot');
+
+    expect(geoCrawlerRule).toBeDefined();
+    expect(geoCrawlerRule!.disallow).toBe('/');
+    expect(geoCrawlerRule!.allow).toEqual(
+      expect.arrayContaining([
+        '/',
+        '/rules',
+        '/privacy',
+        '/terms',
+        '/security-policy',
+      ]),
+    );
 
     expect(rules).toEqual(
       expect.arrayContaining([
-        { userAgent: 'GPTBot', disallow: '/' },
-        { userAgent: 'ClaudeBot', disallow: '/' },
-        { userAgent: 'Google-Extended', disallow: '/' },
+        expect.objectContaining({ userAgent: 'ClaudeBot', disallow: '/' }),
+        expect.objectContaining({ userAgent: 'Google-Extended', disallow: '/' }),
+        expect.objectContaining({ userAgent: 'ChatGPT-User', disallow: '/' }),
+        expect.objectContaining({ userAgent: 'PerplexityBot', disallow: '/' }),
       ]),
     );
     expect(config.sitemap).toBe('https://primerariveradalos4ases.com/sitemap.xml');

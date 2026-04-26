@@ -2,6 +2,28 @@ import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = "https://primerariveradalos4ases.com";
+  const geoAllowedPublicRoutes = [
+    "/",
+    "/rules",
+    "/privacy",
+    "/terms",
+    "/security-policy",
+  ];
+
+  const geoCrawlers = [
+    "GPTBot",
+    "ChatGPT-User",
+    "ClaudeBot",
+    "Google-Extended",
+    "CCBot",
+    "Bytespider",
+    "Amazonbot",
+    "Applebot-Extended",
+    "meta-externalagent",
+    "PerplexityBot",
+    "anthropic-ai",
+    "cohere-ai",
+  ];
 
   return {
     rules: [
@@ -27,19 +49,12 @@ export default function robots(): MetadataRoute.Robots {
           "/primera-riverada-los-4-ases",
         ],
       },
-      // Block AI training crawlers (defense-in-depth, Cloudflare managed robots.txt also blocks these)
-      { userAgent: "GPTBot", disallow: "/" },
-      { userAgent: "ChatGPT-User", disallow: "/" },
-      { userAgent: "ClaudeBot", disallow: "/" },
-      { userAgent: "Google-Extended", disallow: "/" },
-      { userAgent: "CCBot", disallow: "/" },
-      { userAgent: "Bytespider", disallow: "/" },
-      { userAgent: "Amazonbot", disallow: "/" },
-      { userAgent: "Applebot-Extended", disallow: "/" },
-      { userAgent: "meta-externalagent", disallow: "/" },
-      { userAgent: "PerplexityBot", disallow: "/" },
-      { userAgent: "anthropic-ai", disallow: "/" },
-      { userAgent: "cohere-ai", disallow: "/" },
+      // GEO policy: allow only landing/legal routes for AI crawlers while keeping everything else blocked.
+      ...geoCrawlers.map((userAgent) => ({
+        userAgent,
+        allow: geoAllowedPublicRoutes,
+        disallow: "/",
+      })),
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
   };
