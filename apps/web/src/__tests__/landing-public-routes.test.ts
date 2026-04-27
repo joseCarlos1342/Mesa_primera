@@ -151,7 +151,42 @@ describe('Legacy SEO page redirects', () => {
 })
 
 // ────────────────────────────────────────────────
-// 6. BottomNav points to /dashboard
+// 6. Landing map section (ubicación del local)
+// ────────────────────────────────────────────────
+describe('Landing map section', () => {
+  const landingContentPath = path.resolve(
+    __dirname,
+    '../components/landing/LandingContent.tsx',
+  )
+
+  it('contains a section with id="ubicacion"', () => {
+    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    expect(source).toContain('id="ubicacion"')
+  })
+
+  it('contains a Google Maps pin link with correct coordinates', () => {
+    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    expect(source).toContain('q=2.9268522,-75.2866714')
+  })
+
+  it('contains a Google Maps directions link with correct coordinates', () => {
+    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    expect(source).toContain('destination=2.9268522,-75.2866714')
+  })
+
+  it('contains the street address text', () => {
+    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    expect(source).toContain('Cra. 7 #06-87')
+  })
+
+  it('nav sections include ubicacion', () => {
+    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    expect(source).toContain("id: 'ubicacion'")
+  })
+})
+
+// ────────────────────────────────────────────────
+// 7. BottomNav points to /dashboard
 // ────────────────────────────────────────────────
 describe('Player navigation', () => {
   it('BottomNav "Inicio" links to /dashboard', () => {
