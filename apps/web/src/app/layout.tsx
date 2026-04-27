@@ -88,6 +88,23 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
   },
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icons/favicon-32.png",
+    shortcut: "/icons/favicon-16.png",
+    apple: "/icons/apple-touch-icon-180.png",
+    other: [
+      {
+        rel: "icon",
+        url: "/icons/favicon-16.png",
+        sizes: "16x16",
+      },
+      {
+        rel: "icon",
+        url: "/icons/favicon-32.png",
+        sizes: "32x32",
+      },
+    ],
+  },
   robots: {
     index: true,
     follow: true,
@@ -134,7 +151,7 @@ export default async function RootLayout({
     "name": "Primera Riverada los 4 Ases",
     "alternateName": ["Los 4 Ases", "Mesa Primera", "Primera Riverada"],
     "url": "https://primerariveradalos4ases.com",
-    "logo": "https://primerariveradalos4ases.com/icons/icon-512x512.png",
+    "logo": "https://primerariveradalos4ases.com/icons/icon-512.png",
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer service",
