@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
@@ -361,9 +362,17 @@ export function LandingContent() {
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16 md:h-20">
           <button
             onClick={() => scrollTo('inicio')}
-            className="font-display font-bold text-xl tracking-[0.2em] text-brand-gold hover:text-brand-gold-light transition-colors"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            aria-label="Primera Riverada los 4 Ases"
           >
-            4 ASES
+            <Image
+              src="/brand/logo-transparent.svg"
+              alt="Logo"
+              width={40}
+              height={40}
+              className="h-10 w-10"
+              priority
+            />
           </button>
 
           <div className="hidden md:flex items-center gap-8">
