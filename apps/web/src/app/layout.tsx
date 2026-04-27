@@ -156,14 +156,15 @@ export default async function RootLayout({
     "image": "https://primerariveradalos4ases.com/og-image.png",
     "address": {
       "@type": "PostalAddress",
+      "streetAddress": "Cra. 7 #06-87",
       "addressLocality": "Neiva",
       "addressRegion": "Huila",
       "addressCountry": "CO",
     },
     "geo": {
       "@type": "GeoCoordinates",
-      "latitude": 2.9273,
-      "longitude": -75.2819,
+      "latitude": 2.9268522,
+      "longitude": -75.2866714,
     },
     "priceRange": "$$",
     "currenciesAccepted": "COP",

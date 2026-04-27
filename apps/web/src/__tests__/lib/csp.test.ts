@@ -31,6 +31,31 @@ describe('buildContentSecurityPolicy', () => {
     expect(csp).toContain('https://vps24726.cubepath.net')
     expect(csp).toContain('wss://vps24726.cubepath.net')
     expect(csp).not.toContain('vps23830.cubepath.net')
+    expect(csp).toContain('https://*.basemaps.cartocdn.com')
+  })
+
+  it('allows Carto tile domain in img-src for MapLibre map tiles', () => {
+    const csp = buildContentSecurityPolicy({
+      nonce: 'test-nonce',
+      isDevelopment: false,
+    })
+    expect(csp).toMatch(/img-src.*https:\/\/\*\.basemaps\.cartocdn\.com/)
+  })
+
+  it('allows Carto tile domain in connect-src for MapLibre tile requests', () => {
+    const csp = buildContentSecurityPolicy({
+      nonce: 'test-nonce',
+      isDevelopment: false,
+    })
+    expect(csp).toMatch(/connect-src.*https:\/\/\*\.basemaps\.cartocdn\.com/)
+  })
+
+  it('allows Carto root domain for style.json fetches', () => {
+    const csp = buildContentSecurityPolicy({
+      nonce: 'test-nonce',
+      isDevelopment: false,
+    })
+    expect(csp).toMatch(/connect-src.*https:\/\/basemaps\.cartocdn\.com/)
   })
 
   it('allows unsafe-eval only in development', () => {
