@@ -1,0 +1,18 @@
+[Unit]
+Description=Mesa Primera — ventana de despliegue automático (03:00–05:00 hora del VPS)
+Documentation=file:///root/mesa-deploy/README.md
+
+[Timer]
+# Cada 15 min entre 03:00 y 04:45 (hora local del VPS).
+# Si el guardrail aborta porque hay jugadores, el siguiente disparo
+# reintenta en 15 min hasta el final de la ventana.
+OnCalendar=*-*-* 03,04:00,15,30,45
+# No correr al boot si se perdió un disparo (evita deploys fuera de
+# ventana cuando el VPS reinicia a media tarde).
+Persistent=false
+# Aleatoriza ±2 min para no chocar con cron del minuto exacto.
+RandomizedDelaySec=120
+Unit=mesa-deploy.service
+
+[Install]
+WantedBy=timers.target

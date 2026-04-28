@@ -1,0 +1,18 @@
+[Unit]
+Description=Mesa Primera — actualizador del game-server (pull-based)
+Documentation=file:///root/mesa-deploy/README.md
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/mesa/deploy.env
+ExecStart=/usr/local/bin/mesa-deploy
+# El script ya hace logging propio; systemd captura stderr en journald.
+StandardOutput=journal
+StandardError=journal
+# Aislamiento básico (no bloqueamos docker.sock).
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
