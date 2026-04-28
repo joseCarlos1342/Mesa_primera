@@ -1,4 +1,4 @@
-import { defineServer, defineRoom, LobbyRoom } from "colyseus";
+import { defineServer, defineRoom, LobbyRoom, matchMaker } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { monitor } from "@colyseus/monitor";
 import cors from "cors";
@@ -6,6 +6,7 @@ import express from "express";
 import { MesaRoom } from "./rooms/MesaRoom";
 import { ReplayFileService } from "./services/ReplayFileService";
 import { emitBroadcastToClients } from "./services/socket";
+import { isDraining } from "./runtime-state";
 
 export default defineServer({
     transport: new WebSocketTransport({
@@ -28,8 +29,37 @@ export default defineServer({
         }));
         app.use(express.json());
 
-        app.get("/health", (req, res) => {
-            res.json({ status: "ok", version: "0.17.8", timestamp: new Date().toISOString() });
+        app.get("/health", async (req, res) => {
+            const draining = isDraining();
+            let activeRooms = 0;
+            let activePlayers = 0;
+            let activeGames = 0;
+            try {
+                const rooms = await matchMaker.query({ name: "mesa" });
+                activeRooms = rooms.length;
+                for (const r of rooms) {
+                    const meta: any = r.metadata || {};
+                    const ap = typeof meta.activePlayers === "number"
+                        ? meta.activePlayers
+                        : (typeof r.clients === "number" ? r.clients : 0);
+                    activePlayers += ap;
+                    if (ap > 0) activeGames += 1;
+                }
+            } catch (err) {
+                // Si matchMaker no está listo aún, devolvemos contadores en cero
+                // pero no fallamos el endpoint para no romper healthchecks.
+                console.warn("[/health] matchMaker.query failed:", (err as Error).message);
+            }
+
+            res.status(draining ? 503 : 200).json({
+                status: draining ? "draining" : "ok",
+                version: "0.17.8",
+                timestamp: new Date().toISOString(),
+                draining,
+                activeRooms,
+                activePlayers,
+                activeGames,
+            });
         });
 
         // ── Replay API: servir grabaciones desde filesystem del VPS ──

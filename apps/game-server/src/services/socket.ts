@@ -150,5 +150,5 @@ export function initializeSocketIOServer() {
         console.log(`💬 Socket.IO Listening on http://0.0.0.0:${PORT}`);
     });
     
-    return io;
+    return { io, httpServer };
 }
