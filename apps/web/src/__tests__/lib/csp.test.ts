@@ -69,4 +69,19 @@ describe('buildContentSecurityPolicy', () => {
       "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'"
     )
   })
+
+  it('allows local game and socket origins in development', () => {
+    process.env.GAME_SERVER_URL = 'http://127.0.0.1:2567'
+    process.env.SOCKET_URL = 'http://127.0.0.1:2568'
+
+    const csp = buildContentSecurityPolicy({
+      nonce: 'test-nonce',
+      isDevelopment: true,
+    })
+
+    expect(csp).toContain('http://127.0.0.1:2567')
+    expect(csp).toContain('ws://127.0.0.1:2567')
+    expect(csp).toContain('http://127.0.0.1:2568')
+    expect(csp).toContain('ws://127.0.0.1:2568')
+  })
 })
