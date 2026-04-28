@@ -132,3 +132,4 @@ dump.rdb
 dev.sh
 *plan.md
 skills*.json
+apps/game-server/replays/

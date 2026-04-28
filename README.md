@@ -128,10 +128,17 @@ npx supabase gen types typescript --local > apps/web/src/types/supabase.ts
 
 # Start development (web + game server in parallel)
 npm run dev
+
+# Start local web + local Colyseus + local Redis,
+# preserving the Supabase credentials already configured in each app
+./dev.sh
 ```
 
 > [!TIP]
 > The `npm run dev` command uses Turborepo to start both the Next.js app and the Colyseus game server concurrently.
+
+> [!TIP]
+> Use `./dev.sh` when you want to keep Supabase pointed at your existing cloud project but force the game engine and Socket.IO runtime to stay on `127.0.0.1` instead of any VPS URLs present in `.env.local`. If Docker is unavailable, the script falls back to a local `redis-server` process on port `6380` when that binary exists.
 
 ### Required environment variables
 
