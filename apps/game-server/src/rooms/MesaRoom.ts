@@ -33,9 +33,7 @@ import {
   enterPhase,
 } from "./phases";
 import { SnapshotBuilder, type AnimationHint, type StateLike } from "../services/ReplayV2";
-
-const MIN_BALANCE_CENTS = 5_000_000; // $50,000 en centavos
-const COLYSEUS_CONSENTED_CLOSE_CODE = 4000;
+import { MIN_BALANCE_CENTS, COLYSEUS_CONSENTED_CLOSE_CODE } from "./core/constants";
 
 export interface MesaMetadata {
   tableName: string;
@@ -55,47 +53,47 @@ export interface MesaMetadata {
 
 export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }> {
   maxClients = 7;
-  private countdownTimer?: any;
-  private currentGameId: string = crypto.randomUUID();
-  private currentTimeline: any[] = [];
+  public countdownTimer?: any;
+  public currentGameId: string = crypto.randomUUID();
+  public currentTimeline: any[] = [];
   /** Snapshots normalizados por evento para reconstruir visualmente la partida (Replay v2). */
-  private snapshotBuilder = new SnapshotBuilder();
+  public snapshotBuilder = new SnapshotBuilder();
   /** RNG state tracker: incremented per action for admin audit trail */
-  private rngCounter: number = 0;
+  public rngCounter: number = 0;
   /**
    * Orden estable de asientos (por orden de entrada).
    * Garantiza que la rotación de La Mano sea siempre "al jugador de la derecha",
    * independientemente del orden interno del MapSchema.
    */
-  private seatOrder: string[] = [];
+  public seatOrder: string[] = [];
   /** Mazo privado del servidor (nunca sincronizado a los clientes). */
-  private deck: string[] = [];
+  public deck: string[] = [];
   /** Mapa de clientes conectados para el envío de mensajes privados. */
-  private clientMap = new Map<string, Client>();
+  public clientMap = new Map<string, Client>();
   /** Espectadores admin (no reciben cartas, solo observan estado público). */
-  private spectators = new Map<string, Client>();
+  public spectators = new Map<string, Client>();
   /** Jugadores que ganaron el pique por doble-paso con juego. */
-  private juegoCallers: string[] = [];
+  public juegoCallers: string[] = [];
   /** ID del ganador del pique pendiente de decidir mostrar/ocultar cartas. */
-  private pendingPiqueWinnerId: string = "";
+  public pendingPiqueWinnerId: string = "";
   /** ID del jugador que declaró "llevo juego" en DESCARTE, pendiente de dismiss. */
-  private pendingLlevoJuegoPlayerId: string = "";
-  private pendingShowdownData: { overallWinnerId: string; potWinners: any[]; totalPayout: number; totalRake: number; activePlayers: Player[]; persisted?: boolean } | null = null;
+  public pendingLlevoJuegoPlayerId: string = "";
+  public pendingShowdownData: { overallWinnerId: string; potWinners: any[]; totalPayout: number; totalRake: number; activePlayers: Player[]; persisted?: boolean } | null = null;
   /** Votación democrática del pique fijo. */
-  private piqueVoters = new Map<string, boolean>();
-  private piqueProposerId: string = "";
+  public piqueVoters = new Map<string, boolean>();
+  public piqueProposerId: string = "";
   /** Jugadores que dijeron "paso" en la ronda de PIQUE actual (para cobro de Banda). */
-  private piquePassPlayerIds = new Set<string>();
+  public piquePassPlayerIds = new Set<string>();
   /** Jugadores que pasaron ANTES de que hubiera apuesta fija (candidatos a reapertura). */
-  private piquePreBetPasserIds = new Set<string>();
+  public piquePreBetPasserIds = new Set<string>();
   /** Indica si estamos en reapertura de PIQUE (passers previos deben reconfirmar). */
-  private piqueReopenActive = false;
+  public piqueReopenActive = false;
   /** IDs de jugadores pendientes de reconfirmar durante la reapertura de PIQUE. */
-  private piqueReopenPendingIds = new Set<string>();
+  public piqueReopenPendingIds = new Set<string>();
   /** Bandera para evitar doble rotación si la Mano Definitiva ya rotó durante la partida */
-  private dealerRotatedThisGame = false;
+  public dealerRotatedThisGame = false;
   /** Contador de reinicios consecutivos del pique para evitar bucle infinito */
-  private piqueRestartCount = 0;
+  public piqueRestartCount = 0;
   private static readonly MAX_PIQUE_RESTARTS = 10;
   /** Tabla de transiciones puras entre fases de apuesta (consumida por getNextPhaseCallback). */
   private static readonly NEXT_PHASE_TRANSITIONS: Record<string, string> = {
@@ -104,17 +102,17 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     GUERRA_JUEGO: "SHOWDOWN",
   };
   /** Contador de veces que cada jugador se botó en PIQUE (persistente entre reinicios) */
-  private piqueFoldCount = new Map<string, number>();
+  public piqueFoldCount = new Map<string, number>();
   /** Jugadores con "paso provisional" en APUESTA_4_CARTAS cuando quedan jugadores detrás por actuar */
-  private pasoPendienteIds = new Set<string>();
+  public pasoPendienteIds = new Set<string>();
   /** Jugador pendiente de decidir Llevo Juego / No Llevo en resolución inmediata */
-  private pendingPasoJuegoPlayerId: string = "";
+  public pendingPasoJuegoPlayerId: string = "";
   /** Fase en la que se inició la resolución inmediata de paso-juego */
-  private pendingPasoJuegoPhase: string = "";
+  public pendingPasoJuegoPhase: string = "";
   /** Fase desde la que se entró a PIQUE_REVEAL para saber a dónde volver */
-  private phaseBeforePiqueReveal: string = "";
+  public phaseBeforePiqueReveal: string = "";
   /** Redis subscriber for single-session kick events */
-  private redisSub?: Redis;
+  public redisSub?: Redis;
 
   onCreate(options: any) {
     this.setState(new GameState());
@@ -236,7 +234,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     return handleConnectionJoin(this, client, options);
   }
 
-  private updateLobbyMetadata() {
+  public updateLobbyMetadata() {
     const players = Array.from(this.state.players.values());
     const activePlayers = players.filter(p => p.connected).length;
     const totalReservedSeats = players.length; // Includes disconnected but within grace period
@@ -252,7 +250,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     return handleConnectionLeave(this, client, code);
   }
 
-  private removePlayer(sessionId: string) {
+  public removePlayer(sessionId: string) {
     this.state.players.delete(sessionId);
     this.clientMap.delete(sessionId);
     // Liberar el asiento del jugador del orden estable
@@ -305,7 +303,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Resetea el estado completo de la sala: fase, pot, isFirstGame, etc.
    * Se usa cuando todos los jugadores se desconectan o cuando la sala se vacía.
    */
-  private resetRoomState() {
+  public resetRoomState() {
     console.log(`[MesaRoom] Reseteando estado completo de la sala.`);
 
     // Refundar apuestas pendientes si hay partida en curso
@@ -358,7 +356,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Se llama cada vez que la partida vuelve a LOBBY para
    * que los espectadores que entraron mid-game puedan participar en la siguiente ronda.
    */
-  private promoteWaitingPlayers() {
+  public promoteWaitingPlayers() {
     this.state.players.forEach((p: Player, sessionId: string) => {
       if (p.isWaiting) {
         p.isWaiting = false;
@@ -374,7 +372,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Notifica a los jugadores cuyo saldo es menor al pique mínimo que deben recargar.
    * Se llama cada vez que la partida vuelve a LOBBY.
    */
-  private notifyInsufficientBalance() {
+  public notifyInsufficientBalance() {
     const minRequired = this.state.minPique;
     this.state.players.forEach((p: Player, sessionId: string) => {
       if (!p.connected) return;
@@ -388,7 +386,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     });
   }
 
-  private checkStartCountdown() {
+  public checkStartCountdown() {
     if (this.state.phase !== "LOBBY") return;
 
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>).filter(p => p.connected && !p.isWaiting);
@@ -426,7 +424,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
   }
 
-  private stopCountdown() {
+  public stopCountdown() {
     if (this.countdownTimer) {
       this.countdownTimer.clear();
       this.countdownTimer = undefined;
@@ -434,7 +432,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.countdown = -1;
   }
 
-  private createDeck() {
+  public createDeck() {
     // Delegado a core/DeckManager (refactor Fase 1.1). Comportamiento idéntico.
     this.deck = createDeckPure();
   }
@@ -443,7 +441,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Inicializa un nuevo estado para la partida actual.
    * Genera el seed de encriptación aleatorio y reparte el mazo.
    */
-  private startNewGame() {
+  public startNewGame() {
     // Detener cualquier contador activo antes de arrancar para evitar que
     // un timer residual vuelva a llamar a startNewGame() mientras el juego está en curso.
     this.stopCountdown();
@@ -505,19 +503,19 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   /**
    * Fase 1: Sorteo de La Mano
    */
-  private startPhase1Sorteo() {
+  public startPhase1Sorteo() {
     sorteoPhase.enter(this);
   }
 
   /**
    * Fase 2: El Pique
    */
-  private async startPhase2Pique(skipAnte: boolean = false) {
+  public async startPhase2Pique(skipAnte: boolean = false) {
     await piquePhase.enter(this, { skipAnte });
   }
 
 
-  private advanceTurnPhase2(startFromId?: string) {
+  public advanceTurnPhase2(startFromId?: string) {
     // If only 1 active SEATED player remains AND no one is pending to act,
     // resolve immediately (restart or reopen).
     // IMPORTANT: Exclude isWaiting players — they are spectators and cannot act
@@ -582,7 +580,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * dándoles la oportunidad de igualar o confirmar paso definitivo
    * antes de cobrar banda.
    */
-  private reopenPiqueForPassers() {
+  public reopenPiqueForPassers() {
     this.piqueReopenActive = true;
     this.piqueReopenPendingIds.clear();
 
@@ -638,7 +636,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * - Recoge cartas, rebaraja y reparte 2 nuevas cartas
    * - NO vuelve a cobrar el ante (ya fue pagado)
    */
-  private restartPique() {
+  public restartPique() {
     this.piqueRestartCount++;
     console.log(`[MesaRoom] Menos de 2 jugadores fueron voy en PIQUE. Reinicio #${this.piqueRestartCount}...`);
 
@@ -791,7 +789,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Fase 3: Completar Mano
    * Primero recoge las cartas de quienes pasaron en PIQUE, luego reparte las 2 cartas restantes a los activos.
    */
-  private startPhase3CompletarMano() {
+  public startPhase3CompletarMano() {
     completarPhase.enter(this);
   }
 
@@ -799,7 +797,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Entrega el pique al ganador único y continúa con el juego principal.
    * Se llama cuando un jugador gana el pique en la ronda de 3 cartas.
    */
-  private awardPiqueAndContinue(winnerId: string) {
+  public awardPiqueAndContinue(winnerId: string) {
     const winner = this.state.players.get(winnerId);
     if (!winner) {
       this.pendingPiqueWinnerId = "";
@@ -842,7 +840,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * - 1 jugador → devolver su apuesta del pot principal y terminar
    * - 2+ jugadores → continuar a APUESTA_4_CARTAS
    */
-  private afterPiqueResolution() {
+  public afterPiqueResolution() {
     const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
       .filter(p => !p.isFolded && p.connected);
 
@@ -907,7 +905,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Fase Intermedia: DESCARTE
    * Cada jugador activo descarta las cartas que no le sirven (sin apuestas — las apuestas ya ocurrieron en APUESTA_4_CARTAS).
    */
-  private startPhaseDescarte() {
+  public startPhaseDescarte() {
     descartePhase.enter(this);
   }
 
@@ -915,7 +913,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * NUEVA Fase: APUESTA_4_CARTAS
    * Ronda de apuestas con 4 cartas antes del descarte. Inicia en La Mano activa.
    */
-  private startPhaseApuesta4Cartas() {
+  public startPhaseApuesta4Cartas() {
     apuesta4CartasPhase.enter(this);
   }
 
@@ -923,7 +921,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Calcula y devuelve al jugador la porción de su apuesta de ronda que nadie igualó.
    * Retorna el monto reembolsado (0 si no aplica).
    */
-  private refundUncalledBet(): number {
+  public refundUncalledBet(): number {
     const allPlayers = Array.from(this.state.players.values() as IterableIterator<Player>);
     // Incluir roundBets de TODOS los jugadores conectados (incluidos foldeados que apostaron esta ronda)
     const roundBets = allPlayers
@@ -963,7 +961,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Termina la mano prematuramente cuando nadie igualó la apuesta y el pot principal queda en 0.
    * Resuelve el pique (si hay piquePot > 0) comparando las manos, limpia el estado y rota La Mano.
    */
-  private endHandEarlyAfterFoldOut() {
+  public endHandEarlyAfterFoldOut() {
     const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
       .filter(p => !p.isFolded && p.connected);
 
@@ -1028,7 +1026,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   // ── Resolución de pique diferido tras APUESTA_4_CARTAS ──
 
   /** Resuelve el pique diferido y luego inicia DESCARTE o finaliza la mano. */
-  private resolveAndStartDescarte() {
+  public resolveAndStartDescarte() {
     this.resolvePiqueAfterApuesta4();
 
     const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
@@ -1041,7 +1039,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /** Resuelve la competencia de pique entre jugadores que pasaron con juego en APUESTA_4_CARTAS. */
-  private resolvePiqueAfterApuesta4() {
+  public resolvePiqueAfterApuesta4() {
     if (this.state.piquePot <= 0) return;
 
     const contestants = Array.from(this.state.players.values() as IterableIterator<Player>)
@@ -1098,7 +1096,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /** Paga el pique al ganador con 5% rake. */
-  private awardPiqueToContestant(winnerId: string) {
+  public awardPiqueToContestant(winnerId: string) {
     const winner = this.state.players.get(winnerId);
     if (!winner || this.state.piquePot <= 0) return;
 
@@ -1116,7 +1114,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /** Recoge las cartas del jugador y las devuelve al naipe. Si shuffle=true, las baraja antes. */
-  private collectPlayerCards(playerId: string, shuffle: boolean) {
+  public collectPlayerCards(playerId: string, shuffle: boolean) {
     const player = this.state.players.get(playerId);
     if (!player || !player.cards) return;
 
@@ -1150,7 +1148,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * (CANTICOS → DECLARAR_JUEGO, GUERRA → CANTICOS, GUERRA_JUEGO → SHOWDOWN).
    * APUESTA_4_CARTAS conserva su helper específico porque resuelve estado intermedio.
    */
-  private getNextPhaseCallback(phase: string): () => void {
+  public getNextPhaseCallback(phase: string): () => void {
     if (phase === "APUESTA_4_CARTAS") return () => this.resolveAndStartDescarte();
     const nextId = MesaRoom.NEXT_PHASE_TRANSITIONS[phase] ?? "SHOWDOWN";
     return () => { enterPhase(this, nextId); };
@@ -1160,7 +1158,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    *  - no se botó, no está restiado, está conectado
    *  - Y no ha actuado aún O su apuesta de ronda es menor que la máxima (ronda reabierta por raise)
    */
-  private advanceTurnBetting(startFromId?: string, nextPhaseCallback?: () => void) {
+  public advanceTurnBetting(startFromId?: string, nextPhaseCallback?: () => void) {
     // Si solo queda 1 jugador activo (no folded), ir directo a showdown o siguiente fase
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
       .filter(p => !p.isFolded && p.connected);
@@ -1223,7 +1221,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     else this.startPhase6Showdown();
   }
 
-  private advanceTurnPhaseDescarte(startFromId?: string) {
+  public advanceTurnPhaseDescarte(startFromId?: string) {
     let startSeatIdx = this.seatOrder.indexOf(startFromId || this.state.turnPlayerId);
     // Guard: si el ID no se encuentra en seatOrder, intentar con activeManoId
     if (startSeatIdx === -1) {
@@ -1253,7 +1251,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Repartir reemplazos: todas las cartas de un jugador antes de pasar al siguiente (reparto por bloque),
    * en orden desde activeManoId, tomando del fondo del mazo.
    */
-  private startPhaseReemplazoDescarte() {
+  public startPhaseReemplazoDescarte() {
     reemplazoDescartePhase.enter(this);
   }
 
@@ -1261,7 +1259,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * NUEVA Fase: REVELAR_CARTA
    * Revela la última carta del mazo boca arriba. Queda visible el resto de la partida.
    */
-  private startPhaseRevealBottomCard() {
+  public startPhaseRevealBottomCard() {
     revealBottomCardPhase.enter(this);
   }
 
@@ -1271,7 +1269,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Cuando todos pasan (check), se activa DECLARAR_JUEGO para que
    * cada jugador declare si lleva juego o no.
    */
-  private startPhase4Canticos() {
+  public startPhase4Canticos() {
     canticosPhase.enter(this);
   }
 
@@ -1283,7 +1281,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Luego los que tienen juego pueden apostar entre sí hasta que
    * decidan parar, momento en el que se van al showdown.
    */
-  private startPhaseDeclararJuego() {
+  public startPhaseDeclararJuego() {
     declararJuegoPhase.enter(this);
   }
 
@@ -1294,7 +1292,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * if 1 has juego → that player wins (standard showdown);
    * if 0 have juego → points-based resolution (all non-folded players compete).
    */
-  private advanceTurnDeclarar(startFromId?: string) {
+  public advanceTurnDeclarar(startFromId?: string) {
     const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
       .filter(p => !p.isFolded && p.connected && !p.isWaiting);
 
@@ -1353,7 +1351,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Ronda de apuestas entre jugadores que declararon tener juego.
    * Cuando termina → Showdown directo.
    */
-  private startPhaseGuerraJuego() {
+  public startPhaseGuerraJuego() {
     guerraJuegoPhase.enter(this);
   }
 
@@ -1361,7 +1359,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Fase 5: Guerra Principal
    * Ronda de apuestas del pozo. Inicia en La Mano activa (activeManoId).
    */
-  private startPhase5Guerra() {
+  public startPhase5Guerra() {
     guerraPhase.enter(this);
   }
 
@@ -1370,7 +1368,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Muestra las cartas por 20 segundos, luego premia al ganador.
    * Soporta side pots básicos cuando hay jugadores restiados (all-in).
    */
-  private startPhase6Showdown() {
+  public startPhase6Showdown() {
     showdownPhase.enter(this);
   }
 
@@ -1378,7 +1376,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Calcula side pots basados en las contribuciones totales de cada jugador.
    * Ordena por totalMainBet ascendente y crea pots proporcionales.
    */
-  private calculateSidePots(activePlayers: Player[]): { amount: number; eligiblePlayerIds: string[] }[] {
+  public calculateSidePots(activePlayers: Player[]): { amount: number; eligiblePlayerIds: string[] }[] {
     // Delegado a core/PotManager (refactor Fase 1.2). Comportamiento idéntico.
     return calculateSidePotsPure(activePlayers);
   }
@@ -1387,7 +1385,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Persists payout, replay, and stats to Supabase immediately when the winner is determined.
    * Called from startPhase6Showdown — does NOT transition to LOBBY.
    */
-  private persistShowdownResults(
+  public persistShowdownResults(
     overallWinnerId: string,
     potWinners: { winnerId: string; potAmount: number; payout: number; rake: number }[],
     totalPayout: number,
@@ -1512,7 +1510,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Handles visual cleanup after dismiss-showdown. Transitions to LOBBY.
    * Financial settlement already happened in persistShowdownResults.
    */
-  private finalizeShowdown(
+  public finalizeShowdown(
     overallWinnerId: string,
     potWinners: { winnerId: string; potAmount: number; payout: number; rake: number }[],
     totalPayout: number,
@@ -1550,7 +1548,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Entrega el pot completo a un único ganador (usado en SHOWDOWN_WAIT cuando solo queda 1 jugador).
    * Delegación simple a finalizeShowdown con un solo pot.
    */
-  private awardPot(winnerId: string) {
+  public awardPot(winnerId: string) {
     const winner = this.state.players.get(winnerId);
     if (!winner) return;
 
@@ -1637,14 +1635,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.assignTurnOrders();
   }
 
-  private endRound() {
+  public endRound() {
     console.log(`[MesaRoom] Fin de la ronda (Showdown/Muck finalizado).`);
     this.clock.setTimeout(() => {
       this.restartLobby();
     }, 5000); // 5s to see winners
   }
 
-  private restartLobby() {
+  public restartLobby() {
     this.promoteWaitingPlayers();
     this.state.players.forEach((p: Player, sessionId: string) => {
       p.isReady = false;
@@ -1657,7 +1655,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.notifyInsufficientBalance();
   }
 
-  private endHandEarly() {
+  public endHandEarly() {
     const winner = Array.from(this.state.players.values() as IterableIterator<Player>).find(p => !p.isFolded && p.connected);
     if (winner) {
       console.log(`[MesaRoom] Ganador sin showdown (Rival retirado/Farol). Ofreciendo mostrar cartas a ${winner.id}...`);
@@ -1681,7 +1679,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * La Mano recibe turnOrder = 1, el siguiente jugador a la derecha = 2, y así sucesivamente.
    * Permite que el cliente muestre visualmente el orden de rotación de la mano.
    */
-  private assignTurnOrders(): void {
+  public assignTurnOrders(): void {
     const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId || this.state.dealerId);
     if (manoSeatIdx === -1) return;
 
@@ -1703,7 +1701,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Rota dealerId inmediatamente si el jugador es la Mano actual y aún no rotó en esta partida.
    * Usado para "Mano Definitiva" (pasa/se bota) y "Mano Ganadora" (gana pique mostrando).
    */
-  private attemptManoRotation(playerId: string, reason: string): void {
+  public attemptManoRotation(playerId: string, reason: string): void {
     if (playerId === this.state.dealerId && !this.dealerRotatedThisGame) {
       console.log(`[MesaRoom] Rotación de Mano (${reason}). Pasa al siguiente.`);
       this.dealerRotatedThisGame = true;
@@ -1716,7 +1714,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
   }
 
-  private transferMano(): void {
+  public transferMano(): void {
     const currentSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
     if (currentSeatIdx === -1) return;
     const total = this.seatOrder.length;
@@ -1731,7 +1729,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
   }
 
-  private shuffleDeck() {
+  public shuffleDeck() {
     // Delegado a core/DeckManager (refactor Fase 1.1). Comportamiento idéntico.
     shuffleDeckPure(this.deck);
   }
@@ -1743,7 +1741,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * 3. Envía las cartas reales SOLO al dueño vía mensaje privado.
    * @param reveal Si true, también establece revealedCards (para SORTEO/SHOWDOWN).
    */
-  private setPlayerCards(sessionId: string, cards: string, reveal: boolean = false): void {
+  public setPlayerCards(sessionId: string, cards: string, reveal: boolean = false): void {
     const player = this.state.players.get(sessionId);
     if (!player) return;
     player.cards = cards;
@@ -1756,7 +1754,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Envía las cartas reales a un solo cliente mediante mensaje privado de Colyseus.
    * Ningún otro navegador recibe este dato.
    */
-  private sendPrivateCards(sessionId: string): void {
+  public sendPrivateCards(sessionId: string): void {
     const client = this.clientMap.get(sessionId);
     const player = this.state.players.get(sessionId);
     if (client && player) {
@@ -1769,7 +1767,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Generates a deterministic RNG state hash for the current action.
    * Used in the admin timeline for step-by-step cryptographic auditing.
    */
-  private getRngState(): string {
+  public getRngState(): string {
     this.rngCounter++;
     return crypto
       .createHash('sha256')
@@ -1780,7 +1778,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
   // ── Pique Fijo: helpers de votación ──
 
-  private clearPiqueProposal() {
+  public clearPiqueProposal() {
     this.state.proposedPique = 0;
     this.state.proposedPiqueBy = "";
     this.state.piqueVotesFor = 0;
@@ -1790,7 +1788,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.piqueProposerId = "";
   }
 
-  private resolvePiqueVoteIfReady() {
+  public resolvePiqueVoteIfReady() {
     if (this.state.proposedPique === 0 || this.state.piqueVotersTotal === 0) return;
 
     const majority = Math.floor(this.state.piqueVotersTotal / 2) + 1;
@@ -1813,11 +1811,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   // ── Single-session policy: Redis pub/sub ──
 
   // ── Wrappers para preservar compatibilidad con tests existentes ──
-  private setupSessionKickListener() {
+  public setupSessionKickListener() {
     setupSessionKickListener(this);
   }
 
-  private handleSessionKick(userId: string, newDeviceId: string) {
+  public handleSessionKick(userId: string, newDeviceId: string) {
     handleSessionKick(this, userId, newDeviceId);
   }
 
@@ -1883,7 +1881,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Empuja un evento al timeline y captura un frame con el estado actual.
    * Sustituye el uso directo de `this.currentTimeline.push(...)`.
    */
-  private recordEvent(event: any): void {
+  public recordEvent(event: any): void {
     this.currentTimeline.push(event);
     const hint = this.deriveHint(event);
     this.snapshotBuilder.captureFrame(
@@ -1894,7 +1892,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   /** Deriva una pista de animacion a partir del evento para el reproductor visual. */
-  private deriveHint(event: any): AnimationHint | undefined {
+  public deriveHint(event: any): AnimationHint | undefined {
     if (!event || typeof event !== 'object') return undefined;
     switch (event.event) {
       case 'start':

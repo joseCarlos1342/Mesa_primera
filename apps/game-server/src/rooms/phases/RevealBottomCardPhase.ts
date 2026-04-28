@@ -5,7 +5,8 @@
  */
 import type { IGamePhase, PhaseContext } from "./IGamePhase";
 
-type Ctx = any;
+import type { MesaRoom } from "../MesaRoom";
+type Ctx = MesaRoom;
 
 export const revealBottomCardPhase: IGamePhase = {
   id: "REVELAR_CARTA",

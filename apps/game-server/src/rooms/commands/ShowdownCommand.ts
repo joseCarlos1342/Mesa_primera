@@ -10,7 +10,7 @@ import { SupabaseService } from "../../services/SupabaseService";
  * `llevo-juego`, `paso-juego-response`. Comportamiento idéntico al original.
  */
 
-type RoomCtx = any;
+type RoomCtx = MesaRoom;
 
 interface ShowMuckPayload { action?: "show" | "muck" }
 interface DeclararJuegoPayload { tiene?: boolean }

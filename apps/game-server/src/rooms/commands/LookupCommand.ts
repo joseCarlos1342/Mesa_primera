@@ -11,7 +11,7 @@ import { SupabaseService } from "../../services/SupabaseService";
  * porque vitest resuelve por ruta absoluta del módulo, no por archivo importador.
  */
 
-type RoomCtx = any;
+type RoomCtx = MesaRoom;
 
 interface LookupPayload {
   phone?: string;

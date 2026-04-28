@@ -9,7 +9,7 @@ import type { Player } from "../../schemas/GameState";
  * Se preserva el acceso a privates vía cast `any` (limpieza tipada → Fase 5).
  */
 
-type RoomCtx = any;
+type RoomCtx = MesaRoom;
 
 interface ProposePiquePayload {
   amount?: number;

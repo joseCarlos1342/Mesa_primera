@@ -14,7 +14,7 @@ import type { MesaRoom } from "../MesaRoom";
  *  - Si el `playerId` objetivo no existe en `state.players`, no-op.
  */
 
-type RoomCtx = any;
+type RoomCtx = MesaRoom;
 
 interface AdminPayload {
   playerId?: string;
