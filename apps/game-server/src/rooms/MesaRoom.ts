@@ -6,6 +6,32 @@ import { createRedisSubscriber } from "../services/redis";
 import type Redis from "ioredis";
 import * as crypto from "crypto";
 import { evaluateHand, compareHands, HandEvaluation } from "./combinations";
+import { createDeck as createDeckPure, shuffleDeck as shuffleDeckPure } from "./core/DeckManager";
+import { calculateSidePots as calculateSidePotsPure } from "./core/PotManager";
+import { handleAdminKick, handleAdminMute, handleAdminBan, handleDeleteRoom } from "./commands/AdminCommand";
+import { handleProposePique, handleVotePique } from "./commands/PiqueVotingCommand";
+import { handleLookupPlayer } from "./commands/LookupCommand";
+import { handleTransfer } from "./commands/TransferCommand";
+import { handleToggleReady, handleAbandon, handleRequestResync } from "./commands/RoomLifecycleCommand";
+import { handleDismissShowdown, handleShowMuck, handleDeclararJuego, handleDismissReveal, handleLlevoJuego, handlePasoJuegoResponse } from "./commands/ShowdownCommand";
+import { handlePlayerAction } from "./commands/PlayerActionCommand";
+import { setupSessionKickListener, handleSessionKick } from "../services/SessionEnforcer";
+import { handleConnectionJoin, handleConnectionLeave } from "./core/ConnectionManager";
+import {
+  revealBottomCardPhase,
+  canticosPhase,
+  reemplazoDescartePhase,
+  completarPhase,
+  descartePhase,
+  declararJuegoPhase,
+  apuesta4CartasPhase,
+  guerraJuegoPhase,
+  guerraPhase,
+  showdownPhase,
+  sorteoPhase,
+  piquePhase,
+  enterPhase,
+} from "./phases";
 import { SnapshotBuilder, type AnimationHint, type StateLike } from "../services/ReplayV2";
 
 const MIN_BALANCE_CENTS = 5_000_000; // $50,000 en centavos
@@ -71,6 +97,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   /** Contador de reinicios consecutivos del pique para evitar bucle infinito */
   private piqueRestartCount = 0;
   private static readonly MAX_PIQUE_RESTARTS = 10;
+  /** Tabla de transiciones puras entre fases de apuesta (consumida por getNextPhaseCallback). */
+  private static readonly NEXT_PHASE_TRANSITIONS: Record<string, string> = {
+    GUERRA: "CANTICOS",
+    CANTICOS: "DECLARAR_JUEGO",
+    GUERRA_JUEGO: "SHOWDOWN",
+  };
   /** Contador de veces que cada jugador se botó en PIQUE (persistente entre reinicios) */
   private piqueFoldCount = new Map<string, number>();
   /** Jugadores con "paso provisional" en APUESTA_4_CARTAS cuando quedan jugadores detrás por actuar */
@@ -115,1047 +147,93 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.createDeck();
 
     // ── Subscribe to single-session kick events ──
-    this.setupSessionKickListener();
+    setupSessionKickListener(this);
 
     this.onMessage("delete-room", async (client, message) => {
-      const { adminToken } = message;
-      // In a real scenario, we'd verify the adminToken against Supabase
-      // For now, if the client sends this and the room is empty or it's an admin, we allow it
-      console.log(`[MesaRoom] Petición de eliminación de sala por: ${adminToken}`);
-      this.disconnect();
+      handleDeleteRoom(this, client, message);
     });
 
     this.onMessage("toggleReady", (client, message) => {
-      if (this.state.phase !== "LOBBY") return;
-
-      const player = this.state.players.get(client.sessionId);
-      if (!player || player.isWaiting) return;
-
-      // Bloquear "Listo" si el saldo es menor al pique mínimo
-      if (message.isReady && player.chips < this.state.minPique) {
-        const formatted = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(this.state.minPique / 100);
-        client.send("insufficient-balance", { required: this.state.minPique, current: player.chips, message: `Tu saldo es insuficiente para el pique mínimo (${formatted}). Recarga tu cuenta para seguir jugando.` });
-        return;
-      }
-
-      player.isReady = message.isReady;
-
-      this.checkStartCountdown();
+      handleToggleReady(this, client, message);
     });
 
     // ── Pique Fijo: Propuesta y Votación Democrática ──
 
     this.onMessage("propose_pique", (client, message) => {
-      if (this.state.phase !== "LOBBY") return;
-      const player = this.state.players.get(client.sessionId);
-      if (!player || player.isWaiting) return;
-      if (this.state.proposedPique > 0) return; // Ya hay una propuesta activa
-
-      const amount = message.amount;
-      if (typeof amount !== "number" || amount < 500_000 || amount > 50_000_000) return;
-      if (amount === this.state.minPique) return; // No tiene sentido proponer el mismo valor
-
-      this.piqueProposerId = client.sessionId;
-      this.piqueVoters.clear();
-      this.state.proposedPique = amount;
-      this.state.proposedPiqueBy = client.sessionId;
-      this.state.piqueVotesFor = 0;
-      this.state.piqueVotesAgainst = 0;
-
-      // Votantes = jugadores activos conectados que no son el proponente ni están en espera
-      const voters = Array.from(this.state.players.values() as IterableIterator<Player>)
-        .filter(p => p.connected && !p.isWaiting && p.id !== client.sessionId);
-      this.state.piqueVotersTotal = voters.length;
-
-      this.state.lastAction = `${player.nickname} propone Pique Fijo de $${(amount / 100).toLocaleString()}`;
-      console.log(`[MesaRoom] ${player.nickname} propone pique fijo: $${amount / 100}`);
-
-      // Si es el único jugador, auto-aprobar
-      if (voters.length === 0) {
-        this.state.minPique = amount;
-        this.broadcast("pique_approved", { amount });
-        this.clearPiqueProposal();
-      }
+      handleProposePique(this, client, message);
     });
 
     this.onMessage("vote_pique", (client, message) => {
-      if (this.state.phase !== "LOBBY") return;
-      if (this.state.proposedPique === 0) return;
-      if (client.sessionId === this.piqueProposerId) return; // El proponente no vota
-      if (this.piqueVoters.has(client.sessionId)) return; // Ya votó
-
-      const player = this.state.players.get(client.sessionId);
-      if (!player || player.isWaiting) return;
-
-      const approve = !!message.approve;
-      this.piqueVoters.set(client.sessionId, approve);
-
-      if (approve) {
-        this.state.piqueVotesFor++;
-      } else {
-        this.state.piqueVotesAgainst++;
-      }
-
-      this.resolvePiqueVoteIfReady();
+      handleVotePique(this, client, message);
     });
 
     // Abandono explícito: el jugador decidió irse voluntariamente
     this.onMessage("abandon", (client) => {
-      const player = this.state.players.get(client.sessionId);
-      console.log(`[MesaRoom] Abandono voluntario de ${player?.nickname || client.sessionId}`);
-      this.removePlayer(client.sessionId);
+      handleAbandon(this, client);
     });
 
     this.onMessage("action", async (client, message) => {
-      if (this.state.turnPlayerId !== client.sessionId) return;
-
-      const player = this.state.players.get(client.sessionId);
-      if (!player) return;
-
-      if (this.state.phase === "PIQUE") {
-        const { action } = message; // "voy" o "paso"
-
-        if (action !== "paso" && action !== "voy") {
-          console.log(`[MesaRoom] Acción inválida '${action}' de ${player.nickname} en fase PIQUE. Rechazada.`);
-          return;
-        }
-
-        // Guard contra doble procesamiento (race condition con async handler)
-        if (player.hasActed) {
-          console.warn(`[MesaRoom] ${player.nickname} ya actuó en esta ronda de PIQUE. Ignorando duplicado.`);
-          return;
-        }
-
-        // Reiniciar contador de restarts cuando un jugador actúa
-        this.piqueRestartCount = 0;
-
-        player.hasActed = true;
-
-        this.recordEvent({ event: 'action', phase: 'PIQUE', player: client.sessionId, action, time: Date.now(), rng_state: this.getRngState() });
-
-        if (action === "paso") {
-          player.isFolded = true;
-          this.piquePassPlayerIds.add(client.sessionId);
-          // Rastrear si pasó antes de que existiera apuesta fija (candidato a reapertura)
-          if (!this.piqueReopenActive && this.state.currentMaxBet === 0) {
-            this.piquePreBetPasserIds.add(client.sessionId);
-          }
-
-          // ── Reapertura: paso definitivo (sin doble-botada, misma mano) ──
-          if (this.piqueReopenActive) {
-            this.piqueReopenPendingIds.delete(client.sessionId);
-            this.state.lastAction = `${player.nickname} pasa definitivamente`;
-          } else {
-          // ── Doble-botada: lógica especial al botarse por 2ª vez ──
-          const prevFolds = this.piqueFoldCount.get(client.sessionId) || 0;
-          const newFolds = prevFolds + 1;
-          this.piqueFoldCount.set(client.sessionId, newFolds);
-
-          if (newFolds >= 2) {
-            // Verificar si "lleva juego" (2 cartas del mismo palo → potencial Segunda)
-            const playerCards = player.cards ? player.cards.split(',').filter(Boolean) : [];
-            const suits = playerCards.map(c => c.split('-')[1]);
-            const llevaJuego = suits.length >= 2 && suits.every(s => s === suits[0]);
-
-            if (llevaJuego) {
-              // Mostrar cartas públicamente (lleva juego y se bota)
-              // El jugador controlará cuándo cerrar con "dismiss-reveal"
-              player.revealedCards = player.cards;
-              this.state.lastAction = `${player.nickname} lleva juego y se bota (muestra cartas)`;
-              this.state.phase = "PIQUE_REVEAL";
-              this.state.turnPlayerId = client.sessionId;
-              this.broadcast("pique-fold-reveal", { playerId: client.sessionId, llevaJuego: true, cards: player.cards });
-            } else {
-              this.state.lastAction = `${player.nickname} se bota (sin juego)`;
-            }
-
-            // Recoger cartas, barajarlas y ponerlas encima del naipe
-            const foldedCards = playerCards.slice();
-            for (let i = foldedCards.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [foldedCards[i], foldedCards[j]] = [foldedCards[j], foldedCards[i]];
-            }
-            for (const card of foldedCards) {
-              this.deck.push(card);
-            }
-            this.setPlayerCards(client.sessionId, "");
-
-            if (llevaJuego) {
-              // No avanzar turno aquí — esperar a que el jugador cierre el reveal
-              return;
-            }
-          } else {
-            this.state.lastAction = `${player.nickname} pasa en el Pique`;
-          }
-          } // end else (!piqueReopenActive)
-
-          this.attemptManoRotation(client.sessionId, "Mano pasa en Pique");
-          if (player.id === this.state.activeManoId) this.transferMano();
-        } else if (action === "voy") {
-          // Durante reapertura, sacar al jugador del set de pendientes
-          if (this.piqueReopenActive) {
-            this.piqueReopenPendingIds.delete(client.sessionId);
-          }
-          const betAmount = message.amount || this.state.minPique;
-          const actualBet = Math.min(betAmount, player.chips);
-
-          // ── Privilegio de La Mano: fija el precio del pique ──
-          if (player.id === this.state.activeManoId) {
-            // La Mano debe respetar el pique mínimo de la mesa
-            if (actualBet > 0 && actualBet < this.state.minPique) {
-              player.hasActed = false;
-              this.currentTimeline.pop();
-              client.send("error", { message: `El pique mínimo es $${(this.state.minPique / 100).toLocaleString()}` });
-              return;
-            }
-            // La Mano impone el monto obligatorio para todos los demás
-            if (actualBet > 0) {
-              this.state.currentMaxBet = actualBet;
-              console.log(`[MesaRoom] La Mano (${player.nickname}) fija el pique en $${actualBet}`);
-            }
-          } else {
-            // ── Los demás DEBEN igualar exactamente lo que picó La Mano ──
-            const requiredBet = this.state.currentMaxBet > 0 ? this.state.currentMaxBet : this.state.minPique;
-            // Permitir all-in si no le alcanzan las fichas
-            if (actualBet > 0 && actualBet < requiredBet && actualBet !== player.chips) {
-              player.hasActed = false;
-              this.currentTimeline.pop();
-              client.send("error", { message: `Debes apostar $${(requiredBet / 100).toLocaleString()} (lo que picó La Mano)` });
-              return;
-            }
-          }
-
-          if (actualBet <= 0) {
-            player.isFolded = true;
-            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
-            if (player.id === this.state.activeManoId) this.transferMano();
-          } else {
-            // Persist bet to DB before modifying RAM state
-            if (player.supabaseUserId) {
-              const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, undefined, { roomId: this.roomId, tableName: (this as any).metadata?.tableName, phase: 'PIQUE' });
-              if (result && !result.success && result.isBalanceError) {
-                player.isFolded = true;
-                this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
-                if (player.id === this.state.activeManoId) this.transferMano();
-                this.advanceTurnPhase2();
-                return;
-              }
-            }
-            player.chips -= actualBet;
-            this.state.piquePot += actualBet;
-            this.state.lastAction = `${player.nickname} va $${(actualBet / 100).toLocaleString()} para Pique`;
-          }
-        }
-
-        this.advanceTurnPhase2();
-      } else if (this.state.phase === "DESCARTE") {
-        const { action, droppedCards } = message;
-        player.hasActed = true;
-        this.recordEvent({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, time: Date.now(), rng_state: this.getRngState() });
-
-        if (action === "discard") {
-          if (droppedCards && Array.isArray(droppedCards) && droppedCards.length > 0) {
-            let currentHand = player.cards ? player.cards.split(',').filter(Boolean) : [];
-            currentHand = currentHand.filter((c: string) => !droppedCards.includes(c));
-            this.setPlayerCards(client.sessionId, currentHand.join(','));
-            for (const c of droppedCards) { this.deck.push(c); }
-            player.pendingDiscardCards = droppedCards;
-            this.state.lastAction = `${player.nickname} bota ${droppedCards.length} carta${droppedCards.length !== 1 ? 's' : ''}`;
-          } else {
-            // Keep all cards (discard 0)
-            player.pendingDiscardCards = [];
-            this.state.lastAction = `${player.nickname} mantiene su mano`;
-          }
-        } else if (action === "paso") {
-          player.isFolded = true;
-          this.state.lastAction = `${player.nickname} se bota`;
-          this.attemptManoRotation(client.sessionId, "Mano se bota en descarte");
-          if (player.id === this.state.activeManoId) this.transferMano();
-        }
-        this.advanceTurnPhaseDescarte();
-      } else if (this.state.phase === "APUESTA_4_CARTAS" || this.state.phase === "GUERRA" || this.state.phase === "CANTICOS" || this.state.phase === "GUERRA_JUEGO") {
-        const { action, amount } = message;
-        const phase = this.state.phase;
-        const advanceNext = () => this.advanceTurnBetting(
-          undefined,
-          this.getNextPhaseCallback(phase)
-        );
-
-        if (!["paso", "voy", "igualar", "resto"].includes(action)) {
-          console.log(`[MesaRoom] Acción inválida '${action}' de ${player.nickname} en fase ${phase}. Rechazada.`);
-          return;
-        }
-
-        this.recordEvent({ event: 'action', phase, player: client.sessionId, action, amount, time: Date.now(), rng_state: this.getRngState() });
-
-        if (action === "paso") {
-          if (this.state.currentMaxBet === 0 || player.roundBet >= this.state.currentMaxBet) {
-            // Check: nadie ha apostado o ya igualamos
-            player.hasActed = true;
-            this.state.lastAction = `${player.nickname} pasa (check)`;
-          } else if (phase === "GUERRA_JUEGO") {
-            // GUERRA_JUEGO: declinar la apuesta extra sin perder elegibilidad de showdown
-            player.hasActed = true;
-            player.declinedGuerraJuegoBet = true;
-            this.state.lastAction = `${player.nickname} pasa (no iguala)`;
-            console.log(`[MesaRoom] ${player.nickname} declina apuesta extra en GUERRA_JUEGO — sigue al showdown`);
-          } else {
-            // Hay apuesta activa y no hemos igualado
-
-            const hand = evaluateHand(player.cards);
-            if (hand.type !== 'NINGUNA') {
-              // Resolución inmediata: preguntar Llevo Juego / No Llevo ahora mismo
-              this.pendingPasoJuegoPlayerId = client.sessionId;
-              this.pendingPasoJuegoPhase = phase;
-              client.send('paso-juego-choice', { handType: hand.type });
-              this.state.lastAction = `${player.nickname} decide si lleva juego...`;
-              console.log(`[MesaRoom] ${player.nickname} paso definitivo con juego (${hand.type}) en ${phase} — esperando decisión inmediata`);
-              // NO llamar advanceNext() — turn queda en este jugador hasta que responda
-              return;
-            } else {
-              // No tiene juego: fold inmediato + recoger cartas al naipe
-              const wasMano = player.id === this.state.activeManoId;
-              player.isFolded = true;
-              player.hasActed = true;
-              this.state.lastAction = `${player.nickname} se bota`;
-
-              // Recoger cartas del jugador al naipe
-              this.collectPlayerCards(client.sessionId, phase === 'APUESTA_4_CARTAS' && wasMano && this.seatOrder.length === 7);
-
-              this.attemptManoRotation(client.sessionId, "Mano se bota en apuestas");
-              if (wasMano) this.transferMano();
-            }
-          }
-          advanceNext();
-
-        } else if (action === "voy") {
-          this.pasoPendienteIds.delete(client.sessionId);
-          const betIncrement = amount || 0;
-          if (betIncrement <= 0) {
-            console.log(`[MesaRoom] ${player.nickname} intentó IR con monto inválido.`);
-            return;
-          }
-          // Validar que el nuevo total supere currentMaxBet (raise)
-          if (player.roundBet + betIncrement <= this.state.currentMaxBet) {
-            client.send("error", { message: `La apuesta debe superar $${(this.state.currentMaxBet / 100).toLocaleString()}` });
-            return;
-          }
-          const actualBet = Math.min(betIncrement, player.chips);
-          if (actualBet <= 0) {
-            player.isFolded = true;
-            player.hasActed = true;
-            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
-            this.attemptManoRotation(client.sessionId, "Mano sin fichas en apuestas");
-            if (player.id === this.state.activeManoId) this.transferMano();
-            advanceNext();
-            return;
-          }
-          // Persist to DB
-          if (player.supabaseUserId) {
-            const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, this.currentGameId, undefined, { roomId: this.roomId, tableName: (this as any).metadata?.tableName, phase });
-            if (result && !result.success && result.isBalanceError) {
-              player.isFolded = true;
-              player.hasActed = true;
-              this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
-              this.attemptManoRotation(client.sessionId, "Mano sin fondos en apuestas");
-              if (player.id === this.state.activeManoId) this.transferMano();
-              advanceNext();
-              return;
-            }
-          }
-          player.chips -= actualBet;
-          player.roundBet += actualBet;
-          player.totalMainBet += actualBet;
-          this.state.pot += actualBet;
-          this.state.currentMaxBet = player.roundBet;
-          this.state.highestBetPlayerId = client.sessionId;
-          player.hasActed = true;
-          this.state.lastAction = `${player.nickname} va $${(actualBet / 100).toLocaleString()}`;
-          advanceNext();
-
-        } else if (action === "igualar") {
-          this.pasoPendienteIds.delete(client.sessionId);
-          const callAmount = this.state.currentMaxBet - player.roundBet;
-          if (callAmount <= 0) {
-            player.hasActed = true;
-            advanceNext();
-            return;
-          }
-          const actualCall = Math.min(callAmount, player.chips);
-          // Persist to DB
-          if (player.supabaseUserId) {
-            const result = await SupabaseService.recordBet(player.supabaseUserId, actualCall, this.currentGameId, undefined, { roomId: this.roomId, tableName: (this as any).metadata?.tableName, phase });
-            if (result && !result.success && result.isBalanceError) {
-              player.isFolded = true;
-              player.hasActed = true;
-              this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
-              this.attemptManoRotation(client.sessionId, "Mano sin fondos al igualar");
-              if (player.id === this.state.activeManoId) this.transferMano();
-              advanceNext();
-              return;
-            }
-          }
-          player.chips -= actualCall;
-          player.roundBet += actualCall;
-          player.totalMainBet += actualCall;
-          this.state.pot += actualCall;
-          if (actualCall < callAmount) {
-            // Couldn't fully call → implicit all-in
-            player.isAllIn = true;
-            this.state.lastAction = `${player.nickname} iguala parcial $${(actualCall / 100).toLocaleString()} (resto)`;
-          } else {
-            this.state.lastAction = `${player.nickname} iguala $${(actualCall / 100).toLocaleString()}`;
-          }
-          player.hasActed = true;
-          advanceNext();
-
-        } else if (action === "resto") {
-          this.pasoPendienteIds.delete(client.sessionId);
-          const allInAmount = player.chips;
-          if (allInAmount <= 0) {
-            player.isFolded = true;
-            player.hasActed = true;
-            this.state.lastAction = `${player.nickname} no tiene fichas y se bota`;
-            this.attemptManoRotation(client.sessionId, "Mano sin fichas para resto");
-            if (player.id === this.state.activeManoId) this.transferMano();
-            advanceNext();
-            return;
-          }
-          // Persist to DB
-          if (player.supabaseUserId) {
-            const result = await SupabaseService.recordBet(player.supabaseUserId, allInAmount, this.currentGameId, undefined, { roomId: this.roomId, tableName: (this as any).metadata?.tableName, phase });
-            if (result && !result.success && result.isBalanceError) {
-              player.isFolded = true;
-              player.hasActed = true;
-              this.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
-              this.attemptManoRotation(client.sessionId, "Mano sin fondos para resto");
-              if (player.id === this.state.activeManoId) this.transferMano();
-              advanceNext();
-              return;
-            }
-          }
-          player.chips -= allInAmount;
-          player.roundBet += allInAmount;
-          player.totalMainBet += allInAmount;
-          this.state.pot += allInAmount;
-          player.isAllIn = true;
-          if (player.roundBet > this.state.currentMaxBet) {
-            this.state.currentMaxBet = player.roundBet;
-            this.state.highestBetPlayerId = client.sessionId;
-          }
-          player.hasActed = true;
-          this.state.lastAction = `${player.nickname} va RESTO $${(allInAmount / 100).toLocaleString()}`;
-          advanceNext();
-        }
-      }
+      await handlePlayerAction(this, client, message);
     });
 
     this.onMessage("dismiss-reveal", (client) => {
-      if (this.state.phase !== "PIQUE_REVEAL") return;
-
-      // ── Caso: Llevo Juego durante DESCARTE ──
-      if (this.pendingLlevoJuegoPlayerId) {
-        const playerId = this.pendingLlevoJuegoPlayerId;
-        this.pendingLlevoJuegoPlayerId = "";
-        const player = this.state.players.get(playerId);
-
-        if (player) {
-          player.revealedCards = "";
-
-          // Barajar cartas del jugador y ponerlas encima del naipe
-          const playerCards = player.cards ? player.cards.split(',').filter(Boolean) : [];
-          for (let i = playerCards.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [playerCards[i], playerCards[j]] = [playerCards[j], playerCards[i]];
-          }
-          for (const card of playerCards) {
-            this.deck.push(card);
-          }
-          this.setPlayerCards(playerId, "");
-
-          // Pagar pique menos comisión
-          const piqueRake = Math.ceil(this.state.piquePot * 0.05 / 100) * 100;
-          const piquePayout = this.state.piquePot - piqueRake;
-          player.chips += piquePayout;
-          console.log(`[MesaRoom] ${player.nickname} gana el pique por Llevo Juego: $${piquePayout} (Rake: $${piqueRake})`);
-          this.state.lastAction = `¡${player.nickname} gana el Pique! (+$${(piquePayout / 100).toLocaleString()})`;
-
-          if (player.supabaseUserId) {
-            SupabaseService.awardPot(player.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
-          }
-          this.recordEvent({ event: 'pique_won', winner: playerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
-          this.state.piquePot = 0;
-
-          // Retirar al jugador del pot principal
-          player.isFolded = true;
-          if (player.id === this.state.activeManoId) this.transferMano();
-        }
-
-        // Reanudar la fase de origen
-        const returnPhase = this.phaseBeforePiqueReveal || "DESCARTE";
-        this.phaseBeforePiqueReveal = "";
-
-        if (returnPhase === "DESCARTE") {
-          this.state.phase = "DESCARTE";
-          this.advanceTurnPhaseDescarte();
-        } else {
-          // APUESTA_4_CARTAS, GUERRA, CANTICOS, etc.
-          this.state.phase = returnPhase;
-          const nextPhaseCallback = this.getNextPhaseCallback(returnPhase);
-          this.advanceTurnBetting(undefined, nextPhaseCallback);
-        }
-        return;
-      }
-
-      // ── Caso original: reveal durante PIQUE ──
-      const revealedPlayer = Array.from(this.state.players.values() as IterableIterator<Player>)
-        .find(p => p.revealedCards && p.isFolded);
-      if (revealedPlayer) {
-        revealedPlayer.revealedCards = "";
-      }
-      // Restaurar la fase PIQUE y continuar el turno
-      this.state.phase = "PIQUE";
-      this.advanceTurnPhase2();
+      handleDismissReveal(this, client);
     });
 
     // ── Llevo Juego: jugador que pasó con juego reclama el pique durante DESCARTE ──
     this.onMessage("llevo-juego", (client) => {
-      if (this.state.phase !== "DESCARTE") return;
-      if (this.state.turnPlayerId !== client.sessionId) return;
-      const player = this.state.players.get(client.sessionId);
-      if (!player || !player.passedWithJuego) return;
-
-      player.hasActed = true;
-      player.revealedCards = player.cards;
-      this.state.lastAction = `¡${player.nickname} lleva juego!`;
-      console.log(`[MesaRoom] ${player.nickname} declara Llevo Juego en DESCARTE`);
-
-      this.recordEvent({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action: 'llevo-juego', time: Date.now(), rng_state: this.getRngState() });
-
-      // Guardar referencia para procesar en dismiss-reveal
-      this.pendingLlevoJuegoPlayerId = client.sessionId;
-      this.phaseBeforePiqueReveal = "DESCARTE";
-
-      // Cambiar a PIQUE_REVEAL para mostrar las cartas
-      this.state.phase = "PIQUE_REVEAL";
-      this.state.turnPlayerId = client.sessionId;
-
-      this.broadcast("pique-fold-reveal", {
-        playerId: client.sessionId,
-        llevaJuego: true,
-        cards: player.cards
-      });
+      handleLlevoJuego(this, client);
     });
 
     // ── Resolución inmediata de Llevo Juego / No Llevo en cualquier fase de apuestas ──
     this.onMessage("paso-juego-response", (client, message) => {
-      if (this.pendingPasoJuegoPlayerId !== client.sessionId) return;
-      const resolvePhase = this.pendingPasoJuegoPhase;
-      if (this.state.phase !== resolvePhase) return;
-
-      const player = this.state.players.get(client.sessionId);
-      if (!player) return;
-
-      const { llevaJuego } = message;
-      this.pendingPasoJuegoPlayerId = "";
-      this.pendingPasoJuegoPhase = "";
-
-      this.recordEvent({ event: 'action', phase: resolvePhase, player: client.sessionId, action: llevaJuego ? 'llevo-juego-inmediato' : 'no-llevo-juego', time: Date.now(), rng_state: this.getRngState() });
-
-      // Callback de siguiente fase según la fase actual
-      const nextPhaseCallback = this.getNextPhaseCallback(resolvePhase);
-
-      if (llevaJuego) {
-        player.hasActed = true;
-        player.passedWithJuego = true;
-
-        if (resolvePhase === 'APUESTA_4_CARTAS') {
-          // En APUESTA_4_CARTAS: sale del pozo principal, compite solo por pique (diferido)
-          player.isFolded = true;
-          player.revealedCards = player.cards;
-          this.state.lastAction = `¡${player.nickname} lleva juego!`;
-          console.log(`[MesaRoom] ${player.nickname} lleva juego en APUESTA_4_CARTAS — sale del pozo principal, pique diferido`);
-
-          this.broadcast("pique-fold-reveal", {
-            playerId: client.sessionId,
-            llevaJuego: true,
-            cards: player.cards
-          });
-
-          this.attemptManoRotation(client.sessionId, "Lleva juego — sale del pozo principal");
-          if (player.id === this.state.activeManoId) this.transferMano();
-
-          // Continuar la ronda de apuestas (pique se resuelve al final)
-          this.advanceTurnBetting(undefined, nextPhaseCallback);
-        } else {
-          // Otras fases: revelar cartas, resolver pique inmediatamente via PIQUE_REVEAL
-          player.revealedCards = player.cards;
-          this.state.lastAction = `¡${player.nickname} lleva juego!`;
-          console.log(`[MesaRoom] ${player.nickname} lleva juego inmediatamente en ${resolvePhase}`);
-
-          this.pendingLlevoJuegoPlayerId = client.sessionId;
-          this.phaseBeforePiqueReveal = resolvePhase;
-
-          this.state.phase = "PIQUE_REVEAL";
-          this.state.turnPlayerId = client.sessionId;
-
-          this.broadcast("pique-fold-reveal", {
-            playerId: client.sessionId,
-            llevaJuego: true,
-            cards: player.cards
-          });
-        }
-      } else {
-        // No lleva juego: fold y devolver cartas al mazo
-        player.isFolded = true;
-        player.hasActed = true;
-        this.state.lastAction = `${player.nickname} no lleva juego — se bota`;
-        console.log(`[MesaRoom] ${player.nickname} no lleva juego — fold inmediato en ${resolvePhase}`);
-
-        const wasMano = player.id === this.state.activeManoId;
-        this.collectPlayerCards(client.sessionId, resolvePhase === 'APUESTA_4_CARTAS' && wasMano && this.seatOrder.length === 7);
-
-        this.attemptManoRotation(client.sessionId, "Mano no lleva juego");
-        if (wasMano) this.transferMano();
-
-        // Continuar la ronda de apuestas con el callback correcto
-        this.advanceTurnBetting(undefined, nextPhaseCallback);
-      }
+      handlePasoJuegoResponse(this, client, message);
     });
 
     this.onMessage("dismiss-showdown", (client) => {
-      if (this.state.phase !== "SHOWDOWN") return;
-
-      // Caso 1: Showdown del pique (después de completar 4 cartas)
-      if (this.pendingPiqueWinnerId) {
-        this.state.players.forEach((p: Player) => { p.revealedCards = ""; });
-        const winnerId = this.pendingPiqueWinnerId;
-        this.attemptManoRotation(winnerId, "Mano ganó Pique");
-        this.awardPiqueAndContinue(winnerId);
-        return;
-      }
-
-      // Caso 2: Showdown de un solo jugador que eligió mostrar cartas
-      if (!this.pendingShowdownData) {
-        this.state.players.forEach((p: Player) => { p.revealedCards = ""; });
-        const winner = Array.from(this.state.players.values() as IterableIterator<Player>)
-          .find(p => !p.isFolded && p.connected);
-        if (winner) {
-          this.awardPot(winner.id);
-        }
-        return;
-      }
-
-      // Caso 3: Showdown multi-jugador — payout already persisted, just cleanup
-      const { overallWinnerId, potWinners, totalPayout, totalRake, activePlayers } = this.pendingShowdownData;
-      this.pendingShowdownData = null;
-      this.finalizeShowdown(overallWinnerId, potWinners, totalPayout, totalRake, activePlayers);
+      handleDismissShowdown(this, client);
     });
 
     this.onMessage("declarar-juego", (client, message) => {
-      if (this.state.phase !== "DECLARAR_JUEGO") return;
-      if (this.state.turnPlayerId !== client.sessionId) return;
-      const player = this.state.players.get(client.sessionId);
-      if (!player) return;
-
-      // Server-side validation: determine if the player actually has juego
-      const hand = evaluateHand(player.cards);
-      const actuallyHasJuego = hand.type !== 'NINGUNA';
-      // Force the correct value regardless of what the client sent
-      const tiene = actuallyHasJuego;
-
-      player.hasActed = true;
-      player.declaredJuego = tiene;
-      this.recordEvent({ event: 'declarar_juego', player: client.sessionId, tiene, clientClaimed: message?.tiene, serverOverride: message?.tiene !== tiene, time: Date.now(), rng_state: this.getRngState() });
-
-      if (tiene) {
-        const hand = evaluateHand(player.cards);
-        this.state.lastAction = `${player.nickname} declara: ¡Tengo ${hand.type}!`;
-        console.log(`[MesaRoom] ${player.nickname} declara tener juego (${hand.type}, ${hand.points} pts)`);
-      } else {
-        this.state.lastAction = `${player.nickname} declara: No tengo juego`;
-        console.log(`[MesaRoom] ${player.nickname} declara no tener juego`);
-      }
-
-      this.advanceTurnDeclarar();
+      handleDeclararJuego(this, client, message);
     });
 
     this.onMessage("show-muck", (client, message) => {
-      if (this.state.phase !== "SHOWDOWN_WAIT") return;
-      const player = this.state.players.get(client.sessionId);
-      if (!player) return;
-      // Solo el ganador puede decidir
-      if (client.sessionId !== this.state.turnPlayerId) return;
-
-      // Check if this is a pique show/muck or main pot show/muck
-      if (this.pendingPiqueWinnerId) {
-        if (message.action === "show") {
-          this.state.lastAction = `${player.nickname} muestra sus cartas del Pique`;
-          player.revealedCards = player.cards;
-          this.state.phase = "SHOWDOWN";
-          this.state.showdownTimer = 0;
-          // Sin timer — esperar "dismiss-showdown"
-        } else {
-          this.state.lastAction = `${player.nickname} no muestra las cartas`;
-          this.awardPiqueAndContinue(client.sessionId);
-        }
-        return;
-      }
-
-      if (message.action === "show") {
-        this.state.lastAction = `${player.nickname} muestra sus cartas`;
-        player.revealedCards = player.cards;
-        // Mostrar cartas sin timer automático — esperar "dismiss-showdown"
-        this.state.phase = "SHOWDOWN";
-        this.state.showdownTimer = 0;
-      } else {
-        this.state.lastAction = `${player.nickname} no muestra las cartas`;
-        this.awardPot(client.sessionId);
-      }
+      handleShowMuck(this, client, message);
     });
 
     // ── Admin Moderation (spectator-only) ──
 
     this.onMessage("admin:kick", (client, message) => {
-      if (!this.spectators.has(client.sessionId)) return;
-      const targetId = message.playerId;
-      const target = this.state.players.get(targetId);
-      if (!target) return;
-
-      console.log(`[MesaRoom] Admin kick: ${target.nickname} (${targetId})`);
-      this.state.lastAction = `${target.nickname} fue retirado por el admin`;
-
-      const targetClient = this.clients.find(c => c.sessionId === targetId);
-      if (targetClient) targetClient.leave(4001, "Kicked by admin");
-      this.removePlayer(targetId);
+      handleAdminKick(this, client, message);
     });
 
     this.onMessage("admin:mute", (client, message) => {
-      if (!this.spectators.has(client.sessionId)) return;
-      const targetId = message.playerId;
-      const target = this.state.players.get(targetId);
-      if (!target) return;
-
-      console.log(`[MesaRoom] Admin mute: ${target.nickname} (${targetId})`);
-      // Notify the target client; the frontend/LiveKit will handle the actual muting
-      const targetClient = this.clientMap.get(targetId);
-      if (targetClient) targetClient.send("admin:muted", { reason: message.reason || "Silenciado por admin" });
+      handleAdminMute(this, client, message);
     });
 
     this.onMessage("admin:ban", (client, message) => {
-      if (!this.spectators.has(client.sessionId)) return;
-      const targetId = message.playerId;
-      const target = this.state.players.get(targetId);
-      if (!target) return;
-
-      console.log(`[MesaRoom] Admin ban: ${target.nickname} (${targetId})`);
-      this.state.lastAction = `${target.nickname} fue baneado de la mesa`;
-
-      const targetClient = this.clients.find(c => c.sessionId === targetId);
-      if (targetClient) targetClient.leave(4002, "Banned by admin");
-      this.removePlayer(targetId);
+      handleAdminBan(this, client, message);
     });
 
     // ── Resincronización silenciosa de cartas privadas ──
     this.onMessage("request-resync", (client) => {
-      if (this.spectators.has(client.sessionId)) return; // Admin blindness: no cards for spectators
-      const player = this.state.players.get(client.sessionId);
-      if (!player || !player.cards) return;
-      // Mantener clientMap actualizado: tras reconnect el transport cambia
-      this.clientMap.set(client.sessionId, client);
-      console.log(`[MesaRoom] Resync cartas privadas → ${player.nickname}`);
-      // Enviar directamente por el client live (no depender de clientMap lookup)
-      const cards = player.cards.split(',').filter(Boolean);
-      client.send("private-cards", cards);
+      handleRequestResync(this, client);
     });
 
     // ── Lookup de jugador por teléfono (para transferencia en mesa sin HTTP) ──
     this.onMessage("lookup-player", async (client, message) => {
-      if (this.spectators.has(client.sessionId)) return;
-      const { phone } = message || {};
-      if (!phone || typeof phone !== 'string') {
-        client.send("lookup-result", { success: false, error: 'Número inválido' });
-        return;
-      }
-      try {
-        const result = await SupabaseService.lookupUserByPhone(phone);
-        client.send("lookup-result", result);
-      } catch (e) {
-        client.send("lookup-result", { success: false, error: 'Error al buscar usuario' });
-      }
+      await handleLookupPlayer(this, client, message);
     });
 
     // ── Transferencia P2P entre jugadores ──
     this.onMessage("transfer", async (client, message) => {
-      // Solo jugadores reales pueden transferir (no spectators)
-      if (this.spectators.has(client.sessionId)) return;
-
-      const sender = this.state.players.get(client.sessionId);
-      if (!sender || !sender.supabaseUserId) {
-        client.send("transfer-result", { success: false, error: 'Jugador no válido' });
-        return;
-      }
-
-      const { recipientUserId, amountCents } = message;
-
-      if (!recipientUserId || typeof amountCents !== 'number') {
-        client.send("transfer-result", { success: false, error: 'Datos inválidos' });
-        return;
-      }
-
-      // Validar monto mínimo
-      if (amountCents < 10000) {
-        client.send("transfer-result", { success: false, error: 'El monto mínimo es $100' });
-        return;
-      }
-
-      // Validar que el sender tiene suficientes chips
-      if (amountCents > sender.chips) {
-        client.send("transfer-result", { success: false, error: 'Saldo insuficiente en la mesa' });
-        return;
-      }
-
-      // No auto-transferencia
-      if (sender.supabaseUserId === recipientUserId) {
-        client.send("transfer-result", { success: false, error: 'No puedes transferirte a ti mismo' });
-        return;
-      }
-
-      try {
-        const result = await SupabaseService.transferBetweenPlayers(
-          sender.supabaseUserId,
-          recipientUserId,
-          amountCents,
-          { roomId: this.roomId }
-        );
-
-        if (!result.success) {
-          client.send("transfer-result", { success: false, error: result.error || 'Error en la transferencia' });
-          return;
-        }
-
-        // Actualizar chips del sender inmediatamente
-        sender.chips -= amountCents;
-
-        // Buscar si el recipient está en esta room y actualizar sus chips
-        let recipientSessionId: string | null = null;
-        this.state.players.forEach((player, sessionId) => {
-          if (player.supabaseUserId === recipientUserId) {
-            player.chips += amountCents;
-            recipientSessionId = sessionId;
-          }
-        });
-
-        // Notificar al sender
-        client.send("transfer-result", {
-          success: true,
-          recipientName: result.recipientName,
-          amountCents,
-          newBalance: sender.chips,
-        });
-
-        // Notificar al recipient si está en la room
-        if (recipientSessionId) {
-          const recipientClient = this.clientMap.get(recipientSessionId);
-          if (recipientClient) {
-            recipientClient.send("transfer-received", {
-              senderName: sender.nickname,
-              amountCents,
-              newBalance: this.state.players.get(recipientSessionId)?.chips || 0,
-            });
-          }
-        }
-
-        console.log(`[MesaRoom] Transfer: ${sender.nickname} → ${result.recipientName}, $${amountCents / 100}`);
-      } catch (e) {
-        console.error('[MesaRoom] Transfer error:', e);
-        client.send("transfer-result", { success: false, error: 'Error interno al procesar la transferencia' });
-      }
+      await handleTransfer(this, client, message);
     });
   }
 
   async onJoin(client: Client, options: any) {
-    // ── Spectator (admin) mode ──
-    if (options.spectator === true) {
-      // Validate supervision token for authorized spectator access
-      const { valid } = await SupabaseService.validateSupervisionToken(
-        options.supervisionToken,
-        this.roomId
-      );
-      if (!valid) {
-        throw new Error("Token de supervisión inválido o expirado (code: 4003)");
-      }
-      console.log(`[MesaRoom] Espectador (admin) conectado: ${client.sessionId}`);
-      this.spectators.set(client.sessionId, client);
-      // Spectators do NOT get a Player schema entry and NEVER receive private cards (Admin Blindness)
-      client.send("spectator:joined", { roomId: this.roomId, phase: this.state.phase });
-      // Notify all players that an admin is watching
-      this.broadcast("admin:status", { active: true, count: this.spectators.size });
-      return;
-    }
-
-    const requestedNickname = options.nickname || `Jugador_${client.sessionId}`;
-    const deviceId = options.deviceId;
-
-    // ── Sanction enforcement: block players with active game/full/permanent sanctions ──
-    if (options.userId) {
-      const access = await SupabaseService.checkTableAccess(options.userId);
-      if (access.blocked) {
-        throw new Error(
-          `Acceso denegado: ${access.reason || 'sanción activa'} (code: 4004)`
-        );
-      }
-    }
-
-    // Registrar cliente para mensajería privada
-    this.clientMap.set(client.sessionId, client);
-
-    // Ghost player cleanup and state restoration:
-    // Match by deviceId first, then fall back to userId (handles enforceSessionPolicy
-    // scenario where profiles.last_device_id differs from the original localStorage deviceId)
-    console.log(`[MesaRoom] onJoin: buscando ghost para deviceId=${deviceId}, userId=${options.userId}. Players: ${Array.from(this.state.players.entries()).map(([id, p]) => `${(p as Player).nickname}(${id},dev=${(p as Player).deviceId},uid=${(p as Player).supabaseUserId},conn=${(p as Player).connected})`).join(', ')}`);
-
-    const existingPlayerEntry = Array.from(this.state.players.entries()).find(
-      ([_, p]) => (deviceId && (p as Player).deviceId === deviceId) ||
-                  (options.userId && (p as Player).supabaseUserId === options.userId)
-    );
-
-    if (existingPlayerEntry) {
-      const [oldSessionId, oldPlayer] = existingPlayerEntry;
-      console.log(`[RECONNECT:GHOST] ${oldPlayer.nickname} (${oldSessionId}→${client.sessionId}), connected=${oldPlayer.connected}, phase=${this.state.phase}, hasCards=${!!oldPlayer.cards}, dealerId=${this.state.dealerId}, activeManoId=${this.state.activeManoId}`);
-
-      // Forzar cierre del socket viejo si seguía atascado
-      if (oldPlayer.connected) {
-        try {
-          const oldClient = this.clients.find(c => c.sessionId === oldSessionId);
-          if (oldClient) oldClient.leave(4000, "Replaced by new connection");
-        } catch (e) { }
-      }
-
-      const newPlayer = new Player();
-      newPlayer.id = client.sessionId;
-      newPlayer.nickname = oldPlayer.nickname;
-      newPlayer.avatarUrl = oldPlayer.avatarUrl;
-      newPlayer.chips = oldPlayer.chips;
-      newPlayer.cards = oldPlayer.cards;
-      newPlayer.cardCount = oldPlayer.cardCount;
-      newPlayer.revealedCards = oldPlayer.revealedCards;
-      // Si la sala fue reseteada (LOBBY), el jugador debe estar listo de nuevo
-      newPlayer.isReady = this.state.phase === "LOBBY" ? false : oldPlayer.isReady;
-      newPlayer.hasActed = this.state.phase === "LOBBY" ? false : oldPlayer.hasActed;
-      newPlayer.isFolded = this.state.phase === "LOBBY" ? false : oldPlayer.isFolded;
-      newPlayer.connected = true;
-      newPlayer.deviceId = oldPlayer.deviceId;
-      // Prefer fresh userId from options (fixes ghost players created without auth)
-      newPlayer.supabaseUserId = options.userId || oldPlayer.supabaseUserId;
-
-      if (!newPlayer.supabaseUserId) {
-        AlertService.identity(requestedNickname, client.sessionId, this.roomId);
-      }
-
-      // Si reconecta en LOBBY, actualizar chips con el saldo actual de opciones
-      if (this.state.phase === "LOBBY" && options.chips) {
-        newPlayer.chips = options.chips;
-      }
-
-      this.state.players.delete(oldSessionId);
-      this.clientMap.delete(oldSessionId);
-      this.state.players.set(client.sessionId, newPlayer);
-
-      // Actualizar el asiento en el orden estable para mantener la rotación correcta
-      const ghostSeatIdx = this.seatOrder.indexOf(oldSessionId);
-      if (ghostSeatIdx !== -1) {
-        this.seatOrder[ghostSeatIdx] = client.sessionId;
-      }
-
-      if (this.state.dealerId === oldSessionId) {
-        this.state.dealerId = client.sessionId;
-        console.log(`[MesaRoom] Ghost restore: dealerId remapped ${oldSessionId} → ${client.sessionId}`);
-      }
-      if (this.state.activeManoId === oldSessionId) {
-        this.state.activeManoId = client.sessionId;
-        console.log(`[MesaRoom] Ghost restore: activeManoId remapped ${oldSessionId} → ${client.sessionId}`);
-      }
-      if (this.state.turnPlayerId === oldSessionId) {
-        this.state.turnPlayerId = client.sessionId;
-      }
-
-      // Re-enviar las cartas privadas al cliente reconectado (solo si hay partida activa)
-      // Actualizar clientMap primero: el client del ghost restore tiene transport nuevo
-      this.clientMap.set(client.sessionId, client);
-      if (this.state.phase !== "LOBBY") {
-        const cards = newPlayer.cards ? newPlayer.cards.split(',').filter(Boolean) : [];
-        client.send("private-cards", cards);
-      }
-
-      // Re-enviar configuración de la sala al cliente reconectado
-      const meta = this.metadata as MesaMetadata;
-      client.send("room-config", {
-        disabledChips: meta?.disabledChips || [],
-        minEntry: meta?.minEntry || MIN_BALANCE_CENTS,
-        minPique: meta?.minPique || 500_000,
-        isCustom: meta?.isCustom || false,
-      });
-
-      this.updateLobbyMetadata();
-      this.checkStartCountdown();
-      return;
-    }
-
-    // ── Validación de saldo mínimo (usa minEntry personalizado si existe) ──
-    const chips = options.chips || 0;
-    const roomMinEntry = (this.metadata as MesaMetadata)?.minEntry || MIN_BALANCE_CENTS;
-    if (chips < roomMinEntry) {
-      const formatted = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(roomMinEntry / 100);
-      throw new Error(`Fondos insuficientes. Se requiere un saldo mínimo de ${formatted} para entrar a esta mesa. Por favor, recargue su cuenta.`);
-    }
-
-    console.log(`[MesaRoom] Cliente unido: ${client.sessionId} -> ${requestedNickname}`);
-
-    const newPlayer = new Player();
-    newPlayer.id = client.sessionId;
-    newPlayer.nickname = requestedNickname;
-    newPlayer.avatarUrl = options.avatarUrl || "default";
-    newPlayer.chips = chips;
-    newPlayer.connected = true;
-    newPlayer.deviceId = deviceId;
-    newPlayer.supabaseUserId = options.userId || "";
-
-    if (!newPlayer.supabaseUserId) {
-      AlertService.identity(requestedNickname, client.sessionId, this.roomId);
-    }
-
-    // Si la partida está en curso, el jugador entra como "esperando"
-    if (this.state.phase !== "LOBBY") {
-      newPlayer.isWaiting = true;
-      console.log(`[MesaRoom] ⚠️ FRESH JOIN mid-game: ${requestedNickname} (deviceId=${deviceId}, userId=${options.userId}) entra como espectador (phase=${this.state.phase}). NO HUBO ghost match — este jugador no fue reconocido como existente.`);
-    }
-
-    this.state.players.set(client.sessionId, newPlayer);
-
-    // Solo agregar al seatOrder si no está esperando (los que esperan se agregan al volver a LOBBY)
-    if (!newPlayer.isWaiting) {
-      this.seatOrder.push(client.sessionId);
-    }
-    this.updateLobbyMetadata();
-
-    // El primer jugador es el dealer por defecto, o si el dealer actual no es válido
-    const currentDealer = this.state.players.get(this.state.dealerId);
-    if (this.state.players.size === 1 || !currentDealer || !currentDealer.connected) {
-      this.state.dealerId = client.sessionId;
-    }
-
-    // Enviar configuración de la sala al cliente (chips deshabilitados, min entry, etc.)
-    const meta = this.metadata as MesaMetadata;
-    client.send("room-config", {
-      disabledChips: meta?.disabledChips || [],
-      minEntry: meta?.minEntry || MIN_BALANCE_CENTS,
-      minPique: meta?.minPique || 500_000,
-      isCustom: meta?.isCustom || false,
-    });
-
-    // Cancelar/revalidar countdown en caso de que un nuevo jugador descuadre el "todos listos"
-    this.checkStartCountdown();
+    return handleConnectionJoin(this, client, options);
   }
 
   private updateLobbyMetadata() {
@@ -1171,112 +249,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   async onLeave(client: Client, code?: number) {
-    // Clean up spectator if applicable
-    if (this.spectators.has(client.sessionId)) {
-      console.log(`[MesaRoom] Espectador desconectado: ${client.sessionId}`);
-      this.spectators.delete(client.sessionId);
-      // Notify players that admin left
-      this.broadcast("admin:status", { active: this.spectators.size > 0, count: this.spectators.size });
-      return;
-    }
-
-    const consented = (code === COLYSEUS_CONSENTED_CLOSE_CODE);
-    const player = this.state.players.get(client.sessionId);
-
-    if (!player) return;
-
-    const shouldTransferActiveMano = this.state.activeManoId === client.sessionId && this.state.phase !== "LOBBY";
-
-    console.log(`[MesaRoom] Cliente desconectado: ${player.nickname} (${client.sessionId}). Code: ${code}, Consented: ${consented}, Phase: ${this.state.phase}, dealerId: ${this.state.dealerId}, activeManoId: ${this.state.activeManoId}`);
-    player.connected = false;
-    this.updateLobbyMetadata();
-
-    // Si TODOS los jugadores están desconectados, resetear la sala a estado limpio
-    const anyoneConnected = Array.from(this.state.players.values()).some((p: Player) => p.connected);
-    if (!anyoneConnected && this.state.players.size > 0) {
-      console.log(`[MesaRoom] Todos los jugadores se desconectaron. Reseteando sala a estado limpio.`);
-      this.resetRoomState();
-    }
-
-    this.checkStartCountdown();
-
-    if (consented) {
-      if (shouldTransferActiveMano) {
-        console.log(`[MesaRoom] activeManoId era ${player.nickname}, transfiriendo mano activa por salida definitiva...`);
-        this.transferMano();
-      }
-
-      // Solo en desconexión explícita (CloseCode.CONSENTED = 4000): transferir dealerId y remover jugador
-      if (this.state.dealerId === client.sessionId) {
-        const currentSeatIdx = this.seatOrder.indexOf(client.sessionId);
-        let replaced = false;
-        if (currentSeatIdx !== -1) {
-          for (let i = 1; i < this.seatOrder.length; i++) {
-            const nextIdx = (currentSeatIdx + i) % this.seatOrder.length;
-            const nextId = this.seatOrder[nextIdx];
-            const p = this.state.players.get(nextId);
-            if (p && p.connected) {
-              this.state.dealerId = nextId;
-              this.dealerRotatedThisGame = true;
-              console.log(`[MesaRoom] El anfitrión se fue (consented). Mano pasa a ${p.nickname}.`);
-              replaced = true;
-              break;
-            }
-          }
-        }
-        if (!replaced) {
-          const fallback = Array.from(this.state.players.values()).find(p => p.connected && p.id !== client.sessionId);
-          if (fallback) {
-            this.state.dealerId = fallback.id;
-            this.dealerRotatedThisGame = true;
-          }
-        }
-      }
-      console.log(`[RECONNECT:ABANDON] ${player.nickname} (${client.sessionId}) — desconexión explícita (code=${code}), phase=${this.state.phase}`);
-      this.removePlayer(client.sessionId);
-      return;
-    }
-
-    // Non-consented: dealerId NO se transfiere. Se preserva durante el grace period.
-    console.log(`[MesaRoom] dealerId preservado en ${this.state.dealerId} durante grace period para ${player.nickname}.`);
-
-    try {
-      console.log(`[MesaRoom] Otorgando 5 minutos de reconexión para ${player.nickname}...`);
-      // 300 segundos = 5 minutos de gracia
-      await this.allowReconnection(client, 300);
-
-      player.connected = true;
-      // Actualizar clientMap: tras reconnect, Colyseus reutiliza el Client
-      // pero el transport interno cambia. Sin este set, sendPrivateCards() usa la ref muerta.
-      this.clientMap.set(client.sessionId, client);
-      this.updateLobbyMetadata();
-      console.log(`[RECONNECT:NATIVE] ${player.nickname} (${client.sessionId}), phase=${this.state.phase}, hasCards=${!!player.cards}, dealerId=${this.state.dealerId}, activeManoId=${this.state.activeManoId}`);
-
-      // Re-enviar cartas privadas tras reconexión exitosa
-      if (this.state.phase !== "LOBBY" && player.cards) {
-        const cards = player.cards.split(',').filter(Boolean);
-        client.send("private-cards", cards);
-      }
-
-      // Re-enviar configuración de la sala
-      const meta = this.metadata as MesaMetadata;
-      client.send("room-config", {
-        disabledChips: meta?.disabledChips || [],
-        minEntry: meta?.minEntry || MIN_BALANCE_CENTS,
-        minPique: meta?.minPique || 500_000,
-        isCustom: meta?.isCustom || false,
-      });
-
-    } catch (e) {
-      console.log(`[RECONNECT:GRACE_EXPIRED] ${player.nickname} (${client.sessionId}) — grace period agotado, phase=${this.state.phase}`);
-
-      if (shouldTransferActiveMano) {
-        console.log(`[MesaRoom] Grace period agotado para ${player.nickname}, transfiriendo mano activa...`);
-        this.transferMano();
-      }
-
-      this.removePlayer(client.sessionId);
-    }
+    return handleConnectionLeave(this, client, code);
   }
 
   private removePlayer(sessionId: string) {
@@ -1462,15 +435,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   private createDeck() {
-    const suits = ["O", "C", "E", "B"]; // Oros, Copas, Espadas, Bastos
-    const values = ["1", "2", "3", "4", "5", "6", "7"]; // 7 cartas por palo
-
-    this.deck = [];
-    for (const suit of suits) {
-      for (const val of values) {
-        this.deck.push(`${val}-${suit}`);
-      }
-    }
+    // Delegado a core/DeckManager (refactor Fase 1.1). Comportamiento idéntico.
+    this.deck = createDeckPure();
   }
 
   /**
@@ -1540,164 +506,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Fase 1: Sorteo de La Mano
    */
   private startPhase1Sorteo() {
-    // STARTING: 5s for the cinematic intro animation on the client
-    this.state.phase = "STARTING";
-    console.log(`[MesaRoom] Fase STARTING: mostrando intro animación...`);
-
-    this.clock.setTimeout(() => {
-      // BARAJANDO: 12s for the GSAP shuffle animation (10s animation + 2s buffer)
-      this.state.phase = "BARAJANDO";
-      console.log(`[MesaRoom] Barajando para Sorteo Mano...`);
-
-      this.createDeck();
-      this.shuffleDeck();
-
-      this.clock.setTimeout(() => {
-        this.state.phase = "SORTEO_MANO";
-        console.log(`[MesaRoom] Fase 1: Sorteo de La Mano buscando un Oro...`);
-
-        let manoPlayerId = "";
-
-        // Ordenar jugadores empezando por el Host (dealer actual placeholder) y rotando
-        const playerIds = Array.from(this.state.players.keys());
-        const hostIdx = playerIds.indexOf(this.state.dealerId) >= 0 ? playerIds.indexOf(this.state.dealerId) : 0;
-
-        const orderedActivePlayers: { player: Player; sessionId: string }[] = [];
-        for (let i = 0; i < playerIds.length; i++) {
-          const idx = (hostIdx + i) % playerIds.length;
-          const sessionId = playerIds[idx];
-          const p = this.state.players.get(sessionId);
-          if (p && !p.isFolded && p.connected) {
-            orderedActivePlayers.push({ player: p, sessionId });
-          }
-        }
-
-        let currentPlayerIndex = 0;
-
-        const dealInterval = this.clock.setInterval(() => {
-          // Si ya encontramos oro o nos quedamos sin cartas, terminar
-          if (manoPlayerId || this.deck.length === 0) {
-            dealInterval.clear();
-            if (manoPlayerId) {
-              this.state.dealerId = manoPlayerId;
-              this.state.lastAction = `¡${this.state.players.get(manoPlayerId)?.nickname} sacó ORO y es La Mano!`;
-              // Asignar números de turno a todos los jugadores según el orden de asientos
-              this.assignTurnOrders();
-            }
-
-            this.clock.setTimeout(() => {
-              this.startPhase2Pique();
-            }, 3000);
-            return;
-          }
-
-          const { player, sessionId } = orderedActivePlayers[currentPlayerIndex];
-          const card = this.deck.pop();
-
-          if (card) {
-            const newCards = player.cards ? player.cards + "," + card : card;
-            // SORTEO: cartas visibles para todos (reveal = true)
-            this.setPlayerCards(sessionId, newCards, true);
-
-            // Cualquier Oro otorga la mano
-            const suit = card.split('-')[1];
-            if (suit === 'O') {
-              manoPlayerId = sessionId;
-            }
-          }
-
-          currentPlayerIndex = (currentPlayerIndex + 1) % orderedActivePlayers.length;
-        }, 3000); // 3s per card for cinematic sorteo
-      }, 12000); // 12s for GSAP shuffle animation (10s) + 2s buffer
-    }, 5000); // 5s for STARTING phase intro animation
+    sorteoPhase.enter(this);
   }
 
   /**
    * Fase 2: El Pique
    */
   private async startPhase2Pique(skipAnte: boolean = false) {
-    this.state.phase = "BARAJANDO";
-    console.log(`[MesaRoom] Barajando para el Pique...`);
-
-    // Limpiar registro de jugadores que pasaron para el cobro de banda
-    this.piquePassPlayerIds.clear();
-    this.piquePreBetPasserIds.clear();
-    this.piqueReopenActive = false;
-    this.piqueReopenPendingIds.clear();
-
-    // Resetear apuesta máxima del pique (La Mano la fijará al apostar)
-    this.state.currentMaxBet = 0;
-
-    // Recoger cartas, barajar de nuevo
-    this.createDeck();
-    this.shuffleDeck();
-    // Limpiar cartas (privadas + públicas) de todos los jugadores
-    this.state.players.forEach((p: Player, sessionId: string) => {
-      this.setPlayerCards(sessionId, "");
-      p.revealedCards = "";
-    });
-
-    // Inicializar la Mano activa para el orden de turnos de esta partida
-    this.state.activeManoId = this.state.dealerId;
-
-    // Safety guard: si el dealer está desconectado (en grace period), transferir mano activa
-    const dealerPlayer = this.state.players.get(this.state.activeManoId);
-    if (dealerPlayer && !dealerPlayer.connected) {
-      console.log(`[MesaRoom] startPhase2Pique: dealer ${dealerPlayer.nickname} desconectado, transfiriendo mano activa...`);
-      this.transferMano();
-    }
-
-    // Reset folds (skip ante for now per user request: pot must start at 0)
-    for (const [, p] of this.state.players) {
-      p.isFolded = !p.connected || p.isWaiting;
-    }
-    if (!skipAnte) {
-      this.state.lastAction = `Nueva mano iniciada.`;
-    }
-
-    this.clock.setTimeout(() => {
-      this.state.phase = "PIQUE_DEAL";
-      console.log(`[MesaRoom] Repartiendo 2 cartas de pique por jugador...`);
-
-      // Ordered by seatOrder starting from La Mano (activeManoId, captured before the delay)
-      const dealerSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
-      const startIdx = dealerSeatIdx >= 0 ? dealerSeatIdx : 0;
-      const orderedActivePlayers: { player: Player; sessionId: string }[] = [];
-      for (let i = 0; i < this.seatOrder.length; i++) {
-        const idx = (startIdx + i) % this.seatOrder.length;
-        const sessionId = this.seatOrder[idx];
-        const p = this.state.players.get(sessionId);
-        if (p && !p.isFolded && p.connected) {
-          orderedActivePlayers.push({ player: p, sessionId });
-        }
-      }
-
-      let currentPlayerIndex = 0;
-
-      // Deal 2 cards AT ONCE to each player (not round-robin)
-      const dealInterval = this.clock.setInterval(() => {
-        if (currentPlayerIndex >= orderedActivePlayers.length) {
-          dealInterval.clear();
-          this.clock.setTimeout(() => {
-            this.state.phase = "PIQUE";
-            this.state.players.forEach(p => p.hasActed = false);
-            this.advanceTurnPhase2(this.state.activeManoId);
-          }, 1000);
-          return;
-        }
-
-        const { player, sessionId } = orderedActivePlayers[currentPlayerIndex];
-        // Give both cards at once
-        const card1 = this.deck.pop();
-        const card2 = this.deck.pop();
-        let newCards = "";
-        if (card1) newCards = card1;
-        if (card2) newCards = newCards ? newCards + "," + card2 : card2;
-        this.setPlayerCards(sessionId, newCards);
-
-        currentPlayerIndex++;
-      }, 3000); // 3s between each player receiving their 2 cards
-    }, 12000); // 12s for GSAP shuffle animation (10s) + 2s buffer
+    await piquePhase.enter(this, { skipAnte });
   }
 
 
@@ -1976,69 +792,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Primero recoge las cartas de quienes pasaron en PIQUE, luego reparte las 2 cartas restantes a los activos.
    */
   private startPhase3CompletarMano() {
-    this.state.phase = "COMPLETAR";
-    console.log(`[MesaRoom] Iniciando Fase 3: Completar`);
-
-    // Collect cards from folded players back onto the top of the deck
-    for (const id of this.seatOrder) {
-      const p = this.state.players.get(id);
-      if (p && p.isFolded && p.cards) {
-        for (const card of p.cards.split(',').filter(Boolean)) {
-          this.deck.push(card);
-        }
-        this.setPlayerCards(id, "");
-      }
-    }
-
-    // Build ordered active players starting from La Mano
-    const dealerSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
-    const startIdx = dealerSeatIdx >= 0 ? dealerSeatIdx : 0;
-    const orderedActivePlayers: { player: Player; sessionId: string }[] = [];
-    for (let i = 0; i < this.seatOrder.length; i++) {
-      const idx = (startIdx + i) % this.seatOrder.length;
-      const sessionId = this.seatOrder[idx];
-      const p = this.state.players.get(sessionId);
-      if (p && !p.isFolded && p.connected) {
-        orderedActivePlayers.push({ player: p, sessionId });
-      }
-    }
-
-    if (orderedActivePlayers.length === 0) {
-      this.afterPiqueResolution();
-      return;
-    }
-
-    let currentPlayerIndex = 0;
-    let roundsDealt = 0;
-
-    const dealInterval = this.clock.setInterval(() => {
-      if (roundsDealt >= 2) {
-        dealInterval.clear();
-        this.clock.setTimeout(() => {
-          this.afterPiqueResolution();
-        }, 1000);
-        return;
-      }
-
-      const { player, sessionId } = orderedActivePlayers[currentPlayerIndex];
-      const currentCardsCount = player.cards ? player.cards.split(',').filter(Boolean).length : 0;
-
-      if (currentCardsCount < 4) {
-        // Repartir desde el fondo del mazo para evitar dar las cartas
-        // recién devueltas por jugadores que pasaron (están en el tope)
-        const card = this.deck.shift();
-        if (card) {
-          const newCards = player.cards ? player.cards + "," + card : card;
-          this.setPlayerCards(sessionId, newCards);
-        }
-      }
-
-      currentPlayerIndex++;
-      if (currentPlayerIndex >= orderedActivePlayers.length) {
-        currentPlayerIndex = 0;
-        roundsDealt++;
-      }
-    }, 3000);
+    completarPhase.enter(this);
   }
 
   /**
@@ -2154,15 +908,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Cada jugador activo descarta las cartas que no le sirven (sin apuestas — las apuestas ya ocurrieron en APUESTA_4_CARTAS).
    */
   private startPhaseDescarte() {
-    this.state.phase = "DESCARTE";
-    console.log(`[MesaRoom] Iniciando Fase: Descarte`);
-    this.pasoPendienteIds.clear();
-    this.pendingPasoJuegoPlayerId = "";
-    this.pendingPasoJuegoPhase = "";
-    this.state.players.forEach((p: Player) => p.hasActed = false);
-
-    // Start from La Mano activa
-    this.advanceTurnPhaseDescarte(this.state.activeManoId);
+    descartePhase.enter(this);
   }
 
   /**
@@ -2170,13 +916,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Ronda de apuestas con 4 cartas antes del descarte. Inicia en La Mano activa.
    */
   private startPhaseApuesta4Cartas() {
-    this.state.phase = "APUESTA_4_CARTAS";
-    console.log(`[MesaRoom] Iniciando APUESTA_4_CARTAS: ronda de apuestas con 4 cartas`);
-    this.pasoPendienteIds.clear();
-    this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
-    this.state.currentMaxBet = 0;
-    this.state.highestBetPlayerId = "";
-    this.advanceTurnBetting(this.state.activeManoId, () => this.startPhaseDescarte());
+    apuesta4CartasPhase.enter(this);
   }
 
   /**
@@ -2404,14 +1144,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   /**
    * Retorna el callback de siguiente fase según la fase de apuestas actual.
    */
+  /**
+   * Retorna el callback de siguiente fase según la fase de apuestas actual.
+   * Usa el PhaseRouter como fuente de verdad para las transiciones puras
+   * (CANTICOS → DECLARAR_JUEGO, GUERRA → CANTICOS, GUERRA_JUEGO → SHOWDOWN).
+   * APUESTA_4_CARTAS conserva su helper específico porque resuelve estado intermedio.
+   */
   private getNextPhaseCallback(phase: string): () => void {
-    switch (phase) {
-      case "APUESTA_4_CARTAS": return () => this.resolveAndStartDescarte();
-      case "GUERRA": return () => this.startPhase4Canticos();
-      case "CANTICOS": return () => this.startPhaseDeclararJuego();
-      case "GUERRA_JUEGO": return () => this.startPhase6Showdown();
-      default: return () => this.startPhase6Showdown();
-    }
+    if (phase === "APUESTA_4_CARTAS") return () => this.resolveAndStartDescarte();
+    const nextId = MesaRoom.NEXT_PHASE_TRANSITIONS[phase] ?? "SHOWDOWN";
+    return () => { enterPhase(this, nextId); };
   }
 
   /**
@@ -2512,63 +1254,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * en orden desde activeManoId, tomando del fondo del mazo.
    */
   private startPhaseReemplazoDescarte() {
-    this.state.phase = "COMPLETAR_DESCARTE";
-    console.log(`[MesaRoom] Repartiendo reemplazos por bloque desde el fondo del mazo...`);
-
-    // Ordered by seatOrder starting from activeManoId
-    const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
-    const startIdx = manoSeatIdx >= 0 ? manoSeatIdx : 0;
-    const playersNeedingCards: { player: Player; sessionId: string }[] = [];
-    for (let i = 0; i < this.seatOrder.length; i++) {
-      const idx = (startIdx + i) % this.seatOrder.length;
-      const sessionId = this.seatOrder[idx];
-      const p = this.state.players.get(sessionId);
-      if (p && !p.isFolded && p.connected && p.pendingDiscardCards.length > 0) {
-        playersNeedingCards.push({ player: p, sessionId });
-      }
-    }
-
-    if (playersNeedingCards.length === 0) {
-      this.startPhaseRevealBottomCard();
-      return;
-    }
-
-    // Block dealing: all pending cards for current player, then next player
-    let currentPlayerIdx = 0;
-
-    const dealInterval = this.clock.setInterval(() => {
-      if (currentPlayerIdx >= playersNeedingCards.length) {
-        dealInterval.clear();
-        this.startPhaseRevealBottomCard();
-        return;
-      }
-
-      const { player, sessionId } = playersNeedingCards[currentPlayerIdx];
-
-      if (player.pendingDiscardCards.length > 0) {
-        // Deal 1 card from bottom of deck
-        const card = this.deck.shift();
-        if (card) {
-          const newCards = player.cards ? player.cards + "," + card : card;
-          this.setPlayerCards(sessionId, newCards);
-        }
-        player.pendingDiscardCards = player.pendingDiscardCards.slice(1);
-
-        // If this player got all their cards, move to next player
-        if (player.pendingDiscardCards.length === 0) {
-          currentPlayerIdx++;
-        }
-      } else {
-        // Player already done, skip to next
-        currentPlayerIdx++;
-      }
-
-      // Check if all done
-      if (currentPlayerIdx >= playersNeedingCards.length) {
-        dealInterval.clear();
-        this.startPhaseRevealBottomCard();
-      }
-    }, 800); // 800ms between each individual card
+    reemplazoDescartePhase.enter(this);
   }
 
   /**
@@ -2576,15 +1262,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Revela la última carta del mazo boca arriba. Queda visible el resto de la partida.
    */
   private startPhaseRevealBottomCard() {
-    if (this.deck.length > 0) {
-      this.state.bottomCard = this.deck.shift()!;
-      console.log(`[MesaRoom] Carta revelada del fondo: ${this.state.bottomCard}`);
-    }
-    this.state.phase = "REVELAR_CARTA";
-
-    this.clock.setTimeout(() => {
-      this.startPhase5Guerra();
-    }, 3000);
+    revealBottomCardPhase.enter(this);
   }
 
   /**
@@ -2594,21 +1272,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * cada jugador declare si lleva juego o no.
    */
   private startPhase4Canticos() {
-    // Si nadie apostó en GUERRA (todos pasaron/check), saltar Cánticos
-    // e ir directo a Declarar Juego — no tiene sentido una segunda ronda de paso.
-    if (this.state.currentMaxBet === 0) {
-      console.log(`[MesaRoom] Todos pasaron en GUERRA — saltando Cánticos, directo a Declarar Juego`);
-      this.startPhaseDeclararJuego();
-      return;
-    }
-    this.state.phase = "CANTICOS";
-    console.log(`[MesaRoom] Iniciando Fase 4: Cánticos`);
-    this.pendingPasoJuegoPlayerId = "";
-    this.pendingPasoJuegoPhase = "";
-    this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
-    this.state.currentMaxBet = 0;
-    this.state.highestBetPlayerId = "";
-    this.advanceTurnBetting(this.state.activeManoId, () => this.startPhaseDeclararJuego());
+    canticosPhase.enter(this);
   }
 
   /**
@@ -2620,38 +1284,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * decidan parar, momento en el que se van al showdown.
    */
   private startPhaseDeclararJuego() {
-    const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
-      .filter(p => !p.isFolded && p.connected && !p.isWaiting);
-
-    // Si solo queda 1 jugador o menos, ir directo al showdown
-    if (activePlayers.length <= 1) {
-      this.startPhase6Showdown();
-      return;
-    }
-
-    // Si hubo apuestas en CANTICOS (alguien subió), ir directo al showdown
-    // porque ya se resolvió con dinero
-    if (this.state.currentMaxBet > 0) {
-      this.startPhase6Showdown();
-      return;
-    }
-
-    this.state.phase = "DECLARAR_JUEGO";
-    console.log(`[MesaRoom] Iniciando Declaración de Juego`);
-    this.state.players.forEach((p: Player) => { p.hasActed = false; p.declaredJuego = null; });
-
-    // Send each player their valid option via private message
-    for (const p of activePlayers) {
-      const hand = evaluateHand(p.cards);
-      const hasJuego = hand.type !== 'NINGUNA';
-      const client = this.clientMap.get(p.id);
-      if (client) {
-        client.send("declarar-juego-option", { hasJuego, handType: hand.type });
-      }
-    }
-
-    // Iniciar desde La Mano
-    this.advanceTurnDeclarar(this.state.activeManoId);
+    declararJuegoPhase.enter(this);
   }
 
   /**
@@ -2721,12 +1354,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Cuando termina → Showdown directo.
    */
   private startPhaseGuerraJuego() {
-    this.state.phase = "GUERRA_JUEGO";
-    console.log(`[MesaRoom] Iniciando Guerra de Juego — apuestas entre jugadores con juego`);
-    this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; p.declinedGuerraJuegoBet = false; });
-    this.state.currentMaxBet = 0;
-    this.state.highestBetPlayerId = "";
-    this.advanceTurnBetting(this.state.activeManoId, () => this.startPhase6Showdown());
+    guerraJuegoPhase.enter(this);
   }
 
   /**
@@ -2734,14 +1362,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Ronda de apuestas del pozo. Inicia en La Mano activa (activeManoId).
    */
   private startPhase5Guerra() {
-    this.state.phase = "GUERRA";
-    console.log(`[MesaRoom] Iniciando Fase 5: Guerra Principal`);
-    this.pendingPasoJuegoPlayerId = "";
-    this.pendingPasoJuegoPhase = "";
-    this.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });
-    this.state.currentMaxBet = 0;
-    this.state.highestBetPlayerId = "";
-    this.advanceTurnBetting(this.state.activeManoId, () => this.startPhase4Canticos());
+    guerraPhase.enter(this);
   }
 
   /**
@@ -2750,125 +1371,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Soporta side pots básicos cuando hay jugadores restiados (all-in).
    */
   private startPhase6Showdown() {
-    this.state.phase = "SHOWDOWN";
-    console.log(`[MesaRoom] Iniciando Fase 6: Showdown`);
-
-    // Include isAllIn players (they stay to compete) + non-folded connected
-    const activePlayers = Array.from(this.state.players.values() as IterableIterator<Player>)
-      .filter(p => !p.isFolded && p.connected);
-
-    if (activePlayers.length === 0) {
-      this.state.pot = 0;
-      this.state.piquePot = 0;
-      this.promoteWaitingPlayers();
-      this.state.phase = "LOBBY";
-      this.notifyInsufficientBalance();
-      return;
-    }
-
-    if (activePlayers.length === 1) {
-      const winner = activePlayers[0];
-      if (this.state.pot === 0) {
-        // Pot=0 (apuesta devuelta) pero queda un ganador con cartas:
-        // Revelar obligatoriamente su mano antes de cerrar.
-        if (winner.cards) {
-          console.log(`[MesaRoom] Solo queda ${winner.nickname} con pot=0 — revelación obligatoria de mano`);
-          winner.revealedCards = winner.cards;
-          this.state.lastAction = `¡${winner.nickname} gana! (${evaluateHand(winner.cards).type})`;
-          this.state.showdownTimer = 0;
-          // Persistir replay / stats antes de esperar dismiss
-          this.recordEvent({ event: 'end', winner: winner.id, pot: 0, payout: 0, rake: 0, time: Date.now(), rng_state: this.getRngState() });
-          const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
-            userId: p.supabaseUserId || p.id, sessionId: p.id, nickname: p.nickname, cards: p.cards, chips: p.chips
-          }));
-          const finalHands: Record<string, any> = {};
-          Array.from(this.state.players.values()).forEach(p => {
-            if (p.cards) {
-              const h = evaluateHand(p.cards);
-              finalHands[p.supabaseUserId || p.id] = { cards: p.cards, handType: h.type, handPoints: h.points, nickname: p.nickname };
-            }
-          });
-          SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, this.currentTimeline.map(({ rng_state, ...e }) => e), playersSnapshot, [...this.currentTimeline], { totalPot: 0, mainPot: 0, piquePot: 0, payout: 0, rake: 0 }, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP', this.snapshotBuilder.build()).catch(console.error);
-          // Se queda en SHOWDOWN — dismiss-showdown caso 2 limpiará al LOBBY
-          return;
-        }
-        // Sin cartas: nada que mostrar, cerrar directamente
-        console.log(`[MesaRoom] Solo queda ${winner.nickname} con pot=0 y sin cartas — terminando`);
-        this.endHandEarlyAfterFoldOut();
-        return;
-      }
-      this.state.lastAction = `¡${winner.nickname} gana!`;
-      // Dar opción de mostrar o no mostrar cartas (sin timer automático)
-      this.state.phase = "SHOWDOWN_WAIT";
-      this.state.turnPlayerId = winner.id;
-      this.state.showdownTimer = 0;
-      return;
-    }
-
-    // Revelar cartas de TODOS los jugadores activos (obligatorio cuando 2+ compiten).
-    activePlayers.forEach(p => {
-      p.revealedCards = p.cards;
-    });
-    console.log(`[MesaRoom] Showdown: revelando cartas de ${activePlayers.length} jugadores activos`);
-
-    // Calculate side pots
-    const sidePots = this.calculateSidePots(activePlayers);
-
-    // Evaluate hands — La Mano activa (activeManoId) gets +1 point tiebreaker
-    const manoId = this.state.activeManoId || this.state.dealerId;
-    const evaluateWithManoBonus = (player: Player): HandEvaluation => {
-      const evaluation = evaluateHand(player.cards);
-      return player.id === manoId
-        ? { ...evaluation, points: evaluation.points + 1 }
-        : evaluation;
-    };
-
-    // Award each side pot to its best eligible hand
-    let overallWinnerId = "";
-    let totalPayout = 0;
-    let totalRake = 0;
-    const potWinners: { winnerId: string; potAmount: number; payout: number; rake: number }[] = [];
-
-    for (const sp of sidePots) {
-      const eligible = sp.eligiblePlayerIds
-        .map(id => activePlayers.find(p => p.id === id))
-        .filter(Boolean) as Player[];
-
-      if (eligible.length === 0) continue;
-
-      let winner = eligible[0];
-      let bestHand = evaluateWithManoBonus(winner);
-      for (let i = 1; i < eligible.length; i++) {
-        const p = eligible[i];
-        const pHand = evaluateWithManoBonus(p);
-        if (compareHands(pHand, bestHand) > 0) { winner = p; bestHand = pHand; }
-      }
-
-      const rake = Math.ceil(sp.amount * 0.05 / 100) * 100;
-      const payout = sp.amount - rake;
-      winner.chips += payout;
-      totalPayout += payout;
-      totalRake += rake;
-      overallWinnerId = winner.id;
-      potWinners.push({ winnerId: winner.id, potAmount: sp.amount, payout, rake });
-
-      console.log(`[MesaRoom] Side pot $${sp.amount}: ${winner.nickname} gana $${payout} (Rake: $${rake})`);
-    }
-
-    // Determine overall winner for display (last/largest pot winner)
-    const mainWinner = this.state.players.get(overallWinnerId);
-    if (mainWinner) {
-      const bestHand = evaluateWithManoBonus(mainWinner);
-      this.state.lastAction = `¡${mainWinner.nickname} gana con ${bestHand.type}! (${bestHand.points} pts)`;
-    }
-
-    // Sin timer automático — se espera "dismiss-showdown" de cualquier jugador
-    this.state.showdownTimer = 0;
-    // Guardar datos del showdown para finalizar cuando alguien cierre
-    this.pendingShowdownData = { overallWinnerId, potWinners, totalPayout, totalRake, activePlayers };
-
-    // Persist payout immediately — don't wait for dismiss
-    this.persistShowdownResults(overallWinnerId, potWinners, totalPayout, totalRake, activePlayers);
+    showdownPhase.enter(this);
   }
 
   /**
@@ -2876,26 +1379,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Ordena por totalMainBet ascendente y crea pots proporcionales.
    */
   private calculateSidePots(activePlayers: Player[]): { amount: number; eligiblePlayerIds: string[] }[] {
-    const sorted = [...activePlayers].sort((a, b) => a.totalMainBet - b.totalMainBet);
-    const sidePots: { amount: number; eligiblePlayerIds: string[] }[] = [];
-    let prevLevel = 0;
-
-    // Get unique bet levels
-    const levels = [...new Set(sorted.map(p => p.totalMainBet))];
-
-    for (const level of levels) {
-      const eligible = sorted.filter(p => p.totalMainBet >= level);
-      const potAmount = (level - prevLevel) * eligible.length;
-      if (potAmount > 0) {
-        sidePots.push({
-          amount: potAmount,
-          eligiblePlayerIds: eligible.map(p => p.id)
-        });
-      }
-      prevLevel = level;
-    }
-
-    return sidePots;
+    // Delegado a core/PotManager (refactor Fase 1.2). Comportamiento idéntico.
+    return calculateSidePotsPure(activePlayers);
   }
 
   /**
@@ -3247,14 +1732,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   private shuffleDeck() {
-    // Fisher-Yates con crypto.randomInt para máxima seguridad
-    const cards = this.deck;
-    for (let i = cards.length - 1; i > 0; i--) {
-      const j = crypto.randomInt(0, i + 1);
-      const temp = cards[i];
-      cards[i] = cards[j];
-      cards[j] = temp;
-    }
+    // Delegado a core/DeckManager (refactor Fase 1.1). Comportamiento idéntico.
+    shuffleDeckPure(this.deck);
   }
 
   /**
@@ -3333,55 +1812,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
   // ── Single-session policy: Redis pub/sub ──
 
+  // ── Wrappers para preservar compatibilidad con tests existentes ──
   private setupSessionKickListener() {
-    try {
-      this.redisSub = createRedisSubscriber();
-      this.redisSub.subscribe("session_kick").catch((err) => {
-        console.warn("[MesaRoom] Redis subscribe failed:", err.message);
-      });
-
-      this.redisSub.on("message", (_channel: string, message: string) => {
-        try {
-          const { userId, deviceId } = JSON.parse(message);
-          this.handleSessionKick(userId, deviceId);
-        } catch (e) {
-          console.warn("[MesaRoom] Invalid session_kick payload:", message);
-        }
-      });
-
-      this.redisSub.on("error", (err) => {
-        if (process.env.NODE_ENV === "development") {
-          console.warn("[MesaRoom] Redis sub error:", err.message);
-        }
-      });
-    } catch (e) {
-      console.warn("[MesaRoom] Could not setup session kick listener:", (e as Error).message);
-    }
+    setupSessionKickListener(this);
   }
 
   private handleSessionKick(userId: string, newDeviceId: string) {
-    // Find any connected clients with this userId but a DIFFERENT deviceId
-    for (const [sessionId, player] of this.state.players.entries()) {
-      if (
-        (player as Player).supabaseUserId === userId &&
-        (player as Player).deviceId !== newDeviceId
-      ) {
-        console.log(
-          `[RECONNECT:SESSION_KICK] ${(player as Player).nickname} (session: ${sessionId}) — replaced by device ${newDeviceId}`
-        );
-
-        const targetClient = this.clientMap.get(sessionId) || this.clients.find(c => c.sessionId === sessionId);
-        if (targetClient) {
-          targetClient.send("ForceLogout", {
-            message: "Se ha iniciado sesión en otro dispositivo. Tu sesión actual ha expirado.",
-          });
-          // Small delay so the client receives the message before disconnect
-          setTimeout(() => {
-            targetClient.leave(4001, "Session replaced by new login");
-          }, 500);
-        }
-      }
-    }
+    handleSessionKick(this, userId, newDeviceId);
   }
 
   onDispose() {
