@@ -9,7 +9,7 @@ import { SupabaseService } from "../../services/SupabaseService";
  * Mantenemos el cast `any` para acceso a privates durante la fase de extracción.
  */
 
-type RoomCtx = any;
+type RoomCtx = MesaRoom;
 
 interface TransferPayload {
   recipientUserId?: string;

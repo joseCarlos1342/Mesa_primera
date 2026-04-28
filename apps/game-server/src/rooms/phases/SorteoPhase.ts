@@ -1,7 +1,8 @@
 import type { IGamePhase, PhaseContext } from "./IGamePhase";
 import type { Player } from "../../schemas/GameState";
 
-type Ctx = any;
+import type { MesaRoom } from "../MesaRoom";
+type Ctx = MesaRoom;
 
 /**
  * Fase 1: Sorteo de La Mano

@@ -11,7 +11,8 @@ import { Player } from "../../schemas/GameState";
 import { evaluateHand, compareHands, HandEvaluation } from "../combinations";
 import { SupabaseService } from "../../services/SupabaseService";
 
-type Ctx = any;
+import type { MesaRoom } from "../MesaRoom";
+type Ctx = MesaRoom;
 
 export const showdownPhase: IGamePhase = {
   id: "SHOWDOWN",

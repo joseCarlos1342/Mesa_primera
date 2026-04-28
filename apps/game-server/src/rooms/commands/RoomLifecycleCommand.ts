@@ -7,7 +7,7 @@ import type { MesaRoom } from "../MesaRoom";
  * Comportamiento idéntico al original embebido en `MesaRoom.onCreate()`.
  */
 
-type RoomCtx = any;
+type RoomCtx = MesaRoom;
 
 interface ToggleReadyPayload {
   isReady?: boolean;
@@ -35,7 +35,7 @@ export function handleToggleReady(room: MesaRoom, client: Client, message: Toggl
     return;
   }
 
-  player.isReady = message.isReady;
+  player.isReady = !!message.isReady;
 
   r.checkStartCountdown();
 }

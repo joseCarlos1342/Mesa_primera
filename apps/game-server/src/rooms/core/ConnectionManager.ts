@@ -3,20 +3,15 @@ import type { MesaRoom } from "../MesaRoom";
 import { Player } from "../../schemas/GameState";
 import { SupabaseService } from "../../services/SupabaseService";
 import { AlertService } from "../../services/AlertService";
+import { MIN_BALANCE_CENTS, COLYSEUS_CONSENTED_CLOSE_CODE } from "./constants";
 
 /**
  * ConnectionManager — lift-and-shift de los métodos lifecycle `onJoin` y `onLeave`
- * de MesaRoom (Fase 3). Comportamiento idéntico al original. Las constantes y la
- * forma de los metadatos (`MesaMetadata`, `MIN_BALANCE_CENTS`,
- * `COLYSEUS_CONSENTED_CLOSE_CODE`) se replican aquí para mantener cero acoplamiento
- * inverso hacia MesaRoom (los call-sites originales en MesaRoom siguen usando sus
- * propias constantes — los valores deben coincidir).
+ * de MesaRoom (Fase 3). Comportamiento idéntico al original. Fase 5 consolida
+ * `MIN_BALANCE_CENTS` y `COLYSEUS_CONSENTED_CLOSE_CODE` en `./constants`.
  */
 
-type RoomCtx = any;
-
-const MIN_BALANCE_CENTS = 5_000_000; // $50,000 en centavos
-const COLYSEUS_CONSENTED_CLOSE_CODE = 4000;
+type RoomCtx = MesaRoom;
 
 interface MesaMetadataLike {
   tableName?: string;

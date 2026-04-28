@@ -6,7 +6,8 @@
 import type { IGamePhase, PhaseContext } from "./IGamePhase";
 import { Player } from "../../schemas/GameState";
 
-type Ctx = any;
+import type { MesaRoom } from "../MesaRoom";
+type Ctx = MesaRoom;
 
 export const reemplazoDescartePhase: IGamePhase = {
   id: "COMPLETAR_DESCARTE",

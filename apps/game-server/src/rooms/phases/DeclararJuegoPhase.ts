@@ -7,7 +7,8 @@ import type { IGamePhase, PhaseContext } from "./IGamePhase";
 import { Player } from "../../schemas/GameState";
 import { evaluateHand } from "../combinations";
 
-type Ctx = any;
+import type { MesaRoom } from "../MesaRoom";
+type Ctx = MesaRoom;
 
 export const declararJuegoPhase: IGamePhase = {
   id: "DECLARAR_JUEGO",

@@ -9,7 +9,7 @@ import { SupabaseService } from "../../services/SupabaseService";
  * CANTICOS y GUERRA_JUEGO. Lift-and-shift verbatim (Fase 2.5).
  */
 
-type RoomCtx = any;
+type RoomCtx = MesaRoom;
 
 export async function handlePlayerAction(room: MesaRoom, client: Client, message: any): Promise<void> {
   const r: RoomCtx = room;
