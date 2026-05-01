@@ -86,24 +86,28 @@ export async function updateSession(
   if (user) {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role, last_device_id')
+      .select('role, last_device_id, phone, username, full_name, avatar_url, has_pin')
       .eq('id', user.id)
       .single()
 
     let role: string
     let lastDeviceId: string | null = null
+    // Profile data for completeness + PIN checks (available regardless of fallback path)
+    let playerProfile: { phone: string | null; username: string | null; full_name: string | null; avatar_url: string | null; has_pin: boolean | null } | null = null
 
     if (profileError || !profile) {
       // Fallback: last_device_id column might not exist yet (migration pending)
       const { data: fallback } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, phone, username, full_name, avatar_url, has_pin')
         .eq('id', user.id)
         .single()
       role = fallback?.role || 'player'
+      playerProfile = fallback
     } else {
       role = profile.role || 'player'
       lastDeviceId = profile.last_device_id ?? null
+      playerProfile = profile
     }
 
     // ── Single-session policy: compare device cookie vs DB ──
@@ -164,7 +168,31 @@ export async function updateSession(
       return NextResponse.redirect(url)
     }
 
-    // 3. Redirección si está en páginas de Auth (Login/Register) o en la raíz
+    // 3. Perfil incompleto (jugadores): forzar completar registro
+    if (role !== 'admin' && playerProfile) {
+      const isProfileComplete = playerProfile.username && playerProfile.full_name && playerProfile.avatar_url && playerProfile.phone
+
+      if (!isProfileComplete && !isGoogleCompletionPage && !isVerifyPage) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/register/player/complete'
+        return NextResponse.redirect(url)
+      }
+
+      if (isProfileComplete && !playerProfile.has_pin && !isPinSetupPage && !isBiometricSetupPage) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/register/player/pin'
+        return NextResponse.redirect(url)
+      }
+    }
+
+    // Force players without profile data to complete registration (profile query failed entirely)
+    if (role !== 'admin' && !playerProfile && !isGoogleCompletionPage && !isVerifyPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/register/player/complete'
+      return NextResponse.redirect(url)
+    }
+
+    // 4. Redirección si está en páginas de Auth (Login/Register) o en la raíz
     const isRootPage = pathname === '/'
     
     if (isAuthPage || isRootPage) {
