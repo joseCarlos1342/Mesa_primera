@@ -13,6 +13,7 @@ export const descartePhase: IGamePhase = {
   id: "DESCARTE",
   enter(ctx: Ctx) {
     const r: Ctx = ctx;
+    r.clearTurnTimer();
     r.state.phase = "DESCARTE";
     console.log(`[MesaRoom] Iniciando Fase: Descarte`);
     r.pasoPendienteIds.clear();

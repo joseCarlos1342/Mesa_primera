@@ -17,6 +17,7 @@ export const canticosPhase: IGamePhase = {
     // e ir directo a Declarar Juego — no tiene sentido una segunda ronda de paso.
     if (r.state.currentMaxBet === 0) {
       console.log(`[MesaRoom] Todos pasaron en GUERRA — saltando Cánticos, directo a Declarar Juego`);
+      r.clearTurnTimer();
       r.startPhaseDeclararJuego();
       return;
     }

@@ -12,6 +12,7 @@ export const revealBottomCardPhase: IGamePhase = {
   id: "REVELAR_CARTA",
   enter(ctx: Ctx) {
     const r: Ctx = ctx;
+    r.clearTurnTimer();
     if (r.deck.length > 0) {
       r.state.bottomCard = r.deck.shift()!;
       console.log(`[MesaRoom] Carta revelada del fondo: ${r.state.bottomCard}`);

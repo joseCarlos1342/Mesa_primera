@@ -132,6 +132,69 @@ export class SupabaseService {
   }
 
   /**
+   * Transfers banda (pique penalty) from losers to the winner atomically
+   * via the `transfer_pique_banda` PostgreSQL RPC.
+   * This replaces individual recordBet + awardPot calls with a single
+   * idempotent transaction to prevent ledger inconsistencies on crashes.
+   */
+  static async transferPiqueBanda(
+    winnerId: string,
+    losers: { userId: string; amountCents: number }[],
+    gameId: string,
+    meta?: { roomId?: string; tableName?: string }
+  ): Promise<{ success: boolean; totalBanda?: number; payout?: number; rake?: number; error?: string }> {
+    if (!supabaseKey) return { success: true };
+    if (losers.length === 0) return { success: true, totalBanda: 0, payout: 0, rake: 0 };
+    try {
+      const { data, error } = await supabase.rpc('transfer_pique_banda', {
+        p_transfer_id: gameId,
+        p_winner_id: winnerId,
+        p_losers: losers.map(l => ({ user_id: l.userId, amount_cents: l.amountCents })),
+        p_game_id: gameId,
+        p_metadata: {
+          room_id: meta?.roomId || null,
+          table_name: meta?.tableName || null,
+          reason: 'banda'
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      console.log(`[SupabaseService] Banda transferred atomically: winner=${winnerId}, total=${data?.total_banda}, payout=${data?.payout}, rake=${data?.rake}`);
+      return {
+        success: true,
+        totalBanda: data?.total_banda,
+        payout: data?.payout,
+        rake: data?.rake
+      };
+    } catch (e) {
+      console.error('[SupabaseService] transfer_pique_banda failed, falling back to individual calls:', e);
+      // Fallback: individual recordBet + awardPot calls (non-atomic but better than losing data)
+      let totalBanda = 0;
+      for (const loser of losers) {
+        if (loser.amountCents <= 0) continue;
+        totalBanda += loser.amountCents;
+        await SupabaseService.recordBet(loser.userId, loser.amountCents, gameId, undefined, {
+          roomId: meta?.roomId,
+          tableName: meta?.tableName,
+          phase: 'BANDA'
+        });
+      }
+      const rake = Math.ceil(totalBanda * 0.05 / 100) * 100;
+      const payout = totalBanda - rake;
+      if (payout > 0) {
+        await SupabaseService.awardPot(winnerId, payout, rake, gameId, undefined, {
+          roomId: meta?.roomId,
+          tableName: meta?.tableName,
+          playersPresent: []
+        });
+      }
+      return { success: false, totalBanda, payout, rake, error: String(e) };
+    }
+  }
+
+  /**
    * Updates player statistics at the end of a match.
    */
   static async updatePlayerStats(userId: string, isWin: boolean, payout: number = 0, rakePaid: number = 0, specialPlay: string | null = null) {

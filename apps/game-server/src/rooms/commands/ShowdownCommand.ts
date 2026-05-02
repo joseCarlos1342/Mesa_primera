@@ -20,6 +20,9 @@ export function handleDismissShowdown(room: MesaRoom, _client: Client): void {
   const r: RoomCtx = room;
   if (r.state.phase !== "SHOWDOWN") return;
 
+  r.clearTurnTimer();
+  r.clearShowdownAutoTimer();
+
   // Caso 1: Showdown del pique (después de completar 4 cartas)
   if (r.pendingPiqueWinnerId) {
     r.state.players.forEach((p: Player) => { p.revealedCards = ""; });
@@ -29,13 +32,16 @@ export function handleDismissShowdown(room: MesaRoom, _client: Client): void {
     return;
   }
 
-  // Caso 2: Showdown de un solo jugador que eligió mostrar cartas
+  // Caso 2: Showdown de un solo jugador sin pendingShowdownData
   if (!r.pendingShowdownData) {
     r.state.players.forEach((p: Player) => { p.revealedCards = ""; });
     const winner = Array.from(r.state.players.values() as IterableIterator<Player>)
       .find((p: Player) => !p.isFolded && p.connected);
-    if (winner) {
+    if (winner && r.state.pot > 0) {
       r.awardPot(winner.id);
+    } else {
+      // pot=0 o sin ganador: nada que entregar, ir a LOBBY directamente
+      r.endHandEarlyAfterFoldOut();
     }
     return;
   }
@@ -49,6 +55,8 @@ export function handleDismissShowdown(room: MesaRoom, _client: Client): void {
 export function handleShowMuck(room: MesaRoom, client: Client, message: ShowMuckPayload): void {
   const r: RoomCtx = room;
   if (r.state.phase !== "SHOWDOWN_WAIT") return;
+  r.clearTurnTimer();
+  r.clearShowdownAutoTimer();
   const player = r.state.players.get(client.sessionId);
   if (!player) return;
   // Solo el ganador puede decidir
@@ -85,6 +93,8 @@ export function handleDeclararJuego(room: MesaRoom, client: Client, message: Dec
   const r: RoomCtx = room;
   if (r.state.phase !== "DECLARAR_JUEGO") return;
   if (r.state.turnPlayerId !== client.sessionId) return;
+
+  r.clearTurnTimer();
   const player = r.state.players.get(client.sessionId);
   if (!player) return;
 
@@ -113,6 +123,8 @@ export function handleDeclararJuego(room: MesaRoom, client: Client, message: Dec
 export function handleDismissReveal(room: MesaRoom, _client: Client): void {
   const r: RoomCtx = room;
   if (r.state.phase !== "PIQUE_REVEAL") return;
+
+  r.clearTurnTimer();
 
   // ── Caso: Llevo Juego durante DESCARTE (o cualquier fase de apuestas) ──
   if (r.pendingLlevoJuegoPlayerId) {
@@ -183,6 +195,8 @@ export function handleLlevoJuego(room: MesaRoom, client: Client): void {
   const r: RoomCtx = room;
   if (r.state.phase !== "DESCARTE") return;
   if (r.state.turnPlayerId !== client.sessionId) return;
+
+  r.clearTurnTimer();
   const player = r.state.players.get(client.sessionId);
   if (!player || !player.passedWithJuego) return;
 
@@ -214,6 +228,7 @@ export function handlePasoJuegoResponse(room: MesaRoom, client: Client, message:
   const resolvePhase = r.pendingPasoJuegoPhase;
   if (r.state.phase !== resolvePhase) return;
 
+  r.clearTurnTimer();
   const player = r.state.players.get(client.sessionId);
   if (!player) return;
 

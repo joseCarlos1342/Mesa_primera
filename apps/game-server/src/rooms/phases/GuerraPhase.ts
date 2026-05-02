@@ -13,6 +13,7 @@ export const guerraPhase: IGamePhase = {
   id: "GUERRA",
   enter(ctx: Ctx) {
     const r: Ctx = ctx;
+    r.clearTurnTimer();
     r.state.phase = "GUERRA";
     console.log(`[MesaRoom] Iniciando Fase 5: Guerra Principal`);
     r.pendingPasoJuegoPlayerId = "";

@@ -14,6 +14,7 @@ export const sorteoPhase: IGamePhase = {
   enter(ctx: PhaseContext) {
     const r: Ctx = ctx;
 
+    r.clearTurnTimer();
     r.state.phase = "STARTING";
     console.log(`[MesaRoom] Fase STARTING: mostrando intro animación...`);
 

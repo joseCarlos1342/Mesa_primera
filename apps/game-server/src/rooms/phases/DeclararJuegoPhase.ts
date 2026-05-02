@@ -19,6 +19,7 @@ export const declararJuegoPhase: IGamePhase = {
 
     // Si solo queda 1 jugador o menos, ir directo al showdown
     if (activePlayers.length <= 1) {
+      r.clearTurnTimer();
       r.startPhase6Showdown();
       return;
     }
@@ -26,6 +27,7 @@ export const declararJuegoPhase: IGamePhase = {
     // Si hubo apuestas en CANTICOS (alguien subió), ir directo al showdown
     // porque ya se resolvió con dinero
     if (r.state.currentMaxBet > 0) {
+      r.clearTurnTimer();
       r.startPhase6Showdown();
       return;
     }
