@@ -49,6 +49,10 @@ export function buildContentSecurityPolicy({
     `'self'`,
     `'nonce-${nonce}'`,
     `'strict-dynamic'`,
+    // Backward compatibility: browsers that support strict-dynamic ignore
+    // 'unsafe-inline'. Older browsers that don't support strict-dynamic will
+    // use 'unsafe-inline' as a fallback. (Lighthouse csp-xss audit)
+    `'unsafe-inline'`,
     'https://static.cloudflareinsights.com',
     'https://challenges.cloudflare.com',
   ]
@@ -60,7 +64,7 @@ export function buildContentSecurityPolicy({
   const styleSrc = [
     `'self'`,
     'https://fonts.googleapis.com',
-    isDevelopment ? `'unsafe-inline'` : `'nonce-${nonce}'`,
+    `'unsafe-inline'`,
   ]
 
   return [
