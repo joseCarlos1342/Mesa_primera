@@ -49,6 +49,7 @@ vi.mock('../../services/SupabaseService', () => {
       awardPot: vi.fn().mockResolvedValue({ success: true }),
       recordBet: vi.fn().mockResolvedValue({ success: true }),
       refundPlayer: vi.fn().mockResolvedValue({ success: true }),
+      transferPiqueBanda: vi.fn().mockResolvedValue({ success: true }),
       transferBetweenPlayers: vi.fn().mockResolvedValue({ success: true, recipientName: 'Test' }),
       lookupUserByPhone: vi.fn().mockResolvedValue({ success: true, userId: 'u-found', name: 'Found User' }),
       saveReplay: vi.fn().mockResolvedValue(undefined),
