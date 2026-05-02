@@ -13,6 +13,16 @@ import {
   Play, ArrowRight, MapPin, Navigation,
 } from 'lucide-react'
 import { LOCAL_LOCATION } from '@/components/landing/LocationMap'
+import { TutorialWalkthrough } from '@/components/landing/tutorials/TutorialWalkthrough'
+import { installAppSteps } from '@/components/landing/tutorials/InstallAppTutorial'
+import { registerSteps } from '@/components/landing/tutorials/RegisterTutorial'
+import { loginSteps } from '@/components/landing/tutorials/LoginTutorial'
+import { walletSteps } from '@/components/landing/tutorials/WalletTutorial'
+import { withdrawSteps } from '@/components/landing/tutorials/WithdrawTutorial'
+import { transferSteps } from '@/components/landing/tutorials/TransferTutorial'
+import { firstGameSteps } from '@/components/landing/tutorials/FirstGameTutorial'
+import { gameMenuSteps } from '@/components/landing/tutorials/GameMenuTutorial'
+import { friendsSteps } from '@/components/landing/tutorials/FriendsTutorial'
 
 const LocationMap = dynamic(
   () => import('@/components/landing/LocationMap').then((m) => ({ default: m.LocationMapInner })),
@@ -38,10 +48,15 @@ const SERVICES = [
 ]
 
 const TUTORIALS = [
-  { title: 'Cómo registrarte', desc: 'Crea tu cuenta en menos de 2 minutos.' },
-  { title: 'Cómo jugar tu primera partida', desc: 'Únete a una mesa y empieza a jugar.' },
-  { title: 'Cómo usar tu billetera', desc: 'Deposita, retira y controla tus fondos.' },
-  { title: 'Cómo instalar la app', desc: 'Agrega Mesa Primera a tu celular como app.' },
+  { title: 'Cómo instalar la app', desc: 'Agrega Mesa Primera a tu celular como app.', steps: installAppSteps },
+  { title: 'Cómo registrarte', desc: 'Crea tu cuenta en menos de 2 minutos.', steps: registerSteps },
+  { title: 'Cómo iniciar sesión', desc: 'Entra con tu teléfono, PIN o huella.', steps: loginSteps },
+  { title: 'Cómo cargar saldo', desc: 'Deposita fondos vía Nequi y juega.', steps: walletSteps },
+  { title: 'Cómo retirar saldo', desc: 'Retira tus ganancias a tu cuenta bancaria.', steps: withdrawSteps },
+  { title: 'Cómo transferir saldo', desc: 'Envía fichas a otros jugadores.', steps: transferSteps },
+  { title: 'Cómo jugar tu primera partida', desc: 'Únete a una mesa y empieza a jugar.', steps: firstGameSteps },
+  { title: 'Funciones del menú de mesa', desc: 'Audio, reglas, admin, transferir y salir.', steps: gameMenuSteps },
+  { title: 'Amigos', desc: 'Agrega, elimina, invita y chatea con amigos.', steps: friendsSteps },
 ]
 
 const FAQ_ITEMS = [
@@ -107,6 +122,119 @@ const NAV_SECTIONS = [
   { id: 'ubicacion', label: 'Ubicación' },
 ]
 
+/* ── Tutorial Carousel (horizontal) ─────────────────────────────── */
+
+function TutorialCarousel({
+  tutorials,
+  onSelect,
+}: {
+  tutorials: { title: string; desc: string; steps: { label: string; screen: React.ReactNode; landscape?: boolean }[] }[]
+  onSelect: (title: string) => void
+}) {
+  const [index, setIndex] = useState(0)
+  const [visible, setVisible] = useState(1)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const total = tutorials.length
+
+  useEffect(() => {
+    const updateVisible = () => setVisible(window.innerWidth >= 640 ? 2 : 1)
+    updateVisible()
+    window.addEventListener('resize', updateVisible)
+    return () => window.removeEventListener('resize', updateVisible)
+  }, [])
+
+  const go = useCallback(
+    (dir: 'next' | 'prev') => {
+      setIndex((prev) => {
+        const next = dir === 'next' ? prev + 1 : prev - 1
+        return Math.max(0, Math.min(next, total - visible))
+      })
+    },
+    [total, visible],
+  )
+
+  useEffect(() => {
+    if (trackRef.current) {
+      const cardW = trackRef.current.children[0]?.getBoundingClientRect().width ?? 0
+      const gap = 24 // gap-6 = 24px
+      trackRef.current.style.transform = `translateX(-${index * (cardW + gap)}px)`
+    }
+  }, [index])
+
+  return (
+    <div className="relative flex flex-col items-center">
+      <div className="relative w-full flex items-center">
+        {/* Left arrow */}
+        <button
+          onClick={() => go('prev')}
+          disabled={index === 0}
+          className="hidden sm:flex shrink-0 mr-2 p-2 rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-10"
+          aria-label="Anterior"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        {/* Track */}
+        <div className="overflow-hidden flex-1">
+          <div
+            ref={trackRef}
+            className="flex gap-6 transition-transform duration-500 ease-out"
+            style={{ width: 'max-content' }}
+          >
+            {tutorials.map((t) => (
+              <div
+                key={t.title}
+                id={t.title === 'Cómo instalar la app' ? 'instalar-app' : undefined}
+                onClick={() => onSelect(t.title)}
+                data-testid="tutorial-card"
+                className="group bg-white/3 border border-white/8 rounded-2xl p-5 flex flex-col hover:border-brand-gold/20 transition-all duration-500 text-left cursor-pointer w-[280px] sm:w-[340px] shrink-0"
+              >
+                <div className="w-full aspect-[16/10] rounded-xl bg-slate-800/60 border border-white/5 group-hover:border-brand-gold/10 transition-all overflow-hidden relative mb-4">
+                  <div className="absolute inset-0 bg-linear-to-br from-brand-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="w-full h-full opacity-70 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none select-none">
+                    {t.steps[0].screen}
+                  </div>
+                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors duration-500 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-brand-gold/20 backdrop-blur-sm border border-brand-gold/40 flex items-center justify-center group-hover:bg-brand-gold/40 group-hover:border-brand-gold/60 transition-all duration-500">
+                      <Play className="w-5 h-5 text-brand-gold" />
+                    </div>
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold mb-1">{t.title}</h3>
+                <p className="text-text-secondary text-sm leading-relaxed">{t.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right arrow */}
+        <button
+          onClick={() => go('next')}
+          disabled={index >= total - visible}
+          className="hidden sm:flex shrink-0 ml-2 p-2 rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-10"
+          aria-label="Siguiente"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Dots */}
+      <div className="flex items-center justify-center gap-2 mt-6">
+        {Array.from({ length: Math.ceil(total / visible) }).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIndex(i * visible)}
+            aria-label={`Ir a página ${i + 1}`}
+            className={`h-2 rounded-full transition-all duration-300 ${
+              Math.floor(index / visible) === i ? 'bg-brand-gold w-6' : 'bg-white/20 hover:bg-white/40 w-2'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* ── Component ──────────────────────────────────────────────────── */
 
 export function LandingContent() {
@@ -117,6 +245,7 @@ export function LandingContent() {
   const [activeSection, setActiveSection] = useState('inicio')
   const [currentSlide, setCurrentSlide] = useState(0)
   const [carouselPaused, setCarouselPaused] = useState(false)
+  const [activeTutorial, setActiveTutorial] = useState<string | null>(null)
 
   /* ── Nav scroll spy ─────────────────────────────── */
   useEffect(() => {
@@ -797,33 +926,33 @@ export function LandingContent() {
               data-reveal=""
               className="text-center text-text-secondary mb-16 max-w-2xl mx-auto text-lg"
             >
-              Videos tutoriales para que aprendas a usar todas las funciones.
+              Tutoriales interactivos para que aprendas a usar todas las funciones.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {TUTORIALS.map((t) => (
-                <div
-                  key={t.title}
-                  id={t.title === 'Cómo instalar la app' ? 'instalar-app' : undefined}
-                  data-stagger-card=""
-                  className="group bg-white/3 border border-white/8 rounded-2xl p-6 flex flex-col hover:border-brand-gold/20 transition-all duration-500"
-                >
-                  <div className="w-full aspect-video rounded-xl bg-slate-800/60 border border-white/5 flex items-center justify-center mb-5 group-hover:border-brand-gold/10 transition-all overflow-hidden relative">
-                    <div className="absolute inset-0 bg-linear-to-br from-brand-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="flex flex-col items-center gap-2 text-text-secondary/50">
-                      <Play className="w-8 h-8" />
-                      <span className="text-xs tracking-wider uppercase">
-                        Próximamente
-                      </span>
-                    </div>
-                  </div>
-                  <h3 className="text-lg font-bold mb-1">{t.title}</h3>
-                  <p className="text-text-secondary text-sm leading-relaxed">
-                    {t.desc}
-                  </p>
+            {/* ── Tutorial Modal Overlay ─────────────────────────── */}
+            {activeTutorial && (
+              <div
+                className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 py-8 overflow-y-auto"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setActiveTutorial(null)
+                }}
+              >
+                <div className="relative w-full max-w-3xl flex flex-col items-center">
+                  <TutorialWalkthrough
+                    key={activeTutorial}
+                    steps={TUTORIALS.find((t) => t.title === activeTutorial)!.steps}
+                    className="w-full"
+                    onClose={() => setActiveTutorial(null)}
+                  />
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* ── Tutorial Cards Carousel ─────────────────────────── */}
+            <TutorialCarousel
+              tutorials={TUTORIALS}
+              onSelect={setActiveTutorial}
+            />
           </div>
         </section>
 
