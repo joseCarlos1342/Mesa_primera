@@ -39,6 +39,7 @@ BEGIN
   FOR v_loser IN
     SELECT (l->>'user_id')::UUID AS user_id, (l->>'amount_cents')::INT AS amount_cents
       FROM jsonb_array_elements(p_losers) AS l
+     ORDER BY l->>'user_id'   -- deterministic order for advisory locks
   LOOP
     PERFORM pg_advisory_xact_lock(hashtext(v_loser.user_id::text));
   END LOOP;
@@ -47,6 +48,7 @@ BEGIN
   FOR v_loser IN
     SELECT (l->>'user_id')::UUID AS user_id, (l->>'amount_cents')::INT AS amount_cents
       FROM jsonb_array_elements(p_losers) AS l
+     ORDER BY l->>'user_id'   -- deterministic processing order
   LOOP
     IF v_loser.amount_cents <= 0 THEN
       CONTINUE;
@@ -67,7 +69,7 @@ BEGIN
         'transfer_id', p_transfer_id,
         'reason', 'banda',
         'phase', 'PIQUE'
-      ) ORDER BY user_id   -- deterministic lock order
+      )
     );
 
     UPDATE public.wallets
