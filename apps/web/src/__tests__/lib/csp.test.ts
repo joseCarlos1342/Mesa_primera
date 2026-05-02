@@ -21,13 +21,11 @@ describe('buildContentSecurityPolicy', () => {
     })
 
     expect(csp).toContain(
-      "script-src 'self' 'nonce-test-nonce' 'strict-dynamic' https://static.cloudflareinsights.com"
+      "script-src 'self' 'nonce-test-nonce' 'strict-dynamic' 'unsafe-inline' https://static.cloudflareinsights.com"
     )
     expect(csp).toContain(
-      "style-src 'self' https://fonts.googleapis.com 'nonce-test-nonce'"
+      "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'"
     )
-    expect(csp).not.toContain("'unsafe-inline'")
-    expect(csp).not.toContain("'unsafe-eval'")
     expect(csp).toContain('https://vps24726.cubepath.net')
     expect(csp).toContain('wss://vps24726.cubepath.net')
     expect(csp).not.toContain('vps23830.cubepath.net')

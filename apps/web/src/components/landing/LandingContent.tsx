@@ -13,16 +13,23 @@ import {
   Play, ArrowRight, MapPin, Navigation,
 } from 'lucide-react'
 import { LOCAL_LOCATION } from '@/components/landing/LocationMap'
-import { TutorialWalkthrough } from '@/components/landing/tutorials/TutorialWalkthrough'
-import { installAppSteps } from '@/components/landing/tutorials/InstallAppTutorial'
-import { registerSteps } from '@/components/landing/tutorials/RegisterTutorial'
-import { loginSteps } from '@/components/landing/tutorials/LoginTutorial'
-import { walletSteps } from '@/components/landing/tutorials/WalletTutorial'
-import { withdrawSteps } from '@/components/landing/tutorials/WithdrawTutorial'
-import { transferSteps } from '@/components/landing/tutorials/TransferTutorial'
-import { firstGameSteps } from '@/components/landing/tutorials/FirstGameTutorial'
-import { gameMenuSteps } from '@/components/landing/tutorials/GameMenuTutorial'
-import { friendsSteps } from '@/components/landing/tutorials/FriendsTutorial'
+
+const TutorialWalkthrough = dynamic(
+  () => import('@/components/landing/tutorials/TutorialWalkthrough').then((m) => ({ default: m.TutorialWalkthrough })),
+  { ssr: false },
+)
+
+const TUTORIAL_IMPORTS = {
+  'Cómo instalar la app': () => import('@/components/landing/tutorials/InstallAppTutorial').then((m) => m.installAppSteps),
+  'Cómo registrarte': () => import('@/components/landing/tutorials/RegisterTutorial').then((m) => m.registerSteps),
+  'Cómo iniciar sesión': () => import('@/components/landing/tutorials/LoginTutorial').then((m) => m.loginSteps),
+  'Cómo cargar saldo': () => import('@/components/landing/tutorials/WalletTutorial').then((m) => m.walletSteps),
+  'Cómo retirar saldo': () => import('@/components/landing/tutorials/WithdrawTutorial').then((m) => m.withdrawSteps),
+  'Cómo transferir saldo': () => import('@/components/landing/tutorials/TransferTutorial').then((m) => m.transferSteps),
+  'Cómo jugar tu primera partida': () => import('@/components/landing/tutorials/FirstGameTutorial').then((m) => m.firstGameSteps),
+  'Funciones del menú de mesa': () => import('@/components/landing/tutorials/GameMenuTutorial').then((m) => m.gameMenuSteps),
+  'Amigos': () => import('@/components/landing/tutorials/FriendsTutorial').then((m) => m.friendsSteps),
+} as const
 
 const LocationMap = dynamic(
   () => import('@/components/landing/LocationMap').then((m) => ({ default: m.LocationMapInner })),
@@ -48,15 +55,15 @@ const SERVICES = [
 ]
 
 const TUTORIALS = [
-  { title: 'Cómo instalar la app', desc: 'Agrega Mesa Primera a tu celular como app.', steps: installAppSteps },
-  { title: 'Cómo registrarte', desc: 'Crea tu cuenta en menos de 2 minutos.', steps: registerSteps },
-  { title: 'Cómo iniciar sesión', desc: 'Entra con tu teléfono, PIN o huella.', steps: loginSteps },
-  { title: 'Cómo cargar saldo', desc: 'Deposita fondos vía Nequi y juega.', steps: walletSteps },
-  { title: 'Cómo retirar saldo', desc: 'Retira tus ganancias a tu cuenta bancaria.', steps: withdrawSteps },
-  { title: 'Cómo transferir saldo', desc: 'Envía fichas a otros jugadores.', steps: transferSteps },
-  { title: 'Cómo jugar tu primera partida', desc: 'Únete a una mesa y empieza a jugar.', steps: firstGameSteps },
-  { title: 'Funciones del menú de mesa', desc: 'Audio, reglas, admin, transferir y salir.', steps: gameMenuSteps },
-  { title: 'Amigos', desc: 'Agrega, elimina, invita y chatea con amigos.', steps: friendsSteps },
+  { title: 'Cómo instalar la app', desc: 'Agrega Mesa Primera a tu celular como app.' },
+  { title: 'Cómo registrarte', desc: 'Crea tu cuenta en menos de 2 minutos.' },
+  { title: 'Cómo iniciar sesión', desc: 'Entra con tu teléfono, PIN o huella.' },
+  { title: 'Cómo cargar saldo', desc: 'Deposita fondos vía Nequi y juega.' },
+  { title: 'Cómo retirar saldo', desc: 'Retira tus ganancias a tu cuenta bancaria.' },
+  { title: 'Cómo transferir saldo', desc: 'Envía fichas a otros jugadores.' },
+  { title: 'Cómo jugar tu primera partida', desc: 'Únete a una mesa y empieza a jugar.' },
+  { title: 'Funciones del menú de mesa', desc: 'Audio, reglas, admin, transferir y salir.' },
+  { title: 'Amigos', desc: 'Agrega, elimina, invita y chatea con amigos.' },
 ]
 
 const FAQ_ITEMS = [
@@ -128,7 +135,7 @@ function TutorialCarousel({
   tutorials,
   onSelect,
 }: {
-  tutorials: { title: string; desc: string; steps: { label: string; screen: React.ReactNode; landscape?: boolean }[] }[]
+  tutorials: { title: string; desc: string }[]
   onSelect: (title: string) => void
 }) {
   const [index, setIndex] = useState(0)
@@ -191,9 +198,7 @@ function TutorialCarousel({
               >
                 <div className="w-full aspect-[16/10] rounded-xl bg-slate-800/60 border border-white/5 group-hover:border-brand-gold/10 transition-all overflow-hidden relative mb-4">
                   <div className="absolute inset-0 bg-linear-to-br from-brand-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="w-full h-full opacity-70 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none select-none">
-                    {t.steps[0].screen}
-                  </div>
+                  <div className="w-full h-full flex items-center justify-center opacity-30" />
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors duration-500 flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full bg-brand-gold/20 backdrop-blur-sm border border-brand-gold/40 flex items-center justify-center group-hover:bg-brand-gold/40 group-hover:border-brand-gold/60 transition-all duration-500">
                       <Play className="w-5 h-5 text-brand-gold" />
@@ -246,6 +251,15 @@ export function LandingContent() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [carouselPaused, setCarouselPaused] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<string | null>(null)
+  const [tutorialSteps, setTutorialSteps] = useState<{ label: string; screen: React.ReactNode; landscape?: boolean }[] | null>(null)
+
+  const handleTutorialSelect = useCallback((title: string) => {
+    setActiveTutorial(title)
+    const loader = TUTORIAL_IMPORTS[title as keyof typeof TUTORIAL_IMPORTS]
+    if (loader) {
+      loader().then((steps) => setTutorialSteps(steps))
+    }
+  }, [])
 
   /* ── Nav scroll spy ─────────────────────────────── */
   useEffect(() => {
@@ -870,12 +884,12 @@ export function LandingContent() {
               {/* Connecting gold line (desktop) */}
               <div
                 data-gold-line=""
-                className="hidden md:block absolute top-8 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] h-px bg-linear-to-r from-brand-gold/30 via-brand-gold/50 to-brand-gold/30"
+                className="hidden md:block absolute top-8 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] h-px bg-linear-to-r from-brand-gold/30 via-brand-gold/50 to-brand-gold/30 z-0"
               />
 
               {STEPS.map((item) => (
                 <div key={item.step} data-step="" className="text-center relative">
-                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-linear-to-br from-brand-gold/20 to-brand-gold/5 border-2 border-brand-gold/30 flex items-center justify-center shadow-[0_0_20px_rgba(226,176,68,0.15)]">
+                  <div className="relative z-10 w-16 h-16 mx-auto mb-6 rounded-full bg-[#0a1a12] border-2 border-brand-gold/30 flex items-center justify-center shadow-[0_0_20px_rgba(226,176,68,0.15)]">
                     <span className="text-2xl font-display font-black text-brand-gold">
                       {item.step}
                     </span>
@@ -930,19 +944,25 @@ export function LandingContent() {
             </p>
 
             {/* ── Tutorial Modal Overlay ─────────────────────────── */}
-            {activeTutorial && (
+            {activeTutorial && tutorialSteps && (
               <div
                 className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 py-8 overflow-y-auto"
                 onClick={(e) => {
-                  if (e.target === e.currentTarget) setActiveTutorial(null)
+                  if (e.target === e.currentTarget) {
+                    setActiveTutorial(null)
+                    setTutorialSteps(null)
+                  }
                 }}
               >
                 <div className="relative w-full max-w-3xl flex flex-col items-center">
                   <TutorialWalkthrough
                     key={activeTutorial}
-                    steps={TUTORIALS.find((t) => t.title === activeTutorial)!.steps}
+                    steps={tutorialSteps}
                     className="w-full"
-                    onClose={() => setActiveTutorial(null)}
+                    onClose={() => {
+                      setActiveTutorial(null)
+                      setTutorialSteps(null)
+                    }}
                   />
                 </div>
               </div>
@@ -951,7 +971,7 @@ export function LandingContent() {
             {/* ── Tutorial Cards Carousel ─────────────────────────── */}
             <TutorialCarousel
               tutorials={TUTORIALS}
-              onSelect={setActiveTutorial}
+              onSelect={handleTutorialSelect}
             />
           </div>
         </section>
@@ -1087,36 +1107,39 @@ export function LandingContent() {
               </Link>
             </nav>
 
-            <div className="flex gap-3" role="list" aria-label="Redes sociales">
-              <a
-                href={SOCIAL.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook de Primera Riverada los 4 Ases"
-                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-                role="listitem"
-              >
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a
-                href={SOCIAL.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram de Primera Riverada los 4 Ases"
-                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-                role="listitem"
-              >
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a
-                href={`mailto:${SOCIAL.email}`}
-                aria-label="Correo electrónico de contacto"
-                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-                role="listitem"
-              >
-                <Mail className="w-5 h-5" />
-              </a>
-            </div>
+            <ul className="flex gap-3" aria-label="Redes sociales">
+              <li>
+                <a
+                  href={SOCIAL.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook de Primera Riverada los 4 Ases"
+                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                >
+                  <Facebook className="w-5 h-5" />
+                </a>
+              </li>
+              <li>
+                <a
+                  href={SOCIAL.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram de Primera Riverada los 4 Ases"
+                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                >
+                  <Instagram className="w-5 h-5" />
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`mailto:${SOCIAL.email}`}
+                  aria-label="Correo electrónico de contacto"
+                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                >
+                  <Mail className="w-5 h-5" />
+                </a>
+              </li>
+            </ul>
           </div>
 
           <p className="text-center text-text-secondary/50 text-xs mt-10">
