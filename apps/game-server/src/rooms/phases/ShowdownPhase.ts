@@ -44,20 +44,10 @@ export const showdownPhase: IGamePhase = {
           winner.revealedCards = winner.cards;
           r.state.lastAction = `¡${winner.nickname} gana! (${evaluateHand(winner.cards).type})`;
           r.state.showdownTimer = 0;
-          // Persistir replay / stats antes de esperar dismiss
+          // ── No awardPot ni stats para pot=0 (victoria fantasma) ──
           r.recordEvent({ event: 'end', winner: winner.id, pot: 0, payout: 0, rake: 0, time: Date.now(), rng_state: r.getRngState() });
-          const playersSnapshot = (Array.from(r.state.players.values()) as Player[]).map((p: Player) => ({
-            userId: p.supabaseUserId || p.id, sessionId: p.id, nickname: p.nickname, cards: p.cards, chips: p.chips
-          }));
-          const finalHands: Record<string, any> = {};
-          (Array.from(r.state.players.values()) as Player[]).forEach((p: Player) => {
-            if (p.cards) {
-              const h = evaluateHand(p.cards);
-              finalHands[p.supabaseUserId || p.id] = { cards: p.cards, handType: h.type, handPoints: h.points, nickname: p.nickname };
-            }
-          });
-          SupabaseService.saveReplay(r.currentGameId, r.state.lastSeed, r.currentTimeline.map(({ rng_state, ...e }: any) => e), playersSnapshot, [...r.currentTimeline], { totalPot: 0, mainPot: 0, piquePot: 0, payout: 0, rake: 0 }, finalHands, r.roomId, r.metadata?.tableName || 'Mesa VIP', r.snapshotBuilder.build()).catch(console.error);
-          // Se queda en SHOWDOWN — dismiss-showdown caso 2 limpiará al LOBBY
+          // Auto-avance a LOBBY tras timeout
+          r.startShowdownAutoTimer();
           return;
         }
         // Sin cartas: nada que mostrar, cerrar directamente
@@ -70,6 +60,9 @@ export const showdownPhase: IGamePhase = {
       r.state.phase = "SHOWDOWN_WAIT";
       r.state.turnPlayerId = winner.id;
       r.state.showdownTimer = 0;
+      r.clearTurnTimer();
+      // Auto-avance si no hay respuesta del cliente
+      r.startShowdownAutoTimer();
       return;
     }
 
@@ -132,6 +125,9 @@ export const showdownPhase: IGamePhase = {
 
     // Sin timer automático — se espera "dismiss-showdown" de cualquier jugador
     r.state.showdownTimer = 0;
+    r.clearTurnTimer();
+    // Auto-avance a LOBBY si nadie envía dismiss-showdown en 30s
+    r.startShowdownAutoTimer();
     // Guardar datos del showdown para finalizar cuando alguien cierre
     r.pendingShowdownData = { overallWinnerId, potWinners, totalPayout, totalRake, activePlayers };
 

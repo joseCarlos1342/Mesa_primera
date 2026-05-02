@@ -13,6 +13,7 @@ export const guerraJuegoPhase: IGamePhase = {
   id: "GUERRA_JUEGO",
   enter(ctx: Ctx) {
     const r: Ctx = ctx;
+    r.clearTurnTimer();
     r.state.phase = "GUERRA_JUEGO";
     console.log(`[MesaRoom] Iniciando Guerra de Juego — apuestas entre jugadores con juego`);
     r.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; p.declinedGuerraJuegoBet = false; });

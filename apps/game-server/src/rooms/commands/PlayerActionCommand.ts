@@ -13,6 +13,7 @@ type RoomCtx = MesaRoom;
 
 export async function handlePlayerAction(room: MesaRoom, client: Client, message: any): Promise<void> {
   const r: RoomCtx = room;
+  r.clearTurnTimer();
   if (r.state.turnPlayerId !== client.sessionId) return;
 
   const player = r.state.players.get(client.sessionId);
@@ -277,6 +278,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       r.state.highestBetPlayerId = client.sessionId;
       player.hasActed = true;
       r.state.lastAction = `${player.nickname} va $${(actualBet / 100).toLocaleString()}`;
+      r.markDisconnectedAsImplicitAllIn();
       advanceNext();
 
     } else if (action === "igualar") {
@@ -351,6 +353,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       }
       player.hasActed = true;
       r.state.lastAction = `${player.nickname} va RESTO $${(allInAmount / 100).toLocaleString()}`;
+      r.markDisconnectedAsImplicitAllIn();
       advanceNext();
     }
   }

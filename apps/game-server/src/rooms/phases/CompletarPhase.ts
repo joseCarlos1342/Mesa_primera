@@ -13,6 +13,7 @@ export const completarPhase: IGamePhase = {
   id: "COMPLETAR",
   enter(ctx: Ctx) {
     const r: Ctx = ctx;
+    r.clearTurnTimer();
     r.state.phase = "COMPLETAR";
     console.log(`[MesaRoom] Iniciando Fase 3: Completar`);
 

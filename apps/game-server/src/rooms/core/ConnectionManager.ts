@@ -282,24 +282,19 @@ export async function handleConnectionLeave(room: MesaRoom, client: Client, code
   console.log(`[MesaRoom] dealerId preservado en ${r.state.dealerId} durante grace period para ${player.nickname}.`);
 
   try {
-    console.log(`[MesaRoom] Otorgando 5 minutos de reconexión para ${player.nickname}...`);
-    // 300 segundos = 5 minutos de gracia
-    await r.allowReconnection(client, 300);
+    console.log(`[MesaRoom] Otorgando 120s de reconexión para ${player.nickname}...`);
+    await r.allowReconnection(client, 120);
 
     player.connected = true;
-    // Actualizar clientMap: tras reconnect, Colyseus reutiliza el Client
-    // pero el transport interno cambia. Sin este set, sendPrivateCards() usa la ref muerta.
     r.clientMap.set(client.sessionId, client);
     r.updateLobbyMetadata();
     console.log(`[RECONNECT:NATIVE] ${player.nickname} (${client.sessionId}), phase=${r.state.phase}, hasCards=${!!player.cards}, dealerId=${r.state.dealerId}, activeManoId=${r.state.activeManoId}`);
 
-    // Re-enviar cartas privadas tras reconexión exitosa
     if (r.state.phase !== "LOBBY" && player.cards) {
       const cards = player.cards.split(',').filter(Boolean);
       client.send("private-cards", cards);
     }
 
-    // Re-enviar configuración de la sala
     const meta = r.metadata as MesaMetadataLike;
     client.send("room-config", {
       disabledChips: meta?.disabledChips || [],
@@ -310,6 +305,16 @@ export async function handleConnectionLeave(room: MesaRoom, client: Client, code
 
   } catch (e) {
     console.log(`[RECONNECT:GRACE_EXPIRED] ${player.nickname} (${client.sessionId}) — grace period agotado, phase=${r.state.phase}`);
+
+    // Guard: si el jugador logró reconectarse justo antes de la expiración
+    // (race condition), no expulsarlo. allowReconnection puede resolver la promesa
+    // por reconexión exitosa y luego rechazar por timeout casi simultáneamente.
+    // Verificar si el Player sigue en la sala Y está conectado antes de remover.
+    const existingPlayer = r.state.players.get(client.sessionId);
+    if (existingPlayer && existingPlayer.connected) {
+      console.log(`[RECONNECT:GRACE_EXPIRED] ${player.nickname} — reconectado apenas, cancelando expulsión (race condition mitigada)`);
+      return;
+    }
 
     if (shouldTransferActiveMano) {
       console.log(`[MesaRoom] Grace period agotado para ${player.nickname}, transfiriendo mano activa...`);
