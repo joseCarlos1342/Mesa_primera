@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from 'next/headers'
 import { Cinzel, Outfit, Geist_Mono } from "next/font/google";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ClientErrorSuppressor } from "@/components/ClientErrorSuppressor";
 import "./globals.css";
 
@@ -345,6 +346,7 @@ export default async function RootLayout({
         <FramerMotionProvider>
           {children}
         </FramerMotionProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
