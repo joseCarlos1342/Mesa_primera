@@ -1120,8 +1120,8 @@ export function LandingContent() {
               </Link>
             </nav>
 
-            <ul className="flex list-none gap-3" aria-label="Redes sociales">
-              <li>
+            <ul className="flex list-none gap-3 p-0 m-0" aria-label="Redes sociales">
+              <li className="m-0 p-0">
                 <a
                   href={SOCIAL.facebook}
                   target="_blank"
@@ -1132,7 +1132,7 @@ export function LandingContent() {
                   <Facebook className="w-5 h-5" />
                 </a>
               </li>
-              <li>
+              <li className="m-0 p-0">
                 <a
                   href={SOCIAL.instagram}
                   target="_blank"
@@ -1143,7 +1143,7 @@ export function LandingContent() {
                   <Instagram className="w-5 h-5" />
                 </a>
               </li>
-              <li>
+              <li className="m-0 p-0">
                 <a
                   href={`mailto:${SOCIAL.email}`}
                   aria-label="Correo electrónico de contacto"
