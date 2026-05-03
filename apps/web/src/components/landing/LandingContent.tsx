@@ -1120,39 +1120,36 @@ export function LandingContent() {
               </Link>
             </nav>
 
-            <ul className="flex list-none gap-3 p-0 m-0" aria-label="Redes sociales">
-              <li className="m-0 p-0">
-                <a
-                  href={SOCIAL.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Facebook de Primera Riverada los 4 Ases"
-                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-                >
-                  <Facebook className="w-5 h-5" />
-                </a>
-              </li>
-              <li className="m-0 p-0">
-                <a
-                  href={SOCIAL.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Instagram de Primera Riverada los 4 Ases"
-                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-                >
-                  <Instagram className="w-5 h-5" />
-                </a>
-              </li>
-              <li className="m-0 p-0">
-                <a
-                  href={`mailto:${SOCIAL.email}`}
-                  aria-label="Correo electrónico de contacto"
-                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-                >
-                  <Mail className="w-5 h-5" />
-                </a>
-              </li>
-            </ul>
+            <div className="flex gap-3" role="list" aria-label="Redes sociales">
+              <a
+                href={SOCIAL.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook de Primera Riverada los 4 Ases"
+                role="listitem"
+                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+              >
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a
+                href={SOCIAL.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram de Primera Riverada los 4 Ases"
+                role="listitem"
+                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+              >
+                <Instagram className="w-5 h-5" />
+              </a>
+              <a
+                href={`mailto:${SOCIAL.email}`}
+                aria-label="Correo electrónico de contacto"
+                role="listitem"
+                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+              >
+                <Mail className="w-5 h-5" />
+              </a>
+            </div>
           </div>
 
           <p className="text-center text-text-secondary/50 text-xs mt-10">
