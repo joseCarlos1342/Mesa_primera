@@ -3,7 +3,7 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Crear Cuenta — Primera Riverada los 4 Ases",
   description:
-    "Únete a Primera Riverada los 4 Ases. Crea tu cuenta gratis y comienza a jugar cartas online en el club más exclusivo de Neiva, Huila.",
+    "Crea tu cuenta gratis en Primera Riverada los 4 Ases y comienza a jugar cartas online. Registro rápido con celular o Google. Club de cartas en Neiva, Huila.",
   alternates: {
     canonical: "https://primerariveradalos4ases.com/register/player",
   },
@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     "crear cuenta los 4 ases",
     "unirse club de cartas neiva",
     "registro primera riverada",
+    "jugar cartas online registro",
   ],
   openGraph: {
     title: "Crear Cuenta — Primera Riverada los 4 Ases",
@@ -25,10 +26,39 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Inicio",
+      "item": "https://primerariveradalos4ases.com/",
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Crear Cuenta",
+      "item": "https://primerariveradalos4ases.com/register/player",
+    },
+  ],
+};
+
 export default function RegisterLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd),
+        }}
+      />
+      {children}
+    </>
+  );
 }

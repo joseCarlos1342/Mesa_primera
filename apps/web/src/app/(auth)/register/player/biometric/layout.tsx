@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description:
     "Configura el acceso biométrico a tu cuenta en Primera Riverada los 4 Ases. Desbloquea tu cuenta con huella digital o reconocimiento facial.",
   alternates: {
-    canonical: "/register/player/biometric",
+    canonical: "https://primerariveradalos4ases.com/register/player/biometric",
   },
 };
 
