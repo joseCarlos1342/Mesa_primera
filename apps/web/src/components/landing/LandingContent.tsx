@@ -69,7 +69,7 @@ const TUTORIALS = [
 const FAQ_ITEMS = [
   {
     q: '¿Dónde queda Primera Riverada los 4 Ases?',
-    a: 'Nuestro establecimiento está en Neiva, Huila, y también puedes jugar online en tiempo real desde la plataforma.',
+    a: 'Nuestro establecimiento está en Neiva, Huila (Cra. 7 #06-87), y también puedes jugar online en tiempo real desde la plataforma. Primera Riverada Neiva — el club de cartas y tomadero de la región.',
   },
   {
     q: '¿Puedo tomar bebidas y jugar en el mismo lugar?',
@@ -724,8 +724,9 @@ export function LandingContent() {
               >
                 <p className="text-text-secondary text-lg leading-relaxed">
                   Somos un club de entretenimiento con tradición en el juego de cartas
-                  <strong className="text-text-premium"> Primera</strong> y dominó. Con
-                  años de experiencia reuniendo jugadores, ahora también ofrecemos
+                  <strong className="text-text-premium"> Primera</strong> y dominó. Conocido también como
+                  <strong className="text-text-premium"> Primera Riverada Dario</strong> o la mesa de Primera de Neiva,
+                  con años de experiencia reuniendo jugadores, ahora también ofrecemos
                   partidas online en tiempo real para que disfrutes desde cualquier
                   lugar.
                 </p>
@@ -1092,7 +1093,19 @@ export function LandingContent() {
               </p>
             </div>
 
-            <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2" aria-label="Enlaces legales">
+            <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2" aria-label="Enlaces del sitio">
+              <Link
+                href="/login/player"
+                className="text-sm text-text-secondary hover:text-brand-gold transition-colors whitespace-nowrap"
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/register/player"
+                className="text-sm text-text-secondary hover:text-brand-gold transition-colors whitespace-nowrap"
+              >
+                Crear cuenta
+              </Link>
               <Link
                 href="/privacy"
                 className="text-sm text-text-secondary hover:text-brand-gold transition-colors whitespace-nowrap"
@@ -1107,7 +1120,7 @@ export function LandingContent() {
               </Link>
             </nav>
 
-            <ul className="flex gap-3" aria-label="Redes sociales">
+            <ul className="flex list-none gap-3" aria-label="Redes sociales">
               <li>
                 <a
                   href={SOCIAL.facebook}
@@ -1145,6 +1158,13 @@ export function LandingContent() {
           <p className="text-center text-text-secondary/50 text-xs mt-10">
             © {new Date().getFullYear()} Primera Riverada los 4 Ases. Todos los
             derechos reservados.
+          </p>
+
+          <p className="sr-only">
+            Primera Riverada los 4 Ases — club de cartas y tomadero en Neiva, Huila.
+            También conocido como Primera Riverada Dario, mesa de juego Dario,
+            Los 4 Ases Neiva, juego de cartas Primera online. Juega Primera Riverada
+            en tiempo real desde cualquier lugar.
           </p>
         </footer>
       </div>
