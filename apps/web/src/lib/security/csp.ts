@@ -67,9 +67,24 @@ export function buildContentSecurityPolicy({
     `'unsafe-inline'`,
   ]
 
+  // Separate script-src-elem without strict-dynamic so Cloudflare cdn-cgi
+  // scripts (email-decode, challenge-platform) are allowed by URL.
+  // Browsers that support script-src-elem will use it over script-src
+  // for <script> elements. nonce ensures only trusted inline scripts run.
+  const scriptSrcElem = [
+    `'self'`,
+    `'nonce-${nonce}'`,
+    `'unsafe-inline'`,
+    'https://static.cloudflareinsights.com',
+    'https://challenges.cloudflare.com',
+    'https://primerariveradalos4ases.com/cdn-cgi/scripts/',
+    'https://primerariveradalos4ases.com/cdn-cgi/challenge-platform/',
+  ]
+
   return [
     `default-src 'self'`,
     `script-src ${scriptSrc.join(' ')}`,
+    `script-src-elem ${scriptSrcElem.join(' ')}`,
     `style-src ${styleSrc.join(' ')}`,
     `font-src 'self' https://fonts.gstatic.com`,
     `img-src 'self' ${supabaseOrigin} https://www.transparenttextures.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com data: blob:`,

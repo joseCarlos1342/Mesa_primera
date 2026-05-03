@@ -40,6 +40,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  productionBrowserSourceMaps: true,
   turbopack: {},
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns', 'framer-motion'],
