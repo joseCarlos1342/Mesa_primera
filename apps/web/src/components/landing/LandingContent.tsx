@@ -135,11 +135,12 @@ function TutorialCarousel({
   tutorials,
   onSelect,
 }: {
-  tutorials: { title: string; desc: string }[]
+  tutorials: { title: string; desc: string; preview?: string }[]
   onSelect: (title: string) => void
 }) {
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(1)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const total = tutorials.length
 
@@ -160,10 +161,35 @@ function TutorialCarousel({
     [total, visible],
   )
 
+  const goTo = useCallback(
+    (i: number) => {
+      setIndex(Math.max(0, Math.min(i, total - visible)))
+    },
+    [total, visible],
+  )
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    setTouchStart(e.touches[0].clientX)
+  }, [])
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (touchStart === null) return
+      const delta = e.changedTouches[0].clientX - touchStart
+      const threshold = 50
+      if (Math.abs(delta) > threshold) {
+        if (delta > 0) go('prev')
+        else go('next')
+      }
+      setTouchStart(null)
+    },
+    [touchStart, go],
+  )
+
   useEffect(() => {
     if (trackRef.current) {
       const cardW = trackRef.current.children[0]?.getBoundingClientRect().width ?? 0
-      const gap = 24 // gap-6 = 24px
+      const gap = 24
       trackRef.current.style.transform = `translateX(-${index * (cardW + gap)}px)`
     }
   }, [index])
@@ -182,27 +208,60 @@ function TutorialCarousel({
         </button>
 
         {/* Track */}
-        <div className="overflow-hidden flex-1">
+        <div
+          className="overflow-hidden flex-1"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <div
             ref={trackRef}
             className="flex gap-6 transition-transform duration-500 ease-out"
-            style={{ width: 'max-content' }}
+            style={{ width: 'max-content', touchAction: 'pan-y' }}
           >
-            {tutorials.map((t) => (
+            {tutorials.map((t, i) => (
               <div
                 key={t.title}
                 id={t.title === 'Cómo instalar la app' ? 'instalar-app' : undefined}
                 onClick={() => onSelect(t.title)}
                 data-testid="tutorial-card"
-                className="group bg-white/3 border border-white/8 rounded-2xl p-5 flex flex-col hover:border-brand-gold/20 transition-all duration-500 text-left cursor-pointer w-[280px] sm:w-[340px] shrink-0"
+                className="group bg-white/3 border border-white/8 rounded-2xl p-5 flex flex-col hover:border-brand-gold/20 transition-all duration-500 text-left cursor-pointer w-[280px] sm:w-[340px] shrink-0 select-none"
               >
-                <div className="w-full aspect-[16/10] rounded-xl bg-slate-800/60 border border-white/5 group-hover:border-brand-gold/10 transition-all overflow-hidden relative mb-4">
-                  <div className="absolute inset-0 bg-linear-to-br from-brand-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="w-full h-full flex items-center justify-center opacity-30" />
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors duration-500 flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-brand-gold/20 backdrop-blur-sm border border-brand-gold/40 flex items-center justify-center group-hover:bg-brand-gold/40 group-hover:border-brand-gold/60 transition-all duration-500">
-                      <Play className="w-5 h-5 text-brand-gold" />
+                <div className="w-full aspect-[16/10] rounded-xl border border-white/5 group-hover:border-brand-gold/10 transition-all overflow-hidden relative mb-4">
+                  {/* Preview gradient background */}
+                  <div className={`absolute inset-0 ${getTutorialPreviewGradient(t.title)}`} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-transparent" />
+
+                  {/* Mini phone mockup with tutorial preview */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative">
+                      {/* Phone frame mini */}
+                      <div className="w-20 h-32 sm:w-24 sm:h-36 rounded-2xl bg-[#0d211a]/90 border border-brand-gold/20 shadow-2xl overflow-hidden flex flex-col">
+                        {/* Top bar */}
+                        <div className="h-4 bg-[#0a180e] flex items-center justify-center">
+                          <div className="w-6 h-1.5 bg-white/10 rounded-full" />
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 p-1 flex flex-col gap-0.5">
+                          {getTutorialPreviewContent(t.title).map((item, idx) => (
+                            <div key={idx} className={`w-full h-full rounded ${item} flex items-center justify-center`}>
+                              <div className="w-3 h-3 rounded-sm bg-white/10" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Play button overlay */}
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/5 transition-colors duration-500 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-brand-gold/20 backdrop-blur-sm border border-brand-gold/40 flex items-center justify-center group-hover:bg-brand-gold/40 group-hover:border-brand-gold/60 group-hover:scale-110 transition-all duration-500 shadow-lg">
+                      <Play className="w-5 h-5 text-brand-gold group-hover:text-slate-950 ml-0.5" />
+                    </div>
+                  </div>
+
+                  {/* Step count badge */}
+                  <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded-full border border-white/10">
+                    <span className="text-[10px] font-bold text-white/70">{getTutorialStepCount(t.title)} pasos</span>
                   </div>
                 </div>
                 <h3 className="text-lg font-bold mb-1">{t.title}</h3>
@@ -228,7 +287,7 @@ function TutorialCarousel({
         {Array.from({ length: Math.ceil(total / visible) }).map((_, i) => (
           <button
             key={i}
-            onClick={() => setIndex(i * visible)}
+            onClick={() => goTo(i * visible)}
             aria-label={`Ir a página ${i + 1}`}
             className={`h-2 rounded-full transition-all duration-300 ${
               Math.floor(index / visible) === i ? 'bg-brand-gold w-6' : 'bg-white/20 hover:bg-white/40 w-2'
@@ -238,6 +297,51 @@ function TutorialCarousel({
       </div>
     </div>
   )
+}
+
+function getTutorialPreviewGradient(title: string): string {
+  const gradients: Record<string, string> = {
+    'Cómo instalar la app': 'bg-gradient-to-br from-blue-900/60 via-slate-800/80 to-slate-900/60',
+    'Cómo registrarte': 'bg-gradient-to-br from-emerald-900/60 via-slate-800/80 to-slate-900/60',
+    'Cómo iniciar sesión': 'bg-gradient-to-br from-violet-900/60 via-slate-800/80 to-slate-900/60',
+    'Cómo cargar saldo': 'bg-gradient-to-br from-amber-900/60 via-slate-800/80 to-slate-900/60',
+    'Cómo retirar saldo': 'bg-gradient-to-br from-red-900/60 via-slate-800/80 to-slate-900/60',
+    'Cómo transferir saldo': 'bg-gradient-to-br from-cyan-900/60 via-slate-800/80 to-slate-900/60',
+    'Cómo jugar tu primera partida': 'bg-gradient-to-br from-green-900/60 via-slate-800/80 to-slate-900/60',
+    'Funciones del menú de mesa': 'bg-gradient-to-br from-yellow-900/60 via-slate-800/80 to-slate-900/60',
+    'Amigos': 'bg-gradient-to-br from-pink-900/60 via-slate-800/80 to-slate-900/60',
+  }
+  return gradients[title] || 'bg-gradient-to-br from-slate-800/60 via-slate-800/80 to-slate-900/60'
+}
+
+function getTutorialPreviewContent(title: string): string[] {
+  const contents: Record<string, string[]> = {
+    'Cómo instalar la app': ['bg-blue-500/20', 'bg-blue-500/30', 'bg-blue-500/20'],
+    'Cómo registrarte': ['bg-emerald-500/20', 'bg-emerald-500/30', 'bg-emerald-500/20'],
+    'Cómo iniciar sesión': ['bg-violet-500/20', 'bg-violet-500/30', 'bg-violet-500/20'],
+    'Cómo cargar saldo': ['bg-amber-500/20', 'bg-amber-500/30', 'bg-amber-500/20'],
+    'Cómo retirar saldo': ['bg-red-500/20', 'bg-red-500/30', 'bg-red-500/20'],
+    'Cómo transferir saldo': ['bg-cyan-500/20', 'bg-cyan-500/30', 'bg-cyan-500/20'],
+    'Cómo jugar tu primera partida': ['bg-green-500/20', 'bg-green-500/30', 'bg-green-500/20'],
+    'Funciones del menú de mesa': ['bg-yellow-500/20', 'bg-yellow-500/30', 'bg-yellow-500/20'],
+    'Amigos': ['bg-pink-500/20', 'bg-pink-500/30', 'bg-pink-500/20'],
+  }
+  return contents[title] || ['bg-slate-500/20', 'bg-slate-500/30', 'bg-slate-500/20']
+}
+
+function getTutorialStepCount(title: string): number {
+  const counts: Record<string, number> = {
+    'Cómo instalar la app': 4,
+    'Cómo registrarte': 4,
+    'Cómo iniciar sesión': 3,
+    'Cómo cargar saldo': 4,
+    'Cómo retirar saldo': 3,
+    'Cómo transferir saldo': 3,
+    'Cómo jugar tu primera partida': 4,
+    'Funciones del menú de mesa': 4,
+    'Amigos': 4,
+  }
+  return counts[title] || 3
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
@@ -250,6 +354,7 @@ export function LandingContent() {
   const [activeSection, setActiveSection] = useState('inicio')
   const [currentSlide, setCurrentSlide] = useState(0)
   const [carouselPaused, setCarouselPaused] = useState(false)
+  const [photoTouchStart, setPhotoTouchStart] = useState<number | null>(null)
   const [activeTutorial, setActiveTutorial] = useState<string | null>(null)
   const [tutorialSteps, setTutorialSteps] = useState<{ label: string; screen: React.ReactNode; landscape?: boolean }[] | null>(null)
 
@@ -291,6 +396,24 @@ export function LandingContent() {
   const prevSlide = useCallback(() => {
     setCurrentSlide((p) => (p - 1 + CAROUSEL_SLIDES.length) % CAROUSEL_SLIDES.length)
   }, [])
+
+  const handlePhotoTouchStart = useCallback((e: React.TouchEvent) => {
+    setPhotoTouchStart(e.touches[0].clientX)
+  }, [])
+
+  const handlePhotoTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (photoTouchStart === null) return
+      const delta = e.changedTouches[0].clientX - photoTouchStart
+      const threshold = 50
+      if (Math.abs(delta) > threshold) {
+        if (delta > 0) prevSlide()
+        else nextSlide()
+      }
+      setPhotoTouchStart(null)
+    },
+    [photoTouchStart, nextSlide, prevSlide],
+  )
 
   useEffect(() => {
     if (carouselPaused) return
@@ -675,11 +798,6 @@ export function LandingContent() {
             </div>
           </div>
 
-          {/* Scroll indicator */}
-            <div className="absolute bottom-8 md:bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-brand-gold/30 animate-bounce">
-            <span className="text-[10px] tracking-widest uppercase">Scroll</span>
-            <div className="w-px h-6 bg-linear-to-b from-brand-gold/30 to-transparent" />
-          </div>
         </section>
 
         {/* ── Gold Divider ── */}
@@ -803,6 +921,8 @@ export function LandingContent() {
               className="relative overflow-hidden rounded-3xl bg-white/3 border border-white/8"
               onMouseEnter={() => setCarouselPaused(true)}
               onMouseLeave={() => setCarouselPaused(false)}
+              onTouchStart={handlePhotoTouchStart}
+              onTouchEnd={handlePhotoTouchEnd}
             >
               <div
                 ref={carouselTrackRef}
@@ -830,18 +950,18 @@ export function LandingContent() {
                 ))}
               </div>
 
-              {/* Arrows */}
+              {/* Arrows — desktop only */}
               <button
                 onClick={prevSlide}
                 aria-label="Anterior"
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/50 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all"
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/50 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all hidden md:flex"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={nextSlide}
                 aria-label="Siguiente"
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/50 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all"
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/50 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all hidden md:flex"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
