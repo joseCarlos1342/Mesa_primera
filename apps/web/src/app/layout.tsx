@@ -38,22 +38,42 @@ export const metadata: Metadata = {
     "Primera Riverada los 4 Ases",
     "primera riverada",
     "primera riverada neiva",
+    "primera riverada dario",
+    "primera riverada huila",
+    "primera riverada colombia",
+    "primera riverda",
+    "primera riverda neiva",
+    "primera riverda dario",
     "los 4 ases",
     "los 4 ases neiva",
+    "los 4 ases huila",
+    "los 3 ases",
+    "los tres ases",
     "mesa de juego Dario",
+    "mesa de primera neiva",
     "tomadero neiva",
+    "tomadero huila",
     "tomadero con juegos de azar",
     "juego de primera",
     "juego de cartas online",
+    "juego de cartas primera",
     "cartas multijugador",
     "primera cartas",
     "jugar a la primera",
+    "jugar primera riverada online",
     "club de cartas neiva",
+    "club de cartas huila",
     "juegos de azar neiva",
+    "juegos de azar huila",
     "mesa de cartas",
     "domino neiva",
+    "domino huila",
     "club de cartas colombia",
     "juegos de mesa neiva huila",
+    "entretenimiento neiva",
+    "entretenimiento huila",
+    "primera neiva",
+    "primera huila",
   ],
   authors: [{ name: "Primera Riverada los 4 Ases" }],
   creator: "Primera Riverada los 4 Ases",
@@ -89,21 +109,16 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   icons: {
-    icon: "/icons/favicon-32.png",
-    shortcut: "/icons/favicon-16.png",
-    apple: "/icons/apple-touch-icon-180.png",
-    other: [
-      {
-        rel: "icon",
-        url: "/icons/favicon-16.png",
-        sizes: "16x16",
-      },
-      {
-        rel: "icon",
-        url: "/icons/favicon-32.png",
-        sizes: "32x32",
-      },
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/favicon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icons/favicon-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icons/favicon-144.png", sizes: "144x144", type: "image/png" },
     ],
+    shortcut: "/icons/favicon-32.png",
+    apple: "/icons/apple-touch-icon-180.png",
   },
   robots: {
     index: true,
@@ -149,7 +164,7 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "Primera Riverada los 4 Ases",
-    "alternateName": ["Los 4 Ases", "Mesa Primera", "Primera Riverada"],
+    "alternateName": ["Los 4 Ases", "Primera Riverada", "Primera Riverda", "Mesa Primera", "Primera Riverada Dario", "Primera Riverada Neiva", "Primera Riverda Dario"],
     "url": "https://primerariveradalos4ases.com",
     "logo": "https://primerariveradalos4ases.com/icons/icon-512.png",
     "contactPoint": {
@@ -167,7 +182,7 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "EntertainmentBusiness",
     "name": "Primera Riverada los 4 Ases",
-    "alternateName": ["Los 4 Ases", "Mesa de Juego Dario", "Tomadero los 4 Ases"],
+    "alternateName": ["Los 4 Ases", "Mesa de Juego Dario", "Tomadero los 4 Ases", "Primera Riverada Dario", "Primera Riverda", "Primera Riverada Neiva", "Mesa de Primera Neiva"],
     "description": "Club presencial y online de juego de cartas Primera, dominó, bebidas y entretenimiento en Neiva, Huila.",
     "url": "https://primerariveradalos4ases.com",
     "image": "https://primerariveradalos4ases.com/og-image.png",
@@ -217,7 +232,7 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "Primera Riverada los 4 Ases",
-    "alternateName": ["Los 4 Ases", "Primera Riverada", "Mesa Primera"],
+    "alternateName": ["Los 4 Ases", "Primera Riverada", "Mesa Primera", "Primera Riverda", "Primera Riverada Neiva", "Primera Riverada Dario", "Juego de Primera Online"],
     "url": "https://primerariveradalos4ases.com",
     "potentialAction": {
       "@type": "SearchAction",
@@ -271,7 +286,7 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="4 Ases" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" sizes="180x180" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#10b981" />
         <script

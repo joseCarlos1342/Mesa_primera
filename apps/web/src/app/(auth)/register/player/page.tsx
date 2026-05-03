@@ -80,10 +80,13 @@ export default function PlayerRegisterPage() {
 
       <div className="w-full max-w-xl z-10 animate-in fade-in zoom-in-95 duration-1000">
         {/* Logo Section */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <h1 className="text-5xl md:text-7xl font-display font-black tracking-tighter bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent italic drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
             PRIMERA RIVERADA
           </h1>
+          <p className="mt-4 text-text-secondary text-sm max-w-md mx-auto leading-relaxed">
+            Crea tu cuenta gratis en Primera Riverada los 4 Ases y únete al club de cartas online más exclusivo de Neiva. Juega Primera en tiempo real.
+          </p>
         </div>
 
         {/* Registration Card */}
