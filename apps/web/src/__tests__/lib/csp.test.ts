@@ -24,6 +24,9 @@ describe('buildContentSecurityPolicy', () => {
       "script-src 'self' 'nonce-test-nonce' 'strict-dynamic' 'unsafe-inline' https://static.cloudflareinsights.com"
     )
     expect(csp).toContain(
+      "script-src-elem 'self' 'nonce-test-nonce' 'unsafe-inline' https://static.cloudflareinsights.com https://challenges.cloudflare.com https://primerariveradalos4ases.com/cdn-cgi/scripts/"
+    )
+    expect(csp).toContain(
       "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'"
     )
     expect(csp).toContain('https://vps24726.cubepath.net')
