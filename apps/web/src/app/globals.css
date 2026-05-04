@@ -173,40 +173,7 @@ body {
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-/* GSAP animation initial states — avoids forced reflow by setting
-   these in CSS instead of via gsap.set() which reads layout properties */
-[data-stagger-card] {
-  opacity: 0;
-  transform: translateY(50px) scale(0.92);
-  will-change: transform, opacity;
-}
 
-[data-step] {
-  opacity: 0;
-  transform: translateY(50px) scale(0.85);
-  will-change: transform, opacity;
-}
-
-[data-reveal],
-[data-reveal-left],
-[data-reveal-right] {
-  opacity: 0;
-  will-change: opacity;
-}
-
-[data-gold-line] {
-  transform: scaleX(0);
-  transform-origin: left center;
-  transform-box: fill-box;
-  will-change: transform;
-}
-
-[data-divider] {
-  opacity: 0;
-  transform: scaleX(0);
-  transform-box: fill-box;
-  will-change: transform, opacity;
-}
 
 /* Felt texture pattern — replaces external URL for LCP optimization */
 .bg-felt-texture {
