@@ -43,7 +43,7 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: true,
   turbopack: {},
   experimental: {
-    optimizePackageImports: ['lucide-react', 'date-fns', 'framer-motion'],
+    optimizePackageImports: ['lucide-react', 'date-fns', 'framer-motion', 'gsap', '@gsap/react'],
   },
   async redirects() {
     return [
