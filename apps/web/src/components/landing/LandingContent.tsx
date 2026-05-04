@@ -4,15 +4,22 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
-import { useGSAP } from '@gsap/react'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
   Facebook, Instagram, Mail, Smartphone, Grid2x2, Wine, Coffee,
   Spade, Dices, Menu, X, ChevronLeft, ChevronRight, ImageIcon,
   Play, ArrowRight, MapPin, Navigation,
 } from 'lucide-react'
 import { LOCAL_LOCATION } from '@/components/landing/LocationMap'
+
+const LocationMap = dynamic(
+  () => import('@/components/landing/LocationMap').then((m) => ({ default: m.LocationMapInner })),
+  { ssr: false },
+)
+
+const LandingAnimations = dynamic(
+  () => import('@/components/landing/LandingAnimations').then((m) => ({ default: m.LandingAnimations })),
+  { ssr: false },
+)
 
 const TutorialWalkthrough = dynamic(
   () => import('@/components/landing/tutorials/TutorialWalkthrough').then((m) => ({ default: m.TutorialWalkthrough })),
@@ -30,13 +37,6 @@ const TUTORIAL_IMPORTS = {
   'Funciones del menú de mesa': () => import('@/components/landing/tutorials/GameMenuTutorial').then((m) => m.gameMenuSteps),
   'Amigos': () => import('@/components/landing/tutorials/FriendsTutorial').then((m) => m.friendsSteps),
 } as const
-
-const LocationMap = dynamic(
-  () => import('@/components/landing/LocationMap').then((m) => ({ default: m.LocationMapInner })),
-  { ssr: false },
-)
-
-gsap.registerPlugin(ScrollTrigger)
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -419,196 +419,18 @@ export function LandingContent() {
     if (carouselPaused) return
     const id = setInterval(nextSlide, 4500)
     return () => clearInterval(id)
-  }, [carouselPaused, nextSlide])
+}, [carouselPaused, nextSlide])
 
-  // Apply carousel transform via JS (CSP-safe — no inline style in SSR)
   useEffect(() => {
     if (carouselTrackRef.current) {
       carouselTrackRef.current.style.transform = `translateX(-${currentSlide * 100}%)`
     }
   }, [currentSlide])
 
-  /* ── GSAP Animations ────────────────────────────── */
-  useGSAP(
-    () => {
-      if (!containerRef.current) return
-
-      // Accessibility — skip animations if user prefers reduced motion
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-      // Hero entrance
-      const heroTl = gsap.timeline({ defaults: { ease: 'power4.out' } })
-      heroTl
-        .from('[data-hero-title]', { y: 80, opacity: 0, duration: 1.2 })
-        .from('[data-hero-subtitle]', { y: 40, opacity: 0, duration: 0.8 }, '-=0.6')
-        .from('[data-hero-cta]', { y: 30, opacity: 0, duration: 0.7 }, '-=0.4')
-        .from('[data-hero-hint]', { y: 20, opacity: 0, duration: 0.5 }, '-=0.3')
-
-      // Floating card symbols
-      gsap.utils.toArray<Element>('[data-float]').forEach((el, i) => {
-        gsap.to(el, {
-          y: 'random(-20, 20)',
-          x: 'random(-10, 10)',
-          rotation: 'random(-5, 5)',
-          duration: 'random(3, 5)',
-          repeat: -1,
-          yoyo: true,
-          ease: 'sine.inOut',
-          delay: i * 0.4,
-        })
-      })
-
-      // Wave text — "Quiénes somos" character-by-character
-      const waveHeading = containerRef.current.querySelector('[data-wave-heading]')
-      if (waveHeading) {
-        const chars = waveHeading.querySelectorAll('.wave-char')
-        gsap.fromTo(
-          chars,
-          { y: 40, opacity: 0, scale: 0.7 },
-          {
-            y: 0,
-            opacity: 1,
-            scale: 1,
-            duration: 0.5,
-            stagger: 0.04,
-            ease: 'back.out(1.7)',
-            scrollTrigger: {
-              trigger: waveHeading,
-              start: 'top 85%',
-              toggleActions: 'play none none reverse',
-            },
-          },
-        )
-      }
-
-      // Generic reveals (fade up)
-      gsap.utils.toArray<Element>('[data-reveal]').forEach((el) => {
-        gsap.from(el, {
-          y: 50,
-          opacity: 0,
-          duration: 0.9,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
-          },
-        })
-      })
-
-      // Reveal from left
-      gsap.utils.toArray<Element>('[data-reveal-left]').forEach((el) => {
-        gsap.from(el, {
-          x: -80,
-          opacity: 0,
-          duration: 0.8,
-          ease: 'power3.out',
-          force3D: true,
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
-          },
-        })
-      })
-
-      // Reveal from right
-      gsap.utils.toArray<Element>('[data-reveal-right]').forEach((el) => {
-        gsap.from(el, {
-          x: 80,
-          opacity: 0,
-          duration: 0.8,
-          ease: 'power3.out',
-          force3D: true,
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
-          },
-        })
-      })
-
-      // Stagger cards entrance
-      ScrollTrigger.batch('[data-stagger-card]', {
-        onEnter: (batch) =>
-          gsap.to(batch, {
-            y: 0,
-            opacity: 1,
-            scale: 1,
-            duration: 0.6,
-            stagger: 0.1,
-            ease: 'power2.out',
-            overwrite: true,
-          }),
-        onLeaveBack: (batch) =>
-          gsap.to(batch, {
-            y: 50,
-            opacity: 0,
-            scale: 0.92,
-            duration: 0.4,
-            stagger: 0.05,
-            ease: 'power2.in',
-            overwrite: true,
-          }),
-        start: 'top 88%',
-      })
-      // Set initial state for stagger cards
-      gsap.set('[data-stagger-card]', { y: 50, opacity: 0, scale: 0.92 })
-
-      // Steps — sequential pop with rotation
-      gsap.utils.toArray<Element>('[data-step]').forEach((el, i) => {
-        gsap.from(el, {
-          y: 50,
-          opacity: 0,
-          scale: 0.85,
-          rotation: i % 2 === 0 ? -5 : 5,
-          duration: 0.8,
-          delay: i * 0.2,
-          ease: 'back.out(1.7)',
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 88%',
-            toggleActions: 'play none none reverse',
-          },
-        })
-      })
-
-      // Gold connecting line (desktop only)
-      const mm = gsap.matchMedia()
-      mm.add('(min-width: 768px)', () => {
-        gsap.from('[data-gold-line]', {
-          scaleX: 0,
-          transformOrigin: 'left',
-          duration: 1.5,
-          ease: 'power2.inOut',
-          scrollTrigger: {
-            trigger: '[data-gold-line]',
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
-          },
-        })
-      })
-
-      // Gold dividers
-      gsap.utils.toArray<Element>('[data-divider]').forEach((el) => {
-        gsap.from(el, {
-          opacity: 0,
-          scaleX: 0,
-          duration: 0.8,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 90%',
-            toggleActions: 'play none none reverse',
-          },
-        })
-      })
-    },
-    { scope: containerRef },
-  )
-
   /* ── Render ─────────────────────────────────────── */
   return (
+    <>
+      <LandingAnimations containerRef={containerRef} />
     <div className="relative min-h-screen bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-clip">
       {/* ── Casino Background ─────────────────────── */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -1286,5 +1108,6 @@ export function LandingContent() {
         </footer>
       </div>
     </div>
+    </>
   )
 }
