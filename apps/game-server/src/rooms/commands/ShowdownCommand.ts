@@ -126,6 +126,45 @@ export function handleDismissReveal(room: MesaRoom, _client: Client): void {
 
   r.clearTurnTimer();
 
+  // ── Caso B: Caller con juego en JUEGO_VALIDACION (muestra/oculta cartas, sigue en el pot) ──
+  if (r.juegoValidationCallerId) {
+    const callerId = r.juegoValidationCallerId;
+    r.juegoValidationCallerId = "";
+    r.juegoValidationEffectiveBet = 0;
+    r.pendingPiqueWinnerId = "";
+
+    const caller = r.state.players.get(callerId);
+    if (caller) {
+      caller.revealedCards = "";
+    }
+
+    // Verificar cuántos quedan activos
+    const remaining = Array.from(r.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected);
+
+    if (remaining.length <= 1) {
+      // Solo el caller queda → devolver pot sin rake, nueva ronda
+      if (remaining.length === 1 && r.state.pot > 0) {
+        const solo = remaining[0];
+        solo.chips += r.state.pot;
+        console.log(`[MesaRoom] Devolviendo $${r.state.pot} a ${solo.nickname} — sin oponentes tras JUEGO_VALIDACION (sin rake)`);
+        if (solo.supabaseUserId) {
+          SupabaseService.awardPot(solo.supabaseUserId, r.state.pot, 0, r.currentGameId).catch(console.error);
+        }
+        r.state.lastAction = `${solo.nickname} recupera su apuesta ($${(r.state.pot / 100).toLocaleString()})`;
+        r.state.pot = 0;
+      }
+      r.clock.setTimeout(() => r.cleanupRound(), 3000);
+      return;
+    }
+
+    // 2+ jugadores → reabrir APUESTA_4_CARTAS (P1 y P3 deben igualar o pasar)
+    r.state.phase = "APUESTA_4_CARTAS";
+    const nextPhaseCallback = r.getNextPhaseCallback("APUESTA_4_CARTAS");
+    r.advanceTurnBetting(undefined, nextPhaseCallback);
+    return;
+  }
+
   // ── Caso: Llevo Juego durante DESCARTE (o cualquier fase de apuestas) ──
   if (r.pendingLlevoJuegoPlayerId) {
     const playerId = r.pendingLlevoJuegoPlayerId;
@@ -296,5 +335,48 @@ export function handlePasoJuegoResponse(room: MesaRoom, client: Client, message:
 
     // Continuar la ronda de apuestas con el callback correcto
     r.advanceTurnBetting(undefined, nextPhaseCallback);
+  }
+}
+
+// ── JUEGO_VALIDACION: respuesta de un jugador en la re-pregunta tras all-check ──
+
+interface JuegoValidationResponsePayload { action?: string; amount?: number }
+
+export function handleJuegoValidationResponse(room: MesaRoom, client: Client, message: JuegoValidationResponsePayload): void {
+  const r: RoomCtx = room;
+  if (r.state.phase !== "JUEGO_VALIDACION") return;
+
+  const playerId = client.sessionId;
+  if (!r.juegoValidationPendingIds.has(playerId)) return; // Ya respondió o no es parte
+
+  const { action, amount } = message;
+  if (!['pass', 'call', 'claim-juego'].includes(action || '')) return;
+
+  // Validar: solo jugadores con juego pueden elegir "claim-juego"
+  if (action === 'claim-juego' && !r.juegoValidationPlayersWithJuego.includes(playerId)) {
+    return; // Ignorar claim de quien no tiene juego
+  }
+
+  // Validar monto mínimo para "call"
+  if (action === 'call') {
+    const betAmount = amount || r.state.minPique;
+    if (betAmount < r.state.minPique) return; // No puede apostar menos del mínimo
+  }
+
+  // Guardar respuesta
+  r.juegoValidationResponses.set(playerId, { action: action!, amount });
+  r.juegoValidationPendingIds.delete(playerId);
+
+  console.log(`[MesaRoom] JUEGO_VALIDACION: ${r.state.players.get(playerId)?.nickname} → ${action}${amount ? ` $${amount}` : ''}`);
+
+  // Si todos respondieron → resolver
+  if (r.juegoValidationPendingIds.size === 0) {
+    const activePlayers = Array.from(r.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected);
+    const playersWithJuego = r.juegoValidationPlayersWithJuego
+      .map(id => r.state.players.get(id))
+      .filter(Boolean) as Player[];
+
+    r.resolveJuegoValidation(activePlayers, playersWithJuego);
   }
 }

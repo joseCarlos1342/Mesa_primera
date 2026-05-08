@@ -1556,9 +1556,10 @@ describe('MesaRoom via Colyseus Testing', () => {
       internalRoom.currentGameId = 'test-pi-check';
       internalRoom.currentTimeline = [];
 
-      players[0].cards = '07-O,06-C,05-E,01-B';
-      players[1].cards = '07-C,06-O,05-B,01-E';
-      players[2].cards = '06-E,07-B,01-O,05-C';
+      // Cartas sin juego (NINGUNA) para evitar JUEGO_VALIDACION
+      players[0].cards = '02-O,03-O,04-C,05-C';
+      players[1].cards = '02-C,03-C,04-E,05-E';
+      players[2].cards = '02-E,03-E,04-B,05-B';
       players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
       // All three check (paso with currentMaxBet=0)
@@ -4219,9 +4220,10 @@ describe('MesaRoom via Colyseus Testing', () => {
       internalRoom.currentGameId = 'test-all-check';
       internalRoom.currentTimeline = [];
 
-      players[0].cards = '07-O,06-C,05-E,01-B';
-      players[1].cards = '07-C,06-O,05-B,01-E';
-      players[2].cards = '06-E,07-B,01-O,05-C';
+      // Cartas sin juego (NINGUNA) para evitar JUEGO_VALIDACION
+      players[0].cards = '02-O,03-O,04-C,05-C';
+      players[1].cards = '02-C,03-C,04-E,05-E';
+      players[2].cards = '02-E,03-E,04-B,05-B';
       players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
       const potBefore = room.state.pot;
@@ -4264,9 +4266,10 @@ describe('MesaRoom via Colyseus Testing', () => {
       internalRoom.currentGameId = 'test-all-check-np';
       internalRoom.currentTimeline = [];
 
-      players[0].cards = '07-O,06-C,05-E,01-B';
-      players[1].cards = '07-C,06-O,05-B,01-E';
-      players[2].cards = '06-E,07-B,01-O,05-C';
+      // Cartas sin juego (NINGUNA) para evitar JUEGO_VALIDACION
+      players[0].cards = '02-O,03-O,04-C,05-C';
+      players[1].cards = '02-C,03-C,04-E,05-E';
+      players[2].cards = '02-E,03-E,04-B,05-B';
       players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
       clients[0].send('action', { action: 'paso' });

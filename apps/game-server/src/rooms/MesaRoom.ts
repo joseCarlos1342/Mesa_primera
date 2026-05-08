@@ -13,7 +13,7 @@ import { handleProposePique, handleVotePique } from "./commands/PiqueVotingComma
 import { handleLookupPlayer } from "./commands/LookupCommand";
 import { handleTransfer } from "./commands/TransferCommand";
 import { handleToggleReady, handleAbandon, handleRequestResync } from "./commands/RoomLifecycleCommand";
-import { handleDismissShowdown, handleShowMuck, handleDeclararJuego, handleDismissReveal, handleLlevoJuego, handlePasoJuegoResponse } from "./commands/ShowdownCommand";
+import { handleDismissShowdown, handleShowMuck, handleDeclararJuego, handleDismissReveal, handleLlevoJuego, handlePasoJuegoResponse, handleJuegoValidationResponse } from "./commands/ShowdownCommand";
 import { handlePlayerAction } from "./commands/PlayerActionCommand";
 import { setupSessionKickListener, handleSessionKick } from "../services/SessionEnforcer";
 import { handleConnectionJoin, handleConnectionLeave } from "./core/ConnectionManager";
@@ -115,6 +115,19 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   public pendingPasoJuegoPhase: string = "";
   /** Fase desde la que se entró a PIQUE_REVEAL para saber a dónde volver */
   public phaseBeforePiqueReveal: string = "";
+  // ── JUEGO_VALIDACION: re-pregunta a todos tras all-check con juego ──
+  /** Jugadores pendientes de responder en la fase JUEGO_VALIDACION. */
+  public juegoValidationPendingIds = new Set<string>();
+  /** Respuestas recibidas: playerId → { action, amount? } */
+  public juegoValidationResponses = new Map<string, { action: string; amount?: number }>();
+  /** IDs de jugadores con juego (para saber quiénes ven el botón "Cantar"). */
+  public juegoValidationPlayersWithJuego: string[] = [];
+  /** Timer de timeout para la fase JUEGO_VALIDACION. */
+  public juegoValidationTimer?: any;
+  /** Apuesta efectiva (minPique) del caller con juego en Caso B. */
+  public juegoValidationEffectiveBet: number = 0;
+  /** ID del caller que ganó el pique implícitamente en Caso B. */
+  public juegoValidationCallerId: string = "";
   /** Redis subscriber for single-session kick events */
   public redisSub?: Redis;
 
@@ -190,6 +203,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // ── Resolución inmediata de Llevo Juego / No Llevo en cualquier fase de apuestas ──
     this.onMessage("paso-juego-response", (client, message) => {
       handlePasoJuegoResponse(this, client, message);
+    });
+
+    // ── Respuesta a la re-pregunta de juego tras all-check con juego detectado ──
+    this.onMessage("juego-validation-response", (client, message) => {
+      handleJuegoValidationResponse(this, client, message);
     });
 
     this.onMessage("dismiss-showdown", (client) => {
@@ -1191,15 +1209,317 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
   /** Resuelve el pique diferido y luego inicia DESCARTE o finaliza la mano. */
   public resolveAndStartDescarte() {
-    this.resolvePiqueAfterApuesta4();
-
     const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
       .filter(p => !p.isFolded && p.connected);
+
     if (remaining.length <= 1) {
+      this.resolvePiqueAfterApuesta4();
       this.endHandEarlyAfterFoldOut();
-    } else {
-      this.startPhaseDescarte();
+      return;
     }
+
+    // ── NUEVO: validación de juego cuando todos hicieron check ──
+    if (this.state.currentMaxBet === 0) {
+      const playersWithJuego = remaining.filter(p => {
+        const hand = evaluateHand(p.cards);
+        return hand.type !== 'NINGUNA';
+      });
+
+      if (playersWithJuego.length > 0) {
+        // Hay juego sin reclamar → re-preguntar a todos antes de DESCARTE
+        this.startJuegoValidation(remaining, playersWithJuego);
+        return;
+      }
+    }
+    // ──────────────────────────────────────────────────────────
+
+    // Flujo normal (sin juego, o ya se resolvió)
+    this.resolvePiqueAfterApuesta4();
+    this.startPhaseDescarte();
+  }
+
+  // ── JUEGO_VALIDACION: re-pregunta tras all-check con juego detectado ──
+
+  /**
+   * Inicia la fase JUEGO_VALIDACION cuando todos hicieron check en APUESTA_4_CARTAS
+   * y al menos un jugador tiene juego (PRIMERA, CHIVO o SEGUNDA).
+   * Broadcast a TODOS los jugadores activos: deben elegir Pass, Ir (call) o Cantar Juego.
+   */
+  public startJuegoValidation(activePlayers: Player[], playersWithJuego: Player[]) {
+    this.clearTurnTimer();
+    this.state.phase = "JUEGO_VALIDACION";
+    console.log(`[MesaRoom] JUEGO_VALIDACION: ${playersWithJuego.length} jugador(es) con juego detectado(s) tras all-check`);
+
+    // Inicializar tracking
+    this.juegoValidationPendingIds.clear();
+    this.juegoValidationResponses.clear();
+    this.juegoValidationPlayersWithJuego = playersWithJuego.map(p => p.id);
+    this.juegoValidationEffectiveBet = 0;
+    this.juegoValidationCallerId = "";
+
+    for (const p of activePlayers) {
+      this.juegoValidationPendingIds.add(p.id);
+      p.hasActed = false;
+    }
+
+    // Broadcast a todos
+    this.broadcast("juego-validation-start", {
+      playersWithJuego: playersWithJuego.map(p => p.id),
+      minPique: this.state.minPique,
+      timeLimit: 30,
+    });
+
+    // Timeout: si no responden en 30s, auto-pass para todos
+    this.juegoValidationTimer = this.clock.setTimeout(() => {
+      console.log(`[MesaRoom] JUEGO_VALIDACION timeout — auto-pass`);
+      for (const id of this.juegoValidationPendingIds) {
+        this.juegoValidationResponses.set(id, { action: 'pass' });
+      }
+      this.juegoValidationPendingIds.clear();
+      this.resolveJuegoValidation(activePlayers, playersWithJuego);
+    }, 30_000);
+  }
+
+  /**
+   * Resuelve la fase JUEGO_VALIDACION tras recibir todas las respuestas (o timeout).
+   */
+  public resolveJuegoValidation(activePlayers: Player[], playersWithJuego: Player[]) {
+    // Limpiar timer
+    if (this.juegoValidationTimer) {
+      this.juegoValidationTimer.clear();
+      this.juegoValidationTimer = undefined;
+    }
+
+    const claimants: string[] = [];
+    const callers: { playerId: string; amount: number }[] = [];
+
+    for (const [playerId, response] of this.juegoValidationResponses) {
+      if (response.action === 'claim-juego') {
+        claimants.push(playerId);
+      } else if (response.action === 'call') {
+        callers.push({
+          playerId,
+          amount: response.amount || this.state.minPique,
+        });
+      }
+    }
+
+    // ── CASO: Hay claimant(s) ──
+    if (claimants.length > 0) {
+      this.resolveClaimantsWithCallers(claimants, callers, activePlayers);
+      return;
+    }
+
+    // ── CASO: Solo callers, sin claimants ──
+    if (callers.length > 0) {
+      this.resolveCallersOnly(callers, activePlayers, playersWithJuego);
+      return;
+    }
+
+    // ── CASO: Todos pasaron ──
+    // Flujo normal: Mano gana pique por defecto → DESCARTE
+    this.resolvePiqueAfterApuesta4();
+    this.startPhaseDescarte();
+  }
+
+  /**
+   * Resuelve cuando al menos un jugador reclamó juego (claim-juego).
+   * 1. Determina el claimant ganador (jerarquía SEGUNDA > CHIVO > PRIMERA)
+   * 2. Paga el pique al ganador (con 5% rake)
+   * 3. Todos los claimants salen del pot principal (isFolded = true)
+   * 4. Si hay callers, reabre la ronda de apuestas
+   * 5. Si no hay callers y solo queda 1 → devolución + nueva ronda
+   * 6. Si 2+ quedan → DESCARTE
+   */
+  private resolveClaimantsWithCallers(
+    claimants: string[],
+    callers: { playerId: string; amount: number }[],
+    _activePlayers: Player[]
+  ) {
+    // 1. Determinar claimant ganador por jerarquía
+    let winnerId = claimants[0];
+    if (claimants.length > 1) {
+      const typeRank: Record<string, number> = { 'SEGUNDA': 3, 'CHIVO': 2, 'PRIMERA': 1 };
+      const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
+      let bestRank = 0;
+      let bestDist = Infinity;
+
+      for (const cid of claimants) {
+        const p = this.state.players.get(cid);
+        if (!p) continue;
+        const h = evaluateHand(p.cards);
+        const rank = typeRank[h.type] || 0;
+        const dist = ((this.seatOrder.indexOf(cid) - manoSeatIdx) + this.seatOrder.length) % this.seatOrder.length;
+        if (rank > bestRank || (rank === bestRank && dist < bestDist)) {
+          winnerId = cid;
+          bestRank = rank;
+          bestDist = dist;
+        }
+      }
+    }
+
+    // 2. Pagar pique al ganador
+    this.awardPiqueToContestant(winnerId);
+
+    // 3. Todos los claimants: folded, revelar cartas
+    for (const cid of claimants) {
+      const p = this.state.players.get(cid);
+      if (!p) continue;
+      p.isFolded = true;
+      p.passedWithJuego = true;
+      p.revealedCards = p.cards;
+      if (p.id === this.state.activeManoId) this.transferMano();
+    }
+
+    // Broadcast reveal para todos los claimants
+    for (const cid of claimants) {
+      const p = this.state.players.get(cid);
+      if (p) {
+        this.broadcast("pique-fold-reveal", {
+          playerId: cid,
+          llevaJuego: true,
+          cards: p.cards,
+        });
+      }
+    }
+
+    // 4. Procesar callers (si hay)
+    if (callers.length > 0) {
+      this.applyCallersAndReopenBetting(callers);
+      return;
+    }
+
+    // 5. Sin callers: verificar cuántos quedan
+    const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected);
+
+    if (remaining.length <= 1) {
+      // Solo 1 jugador (o 0) → devolver apuesta sin rake, nueva ronda
+      if (remaining.length === 1 && this.state.pot > 0) {
+        const soloPlayer = remaining[0];
+        soloPlayer.chips += this.state.pot;
+        console.log(`[MesaRoom] Devolviendo $${this.state.pot} a ${soloPlayer.nickname} — sin oponentes (sin rake)`);
+        if (soloPlayer.supabaseUserId) {
+          SupabaseService.awardPot(soloPlayer.supabaseUserId, this.state.pot, 0, this.currentGameId).catch(console.error);
+        }
+        this.state.lastAction = `${soloPlayer.nickname} recupera su apuesta ($${(this.state.pot / 100).toLocaleString()})`;
+        this.state.pot = 0;
+      }
+      this.clock.setTimeout(() => {
+        this.cleanupRound();
+      }, 3000);
+      return;
+    }
+
+    // 6. 2+ jugadores → DESCARTE
+    this.startPhaseDescarte();
+  }
+
+  /**
+   * Resuelve cuando nadie reclamó juego pero hay jugadores que apostaron (callers).
+   * Si el caller tiene juego → gana el pique implícitamente.
+   * Devuelve el exceso de apuesta sobre minPique SIN rake.
+   */
+  private resolveCallersOnly(
+    callers: { playerId: string; amount: number }[],
+    _activePlayers: Player[],
+    _playersWithJuego: Player[]
+  ) {
+    const mainCaller = callers[0];
+    const callerPlayer = this.state.players.get(mainCaller.playerId);
+    if (!callerPlayer) {
+      this.resolvePiqueAfterApuesta4();
+      this.startPhaseDescarte();
+      return;
+    }
+
+    // Verificar si el caller tiene juego
+    const callerHand = evaluateHand(callerPlayer.cards);
+    const callerHasJuego = callerHand.type !== 'NINGUNA';
+
+    if (!callerHasJuego) {
+      // Caller no tiene juego → solo apostó, reabrir ronda normalmente
+      this.applyCallersAndReopenBetting(callers);
+      return;
+    }
+
+    // ── CASO B: Caller tiene juego y es el único que fue ──
+    // Gana el pique implícitamente
+    if (this.state.piquePot > 0) {
+      this.awardPiqueToContestant(mainCaller.playerId);
+    }
+
+    // Devolver exceso sobre minPique SIN rake
+    const excessBet = Math.max(0, mainCaller.amount - this.state.minPique);
+
+    // Aplicar la apuesta del caller (deducir de chips, agregar al pot)
+    const actualBet = Math.min(mainCaller.amount, callerPlayer.chips);
+    callerPlayer.chips -= actualBet;
+    callerPlayer.roundBet += actualBet;
+    callerPlayer.totalMainBet += actualBet;
+    this.state.pot += actualBet;
+    callerPlayer.hasActed = true;
+
+    if (callerPlayer.roundBet > this.state.currentMaxBet) {
+      this.state.currentMaxBet = callerPlayer.roundBet;
+      this.state.highestBetPlayerId = callerPlayer.id;
+    }
+
+    // Devolver exceso al caller SIN rake
+    if (excessBet > 0) {
+      callerPlayer.chips += excessBet;
+      callerPlayer.roundBet -= excessBet;
+      callerPlayer.totalMainBet -= excessBet;
+      this.state.pot = Math.max(0, this.state.pot - excessBet);
+      console.log(`[MesaRoom] ${callerPlayer.nickname} recupera exceso: $${excessBet} (sin rake)`);
+    }
+
+    // Ir a PIQUE_REVEAL para que el caller decida mostrar/ocultar cartas
+    this.juegoValidationEffectiveBet = mainCaller.amount - excessBet; // = minPique
+    this.juegoValidationCallerId = mainCaller.playerId;
+
+    this.pendingPiqueWinnerId = mainCaller.playerId;
+    this.phaseBeforePiqueReveal = "APUESTA_4_CARTAS";
+
+    callerPlayer.revealedCards = callerPlayer.cards;
+    this.state.phase = "PIQUE_REVEAL";
+    this.state.turnPlayerId = mainCaller.playerId;
+
+    this.broadcast("pique-fold-reveal", {
+      playerId: mainCaller.playerId,
+      llevaJuego: true,
+      cards: callerPlayer.cards,
+    });
+  }
+
+  /**
+   * Aplica las apuestas de los callers y reabre la ronda de apuestas.
+   * Los jugadores que no igualaron deberán actuar (igualar, subir o pasar).
+   */
+  private applyCallersAndReopenBetting(callers: { playerId: string; amount: number }[]) {
+    this.state.phase = "APUESTA_4_CARTAS";
+
+    for (const c of callers) {
+      const p = this.state.players.get(c.playerId);
+      if (!p || p.chips <= 0) continue;
+
+      const actualBet = Math.min(c.amount, p.chips);
+      p.chips -= actualBet;
+      p.roundBet += actualBet;
+      p.totalMainBet += actualBet;
+      this.state.pot += actualBet;
+      p.hasActed = true;
+
+      if (p.roundBet > this.state.currentMaxBet) {
+        this.state.currentMaxBet = p.roundBet;
+        this.state.highestBetPlayerId = p.id;
+      }
+    }
+
+    // Reabrir ronda: los que no han actuado o no igualaron deben hacerlo
+    // Empezar desde La Mano para mantener orden correcto
+    this.state.turnPlayerId = this.state.activeManoId;
+    this.advanceTurnBetting(this.state.activeManoId, () => this.resolveAndStartDescarte());
   }
 
   /** Resuelve la competencia de pique entre jugadores que pasaron con juego en APUESTA_4_CARTAS. */
