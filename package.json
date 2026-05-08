@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "devDependencies": {
+    "@cloudflare/playwright-mcp": "^0.0.5",
     "@commitlint/cli": "^20.4.3",
     "@commitlint/config-conventional": "^20.4.3",
     "husky": "^9.1.7",
