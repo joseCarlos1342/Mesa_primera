@@ -4,6 +4,8 @@ import { Scale, Users, CreditCard, ShieldAlert, AlertTriangle, Ban, Gavel, HelpC
 export const metadata: Metadata = {
   title: 'Términos y Condiciones',
   description: 'Términos y condiciones de uso de Primera Riverada los 4 Ases. Reglas de juego limpio, uso de la billetera y políticas de la plataforma.',
+  alternates: { canonical: 'https://primerariveradalos4ases.com/terms' },
+  robots: { index: true, follow: true },
 }
 
 function SectionIcon({ icon: Icon }: { icon: React.ComponentType<{ className?: string }> }) {
