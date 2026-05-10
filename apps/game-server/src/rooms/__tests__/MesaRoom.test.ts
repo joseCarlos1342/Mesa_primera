@@ -9383,7 +9383,7 @@ describe('MesaRoom via Colyseus Testing', () => {
         tableId: 'banda-b4', playerCount: 3
       });
       vi.mocked(SupabaseService.awardPot).mockClear();
-      vi.mocked(SupabaseService.recordBet).mockClear();
+      vi.mocked(SupabaseService.transferPiqueBanda).mockClear();
 
       internalRoom.seatOrder = [...ids];
       internalRoom.state.dealerId = ids[0];
@@ -9409,8 +9409,8 @@ describe('MesaRoom via Colyseus Testing', () => {
       internalRoom.shuffleDeck();
       internalRoom.restartPique();
 
-      // Banda should have been charged (recordBet for passers, awardPot for voy)
-      expect(SupabaseService.recordBet).toHaveBeenCalled();
+      // Banda charged via atomic RPC (transferPiqueBanda) and piquePot refunded via awardPot
+      expect(SupabaseService.transferPiqueBanda).toHaveBeenCalled();
       expect(SupabaseService.awardPot).toHaveBeenCalled();
       // lastAction may mention 'cobra Banda' or the restart message
       expect(internalRoom.state.lastAction).toBeTruthy();
@@ -10354,7 +10354,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       clients[0].leave(false);
       await new Promise(r => setTimeout(r, 500));
 
-      expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 300);
+      expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 120);
     });
   });
 
@@ -11548,7 +11548,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       const leavePromise = internalRoom.onLeave({ sessionId: ids[0] } as any, 1006);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 300);
+      expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 120);
       expect(internalRoom.state.activeManoId).toBe(ids[0]);
       expect(internalRoom.state.turnPlayerId).toBe(ids[0]);
       expect(internalRoom.state.players.has(ids[0])).toBe(true);
@@ -12090,13 +12090,15 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       const p0Before = players[0].chips;
       const p1Before = players[1].chips;
+      const p2Before = players[2].chips;
 
       internalRoom.restartPique();
 
-      // Player 1 pays banda (200_000), player 2 is disconnected so skipped
+      // M6: Banda is charged even to disconnected players (anti-cheat)
       expect(players[1].chips).toBe(p1Before - 200_000);
-      // Player 0 gets piquePot + banda
-      expect(players[0].chips).toBe(p0Before + 500_000 + 200_000);
+      expect(players[2].chips).toBe(p2Before - 200_000);
+      // Player 0 gets piquePot + banda from both passers (200k each)
+      expect(players[0].chips).toBe(p0Before + 500_000 + 200_000 + 200_000);
     });
 
     it('high minPique charges 500_000 banda (restartPique)', async () => {
