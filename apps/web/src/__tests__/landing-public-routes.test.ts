@@ -20,10 +20,14 @@ describe('Middleware public route whitelist', () => {
     'utf-8',
   )
 
-  it('declares isPublicPage including root, privacy, and terms', () => {
-    expect(source).toContain("pathname === '/'")
+  it('declares PUBLIC_PATHS Set including root, auth pages, privacy, and terms', () => {
+    expect(source).toContain("PUBLIC_PATHS")
+    expect(source).toContain("'/login/player'")
+    expect(source).toContain("'/register/player'")
     expect(source).toContain("'/privacy'")
     expect(source).toContain("'/terms'")
+    expect(source).toContain("'/rules'")
+    expect(source).toContain("'/security-policy'")
   })
 
   it('allows unauthenticated access to public pages', () => {

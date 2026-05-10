@@ -29,6 +29,8 @@ describe('robots metadata', () => {
     expect(geoCrawlerRule!.allow).toEqual(
       expect.arrayContaining([
         '/',
+        '/login/player',
+        '/register/player',
         '/rules',
         '/privacy',
         '/terms',
