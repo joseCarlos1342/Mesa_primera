@@ -4,6 +4,8 @@ import { Shield, Eye, Lock, Smartphone, Database, UserCheck, Trash2, Mail } from
 export const metadata: Metadata = {
   title: 'Política de Privacidad',
   description: 'Política de privacidad de Primera Riverada los 4 Ases. Conoce cómo recopilamos, usamos y protegemos tu información.',
+  alternates: { canonical: 'https://primerariveradalos4ases.com/privacy' },
+  robots: { index: true, follow: true },
 }
 
 function SectionIcon({ icon: Icon }: { icon: React.ComponentType<{ className?: string }> }) {

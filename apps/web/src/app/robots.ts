@@ -4,6 +4,8 @@ export default function robots(): MetadataRoute.Robots {
   const baseUrl = "https://primerariveradalos4ases.com";
   const geoAllowedPublicRoutes = [
     "/",
+    "/login/player",
+    "/register/player",
     "/rules",
     "/privacy",
     "/terms",
