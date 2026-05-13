@@ -395,6 +395,21 @@ export function LandingContent() {
   const [activeTutorial, setActiveTutorial] = useState<string | null>(null)
   const [tutorialSteps, setTutorialSteps] = useState<{ label: string; screen: React.ReactNode; landscape?: boolean }[] | null>(null)
 
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlBackground = html.style.backgroundColor
+    const previousBodyBackground = body.style.backgroundColor
+
+    html.style.backgroundColor = '#0a180e'
+    body.style.backgroundColor = '#0a180e'
+
+    return () => {
+      html.style.backgroundColor = previousHtmlBackground
+      body.style.backgroundColor = previousBodyBackground
+    }
+  }, [])
+
   const handleTutorialSelect = useCallback((title: string) => {
     setActiveTutorial(title)
     const loader = TUTORIAL_IMPORTS[title as keyof typeof TUTORIAL_IMPORTS]
@@ -632,7 +647,7 @@ export function LandingContent() {
 
   /* ── Render ─────────────────────────────────────── */
   return (
-    <div className="relative min-h-screen bg-slate-950 text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-clip">
+    <div className="relative min-h-screen bg-[#0a180e] text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-clip">
       {/* ── Casino Background ─────────────────────── */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-bg-poker)_0%,#0a2a1f_100%)]" />
@@ -710,7 +725,7 @@ export function LandingContent() {
         <div className={`md:hidden overflow-hidden transition-all duration-300 ease-out ${
           mobileOpen ? 'max-h-125 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
         }`}>
-          <div className="bg-slate-950/95 backdrop-blur-xl border-t border-white/5">
+          <div className="bg-[#0a180e]/95 backdrop-blur-xl border-t border-white/5">
             <div className="px-6 py-4 flex flex-col gap-1">
               {NAV_SECTIONS.map((s) => (
                 <button
@@ -758,7 +773,7 @@ export function LandingContent() {
               <span
                 key={i}
                 data-float=""
-                className={`absolute text-brand-gold/5 font-serif select-none will-change-transform ${FLOAT_CLASSES[i]}`}
+                className={`absolute text-[#e2b0440d] font-serif select-none will-change-transform ${FLOAT_CLASSES[i]}`}
               >
                 {suit}
               </span>
@@ -826,12 +841,12 @@ export function LandingContent() {
 
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
-          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-brand-gold/30" />
-          <span className="text-brand-gold/25 text-lg">⚔</span>
-          <span className="text-brand-gold/25 text-lg">🏆</span>
-          <span className="text-brand-gold/25 text-lg">⬤</span>
-          <span className="text-brand-gold/25 text-lg">⚜</span>
-          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-brand-gold/30" />
+          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
+          <span className="text-[#e2b04440] text-lg">⚔</span>
+          <span className="text-[#e2b04440] text-lg">🏆</span>
+          <span className="text-[#e2b04440] text-lg">⬤</span>
+          <span className="text-[#e2b04440] text-lg">⚜</span>
+          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
         {/* ═══ About ═══════════════════════════════ */}
@@ -843,7 +858,7 @@ export function LandingContent() {
               data-reveal-left=""
             >
               <div className="w-px h-16 bg-linear-to-b from-brand-gold/50 to-brand-gold/10" />
-              <span className="text-brand-gold/60 text-2xl">⚔</span>
+              <span className="text-[#e2b04499] text-2xl">⚔</span>
               <div className="w-px h-16 bg-linear-to-b from-brand-gold/10 to-transparent" />
             </div>
 
@@ -925,9 +940,9 @@ export function LandingContent() {
           data-divider=""
           className="flex items-center justify-center gap-3 py-4 bg-black/20"
         >
-          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-brand-gold/30" />
-          <span className="text-brand-gold/25 text-lg">⬤</span>
-          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-brand-gold/30" />
+          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
+          <span className="text-[#e2b04440] text-lg">⬤</span>
+          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
         {/* ═══ Photo Carousel ══════════════════════ */}
@@ -1033,7 +1048,7 @@ export function LandingContent() {
               {/* Connecting gold line (desktop) */}
               <div
                 data-gold-line=""
-                className="hidden md:block absolute top-8 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] h-px bg-linear-to-r from-brand-gold/30 via-brand-gold/50 to-brand-gold/30 z-0"
+                className="hidden md:block absolute top-8 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] h-px bg-linear-to-r from-[#e2b0444d] via-[#e2b04480] to-[#e2b0444d] z-0"
               />
 
               {STEPS.map((item) => (
@@ -1070,9 +1085,9 @@ export function LandingContent() {
 
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
-          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-brand-gold/30" />
-          <span className="text-brand-gold/25 text-lg">⚜</span>
-          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-brand-gold/30" />
+          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
+          <span className="text-[#e2b04440] text-lg">⚜</span>
+          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
         {/* ═══ Tutorials ═══════════════════════════ */}
@@ -1159,11 +1174,11 @@ export function LandingContent() {
 
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
-          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-brand-gold/30" />
-          <span className="text-brand-gold/25 text-lg">⚔</span>
-          <span className="text-brand-gold/25 text-lg">🏆</span>
-          <span className="text-brand-gold/25 text-lg">⚜</span>
-          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-brand-gold/30" />
+          <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
+          <span className="text-[#e2b04440] text-lg">⚔</span>
+          <span className="text-[#e2b04440] text-lg">🏆</span>
+          <span className="text-[#e2b04440] text-lg">⚜</span>
+          <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
         {/* ═══ Ubicación ═══════════════════════════ */}
