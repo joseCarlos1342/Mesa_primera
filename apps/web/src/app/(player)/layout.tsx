@@ -1,3 +1,4 @@
+import "./player.css";
 import Link from 'next/link';
 import { SupportTrigger } from "@/components/SupportTrigger";
 import { SignOutButton } from "@/components/auth/sign-out-button";

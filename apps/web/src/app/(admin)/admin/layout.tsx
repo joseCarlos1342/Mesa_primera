@@ -1,3 +1,4 @@
+import "./admin.css";
 import Link from "next/link";
 import { AdminHeaderActions } from "@/components/admin/AdminHeaderActions";
 
