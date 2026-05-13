@@ -644,7 +644,7 @@ export function LandingContent() {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
-            ? 'bg-slate-950/80 backdrop-blur-xl border-b border-brand-gold/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)]'
+            ? 'bg-[#0a180e]/80 backdrop-blur-xl border-b border-brand-gold/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)]'
             : 'bg-transparent'
         }`}
       >
