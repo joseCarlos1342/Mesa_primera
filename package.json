@@ -2,11 +2,11 @@
   "name": "mesa_primera",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "npm@9.2.0",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "packageManager": "pnpm@11.1.1+sha512.d1fdf5f73c617b64fa1a56a81c3c8dfe0e966e33a6010aa256b517ae77be21d93e05affc0de1a83b0e4f29d569f68b446ae8f068cd7247c0bb3df0fb4d7bdf9a",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=11 <12"
+  },
   "devDependencies": {
     "@cloudflare/playwright-mcp": "^0.0.5",
     "@commitlint/cli": "^20.4.3",
@@ -17,15 +17,21 @@
   },
   "scripts": {
     "dev": "turbo dev",
-    "dev:web": "npm run dev --workspace=@mesa-primera/web",
-    "dev:game": "npm run dev --workspace=game-server",
-    "test": "npm run test --workspace=web -- --ci --forceExit && npm run test --workspace=game-server",
-    "test:coverage": "npm run test:coverage --workspace=web && npm run test:coverage --workspace=game-server",
+    "dev:web": "pnpm --filter web dev",
+    "dev:game": "pnpm --filter game-server dev",
+    "test": "pnpm --filter web exec jest --ci --forceExit && pnpm --filter game-server test",
+    "test:coverage": "pnpm --filter web exec jest --coverage --ci --forceExit && pnpm --filter game-server test:coverage",
     "prepare": "husky"
   },
-  "overrides": {
-    "elliptic": "^6.6.1",
-    "serialize-javascript": "^7.0.4",
-    "flatted": "^3.4.2"
+  "pnpm": {
+    "overrides": {
+      "@rollup/plugin-terser": "^1.0.0",
+      "workbox-build>@rollup/plugin-terser": "^1.0.0",
+      "workbox-webpack-plugin>workbox-build>@rollup/plugin-terser": "^1.0.0",
+      "elliptic": "^6.6.1",
+      "flatted": "^3.4.2",
+      "jsonwebtoken": "^9.0.3",
+      "serialize-javascript": "^7.0.4"
+    }
   }
 }
