@@ -31,6 +31,6 @@ npx supabase db reset && npx supabase gen types typescript --local > apps/web/sr
 - **Domain Rules**: Detailed rules live in `.github/instructions/*.instructions.md` and load automatically by `applyTo` (web, game-server, supabase, testing, deploy-ops, docs, commits, skills-catalog). Read those before working in each area.
 - **Core Rulebook**: `.cursorrules` holds the slim global core (principles, golden rule, index).
 - **Technical Docs**: Always refer to `.github/rules/context7.md` for fetching current external library/SDK/CLI documentation via `ctx7`.
-- **Skills Catalog**: See `.github/instructions/skills-catalog.instructions.md` to pick the right skill per task. Use `find-docs` for external docs, `test-driven-development` before implementing, `git-commit` for commits, `update-docs` for documentation sync, and `agent-customization` when editing rules, prompts, instructions, agents, or skills.
+- **Skills Catalog**: See `.github/instructions/skills-catalog.instructions.md` to pick the right skill per task. Use `find-docs` for external docs, `test-driven-development` before implementing, `git-commit` for commits, and `update-docs` for documentation sync.
 - **MCP Enforcement**: All financial operations must follow the atomic Ledger pattern defined in `@plan_primera.md` and `.github/instructions/supabase-rls.instructions.md`.
 
