@@ -786,38 +786,38 @@ export function LandingContent() {
               con amigos en tiempo real o visítanos en nuestro establecimiento.
             </p>
 
-            <div data-hero-cta="" className="mt-12 flex flex-wrap justify-center gap-4">
+            <div data-hero-cta="" className="mt-10 md:mt-12 flex flex-wrap justify-center gap-3 md:gap-4">
               <Link
                 href="/register/player"
-                className="group px-10 py-4 rounded-2xl bg-linear-to-r from-brand-gold-light via-brand-gold to-brand-gold-dark text-slate-950 font-bold text-lg shadow-[0_4px_24px_rgba(226,176,68,0.35)] hover:shadow-[0_8px_40px_rgba(226,176,68,0.5)] hover:scale-[1.03] transition-all duration-300 active:scale-95 flex items-center gap-2"
+                className="group px-8 md:px-10 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-linear-to-r from-brand-gold-light via-brand-gold to-brand-gold-dark text-slate-950 font-bold text-base md:text-lg shadow-[0_4px_24px_rgba(226,176,68,0.35)] hover:shadow-[0_8px_40px_rgba(226,176,68,0.5)] hover:scale-[1.03] transition-all duration-300 active:scale-95 flex items-center gap-2"
               >
                 Crear cuenta gratis
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
                 href="/login/player"
-                className="px-10 py-4 rounded-2xl border-2 border-brand-gold/30 text-brand-gold font-bold text-lg hover:bg-brand-gold/10 hover:border-brand-gold/50 transition-all duration-300 active:scale-95"
+                className="px-8 md:px-10 py-3.5 md:py-4 rounded-xl md:rounded-2xl border-2 border-brand-gold/30 text-brand-gold font-bold text-base md:text-lg hover:bg-brand-gold/10 hover:border-brand-gold/50 transition-all duration-300 active:scale-95"
               >
                 Iniciar sesión
               </Link>
             </div>
 
-            <div
-              data-hero-hint=""
-              className="mt-10 mb-16 md:mb-20 flex justify-center"
-            >
-              <button onClick={() => document.getElementById('instalar-app')?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-brand-gold/10 border border-brand-gold/25 backdrop-blur-sm hover:bg-brand-gold/15 hover:border-brand-gold/40 transition-all duration-300 group cursor-pointer">
-                <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-gold/15 border border-brand-gold/20 group-hover:bg-brand-gold/25 transition-all">
-                  <Smartphone className="w-5 h-5 text-brand-gold" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-text-premium">
-                    Disponible como app
+            <div className="mt-8 md:mt-10 mb-12 md:mb-20 flex justify-center px-6">
+              <button
+                data-hero-hint=""
+                onClick={() => document.getElementById('instalar-app')?.scrollIntoView({ behavior: 'smooth' })}
+                className="group flex items-center gap-4 md:gap-5 w-full max-w-sm border-t border-white/10 pt-5 md:pt-6 cursor-pointer"
+              >
+                <Smartphone className="w-7 h-7 md:w-8 md:h-8 text-brand-gold shrink-0" strokeWidth={1.5} />
+                <div className="text-left flex-1 min-w-0">
+                  <p className="text-sm md:text-base font-semibold text-text-premium group-hover:text-brand-gold transition-colors duration-300">
+                    Disponible como app.
                   </p>
-                  <p className="text-xs text-text-secondary">
-                    Instálala desde tu navegador en cualquier celular
+                  <p className="text-xs md:text-sm text-text-secondary mt-0.5">
+                    Ver tutorial de instalación para navegador
                   </p>
                 </div>
+                <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-text-secondary group-hover:text-brand-gold group-hover:translate-x-1 transition-all duration-300 shrink-0" />
               </button>
             </div>
           </div>
