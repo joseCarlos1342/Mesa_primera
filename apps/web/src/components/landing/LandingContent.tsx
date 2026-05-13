@@ -8,7 +8,7 @@ import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
-  Facebook, Instagram, Mail, Smartphone, Grid2x2, Wine, Coffee,
+  Globe2, Camera, Mail, Smartphone, Grid2x2, Wine, Coffee,
   Spade, Dices, Menu, X, ChevronLeft, ChevronRight, ImageIcon,
   Play, ArrowRight, MapPin, Navigation,
 } from 'lucide-react'
@@ -282,24 +282,17 @@ function TutorialCarousel({
         </button>
       </div>
 
-      {/* Dots */}
-      <div className="flex items-center justify-center gap-2 mt-6">
-        {Array.from({ length: Math.ceil(total / visible) }).map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i * visible)}
-            aria-label={`Ir a página ${i + 1}`}
-            className="w-11 h-11 flex items-center justify-center rounded-full"
-          >
-            <span
-              className={`block h-2 rounded-full transition-transform duration-300 ease-out origin-center w-6 ${
-                Math.floor(index / visible) === i
-                  ? 'bg-brand-gold scale-x-100'
-                  : 'bg-white/20 hover:bg-white/40 scale-x-[0.333]'
-              }`}
-            />
-          </button>
-        ))}
+      {/* Progress bar */}
+      <div className="w-full max-w-xs mx-auto mt-6">
+        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full bg-brand-gold rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${((index + visible) / total) * 100}%` }}
+          />
+        </div>
+        <p className="text-center text-xs text-text-secondary/60 mt-2 tracking-wide">
+          {Math.floor(index / visible) + 1} / {Math.ceil(total / visible)}
+        </p>
       </div>
     </div>
   )
@@ -996,26 +989,26 @@ export function LandingContent() {
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
+            </div>
 
-              {/* Dot indicators */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                {CAROUSEL_SLIDES.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentSlide(i)}
-                    aria-label={`Ir a slide ${i + 1}`}
-                    className="w-11 h-11 flex items-center justify-center rounded-full"
-                  >
-                    <span
-                      className={`block h-2.5 rounded-full transition-transform duration-300 ease-out origin-center w-8 ${
-                        currentSlide === i
-                          ? 'bg-brand-gold scale-x-100'
-                          : 'bg-white/20 hover:bg-white/40 scale-x-[0.3125]'
-                      }`}
-                    />
-                  </button>
-                ))}
-              </div>
+            {/* Dot indicators */}
+            <div className="flex items-center justify-center gap-2 mt-5">
+              {CAROUSEL_SLIDES.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentSlide(i)}
+                  aria-label={`Ir a slide ${i + 1}`}
+                  className="w-11 h-11 flex items-center justify-center rounded-full"
+                >
+                  <span
+                    className={`block h-2.5 rounded-full transition-transform duration-300 ease-out origin-center w-8 ${
+                      currentSlide === i
+                        ? 'bg-brand-gold scale-x-100'
+                        : 'bg-white/20 hover:bg-white/40 scale-x-[0.3125]'
+                    }`}
+                  />
+                </button>
+              ))}
             </div>
           </div>
         </section>
@@ -1275,34 +1268,34 @@ export function LandingContent() {
               </Link>
             </nav>
 
-            <ul className="flex gap-3" aria-label="Redes sociales">
-              <li>
+            <ul className="flex gap-3 list-none p-0 m-0" aria-label="Redes sociales">
+              <li className="list-none p-0 m-0">
                 <a
                   href={SOCIAL.facebook}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Facebook de Primera Riverada los 4 Ases"
-                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                  className="inline-flex p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
                 >
-                  <Facebook className="w-5 h-5" />
+                  <Globe2 className="w-5 h-5" />
                 </a>
               </li>
-              <li>
+              <li className="list-none p-0 m-0">
                 <a
                   href={SOCIAL.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Instagram de Primera Riverada los 4 Ases"
-                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                  className="inline-flex p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
                 >
-                  <Instagram className="w-5 h-5" />
+                  <Camera className="w-5 h-5" />
                 </a>
               </li>
-              <li>
+              <li className="list-none p-0 m-0">
                 <a
                   href={`mailto:${SOCIAL.email}`}
                   aria-label="Correo electrónico de contacto"
-                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                  className="inline-flex p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
                 >
                   <Mail className="w-5 h-5" />
                 </a>
