@@ -3,27 +3,42 @@
 ## Commands
 
 ```bash
+# Runtime y gestor de paquetes canonicos
+# Node.js 24 LTS
+# pnpm 11
+
 # Dev (starts web :3000 + game-server :2567 + socket :2568 + Redis :6380)
 ./dev.sh
+# Dev visible desde la red local actual (detecta automaticamente la IP LAN)
+./dev.sh
+# Si necesitas forzar una IP publica concreta para la red local:
+PUBLIC_DEV_HOST=192.168.1.74 ./dev.sh
 # Or using turbo (does not override VPS URLs in .env.local):
-npm run dev
+pnpm run dev
+
+# Dependencias
+pnpm install
+pnpm add <paquete> --filter web
+pnpm update --filter web <paquete>
+pnpm outdated --filter web
+pnpm audit
 
 # Tests
-npm run test --workspace=web              # Jest 30 (jsdom, next/jest)
-npm run test --workspace=game-server       # Vitest 4 (node env)
-npm run test:coverage --workspace=web      # Threshold: 38% (statements/branches/lines)
-npm run test:coverage --workspace=game-server  # Threshold: 75% lines, 65% branches
-npx playwright test                        # E2E (requires running services)
+pnpm --filter web test                     # Jest 30 (jsdom, next/jest)
+pnpm --filter game-server test             # Vitest 4 (node env)
+pnpm --filter web test:coverage            # Threshold: 38% (statements/branches/lines)
+pnpm --filter game-server test:coverage    # Threshold: 75% lines, 65% branches
+pnpm exec playwright test                  # E2E (requires running services)
 
 # Lint & typecheck (run before committing)
-npm run lint --workspace=web
-npx tsc --noEmit -p apps/web/tsconfig.json
-npx tsc --noEmit -p apps/game-server/tsconfig.json
+pnpm --filter web lint
+pnpm exec tsc --noEmit -p apps/web/tsconfig.json
+pnpm exec tsc --noEmit -p apps/game-server/tsconfig.json
 
 # Database
-supabase migration new <name>
-supabase db reset
-supabase gen types typescript --local > apps/web/src/types/supabase.ts
+pnpm exec supabase migration new <name>
+pnpm exec supabase db reset
+pnpm exec supabase gen types typescript --local > apps/web/src/types/supabase.ts
 ```
 
 # Mesa Primera - Reglas globales (nucleo)
@@ -37,6 +52,7 @@ supabase gen types typescript --local > apps/web/src/types/supabase.ts
 - Implementar; no solo sugerir. Investigar lo necesario y proceder.
 - Cambios pequenos, reversibles y enfocados en lo pedido.
 - No archivos nuevos por defecto: editar lo existente.
+- Usamos `pnpm` como gestor unico de paquetes y `Node.js 24 LTS` como runtime canonico.
 - Sin secretos en el repo, sin `console.log` en produccion, sin `any` injustificado.
 - Verificar antes de cerrar (lint/typecheck/tests del area afectada).
 
@@ -86,14 +102,15 @@ Mesa Primera adopta el formato [**DESIGN.md**](https://github.com/google-labs-co
 - **Antes de crear o modificar cualquier componente UI**, leer el `DESIGN.md` de la interfaz correspondiente.
 - **No mezclar mundos visuales**: los colores dorados/verdes del player NO van en el admin; los colores indigo/funcionales del admin NO van en el player.
 - **Usar los tokens exportados** en los CSS de tema (ej: `bg-primary`, `text-text-primary`, `radius-card`).
-- **Validar cambios** con `npm run design:lint` antes de commitear.
+- **Validar cambios** con `pnpm --filter web run design:lint` antes de commitear.
+- **Instalar, agregar y actualizar dependencias** con `pnpm`; no usar `npm` ni `npx` para ese flujo.
 
 ### CLI de DESIGN.md
 
 ```bash
-npm run design:lint:player   # Valida DESIGN-player.md
-npm run design:lint:admin    # Valida DESIGN-admin.md
-npm run design:lint          # Valida ambos
+pnpm --filter web run design:lint:player   # Valida DESIGN-player.md
+pnpm --filter web run design:lint:admin    # Valida DESIGN-admin.md
+pnpm --filter web run design:lint          # Valida ambos
 ```
 
 ## 8. Flujo recomendado por tarea
@@ -102,5 +119,5 @@ npm run design:lint          # Valida ambos
 3. Si toca docs externas (libs/SDK/CLI): usar la skill `find-docs` o el CLI `ctx7` directamente (ya configurado globalmente con API key).
 4. **Si toca UI**: leer el `DESIGN.md` correspondiente (`player` o `admin`) antes de escribir componentes.
 5. Implementar con tests cuando sea relevante.
-6. Validar (lint/typecheck/tests del area). Si se toco un `DESIGN.md`, correr `npm run design:lint`.
+6. Validar (lint/typecheck/tests del area). Si se toco un `DESIGN.md`, correr `pnpm --filter web run design:lint`.
 7. Commit en espanol siguiendo `commits.instructions.md`.

@@ -118,6 +118,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   // ── JUEGO_VALIDACION: re-pregunta a todos tras all-check con juego ──
   /** Jugadores pendientes de responder en la fase JUEGO_VALIDACION. */
   public juegoValidationPendingIds = new Set<string>();
+
+  private getPlayers(): Player[] {
+    return Array.from(this.state.players.values() as IterableIterator<Player>);
+  }
+
+  private getPlayerEntries(): Array<[string, Player]> {
+    return Array.from(this.state.players.entries() as IterableIterator<[string, Player]>);
+  }
+
+  private getPlayerIds(): string[] {
+    return Array.from(this.state.players.keys() as IterableIterator<string>);
+  }
   /** Respuestas recibidas: playerId → { action, amount? } */
   public juegoValidationResponses = new Map<string, { action: string; amount?: number }>();
   /** IDs de jugadores con juego (para saber quiénes ven el botón "Cantar"). */
@@ -257,7 +269,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   public updateLobbyMetadata() {
-    const players = Array.from(this.state.players.values());
+    const players = this.getPlayers();
     const activePlayers = players.filter(p => p.connected).length;
     const totalReservedSeats = players.length; // Includes disconnected but within grace period
 
@@ -286,7 +298,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       if (this.seatOrder.length > 0) {
         this.state.dealerId = this.seatOrder[0];
       } else {
-        this.state.dealerId = Array.from(this.state.players.keys())[0];
+        this.state.dealerId = this.getPlayerIds()[0] ?? "";
       }
     }
     // activeManoId: si el jugador removido era La Mano, transferir al siguiente activo
@@ -607,7 +619,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Resetear el estado de los jugadores para la nueva ronda
     // M1: Validación de saldo mínimo — jugadores sin saldo suficiente se sientan como espectadores
-    Array.from(this.state.players.entries()).forEach(([sessionId, p]) => {
+    this.getPlayerEntries().forEach(([sessionId, p]) => {
       if (!p.isReady || p.isWaiting) {
         p.isFolded = true;
       } else if (p.chips < this.state.minPique) {
@@ -1902,7 +1914,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     this.recordEvent({ event: 'end', winner: overallWinnerId, pot: totalPot, payout: totalPayout, rake: totalRake, sidePots: potWinners, time: Date.now(), rng_state: this.getRngState() });
 
-    const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
+    const playersSnapshot = this.getPlayers().map(p => ({
       userId: p.supabaseUserId || p.id,
       sessionId: p.id,
       nickname: p.nickname,
@@ -1952,7 +1964,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     };
     const finalHands: Record<string, any> = {};
     const lastKnownCardsByPlayerId = this.snapshotBuilder.lastKnownCards;
-    Array.from(this.state.players.values()).forEach(p => {
+    this.getPlayers().forEach(p => {
       const cardsCsv = (p.cards && p.cards.length > 0)
         ? p.cards
         : (lastKnownCardsByPlayerId.get(p.id) ?? '');
@@ -1975,7 +1987,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, playerTimeline, playersSnapshot, adminTimeline, potBreakdown, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP', replayFrames).catch(console.error);
 
     // Update stats for all participating players
-    Array.from(this.state.players.values()).forEach(p => {
+    this.getPlayers().forEach(p => {
       const isWinner = winnerPayouts.has(p.id);
       const wp = winnerPayouts.get(p.id);
       const playerPayout = isWinner ? (wp?.payout || 0) : -p.totalMainBet;
@@ -2074,7 +2086,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     this.recordEvent({ event: 'end', winner: winnerId, pot: totalPot, payout, rake, time: Date.now(), rng_state: this.getRngState() });
 
-    const playersSnapshot = Array.from(this.state.players.values()).map(p => ({
+    const playersSnapshot = this.getPlayers().map(p => ({
       userId: p.supabaseUserId || p.id,
       sessionId: p.id,
       nickname: p.nickname,
@@ -2096,7 +2108,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     const potBreakdown = { totalPot, mainPot: this.state.pot, piquePot: this.state.piquePot, payout, rake };
     const finalHands: Record<string, any> = {};
-    Array.from(this.state.players.values()).forEach(p => {
+    this.getPlayers().forEach(p => {
       if (p.cards) {
         const hand = evaluateHand(p.cards);
         finalHands[p.supabaseUserId || p.id] = { cards: p.cards, handType: hand.type, handPoints: hand.points, nickname: p.nickname };
@@ -2107,7 +2119,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     SupabaseService.saveReplay(this.currentGameId, this.state.lastSeed, playerTimeline, playersSnapshot, adminTimeline, potBreakdown, finalHands, this.roomId, this.metadata?.tableName || 'Mesa VIP', this.snapshotBuilder.build()).catch(console.error);
 
     // Update stats
-    Array.from(this.state.players.values()).forEach(p => {
+    this.getPlayers().forEach(p => {
       const isWinner = p.id === winner.id;
       const playerPayout = isWinner ? payout : -p.totalMainBet;
       const playerRake = isWinner ? rake : 0;
@@ -2423,8 +2435,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       // The totalMainBet does NOT include pique contributions (pique goes to piquePot, not pot).
       // We'll refund the piquePot to connected non-folded players proportionally.
       if (this.state.piquePot > 0) {
-        const piqueContributors = Array.from(this.state.players.values())
-          .filter((p: Player) => p.supabaseUserId && !p.isFolded && p.connected) as Player[];
+        const piqueContributors = this.getPlayers()
+          .filter((p) => Boolean(p.supabaseUserId) && !p.isFolded && p.connected);
         if (piqueContributors.length > 0) {
           const share = Math.floor(this.state.piquePot / piqueContributors.length);
           const remainder = this.state.piquePot - (share * piqueContributors.length);

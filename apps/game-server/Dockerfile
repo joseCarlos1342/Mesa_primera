@@ -1,5 +1,5 @@
 # Debian slim — compatible con binarios bundled de Playwright (glibc)
-FROM node:20-slim
+FROM node:24-slim
 
 WORKDIR /app
 
@@ -12,19 +12,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Install dependencies for overall workspace
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/game-server ./apps/game-server/
 
 # Install dependencies
-RUN npm ci
+RUN corepack enable && pnpm install --frozen-lockfile --filter game-server...
 
 # Instalar Chromium + ffmpeg de Playwright con sus dependencias de sistema
-RUN npx playwright install --with-deps chromium && npx playwright install ffmpeg
+RUN pnpm exec playwright install --with-deps chromium && pnpm exec playwright install ffmpeg
 
 # Set working directory to the game-server package
 WORKDIR /app/apps/game-server
 # Build step
-RUN npx tsc
+RUN pnpm exec tsc
 
 # Crear directorio para almacenamiento de grabaciones
 RUN mkdir -p /data/replays
