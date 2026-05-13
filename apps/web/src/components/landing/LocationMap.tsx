@@ -18,9 +18,9 @@ export const LOCAL_LOCATION = {
     'https://maps.google.com/maps/dir/?api=1&destination=2.9268522,-75.2866714',
 } as const
 
-/* Carto Dark Matter — free, no API key required */
-const CARTO_DARK_STYLE =
-  'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+/* Carto Positron — free, no API key required, light/minimalist */
+const CARTO_STYLE =
+  'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
 
 /* ── Component ──────────────────────────────────────────────────── */
 
@@ -39,7 +39,7 @@ export function LocationMapInner() {
 
       map = new maplibre.Map({
         container: containerRef.current,
-        style: CARTO_DARK_STYLE,
+        style: CARTO_STYLE,
         center: [LOCAL_LOCATION.lng, LOCAL_LOCATION.lat],
         zoom: 16,
         attributionControl: false,
@@ -76,8 +76,8 @@ export function LocationMapInner() {
           maxWidth: '240px',
         }).setHTML(
           `<div style="font-family:system-ui,sans-serif;padding:8px 4px">
-            <p style="font-weight:700;margin:0 0 4px;color:#e2b044;font-size:13px">${LOCAL_LOCATION.name}</p>
-            <p style="margin:0;color:#d1d5db;font-size:12px">${LOCAL_LOCATION.address}</p>
+            <p style="font-weight:700;margin:0 0 4px;color:#1a1a1a;font-size:13px">${LOCAL_LOCATION.name}</p>
+            <p style="margin:0;color:#555;font-size:12px">${LOCAL_LOCATION.address}</p>
           </div>`,
         )
 
@@ -85,9 +85,6 @@ export function LocationMapInner() {
           .setLngLat([LOCAL_LOCATION.lng, LOCAL_LOCATION.lat])
           .setPopup(popup)
           .addTo(map)
-
-        /* Abre el popup automáticamente */
-        popup.addTo(map).setLngLat([LOCAL_LOCATION.lng, LOCAL_LOCATION.lat])
       })
     }
 
