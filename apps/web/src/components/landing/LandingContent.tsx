@@ -289,10 +289,16 @@ function TutorialCarousel({
             key={i}
             onClick={() => goTo(i * visible)}
             aria-label={`Ir a página ${i + 1}`}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              Math.floor(index / visible) === i ? 'bg-brand-gold w-6' : 'bg-white/20 hover:bg-white/40 w-2'
-            }`}
-          />
+            className="w-11 h-11 flex items-center justify-center rounded-full"
+          >
+            <span
+              className={`block h-2 rounded-full transition-transform duration-300 ease-out origin-center w-6 ${
+                Math.floor(index / visible) === i
+                  ? 'bg-brand-gold scale-x-100'
+                  : 'bg-white/20 hover:bg-white/40 scale-x-[0.333]'
+              }`}
+            />
+          </button>
         ))}
       </div>
     </div>
@@ -345,6 +351,44 @@ function getTutorialStepCount(title: string): number {
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
+
+function LazyLocationMap() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={ref}>
+      {visible ? (
+        <LocationMap />
+      ) : (
+        <div
+          className="w-full rounded-2xl overflow-hidden border border-brand-gold/20 bg-surface-poker flex items-center justify-center"
+          style={{ height: '380px' }}
+          role="region"
+          aria-label="Mapa de ubicación (cargando)"
+        >
+          <span className="text-text-secondary text-sm">Cargando mapa…</span>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function LandingContent() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -707,8 +751,9 @@ export function LandingContent() {
         </div>
       </nav>
 
-      {/* ── Animated Content ──────────────────────── */}
-      <div ref={containerRef} className="relative z-10">
+      <main id="contenido-principal">
+        {/* ── Animated Content ──────────────────────── */}
+        <div ref={containerRef} className="relative z-10">
         {/* ═══ Hero ════════════════════════════════ */}
         <section
           id="inicio"
@@ -959,12 +1004,16 @@ export function LandingContent() {
                     key={i}
                     onClick={() => setCurrentSlide(i)}
                     aria-label={`Ir a slide ${i + 1}`}
-                    className={`h-2.5 rounded-full transition-all duration-300 ${
-                      currentSlide === i
-                        ? 'bg-brand-gold w-8'
-                        : 'bg-white/20 hover:bg-white/40 w-2.5'
-                    }`}
-                  />
+                    className="w-11 h-11 flex items-center justify-center rounded-full"
+                  >
+                    <span
+                      className={`block h-2.5 rounded-full transition-transform duration-300 ease-out origin-center w-8 ${
+                        currentSlide === i
+                          ? 'bg-brand-gold scale-x-100'
+                          : 'bg-white/20 hover:bg-white/40 scale-x-[0.3125]'
+                      }`}
+                    />
+                  </button>
                 ))}
               </div>
             </div>
@@ -1150,7 +1199,7 @@ export function LandingContent() {
 
             {/* Mapa interactivo */}
             <div data-reveal="" className="mb-8">
-              <LocationMap />
+              <LazyLocationMap />
             </div>
 
             {/* Botones Google Maps */}
@@ -1226,36 +1275,39 @@ export function LandingContent() {
               </Link>
             </nav>
 
-            <div className="flex gap-3" role="list" aria-label="Redes sociales">
-              <a
-                href={SOCIAL.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook de Primera Riverada los 4 Ases"
-                role="listitem"
-                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-              >
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a
-                href={SOCIAL.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram de Primera Riverada los 4 Ases"
-                role="listitem"
-                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-              >
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a
-                href={`mailto:${SOCIAL.email}`}
-                aria-label="Correo electrónico de contacto"
-                role="listitem"
-                className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
-              >
-                <Mail className="w-5 h-5" />
-              </a>
-            </div>
+            <ul className="flex gap-3" aria-label="Redes sociales">
+              <li>
+                <a
+                  href={SOCIAL.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook de Primera Riverada los 4 Ases"
+                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                >
+                  <Facebook className="w-5 h-5" />
+                </a>
+              </li>
+              <li>
+                <a
+                  href={SOCIAL.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram de Primera Riverada los 4 Ases"
+                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                >
+                  <Instagram className="w-5 h-5" />
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`mailto:${SOCIAL.email}`}
+                  aria-label="Correo electrónico de contacto"
+                  className="p-2.5 rounded-xl bg-white/3 border border-white/8 text-text-secondary hover:text-brand-gold hover:border-brand-gold/30 hover:bg-brand-gold/5 transition-all"
+                >
+                  <Mail className="w-5 h-5" />
+                </a>
+              </li>
+            </ul>
           </div>
 
           <p className="text-center text-text-secondary/50 text-xs mt-10">
@@ -1271,6 +1323,7 @@ export function LandingContent() {
           </p>
         </footer>
       </div>
-    </div>
+    </main>
+  </div>
   )
 }
