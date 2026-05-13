@@ -14,11 +14,18 @@ export function useNotificationSocket(userId: string | undefined) {
   const socketRef = useRef<Socket | null>(null);
 
   const getSocketUrl = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const runtimeUrl = (window as any).__MESA_PRIMERA_RUNTIME_ENV__?.NEXT_PUBLIC_SOCKET_URL;
+      if (runtimeUrl) return runtimeUrl;
+
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      return `${protocol}//${window.location.hostname}:2568`;
+    }
+
     return (
       process.env.NEXT_PUBLIC_SOCKET_URL ||
-      (typeof window !== 'undefined' &&
-        (window as any).__MESA_PRIMERA_RUNTIME_ENV__?.NEXT_PUBLIC_SOCKET_URL) ||
-      'http://localhost:2568'
+      process.env.SOCKET_URL ||
+      'http://127.0.0.1:2568'
     );
   }, []);
 

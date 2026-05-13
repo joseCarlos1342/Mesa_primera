@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 import withPWAInit from "@ducanh2912/next-pwa";
 
+const publicDevHost = process.env.PUBLIC_DEV_HOST?.trim();
+
+const allowedDevOrigins = [
+  'localhost',
+  '127.0.0.1',
+  publicDevHost || undefined,
+].filter((origin): origin is string => Boolean(origin));
+
 const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
@@ -42,6 +50,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: true,
   turbopack: {},
+  allowedDevOrigins,
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns', 'framer-motion', 'gsap', '@gsap/react'],
   },
