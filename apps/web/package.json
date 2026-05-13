@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "design:lint:player": "npx @google/design.md lint src/design/DESIGN-player.md",
+    "design:lint:admin": "npx @google/design.md lint src/design/DESIGN-admin.md",
+    "design:lint": "npm run design:lint:player && npm run design:lint:admin"
   },
   "dependencies": {
     "@colyseus/sdk": "^0.17.34",
@@ -44,6 +47,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@google/design.md": "^0.1.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
