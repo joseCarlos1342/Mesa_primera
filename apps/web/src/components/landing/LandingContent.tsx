@@ -99,16 +99,18 @@ const CAROUSEL_SLIDES = [
   { title: 'Comunidad', desc: 'Más de una década reuniendo apasionados del juego.' },
 ]
 
+type SpanishSuit = 'espada' | 'copa' | 'oro' | 'basto'
+
 /* Palos de la baraja española */
-const CARD_SUITS = ['⚔', '🏆', '⬤', '⚜', '⚔', '🏆']
+const CARD_SUITS: SpanishSuit[] = ['espada', 'copa', 'oro', 'basto', 'espada', 'copa']
 
 const FLOAT_CLASSES = [
-  'top-[8%] left-[8%] -rotate-12 text-[7rem]',
-  'top-[15%] right-[10%] rotate-[20deg] text-[6rem]',
-  'bottom-[20%] left-[12%] rotate-[15deg] text-[9rem]',
-  'top-[50%] right-[5%] -rotate-[25deg] text-[5rem]',
-  'bottom-[10%] right-[15%] rotate-[8deg] text-[8rem]',
-  'top-[35%] left-[3%] -rotate-[10deg] text-[6rem]',
+  'top-[8%] left-[8%] -rotate-12 w-20 h-20 md:w-28 md:h-28',
+  'top-[15%] right-[10%] rotate-[20deg] w-16 h-16 md:w-24 md:h-24',
+  'bottom-[20%] left-[12%] rotate-[15deg] w-24 h-24 md:w-36 md:h-36',
+  'top-[50%] right-[5%] -rotate-[25deg] w-14 h-14 md:w-20 md:h-20',
+  'bottom-[10%] right-[15%] rotate-[8deg] w-24 h-24 md:w-32 md:h-32',
+  'top-[35%] left-[3%] -rotate-[10deg] w-16 h-16 md:w-24 md:h-24',
 ]
 
 const SLIDE_GRADIENTS = [
@@ -341,6 +343,70 @@ function getTutorialStepCount(title: string): number {
     'Amigos': 4,
   }
   return counts[title] || 3
+}
+
+function SuitMark({
+  suit,
+  className,
+  ...props
+}: { suit: SpanishSuit; className?: string } & React.SVGProps<SVGSVGElement>) {
+  if (suit === 'oro') {
+    return (
+      <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
+        <circle cx="50" cy="50" r="29" fill="#f2c94c" stroke="#7a4f12" strokeWidth="5" />
+        <circle cx="50" cy="50" r="22" fill="#ffd965" stroke="#b77a18" strokeWidth="3" />
+        <path
+          d="M43 62c7 4 15 2 20-4M44 57c-5-7-2-16 6-20 6-2 13-1 17 4M43 44c4 3 9 4 14 2"
+          stroke="#7a4f12"
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+        <circle cx="37" cy="37" r="2" fill="#7a4f12" />
+        <circle cx="63" cy="63" r="2" fill="#7a4f12" />
+      </svg>
+    )
+  }
+
+  if (suit === 'copa') {
+    return (
+      <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
+        <path d="M27 23h46l-6 31H33Z" fill="#d94a2b" stroke="#7a4f12" strokeWidth="5" strokeLinejoin="round" />
+        <path d="M23 19h54v9H23z" fill="#f2c94c" stroke="#7a4f12" strokeWidth="4" strokeLinejoin="round" />
+        <path d="M34 33h32l-4 14H38Z" fill="#f08a30" opacity="0.9" />
+        <path d="M44 54h12v18H44z" fill="#79bfe8" stroke="#7a4f12" strokeWidth="4" />
+        <path d="M34 72h32l6 10H28Z" fill="#f2c94c" stroke="#7a4f12" strokeWidth="4" strokeLinejoin="round" />
+        <circle cx="50" cy="18" r="8" fill="#3a9f59" stroke="#7a4f12" strokeWidth="4" />
+      </svg>
+    )
+  }
+
+  if (suit === 'basto') {
+    return (
+      <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
+        <path
+          d="M60 9c9 2 15 10 13 20L60 86c-1 5-6 8-11 7-5-1-8-6-7-11l13-57c2-10-1-15 5-16Z"
+          fill="#6fb34f"
+          stroke="#355f22"
+          strokeWidth="5"
+          strokeLinejoin="round"
+        />
+        <path d="M62 20 50 77" stroke="#9bd66a" strokeWidth="4" strokeLinecap="round" opacity="0.75" />
+        <path d="M54 44c-9 0-16-4-21-11 10-2 18 1 25 8Z" fill="#8bd15b" stroke="#355f22" strokeWidth="3" strokeLinejoin="round" />
+        <path d="M50 68c8-2 15-7 20-15-10 0-18 4-23 12Z" fill="#8bd15b" stroke="#355f22" strokeWidth="3" strokeLinejoin="round" />
+        <path d="M45 87c5-3 9-8 12-15" stroke="#7a4f12" strokeWidth="4" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
+      <path d="M45 5h10l9 14-9 9v55H45V28l-9-9Z" fill="#9edcf5" stroke="#215f7f" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M50 8v74" stroke="#e9fbff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+      <path d="M30 73h40l-8 10H38Z" fill="#f2c94c" stroke="#7a4f12" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M34 82h32v9H34Z" fill="#c43a2b" stroke="#7a4f12" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M35 78c-10 0-16-5-16-12 9 0 16 3 21 10M65 78c10 0 16-5 16-12-9 0-16 3-21 10" stroke="#f2c94c" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
@@ -770,13 +836,12 @@ export function LandingContent() {
           {/* Floating Spanish naipe symbols */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
             {CARD_SUITS.map((suit, i) => (
-              <span
+              <SuitMark
                 key={i}
+                suit={suit}
+                className={`absolute select-none opacity-[0.12] will-change-transform ${FLOAT_CLASSES[i]}`}
                 data-float=""
-                className={`absolute text-[#e2b0440d] font-serif select-none will-change-transform ${FLOAT_CLASSES[i]}`}
-              >
-                {suit}
-              </span>
+              />
             ))}
           </div>
 
@@ -842,10 +907,10 @@ export function LandingContent() {
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
           <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
-          <span className="text-[#e2b04440] text-lg">⚔</span>
-          <span className="text-[#e2b04440] text-lg">🏆</span>
-          <span className="text-[#e2b04440] text-lg">⬤</span>
-          <span className="text-[#e2b04440] text-lg">⚜</span>
+          <SuitMark suit="espada" className="h-5 w-5 opacity-40" />
+          <SuitMark suit="copa" className="h-5 w-5 opacity-40" />
+          <SuitMark suit="oro" className="h-5 w-5 opacity-40" />
+          <SuitMark suit="basto" className="h-5 w-5 opacity-40" />
           <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
@@ -858,7 +923,7 @@ export function LandingContent() {
               data-reveal-left=""
             >
               <div className="w-px h-16 bg-linear-to-b from-brand-gold/50 to-brand-gold/10" />
-              <span className="text-[#e2b04499] text-2xl">⚔</span>
+              <SuitMark suit="espada" className="h-7 w-7 opacity-60" />
               <div className="w-px h-16 bg-linear-to-b from-brand-gold/10 to-transparent" />
             </div>
 
@@ -941,7 +1006,7 @@ export function LandingContent() {
           className="flex items-center justify-center gap-3 py-4 bg-black/20"
         >
           <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
-          <span className="text-[#e2b04440] text-lg">⬤</span>
+          <SuitMark suit="oro" className="h-5 w-5 opacity-40" />
           <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
@@ -1086,7 +1151,7 @@ export function LandingContent() {
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
           <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
-          <span className="text-[#e2b04440] text-lg">⚜</span>
+          <SuitMark suit="basto" className="h-5 w-5 opacity-40" />
           <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
@@ -1175,9 +1240,9 @@ export function LandingContent() {
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
           <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
-          <span className="text-[#e2b04440] text-lg">⚔</span>
-          <span className="text-[#e2b04440] text-lg">🏆</span>
-          <span className="text-[#e2b04440] text-lg">⚜</span>
+          <SuitMark suit="espada" className="h-5 w-5 opacity-40" />
+          <SuitMark suit="copa" className="h-5 w-5 opacity-40" />
+          <SuitMark suit="basto" className="h-5 w-5 opacity-40" />
           <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
