@@ -589,7 +589,6 @@ El admin edita el reglamento visible para los jugadores y normas públicas del s
 
 - `/admin/replays`
 - `/admin/replays/[gameId]`
-- `/admin/render/[gameId]`
 
 ### Repeticiones
 
@@ -609,10 +608,6 @@ Este módulo muestra:
 - revisar contexto de disputas,
 - consultar histórico,
 - reunir evidencia antes de sancionar o responder reclamos.
-
-### Render
-
-La ruta de render complementa replays cuando hace falta convertir evidencia de juego en material más fácil de revisar o compartir internamente.
 
 ## 18. Auditoría y logs
 

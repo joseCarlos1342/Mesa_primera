@@ -257,7 +257,7 @@ Los componentes de `TableControls` y la vista de supervisión no renderizan ning
 | Estado de la partida | Admin puede ver |
 |---|---|
 | En curso (`in_progress` o `waiting`) | Metadata: estado, jugadores, pote. No: cartas, acciones |
-| Finalizada (`finished`) | Replay completo disponible en `/admin/replays` y `/admin/render/[gameId]` |
+| Finalizada (`finished`) | Replay completo disponible en `/admin/replays` |
 
 ### Evidencia funcional
 
@@ -284,12 +284,13 @@ CREATE POLICY "ledger_no_delete" ON public.ledger
 
 ### Único punto de entrada para mutaciones de saldo
 
-La RPC `process_ledger_entry()` es la **única función que puede insertar entradas en el ledger**. Corre como `SECURITY DEFINER` para evitar problemas de contexto de permisos y valida:
+La RPC `process_ledger_entry()` es la funcion central que inserta entradas en el ledger. Corre como `SECURITY DEFINER`, serializa escrituras por usuario y valida:
 
 1. `direction` debe ser `'credit'` o `'debit'`.
 2. `p_amount_cents` debe ser mayor que cero.
 3. Si la operación es un débito, el balance resultante (`v_new_balance`) no puede ser negativo.
-4. Actualiza `wallets.balance_cents` en la misma transacción para mantener sincronía.
+4. Actualiza `wallets.balance_cents` en la misma transaccion para mantener sincronia.
+5. En su version actual admite tambien `transfer` y `bonus` como tipos validos.
 
 ### Consecuencia para el administrador
 
@@ -464,6 +465,15 @@ A continuación se documentan las vulnerabilidades identificadas y corregidas du
 ---
 
 ## 12. Modelo de Amenazas y Defensas
+
+### Anti-colusion actual
+
+El sistema actual no hace bloqueo preventivo en tiempo real, pero si tiene deteccion operativa activa:
+
+- `apps/game-server/src/cron/antiCollusion.ts` ejecuta un cron cada 2 horas.
+- Llama a la RPC `detect_potential_collusion(threshold := 10)`.
+- La RPC analiza coincidencia de parejas en partidas de los ultimos 7 dias y marca pares con superposicion mayor al 80%.
+- Cuando encuentra casos, emite alertas operativas y registra eventos en `admin_audit_log` para revision manual.
 
 ### Amenazas consideradas y mitigaciones activas
 

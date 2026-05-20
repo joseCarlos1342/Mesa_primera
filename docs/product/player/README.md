@@ -36,20 +36,20 @@ La pantalla de registro del jugador solicita hoy estos datos:
 
 La intención del flujo es que el jugador quede listo para entrar rápido a la experiencia principal sin pasar por formularios extensos.
 
-### Primer inicio de sesión
+### Primer inicio de sesion
 
 La pantalla de acceso del jugador contempla varias formas de entrada, según el estado de la cuenta:
 
-- Celular + PIN de 6 dígitos.
-- Celular + OTP cuando la cuenta todavía no usa PIN.
+- Celular + PIN de 6 digitos.
+- Celular + OTP cuando la cuenta todavia no usa PIN.
 - Google Sign-In.
-- Inicio biométrico con passkey si el dispositivo ya fue registrado antes.
+- Inicio biometrico con passkey si el dispositivo ya fue registrado antes.
 
-### Biometría y bloqueo de app
+### Biometria y bloqueo de app
 
 Después del registro existe una pantalla opcional para activar biometría. Además, desde Perfil el jugador puede gestionar:
 
-- Biometría o passkey.
+- Biometria o passkey.
 - Bloqueo de la app.
 - Datos básicos del perfil.
 - Cambio de teléfono con verificación OTP.
@@ -204,11 +204,16 @@ Para tutoriales del flujo real de partida, hoy conviene priorizar el modal de me
 
 ### Fases que ve el jugador en el modal de mesa
 
-1. `Pique Inicial (2 cartas)`.
-2. `Completar (2 cartas extra)`.
-3. `Descarte` o `La Bajada`.
-4. `Guerra` o farol final.
-5. `Showdown`.
+1. `Sorteo de mano`.
+2. `Pique`.
+3. `Completar`.
+4. `Apuesta de 4 cartas`.
+5. `Descarte`.
+6. `Reemplazo de descarte`.
+7. `Carta del fondo`.
+8. `Guerra`.
+9. `Canticos` y `Declarar juego` cuando aplica.
+10. `Showdown`.
 
 ### Jerarquías visibles en el reglamento rápido
 
@@ -353,29 +358,29 @@ La mesa incorpora chat de voz. El jugador puede abrir su panel de audio desde el
 
 La salida de mesa tiene confirmación explícita y la UI advierte que abandonar en ese momento implica perder lo ya apostado en la mano.
 
-## 11. Reconexión y continuidad
+## 11. Reconexion y continuidad
 
-La experiencia actual comunica y opera con una ventana de reconexión de `5 minutos`.
+La experiencia actual opera con una ventana de reconexion de `120 segundos`.
 
 Si el jugador pierde conexión:
 
 - La app intenta preservar la sesión de la mesa.
-- Puede regresar usando el mismo enlace o la misma sesión.
-- Si no vuelve a tiempo, la mano queda abandonada y pierde lo ya apostado.
+- Puede regresar usando el mismo enlace o la misma sesion.
+- Si no vuelve a tiempo, la sala aplica el flujo de expiracion correspondiente y el jugador pierde proteccion de reconexion.
 
 ## 12. Datos operativos confirmados hoy
 
 Resumen corto para tutoriales, soporte y material audiovisual:
 
 - Registro con nombre, apodo, celular `+57`, avatar y opción Google.
-- Login con PIN, OTP, Google o biometría si ya fue configurada.
+- Login con PIN, OTP, Google o biometria si ya fue configurada.
 - Saldo mínimo común para entrar a mesa: `$50.000`.
 - Pique mínimo común por defecto: `$5.000`.
 - Capacidad máxima por mesa: `7 jugadores`.
 - Inicio de primera partida con `3` listos; luego con `2`.
 - Recarga manual entre `$10.000` y `$50.000.000`.
 - Transferencia mínima visible: `$1.000`.
-- Reconexión disponible durante `5 minutos`.
+- Reconexion disponible durante `120 segundos`.
 
 ## 13. Orden sugerido para futuros videos
 
