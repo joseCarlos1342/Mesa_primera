@@ -50,8 +50,7 @@ apps/web/src/
 │   │       ├── server-log/page.tsx         ← /admin/server-log
 │   │       ├── rules/page.tsx              ← /admin/rules
 │   │       ├── replays/page.tsx            ← /admin/replays
-│   │       ├── spectate/[roomId]/page.tsx  ← /admin/spectate/[roomId]
-│   │       └── render/[gameId]/page.tsx    ← /admin/render/[gameId]
+│   │       └── spectate/[roomId]/page.tsx  ← /admin/spectate/[roomId]
 │   └── actions/
 │       ├── admin-dashboard.ts              ← KPIs y estadísticas
 │       ├── admin-users.ts                  ← Gestión de usuarios
@@ -368,13 +367,13 @@ Admin accede a /admin/spectate/[roomId]
 
 ### `process_ledger_entry()`
 
-Única vía para insertar en el ledger. Corre como `SECURITY DEFINER`.
+Vía central de inserción en el ledger. Corre como `SECURITY DEFINER` y su versión actual contempla serialización por usuario y tipos ampliados.
 
 ```sql
 process_ledger_entry(
   p_user_id       UUID,
   p_amount_cents  INT,
-  p_type          TEXT,     -- 'deposit'|'withdrawal'|'bet'|'win'|'rake'|'refund'|'adjustment'
+  p_type          TEXT,     -- 'deposit'|'withdrawal'|'bet'|'win'|'rake'|'refund'|'adjustment'|'transfer'|'bonus'
   p_direction     TEXT,     -- 'credit' | 'debit'
   p_game_id       UUID   DEFAULT NULL,
   p_table_id      UUID   DEFAULT NULL,
@@ -712,16 +711,6 @@ Esta consulta usa el endpoint `/matchmake/` de Colyseus (sin autenticación espe
 ### 8.2 Supervisión en vivo (WebSocket de Colyseus)
 
 El admin se conecta a la sala como espectador usando el token de Redis generado por `generateSupervisionToken`. La sala de Colyseus filtra el estado enviado al espectador admin, omitiendo cartas y acciones privadas.
-
-### 8.3 Renderizado MP4 (worker del Game Server)
-
-```
-GET /admin/render/[gameId]?token={RENDER_SECRET_TOKEN}
-```
-
-El worker de Colyseus invoca esta ruta para capturar el video. El componente de página valida `RENDER_SECRET_TOKEN` antes de renderizar. Cuando termina, agrega `data-render-done="true"` al DOM para señalizar al worker que puede capturar el frame final.
-
----
 
 ## 9. Tabla de Trazabilidad Funcional
 

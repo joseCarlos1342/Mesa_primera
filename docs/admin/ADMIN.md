@@ -27,8 +27,7 @@
 17. [Reglamento](#17-reglamento)
 18. [Repeticiones (Replays)](#18-repeticiones-replays)
 19. [Supervisión en Vivo](#19-supervisión-en-vivo)
-20. [Renderizado de Partidas](#20-renderizado-de-partidas)
-21. [Resumen de Facultades y Límites](#21-resumen-de-facultades-y-límites)
+20. [Resumen de Facultades y Límites](#20-resumen-de-facultades-y-límites)
 
 ---
 
@@ -640,7 +639,7 @@ Acceso administrativo al archivo histórico de partidas jugadas. Permite revisar
 - **Listar todas las partidas** con fecha, jugadores involucrados y rake generado.
 - **Ver resúmenes estadísticos:** total de partidas registradas, rake acumulado, número de jugadores únicos.
 - **Acceder a un replay individual** directamente desde el listado para reproducirlo visualmente.
-- **Enlazar con renderizado** (`/admin/render/[gameId]`) para generar un video MP4 de la partida.
+- **Acceder a un replay individual** para reconstruir la mano y usarlo como evidencia operativa.
 
 ### Cuándo están disponibles
 
@@ -689,32 +688,7 @@ El acceso a la sala genera un token de supervisión mediante `generateSupervisio
 
 ---
 
-## 20. Renderizado de Partidas
-
-**Ruta:** `/admin/render/[gameId]`
-
-### Objetivo
-
-Motor interno de renderizado de partidas históricas a video MP4. Este apartado es de uso técnico/automatizado y no forma parte del flujo diario del administrador.
-
-### Funcionamiento
-
-- Accesible únicamente con el token correcto en el query string: `?token=RENDER_SECRET_TOKEN`.
-- Obtiene el replay del Game Server para el `gameId` indicado.
-- Renderiza el componente visual de reproducción completa de la partida.
-- Señaliza `data-render-done="true"` en el DOM cuando la reproducción termina, lo que indica al worker que el video está listo para capturar.
-
-### Quién lo usa
-
-El worker del Game Server lo invoca automáticamente para generar videos MP4 de partidas seleccionadas o de todos los replays del archivo. No es una herramienta que el admin opere manualmente de forma habitual.
-
-### Seguridad
-
-El acceso **requiere** el valor exacto de la variable de entorno `RENDER_SECRET_TOKEN`. Sin el token correcto, la ruta retorna error y no renderiza ningún contenido. Esto protege la ruta de accesos externos no autorizados.
-
----
-
-## 21. Resumen de Facultades y Límites
+## 20. Resumen de Facultades y Límites
 
 ### Tabla rápida de referencia
 
