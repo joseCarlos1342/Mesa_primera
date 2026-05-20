@@ -99,10 +99,10 @@ const CAROUSEL_SLIDES = [
   { title: 'Comunidad', desc: 'Más de una década reuniendo apasionados del juego.' },
 ]
 
-type SpanishSuit = 'espada' | 'copa' | 'oro' | 'basto'
+type DecorativeMark = 'copa' | 'domino' | 'parques' | 'cerveza' | 'carta' | 'dado' | 'espada'
 
-/* Palos de la baraja española */
-const CARD_SUITS: SpanishSuit[] = ['espada', 'copa', 'oro', 'basto', 'espada', 'copa']
+/* Iconos decorativos del negocio */
+const DECORATIVE_MARKS: DecorativeMark[] = ['carta', 'copa', 'parques', 'cerveza', 'domino', 'espada']
 
 const FLOAT_CLASSES = [
   'top-[8%] left-[8%] -rotate-12 w-20 h-20 md:w-28 md:h-28',
@@ -346,28 +346,24 @@ function getTutorialStepCount(title: string): number {
 }
 
 function SuitMark({
-  suit,
+  mark,
   className,
   ...props
-}: { suit: SpanishSuit; className?: string } & React.SVGProps<SVGSVGElement>) {
-  if (suit === 'oro') {
+}: { mark: DecorativeMark; className?: string } & React.SVGProps<SVGSVGElement>) {
+  if (mark === 'domino') {
     return (
       <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
-        <circle cx="50" cy="50" r="29" fill="#f2c94c" stroke="#7a4f12" strokeWidth="5" />
-        <circle cx="50" cy="50" r="22" fill="#ffd965" stroke="#b77a18" strokeWidth="3" />
-        <path
-          d="M43 62c7 4 15 2 20-4M44 57c-5-7-2-16 6-20 6-2 13-1 17 4M43 44c4 3 9 4 14 2"
-          stroke="#7a4f12"
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-        <circle cx="37" cy="37" r="2" fill="#7a4f12" />
-        <circle cx="63" cy="63" r="2" fill="#7a4f12" />
+        <g transform="rotate(11 50 50)">
+          <rect x="18" y="28" width="64" height="44" rx="8" fill="#f3edd7" stroke="#7a4f12" strokeWidth="5" />
+          <path d="M50 32v36" stroke="#7a4f12" strokeWidth="5" strokeLinecap="round" />
+          <circle cx="35" cy="50" r="7" fill="#1f6f8b" />
+          <circle cx="65" cy="50" r="7" fill="#3a9f59" />
+        </g>
       </svg>
     )
   }
 
-  if (suit === 'copa') {
+  if (mark === 'copa') {
     return (
       <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
         <path d="M27 23h46l-6 31H33Z" fill="#d94a2b" stroke="#7a4f12" strokeWidth="5" strokeLinejoin="round" />
@@ -380,31 +376,98 @@ function SuitMark({
     )
   }
 
-  if (suit === 'basto') {
+  if (mark === 'parques') {
     return (
-      <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
+      <svg viewBox="0 0 100 154" className={className} aria-hidden="true" fill="none" {...props}>
+        <ellipse cx="50" cy="82" rx="28" ry="10" fill="#1f6f8b" stroke="#0e3f56" strokeWidth="4" />
         <path
-          d="M60 9c9 2 15 10 13 20L60 86c-1 5-6 8-11 7-5-1-8-6-7-11l13-57c2-10-1-15 5-16Z"
-          fill="#6fb34f"
-          stroke="#355f22"
+          d="M36 77c3-22 7-36 14-36s11 14 14 36Z"
+          fill="#2e9dde"
+          stroke="#0e3f56"
           strokeWidth="5"
           strokeLinejoin="round"
         />
-        <path d="M62 20 50 77" stroke="#9bd66a" strokeWidth="4" strokeLinecap="round" opacity="0.75" />
-        <path d="M54 44c-9 0-16-4-21-11 10-2 18 1 25 8Z" fill="#8bd15b" stroke="#355f22" strokeWidth="3" strokeLinejoin="round" />
-        <path d="M50 68c8-2 15-7 20-15-10 0-18 4-23 12Z" fill="#8bd15b" stroke="#355f22" strokeWidth="3" strokeLinejoin="round" />
-        <path d="M45 87c5-3 9-8 12-15" stroke="#7a4f12" strokeWidth="4" strokeLinecap="round" />
+        <circle cx="50" cy="27" r="17" fill="#38bdf8" stroke="#0e3f56" strokeWidth="5" />
+        <path d="M39 51c6 5 16 5 22 0" stroke="#77dcff" strokeWidth="4" strokeLinecap="round" opacity="0.8" />
+        <circle cx="42" cy="21" r="5" fill="#e9fbff" opacity="0.65" />
+      </svg>
+    )
+  }
+
+  if (mark === 'carta') {
+    return (
+      <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
+        <rect x="25" y="8" width="50" height="84" rx="8" fill="#f3edd7" stroke="#7a4f12" strokeWidth="5" />
+        <text
+          x="50"
+          y="63"
+          textAnchor="middle"
+          fontFamily="Georgia, serif"
+          fontSize="48"
+          fontWeight="800"
+          fill="#f2c94c"
+          stroke="#7a4f12"
+          strokeWidth="2"
+        >
+          1
+        </text>
+        <text x="36" y="27" textAnchor="middle" fontFamily="Georgia, serif" fontSize="18" fontWeight="800" fill="#7a4f12">1</text>
+        <text x="64" y="82" textAnchor="middle" fontFamily="Georgia, serif" fontSize="18" fontWeight="800" fill="#7a4f12">1</text>
+      </svg>
+    )
+  }
+
+  if (mark === 'dado') {
+    return (
+      <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
+        <rect x="22" y="22" width="56" height="56" rx="10" fill="#f3edd7" stroke="#7a4f12" strokeWidth="5" transform="rotate(10 50 50)" />
+        <circle cx="36" cy="38" r="5" fill="#1f6f8b" />
+        <circle cx="50" cy="50" r="5" fill="#d94a2b" />
+        <circle cx="64" cy="62" r="5" fill="#3a9f59" />
+        <circle cx="62" cy="35" r="4" fill="#7a4f12" />
+      </svg>
+    )
+  }
+
+  if (mark === 'espada') {
+    return (
+      <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
+        <path
+          d="M50 3c4 0 6 5 6 14l10 49c1 6 3 13 4 20-1 3-4 5-8 7l-6 2-1 2H45l-1-2-6-2c-4-2-7-4-8-7 1-7 3-14 4-20l10-49c0-9 2-14 6-14Z"
+          fill="#b8e6ee"
+          stroke="#241700"
+          strokeWidth="6"
+          strokeLinejoin="round"
+        />
+        <path d="M49 10 37 79c-1 5-1 10 1 15h18c1-5 1-10 0-15L49 10Z" fill="#7eb9d8" opacity="0.95" />
+        <path d="M52 8 60 79c1 5 2 10 1 15h-5c1-5 1-10 0-15L52 8Z" fill="#dffaff" opacity="0.95" />
+        <path
+          d="M15 82c4-5 11-7 18-5 4 1 7 1 11 0l6 4 6-4c4 1 8 1 11 0 7-2 14 0 18 5-2 7-8 11-15 11-5 0-9-2-12-5l1 3c2 4 3 9 3 13 0 8-5 14-11 14s-11-6-11-14c0-4 1-9 3-13l1-3c-3 3-7 5-12 5-7 0-13-4-15-11Z"
+          fill="#fff200"
+          stroke="#241700"
+          strokeWidth="6"
+          strokeLinejoin="round"
+        />
+        <path d="M40 80h20c3 0 5 2 5 5v6c0 5-3 9-8 11H43c-5-2-8-6-8-11v-6c0-3 2-5 5-5Z" fill="#fff200" stroke="#241700" strokeWidth="6" strokeLinejoin="round" />
+        <ellipse cx="50" cy="84" rx="6" ry="4" fill="#ff5a00" stroke="#241700" strokeWidth="4" />
+        <path d="M42 91h16" stroke="#241700" strokeWidth="4" strokeLinecap="round" />
+        <ellipse cx="50" cy="95" rx="8" ry="4" fill="#ff5a00" stroke="#241700" strokeWidth="4" />
+        <path d="M43 102h14c4 0 7 3 7 7v9c0 4-3 7-7 7H43c-4 0-7-3-7-7v-9c0-4 3-7 7-7Z" fill="#ff5a00" stroke="#241700" strokeWidth="6" strokeLinejoin="round" />
+        <path d="M43 123h14c4 0 7 3 7 7v7c0 4-3 7-7 7H43c-4 0-7-3-7-7v-7c0-4 3-7 7-7Z" fill="#fff200" stroke="#241700" strokeWidth="6" strokeLinejoin="round" />
+        <ellipse cx="50" cy="145" rx="11" ry="9" fill="#fff200" stroke="#241700" strokeWidth="6" />
       </svg>
     )
   }
 
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" {...props}>
-      <path d="M45 5h10l9 14-9 9v55H45V28l-9-9Z" fill="#9edcf5" stroke="#215f7f" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M50 8v74" stroke="#e9fbff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
-      <path d="M30 73h40l-8 10H38Z" fill="#f2c94c" stroke="#7a4f12" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M34 82h32v9H34Z" fill="#c43a2b" stroke="#7a4f12" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M35 78c-10 0-16-5-16-12 9 0 16 3 21 10M65 78c10 0 16-5 16-12-9 0-16 3-21 10" stroke="#f2c94c" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M32 35h31v44c0 8-7 15-15 15h-1c-8 0-15-7-15-15Z" fill="#f0c15a" stroke="#7a4f12" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M63 42h8c7 0 12 5 12 12s-5 12-12 12h-8v-9h8c2 0 4-1 4-3s-2-3-4-3h-8Z" fill="#f0c15a" stroke="#7a4f12" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M32 35h31v12H32Z" fill="#d9822b" opacity="0.85" />
+      <path d="M30 33c1-13 7-22 18-22s17 9 18 22Z" fill="#fff4c2" stroke="#7a4f12" strokeWidth="5" strokeLinejoin="round" />
+      <circle cx="40" cy="24" r="7" fill="#fff4c2" />
+      <circle cx="51" cy="20" r="8" fill="#fff4c2" />
+      <circle cx="60" cy="27" r="6" fill="#fff4c2" />
     </svg>
   )
 }
@@ -835,10 +898,10 @@ export function LandingContent() {
         >
           {/* Floating Spanish naipe symbols */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-            {CARD_SUITS.map((suit, i) => (
+            {DECORATIVE_MARKS.map((mark, i) => (
               <SuitMark
                 key={i}
-                suit={suit}
+                mark={mark}
                 className={`absolute select-none opacity-[0.12] will-change-transform ${FLOAT_CLASSES[i]}`}
                 data-float=""
               />
@@ -907,10 +970,10 @@ export function LandingContent() {
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
           <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
-          <SuitMark suit="espada" className="h-5 w-5 opacity-40" />
-          <SuitMark suit="copa" className="h-5 w-5 opacity-40" />
-          <SuitMark suit="oro" className="h-5 w-5 opacity-40" />
-          <SuitMark suit="basto" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="copa" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="domino" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="parques" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="cerveza" className="h-5 w-5 opacity-40" />
           <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
@@ -923,7 +986,7 @@ export function LandingContent() {
               data-reveal-left=""
             >
               <div className="w-px h-16 bg-linear-to-b from-brand-gold/50 to-brand-gold/10" />
-              <SuitMark suit="espada" className="h-7 w-7 opacity-60" />
+              <SuitMark mark="copa" className="h-7 w-7 opacity-60" />
               <div className="w-px h-16 bg-linear-to-b from-brand-gold/10 to-transparent" />
             </div>
 
@@ -1006,7 +1069,7 @@ export function LandingContent() {
           className="flex items-center justify-center gap-3 py-4 bg-black/20"
         >
           <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
-          <SuitMark suit="oro" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="parques" className="h-5 w-5 opacity-40" />
           <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
@@ -1151,7 +1214,7 @@ export function LandingContent() {
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
           <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
-          <SuitMark suit="basto" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="domino" className="h-5 w-5 opacity-40" />
           <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
@@ -1240,9 +1303,9 @@ export function LandingContent() {
         {/* ── Gold Divider ── */}
         <div data-divider="" className="flex items-center justify-center gap-3 py-4">
           <div className="h-px w-16 md:w-24 bg-linear-to-r from-transparent to-[#e2b0444d]" />
-          <SuitMark suit="espada" className="h-5 w-5 opacity-40" />
-          <SuitMark suit="copa" className="h-5 w-5 opacity-40" />
-          <SuitMark suit="basto" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="carta" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="dado" className="h-5 w-5 opacity-40" />
+          <SuitMark mark="cerveza" className="h-5 w-5 opacity-40" />
           <div className="h-px w-16 md:w-24 bg-linear-to-l from-transparent to-[#e2b0444d]" />
         </div>
 
