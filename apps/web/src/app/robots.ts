@@ -4,8 +4,6 @@ export default function robots(): MetadataRoute.Robots {
   const baseUrl = "https://primerariveradalos4ases.com";
   const geoAllowedPublicRoutes = [
     "/",
-    "/login/player",
-    "/register/player",
     "/rules",
     "/privacy",
     "/terms",
@@ -47,8 +45,6 @@ export default function robots(): MetadataRoute.Robots {
           // API and internal
           "/api/",
           "/play/",
-          // SEO redirect slug (already 301s to /)
-          "/primera-riverada-los-4-ases",
         ],
       },
       // GEO policy: allow only landing/legal routes for AI crawlers while keeping everything else blocked.

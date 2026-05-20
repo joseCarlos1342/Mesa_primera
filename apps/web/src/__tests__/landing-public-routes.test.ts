@@ -116,12 +116,12 @@ describe('Sitemap contains only public URLs', () => {
     expect(sitemapSource).toContain('/terms')
   })
 
-  it('includes /login/player (indexable for Google sitelinks)', () => {
-    expect(sitemapSource).toContain('/login/player')
+  it('does NOT include /login/player because it is noindex', () => {
+    expect(sitemapSource).not.toContain('/login/player')
   })
 
-  it('includes /register/player (indexable for Google sitelinks)', () => {
-    expect(sitemapSource).toContain('/register/player')
+  it('does NOT include /register/player because it is noindex', () => {
+    expect(sitemapSource).not.toContain('/register/player')
   })
 
   it('does NOT include /replays', () => {

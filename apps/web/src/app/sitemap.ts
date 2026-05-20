@@ -11,18 +11,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${baseUrl}/login/player`,
-      lastModified: "2025-04-01",
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/register/player`,
-      lastModified: "2025-04-01",
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
       url: `${baseUrl}/rules`,
       lastModified: "2025-04-01",
       changeFrequency: "monthly",
