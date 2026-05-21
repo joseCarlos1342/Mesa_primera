@@ -12,85 +12,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── Lint ────────────────────────────────────────────────
-  lint:
-    name: ESLint
+  quality-gate:
+    name: Quality Gate
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.1.1
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
-      - name: Lint web
-        run: pnpm --filter web lint
-
-  # ── Type Check ──────────────────────────────────────────
-  typecheck:
-    name: TypeScript
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.1.1
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
-      - name: Typecheck web
-        run: pnpm exec tsc --noEmit -p apps/web/tsconfig.json
-      - name: Typecheck game-server
-        run: pnpm exec tsc --noEmit -p apps/game-server/tsconfig.json
-
-  # ── Unit Tests: Web (Jest 30) ───────────────────────────
-  test-web:
-    name: Tests Web (Jest)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.1.1
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
-      - name: Run Jest tests with coverage
-        run: pnpm --filter web exec jest --coverage --ci --forceExit
-
-  # ── Unit Tests: Game Server (Vitest 4) ──────────────────
-  test-game-server:
-    name: Tests Game Server (Vitest)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.1.1
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
-      - name: Run Vitest tests with coverage
-        run: pnpm --filter game-server test:coverage
-
-  # ── Build (solo si todos los checks pasan) ─────────────
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck, test-web, test-game-server]
+    env:
+      CI: true
+      NODE_ENV: test
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+      NEXT_PUBLIC_GAME_SERVER_URL: http://localhost:2567
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:2567
+      TURNSTILE_SECRET_KEY: ci-turnstile-secret
     steps:
       - uses: actions/checkout@v4
         with:
@@ -104,13 +36,43 @@ jobs:
           node-version: 24
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
+      - name: Lint web
+        run: pnpm --filter web lint
+      - name: Typecheck web
+        run: pnpm exec tsc --noEmit -p apps/web/tsconfig.json
+      - name: Typecheck game-server
+        run: pnpm exec tsc --noEmit -p apps/game-server/tsconfig.json
+      - name: Web coverage gate 98
+        run: >
+          pnpm --filter web exec jest
+          --coverage
+          --ci
+          --forceExit
+          --coverageReporters=json-summary
+          --coverageReporters=lcov
+          --coverageThreshold='{"global":{"statements":98,"branches":98,"functions":98,"lines":98}}'
+      - name: Game server coverage gate 98
+        run: >
+          pnpm --filter game-server exec vitest run
+          --coverage
+          --coverage.thresholds.statements=98
+          --coverage.thresholds.branches=98
+          --coverage.thresholds.functions=98
+          --coverage.thresholds.lines=98
       - name: Build web
         run: pnpm --filter web build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
-          NEXT_PUBLIC_GAME_SERVER_URL: http://localhost:2567
-          NEXT_PUBLIC_SOCKET_URL: http://localhost:2567
+      - name: Upload web coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage
+          path: apps/web/coverage
+      - name: Upload game-server coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-server-coverage
+          path: apps/game-server/coverage
 
   # ── Build & Push Game Server Image (solo en main, después de los checks) ─
   # Publica una imagen inmutable a GHCR. NO toca el VPS: el VPS hace pull
@@ -118,7 +80,7 @@ jobs:
   publish-game-server-image:
     name: Publish game-server image (GHCR)
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test-web, test-game-server]
+    needs: [quality-gate]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
