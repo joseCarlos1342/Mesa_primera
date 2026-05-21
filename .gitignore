@@ -112,6 +112,5 @@ skills*.json
 *plan.md
 
 # ── Internal documentation (business logic, sprints, deployment) ──
-docs/
 plan_primera.md
 CHANGELOG.md

@@ -31,6 +31,7 @@ Esta carpeta es la fuente de verdad documental del monorepo. Describe el estado 
 9. `product/ROUTES.md`
 10. `product/player/README.md`
 11. `testing/TESTING.md`
+12. `testing/WEB_COVERAGE_ROADMAP.md`
 
 ## Hechos Tecnicos Canonicos
 
@@ -60,6 +61,7 @@ Esta carpeta es la fuente de verdad documental del monorepo. Describe el estado 
 - `product/ROUTES.md`: rutas reales expuestas por la app.
 - `product/player/README.md`: recorrido del jugador.
 - `testing/TESTING.md`: comandos reales de test, lint y typecheck.
+- `testing/WEB_COVERAGE_ROADMAP.md`: estado actual, objetivo y hoja de ruta para subir cobertura de `apps/web`.
 
 ## Regla de Mantenimiento
 
