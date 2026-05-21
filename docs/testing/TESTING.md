@@ -46,6 +46,21 @@ Antes de cerrar cambios relevantes:
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
+- El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
+
+## Roadmap de Cobertura Web
+
+Para el esfuerzo de mediano y largo plazo sobre `apps/web`, usar como fuente viva:
+
+- `docs/testing/WEB_COVERAGE_ROADMAP.md`
+
+Ese documento define:
+
+- baseline real de coverage;
+- objetivo final y metas intermedias;
+- frentes de trabajo por dominio;
+- checklists por modulo;
+- procedimiento de ejecucion y checkpoints.
 
 ## Casos Sensibles Que Deben Mantenerse Cubiertos
 
