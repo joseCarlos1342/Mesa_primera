@@ -11,7 +11,6 @@
  */
 
 import { render, screen, act } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +74,8 @@ afterEach(() => {
 
 // Import AFTER mocks are set up
 import { AppLockProvider, useAppLock } from '../AppLockProvider'
+import { startRegistration } from '@simplewebauthn/browser'
+import { getPasskeyRegistrationOptions, verifyPasskeyRegistration } from '@/app/(auth)/passkey-actions'
 
 // A helper consumer to inspect the context
 function LockStatus() {
@@ -94,6 +95,11 @@ function renderProvider() {
       <LockStatus />
     </AppLockProvider>,
   )
+}
+
+function ControlConsumer() {
+  const { enroll } = useAppLock()
+  return <button data-testid="enroll-btn" onClick={() => void enroll()}>Enroll</button>
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -121,6 +127,16 @@ describe('AppLockProvider — new reduced-sensitivity policy', () => {
 
       expect(screen.queryByTestId('lock-screen')).not.toBeInTheDocument()
       expect(screen.getByTestId('locked').textContent).toBe('false')
+    })
+
+    it('marks provider as unsupported when platform authenticator is unavailable', async () => {
+      platformAuthAvailable = false
+
+      await act(async () => {
+        renderProvider()
+      })
+
+      expect(screen.getByTestId('supported').textContent).toBe('false')
     })
   })
 
@@ -280,6 +296,96 @@ describe('AppLockProvider — new reduced-sensitivity policy', () => {
       expect(screen.getByTestId('locked').textContent).toBe('false')
       expect(localStorage.getItem('mesa_primera_app_lock_enabled')).toBeNull()
       expect(sessionStorage.getItem('mesa_primera_session_validated')).toBeNull()
+    })
+  })
+
+  describe('Enroll and unlock', () => {
+    beforeEach(() => {
+      Object.defineProperty(globalThis, 'crypto', {
+        configurable: true,
+        value: {
+          getRandomValues: (array: Uint8Array) => array.fill(1),
+          randomUUID: () => 'uuid-123',
+        },
+      })
+    })
+
+    it('enrolla localmente y persiste credencial verificada por servidor', async () => {
+      const rawId = Uint8Array.from([1, 2, 3]).buffer
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: {
+          create: jest.fn().mockResolvedValue({ rawId }),
+        },
+      })
+      ;(getPasskeyRegistrationOptions as jest.Mock).mockResolvedValue({ options: { challenge: 'abc' } })
+      ;(startRegistration as jest.Mock).mockResolvedValue({ id: 'attestation' })
+      ;(verifyPasskeyRegistration as jest.Mock).mockResolvedValue({ ok: true, credentialId: 'server-cred' })
+
+      await act(async () => {
+        render(
+          <AppLockProvider userId="test-user">
+            <LockStatus />
+            <ControlConsumer />
+          </AppLockProvider>,
+        )
+      })
+
+      await act(async () => {
+        screen.getByTestId('enroll-btn').click()
+      })
+
+      expect(localStorage.getItem('mesa_primera_app_lock_enabled')).toBe('true')
+      expect(localStorage.getItem('mesa_primera_lock_credential_id')).toBe('server-cred')
+      expect(screen.getByTestId('enabled').textContent).toBe('true')
+    })
+
+    it('no habilita el lock si la verificación local falla', async () => {
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: {
+          create: jest.fn().mockResolvedValue(null),
+        },
+      })
+
+      await act(async () => {
+        render(
+          <AppLockProvider userId="test-user">
+            <LockStatus />
+            <ControlConsumer />
+          </AppLockProvider>,
+        )
+      })
+
+      await act(async () => {
+        screen.getByTestId('enroll-btn').click()
+      })
+
+      expect(localStorage.getItem('mesa_primera_app_lock_enabled')).toBeNull()
+      expect(screen.getByTestId('enabled').textContent).toBe('false')
+    })
+
+    it('desbloquea la app cuando requestDeviceVerification devuelve credencial', async () => {
+      localStorage.setItem('mesa_primera_app_lock_enabled', 'true')
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: {
+          create: jest.fn().mockResolvedValue({ rawId: Uint8Array.from([9]).buffer }),
+        },
+      })
+
+      await act(async () => {
+        renderProvider()
+      })
+
+      expect(screen.getByTestId('lock-screen')).toBeInTheDocument()
+
+      await act(async () => {
+        screen.getByTestId('unlock-btn').click()
+      })
+
+      expect(screen.queryByTestId('lock-screen')).not.toBeInTheDocument()
+      expect(screen.getByTestId('locked').textContent).toBe('false')
     })
   })
 })
