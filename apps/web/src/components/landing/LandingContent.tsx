@@ -1451,6 +1451,25 @@ export function LandingContent() {
             derechos reservados.
           </p>
 
+          <a
+            href="https://gnesis.group"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Desarrollado por Gnesis.group"
+            className="mt-5 mx-auto flex w-fit items-center gap-3 rounded-full border border-white/8 bg-white/3 px-4 py-2.5 text-text-secondary transition-all hover:border-brand-gold/30 hover:bg-brand-gold/5 hover:text-brand-gold"
+          >
+            <span className="text-xs uppercase tracking-[0.24em] text-text-secondary/70">
+              Desarrollado por
+            </span>
+            <Image
+              src="/Genesis/Recurso 64.svg"
+              alt="Gnesis.group"
+              width={108}
+              height={20}
+              className="h-5 w-auto"
+            />
+          </a>
+
           <p className="sr-only">
             Primera Riverada los 4 Ases — club de cartas y tomadero en Neiva, Huila.
             También conocido como Primera Riverada Dario, mesa de juego Dario,
