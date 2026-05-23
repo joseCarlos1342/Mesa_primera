@@ -577,10 +577,10 @@ Esta seccion convierte el roadmap en trabajo operable. Cada lote debe poder toma
 
 | Lote | Dominio | Prioridad | Estado | Dependencias | Meta del lote |
 |---|---|---|---|---|---|
-| L1 | Landing hero + tutoriales base | Alta | Pendiente | ninguna | sacar del `0%` a `LandingContent` y helpers principales |
-| L2 | Auth player login | Alta | Pendiente | L1 opcional | cubrir flujo visual de login player |
-| L3 | Auth player register | Alta | Pendiente | L2 opcional | cubrir flujo visual de registro player |
-| L4 | Auth verify + pin + recovery | Alta | Pendiente | L2 y L3 | cerrar journey auth player completo |
+| L1 | Landing hero + tutoriales base | Alta | Completado | ninguna | sacar del `0%` a `LandingContent` y helpers principales |
+| L2 | Auth player login | Alta | Completado | L1 opcional | cubrir flujo visual de login player |
+| L3 | Auth player register | Alta | Completado | L2 opcional | cubrir flujo visual de registro player |
+| L4 | Auth verify + pin + recovery | Alta | Completado | L2 y L3 | cerrar journey auth player completo |
 | L5 | Dashboard + wallet shell | Alta | Pendiente | L2 | cubrir post-login de jugador |
 | L6 | Wallet modals + transferencias | Media | Pendiente | L5 | cubrir interacciones financieras UI |
 | L7 | Shell transversal + providers | Media | Pendiente | ninguna | cubrir componentes compartidos de alto impacto |
@@ -620,13 +620,19 @@ Criterio de salida:
 
 Checklist:
 
-- [ ] mocks base reutilizables para landing listos;
-- [ ] test render hero;
-- [ ] test FAQ;
-- [ ] test CTA a login/register;
-- [ ] test seleccion de tutorial;
-- [ ] test navegacion del carousel;
-- [ ] medicion de coverage despues del lote.
+- [x] mocks base reutilizables para landing listos;
+- [x] test render hero;
+- [x] test FAQ;
+- [x] test CTA a login/register;
+- [x] test seleccion de tutorial;
+- [x] test navegacion del carousel;
+- [x] medicion de coverage despues del lote.
+
+Estado real registrado:
+
+- `LandingContent.tsx`: `85.73%` statements, `89.53%` branches, `45.71%` functions, `85.73%` lines.
+- `LocationMap.tsx`: `100%` statements, `66.66%` branches, `100%` functions, `100%` lines.
+- `TutorialWalkthrough.tsx`: `98.52%` statements, `53.33%` branches, `50%` functions, `98.52%` lines.
 
 ### Lote L2: Auth player login
 
@@ -655,14 +661,18 @@ Criterio de salida:
 
 Checklist:
 
-- [ ] telefono invalido;
-- [ ] PIN invalido;
-- [ ] cambio a flujo OTP;
-- [ ] error de server action;
-- [ ] estado pending;
-- [ ] passkey disponible;
-- [ ] passkey fallida;
-- [ ] banner `kicked=true`.
+- [x] telefono invalido;
+- [x] PIN invalido;
+- [x] cambio a flujo OTP;
+- [x] error de server action;
+- [x] estado pending;
+- [x] passkey disponible;
+- [x] passkey fallida;
+- [x] banner `kicked=true`.
+
+Estado real registrado:
+
+- `app/(auth)/login/player/page.tsx`: `99.07%` statements, `87.5%` branches, `100%` functions, `99.07%` lines.
 
 ### Lote L3: Auth player register
 
@@ -690,14 +700,19 @@ Criterio de salida:
 
 Checklist:
 
-- [ ] validacion de nombre;
-- [ ] validacion de nickname;
-- [ ] validacion de telefono;
-- [ ] contador de nickname;
-- [ ] seleccion de avatar;
-- [ ] hidden input consistente;
-- [ ] error de servidor;
-- [ ] pending state.
+- [x] validacion de nombre;
+- [x] validacion de nickname;
+- [x] validacion de telefono;
+- [x] contador de nickname;
+- [x] seleccion de avatar;
+- [x] hidden input consistente;
+- [x] error de servidor;
+- [x] pending state.
+
+Estado real registrado:
+
+- `app/(auth)/register/player/page.tsx`: `99.58%` statements, `92.68%` branches, `100%` functions, `99.58%` lines.
+- `components/auth/avatar-selector.tsx`: `100%` statements, `100%` branches, `100%` functions, `100%` lines.
 
 ### Lote L4: Auth verify + pin + recovery
 
@@ -725,12 +740,81 @@ Criterio de salida:
 
 Checklist:
 
-- [ ] verify OTP error;
-- [ ] verify OTP success state;
-- [ ] set PIN validation;
-- [ ] recovery form validation;
-- [ ] recovery verify errors;
-- [ ] disabled/pending states.
+- [x] verify OTP error;
+- [x] verify OTP success state;
+- [x] set PIN validation;
+- [x] recovery form validation;
+- [x] recovery verify errors;
+- [x] disabled/pending states.
+
+Estado real registrado:
+
+- `app/(auth)/register/player/verify/page.tsx`: `100%` statements, `83.33%` branches, `100%` functions, `100%` lines.
+- `app/(auth)/register/player/pin/page.tsx`: `100%` statements, `90.9%` branches, `100%` functions, `100%` lines.
+- `app/(auth)/recovery/page.tsx`: `99.23%` statements, `75%` branches, `100%` functions, `99.23%` lines.
+- `app/(auth)/recovery/verify/page.tsx`: `100%` statements, `83.33%` branches, `100%` functions, `100%` lines.
+
+## Checkpoints Reales
+
+## Checkpoint 1
+
+- Fecha: baseline inicial del programa de coverage.
+- Coverage antes: `19.06%` statements, `19.06%` lines, `39.03%` functions, `63.28%` branches.
+- Coverage despues: `19.06%` statements, `19.06%` lines, `39.03%` functions, `63.28%` branches.
+- Archivos cubiertos: ninguno del nuevo roadmap; solo medición base.
+- Riesgos cerrados: ninguno, solo visibilidad del problema.
+- Riesgos abiertos: landing, auth player, wallet, shell, game UI, hooks, API routes.
+- Siguiente lote: `L1`.
+
+## Checkpoint 2
+
+- Fecha: cierre de `L1`.
+- Coverage antes: `19.06%` statements, `19.06%` lines, `39.03%` functions, `63.28%` branches.
+- Coverage despues: `22.96%` statements, `22.96%` lines, `40.18%` functions, `64.74%` branches.
+- Archivos cubiertos: `LandingContent.tsx`, `LocationMap.tsx`, `TutorialWalkthrough.tsx`.
+- Riesgos cerrados: landing pública deja de estar en `0%`; hero, CTA, FAQ, carousel, tutoriales y ubicación ya tienen base de protección.
+- Riesgos abiertos: auth player, wallet, shell, game UI, hooks, API routes.
+- Siguiente lote: `L2`.
+
+## Checkpoint 3
+
+- Fecha: cierre de `L2`.
+- Coverage antes: `22.96%` statements, `22.96%` lines, `40.18%` functions, `64.74%` branches.
+- Coverage despues: `23.81%` statements, `23.81%` lines, `41.64%` functions, `65.55%` branches.
+- Archivos cubiertos: `app/(auth)/login/player/page.tsx`.
+- Riesgos cerrados: login player queda prácticamente cubierto; validación local, flujo PIN/OTP, passkeys, estados pending y query params protegidos.
+- Riesgos abiertos: register player, verify/pin/recovery, wallet, shell, game UI, hooks, API routes.
+- Siguiente lote: `L3`.
+
+## Checkpoint 4
+
+- Fecha: cierre de `L3`.
+- Coverage antes: `23.81%` statements, `23.81%` lines, `41.64%` functions, `65.55%` branches.
+- Coverage despues: `24.66%` statements, `24.66%` lines, `44.27%` functions, `66.58%` branches.
+- Archivos cubiertos: `app/(auth)/register/player/page.tsx`, `components/auth/avatar-selector.tsx`.
+- Riesgos cerrados: register player y la selección de avatar dejan de estar en `0%`; validaciones, hidden input y errores de servidor protegidos.
+- Riesgos abiertos: verify/pin/recovery, wallet, shell, game UI, hooks, API routes.
+- Siguiente lote: `L4`.
+
+## Checkpoint 5
+
+- Fecha: cierre de `L4`.
+- Coverage antes: `24.66%` statements, `24.66%` lines, `44.27%` functions, `66.58%` branches.
+- Coverage despues: `25.98%` statements, `25.98%` lines, `46.9%` functions, `67.38%` branches.
+- Archivos cubiertos: `register/player/verify/page.tsx`, `register/player/pin/page.tsx`, `recovery/page.tsx`, `recovery/verify/page.tsx`.
+- Riesgos cerrados: journey auth player queda cubierto de extremo a extremo en UI principal de registro, verificación, creación de PIN y recuperación.
+- Riesgos abiertos: wallet, shell transversal, game UI, hooks, infra web y API routes.
+- Siguiente lote: `L5` o `L7` si se prioriza impacto transversal antes de wallet.
+
+## Checkpoint 6
+
+- Fecha: cierre de `L5`.
+- Coverage antes: `25.98%` statements, `25.98%` lines, `46.9%` functions, `67.38%` branches.
+- Coverage despues: `27.09%` statements, `27.09%` lines, `48.32%` functions, `68.33%` branches.
+- Archivos cubiertos: `components/dashboard/PlayerDashboard.tsx`, `components/wallet/WalletContent.tsx`.
+- Riesgos cerrados: dashboard y wallet shell dejan de ser zonas ciegas; saldo, accesos, estado vacio, lista de movimientos y apertura/cierre de modales ya tienen proteccion.
+- Riesgos abiertos: shell transversal, wallet modals profundos, game UI, hooks, infra web y API routes.
+- Siguiente lote: `L6` si se quiere profundizar wallet, o `L7` si se prioriza cobertura transversal compartida.
 
 ### Lote L5: Dashboard + wallet shell
 
@@ -1160,16 +1244,38 @@ Tendremos exito cuando:
 - los checklists eviten trabajo ambiguo;
 - el gate final de `98%` deje de ser teorico y pase a ser sostenible.
 
+## Checkpoint 11
+
+- Fecha: mini-lote posterior a `L9`.
+- Coverage antes: `33.98%` statements, `33.98%` lines, `53.6%` functions, `70.53%` branches.
+- Coverage despues: `35.36%` statements, `35.36%` lines, `55.47%` functions, `70.89%` branches.
+- Archivos cubiertos: `useNotificationSocket.ts`, `ChipSelector.tsx`, `DepositForm.tsx`.
+- Riesgos cerrados: mejora del ecosistema de mesa y depósito; socket de notificaciones, selección de fichas y flujo principal de depósito ya tienen cobertura útil sobre ramas visibles y side effects clave.
+- Riesgos abiertos: `Board.tsx` profunda, `usePresence.ts`, `useWakeLock.ts`, `AppLockProvider.tsx`, `PlayerAppLockWrapper.tsx`, `DepositModal.tsx`, `CustomMesaModal.tsx`, `SupportChat.tsx`, `VoiceChat.tsx`.
+- Siguiente lote: endurecer `Board.tsx` o entrar a providers/hooks restantes.
+
+## Checkpoint 12
+
+- Fecha: bloque de sesión/presencia posterior al mini-lote.
+- Coverage antes: `35.36%` statements, `35.36%` lines, `55.47%` functions, `70.89%` branches.
+- Coverage despues: `36.04%` statements, `36.04%` lines, `56.78%` functions, `71.12%` branches.
+- Archivos cubiertos: `AppLockProvider.tsx`, `PlayerAppLockWrapper.tsx`, `usePresence.ts`, `useWakeLock.ts`.
+- Riesgos cerrados: mejora clara del ecosistema de sesión, bloqueo biométrico y presencia; ya no dependen de comportamiento implícito sin pruebas alrededor de enroll, unlock, tracking de presencia y wake lock.
+- Riesgos abiertos: `Board.tsx` profunda, `usePresence.ts` y `useWakeLock.ts` aún con algunas ramas menores pendientes, además de piezas grandes del realtime client y modales secundarios.
+- Siguiente lote: segunda pasada más agresiva sobre `Board.tsx` o entrada a hooks/proveedores restantes del realtime.
+
 ## Proximo Paso Recomendado
 
 El siguiente lote de ejecucion deberia ser:
 
-1. `components/landing/LandingContent.tsx`
-2. `app/(auth)/login/player/page.tsx`
-3. `app/(auth)/register/player/page.tsx`
+1. `components/game/Board.tsx` (segunda pasada profunda)
+2. `components/NotificationCenter.tsx` (ramas residuales)
+3. `components/game/DepositModal.tsx`
+4. `components/game/CustomMesaModal.tsx`
+5. `hooks/usePresence.ts` / `useWakeLock.ts` (ramas finas restantes)
 
 Ese lote combina:
 
-- alto peso en lines/statements;
-- alto impacto funcional;
-- alto retorno sobre la cobertura global.
+- una segunda pasada a `Board.tsx`, que sigue siendo el principal foco técnico del game client;
+- el cierre de ramas residuales de componentes ya parcialmente cubiertos;
+- una combinación saludable entre peso técnico alto (`Board`) y piezas medianas con buen retorno incremental.
