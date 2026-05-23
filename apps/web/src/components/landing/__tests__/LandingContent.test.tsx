@@ -270,5 +270,7 @@ describe('LandingContent', () => {
     expect(screen.getByRole('link', { name: /facebook de primera riverada/i })).toHaveAttribute('href', expect.stringContaining('facebook.com'))
     expect(screen.getByRole('link', { name: /instagram de primera riverada/i })).toHaveAttribute('href', expect.stringContaining('instagram.com'))
     expect(screen.getByRole('link', { name: /correo electrónico de contacto/i })).toHaveAttribute('href', expect.stringContaining('mailto:'))
+    expect(screen.getByRole('link', { name: /desarrollado por gnesis\.group/i })).toHaveAttribute('href', 'https://gnesis.group')
+    expect(screen.getByAltText('Gnesis.group')).toBeInTheDocument()
   })
 })

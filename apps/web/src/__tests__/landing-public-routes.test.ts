@@ -82,6 +82,7 @@ describe('Public landing page', () => {
     const source = fs.readFileSync(landingContentPath, 'utf-8')
     expect(source).toContain('/privacy')
     expect(source).toContain('/terms')
+    expect(source).toContain('https://gnesis.group')
   })
 
   it('contains social media links', () => {
