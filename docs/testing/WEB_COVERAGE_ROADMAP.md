@@ -1448,3 +1448,15 @@ Ese lote combina:
 - Checklist admin: pruebas limitadas a UI y server actions mockeadas; sin cambios en reglas de creacion server-side ni escrituras directas de datos.
 - Riesgos abiertos: `SupportConversationList.tsx`, paginas App Router admin/publicas, `app/play/[id]/page.tsx`, `sitemap.ts`, `redis.ts`, `admin-recovery-codes.ts` y ramas profundas de game UI.
 - Siguiente lote: `SupportConversationList.tsx` por seguir en `0%` y cerrar el bloque de componentes admin pesados antes de pasar a paginas App Router.
+
+## Checkpoint 27
+
+- Fecha: lista admin de conversaciones de soporte.
+- Coverage antes: `56.6%` statements, `56.6%` lines, `72.14%` functions, `77.13%` branches.
+- Coverage despues: `57.49%` statements, `57.49%` lines, `72.3%` functions, `77.22%` branches.
+- Archivos cubiertos: `components/admin/SupportConversationList.tsx`.
+- Tests agregados: `components/admin/__tests__/SupportConversationList.test.tsx`.
+- Riesgos cerrados: filtros por estado, contadores, seleccion de ticket, render embebido de chat admin, alta de ticket por socket, actualizacion de mensajes realtime, proteccion contra reabrir tickets finalizados, cierre admin exitoso/fallido y cleanup de socket.
+- Checklist soporte realtime: socket mockeado con handlers reales por evento; `SupportChat` se reemplaza por seam visible de props; no se modifica contrato server-side de soporte.
+- Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx`, `sitemap.ts`, `redis.ts`, `admin-recovery-codes.ts` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: empezar paginas App Router admin con seams pequeños o atacar utilidades infra (`redis.ts`, `admin-recovery-codes.ts`) para acercarse a Fase 3 (`60%`).
