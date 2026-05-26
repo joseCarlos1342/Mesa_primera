@@ -581,13 +581,13 @@ Esta seccion convierte el roadmap en trabajo operable. Cada lote debe poder toma
 | L2 | Auth player login | Alta | Completado | L1 opcional | cubrir flujo visual de login player |
 | L3 | Auth player register | Alta | Completado | L2 opcional | cubrir flujo visual de registro player |
 | L4 | Auth verify + pin + recovery | Alta | Completado | L2 y L3 | cerrar journey auth player completo |
-| L5 | Dashboard + wallet shell | Alta | Pendiente | L2 | cubrir post-login de jugador |
-| L6 | Wallet modals + transferencias | Media | Pendiente | L5 | cubrir interacciones financieras UI |
-| L7 | Shell transversal + providers | Media | Pendiente | ninguna | cubrir componentes compartidos de alto impacto |
-| L8 | Game lobby + overlays criticos | Alta | Pendiente | L2 | cubrir game UI con mayor retorno |
+| L5 | Dashboard + wallet shell | Alta | Completado | L2 | cubrir post-login de jugador |
+| L6 | Wallet modals + transferencias | Media | En progreso | L5 | cubrir interacciones financieras UI |
+| L7 | Shell transversal + providers | Media | En progreso | ninguna | cubrir componentes compartidos de alto impacto |
+| L8 | Game lobby + overlays criticos | Alta | En progreso | L2 | cubrir game UI con mayor retorno |
 | L9 | Board hardening | Alta | Pendiente | L8 | subir ramas y funciones de `Board.tsx` |
-| L10 | Hooks + Supabase web infra | Media | Pendiente | ninguna | cubrir adaptadores y hooks en `0%` |
-| L11 | API routes web | Media | Pendiente | L10 opcional | cubrir rutas App Router sin tests |
+| L10 | Hooks + Supabase web infra | Media | En progreso | ninguna | cubrir adaptadores y hooks en `0%` |
+| L11 | API routes web | Media | Completado | L10 opcional | cubrir rutas App Router sin tests |
 | L12 | Barrido final de huecos residuales | Alta | Pendiente | L1-L11 | preparar salto a gate final |
 
 ### Lote L1: Landing hero + tutoriales base
@@ -1171,6 +1171,17 @@ Mientras el repo no este cerca del objetivo final, el equipo debe operar con dos
 - no bajar respecto al baseline alcanzado;
 - elevar el umbral solo cuando la suite ya lo soporte con margen razonable.
 
+Gate operativo vigente hoy en CI:
+
+- Web: `35%` statements, `70%` branches, `55%` functions, `35%` lines.
+- Game server: `85%` statements, `75%` branches, `85%` functions, `86%` lines.
+
+Justificacion:
+
+- elimina falsos rojos permanentes mientras la campaña de cobertura sigue en marcha;
+- mantiene presión para no retroceder respecto al baseline real alcanzado;
+- permite que `publish-game-server-image` vuelva a ejecutarse cuando la validación real pase.
+
 Ejemplo de endurecimiento recomendado:
 
 - Fase 1: fijar `30%`
@@ -1264,18 +1275,140 @@ Tendremos exito cuando:
 - Riesgos abiertos: `Board.tsx` profunda, `usePresence.ts` y `useWakeLock.ts` aún con algunas ramas menores pendientes, además de piezas grandes del realtime client y modales secundarios.
 - Siguiente lote: segunda pasada más agresiva sobre `Board.tsx` o entrada a hooks/proveedores restantes del realtime.
 
+## Checkpoint 13
+
+- Fecha: alineación operativa de CI.
+- Coverage antes: `36.04%` statements, `36.04%` lines, `56.78%` functions, `71.12%` branches en web; `87.36%` statements, `88.43%` lines, `87.5%` functions, `77.24%` branches en game-server.
+- Coverage despues: sin cambio funcional de producto; se actualiza el gate operativo para que GitHub Actions valide contra el baseline real y no contra el objetivo final aún no alcanzado.
+- Archivos cubiertos: ninguno adicional de app; cambio de configuración y documentación.
+- Riesgos cerrados: fallo inmediato de `pnpm/action-setup` por doble versión; CI rojo permanente por umbral imposible.
+- Riesgos abiertos: seguir endureciendo thresholds por fases hasta `98%`.
+- Siguiente lote: continuar con el roadmap funcional mientras se eleva el gate por checkpoints.
+
 ## Proximo Paso Recomendado
 
 El siguiente lote de ejecucion deberia ser:
 
 1. `components/game/Board.tsx` (segunda pasada profunda)
-2. `components/NotificationCenter.tsx` (ramas residuales)
-3. `components/game/DepositModal.tsx`
-4. `components/game/CustomMesaModal.tsx`
-5. `hooks/usePresence.ts` / `useWakeLock.ts` (ramas finas restantes)
+2. `components/game/Lobby.tsx`
+3. `app/play/[id]/page.tsx` o seams pequeños para poder testearlo sin acoplarse al runtime completo
+4. componentes aislados restantes en `0%` o muy bajos (`app/primera-riverada-los-4-ases/page.tsx`, `admin-recovery-codes.ts`, `redis.ts`)
+5. primer corte de admin UI con componentes de mayor retorno
 
 Ese lote combina:
 
-- una segunda pasada a `Board.tsx`, que sigue siendo el principal foco técnico del game client;
-- el cierre de ramas residuales de componentes ya parcialmente cubiertos;
-- una combinación saludable entre peso técnico alto (`Board`) y piezas medianas con buen retorno incremental.
+- una segunda pasada a `Board.tsx`, que sigue siendo el principal foco tecnico del game client;
+- el cierre de `Lobby.tsx` y del runtime visible de `app/play/[id]`, que aun arrastran mucho peso;
+- preparacion del salto a Fase 3 (`60%`) atacando game UI, shell compartido y primeros cortes de admin UI.
+
+## Checkpoint 14
+
+- Fecha: bloque API/infra/voz/landing animations posterior a `Checkpoint 13`.
+- Coverage antes: `36.07%` statements, `36.07%` lines, `56.78%` functions, `71.12%` branches.
+- Coverage despues: `37.94%` statements, `37.94%` lines, `58.92%` functions, `72.09%` branches.
+- Archivos cubiertos: `app/api/livekit/route.ts`, `app/api/auth/confirm/route.ts`, `app/api/auth/callback/route.ts`, `utils/supabase/client.ts`, `utils/supabase/server.ts`, `components/VoiceChat.tsx`, `components/landing/LandingAnimations.tsx`.
+- Tests agregados: `livekit/__tests__/route.test.ts`, `auth/confirm/__tests__/route.test.ts`, `auth/callback/__tests__/route.test.ts`, `utils/supabase/__tests__/client.test.ts`, `utils/supabase/__tests__/server.test.ts`, `components/__tests__/VoiceChat.test.tsx`, `components/landing/__tests__/LandingAnimations.test.tsx`.
+- Riesgos cerrados: rutas API criticas ya no estan en `0%`; LiveKit valida request valido, configuracion faltante y errores seguros; confirm/callback cubren redirects y proteccion contra open redirects; factories Supabase cubren cookies y service role; voz cubre token, microfono, permisos, speakers y modal de audio; animaciones landing cubren movimiento normal, reducido y contenedor ausente.
+- Riesgos abiertos: `SupportChat.tsx`, `Board.tsx` profunda, `app/play/[id]/page.tsx`, tutoriales landing aun en `0%`, admin UI y modales secundarios de game.
+- Siguiente lote: `SupportChat.tsx` por peso y visibilidad compartida, seguido de `Board.tsx`/modales game.
+
+## Checkpoint 15
+
+- Fecha: cierre de Fase 2 operativa.
+- Coverage antes: `37.94%` statements, `37.94%` lines, `58.92%` functions, `72.09%` branches.
+- Coverage despues: `45.09%` statements, `45.09%` lines, `62.93%` functions, `73.43%` branches.
+- Archivos cubiertos: `components/SupportChat.tsx`, `components/landing/tutorials/*`, `components/game/DepositModal.tsx`, `components/game/RechargeButton.tsx`, `hooks/__tests__/useGamePermissions.test.tsx`.
+- Tests agregados: `components/__tests__/SupportChat.test.tsx`, `components/landing/tutorials/__tests__/TutorialSteps.test.tsx`, `components/game/__tests__/DepositModal.test.tsx`.
+- Riesgos cerrados: `SupportChat.tsx` deja de estar en `0%` y cubre lista, historial, primer mensaje, mensajes posteriores, eventos socket, cierre y adjuntos; tutoriales landing dejan de ser peso muerto y validan labels/render de cada flujo; `DepositModal` y `RechargeButton` cubren apertura, cierre y exito del formulario; typecheck web vuelve a pasar al retirar un `@ts-expect-error` sobrante en test.
+- Riesgos abiertos: `Board.tsx` profunda, `app/play/[id]/page.tsx`, `CustomMesaModal.tsx`, `PiqueRevealOverlay.tsx`, animaciones game, admin UI y componentes aislados en `0%`.
+- Siguiente lote: Fase 3 con foco en game UI critica (`Board`, overlays y modales de mesa).
+
+## Checkpoint 16
+
+- Fecha: primera pasada de Fase 3 sobre game UI critica.
+- Coverage antes: `45.09%` statements, `45.09%` lines, `62.93%` functions, `73.43%` branches.
+- Coverage despues: `46.11%` statements, `46.11%` lines, `63.69%` functions, `73.76%` branches.
+- Archivos cubiertos: `components/game/CustomMesaModal.tsx`, `components/game/PiqueRevealOverlay.tsx`.
+- Tests agregados: `components/game/__tests__/CustomMesaAndPique.test.tsx`.
+- Riesgos cerrados: modal de mesa personalizada deja de estar en `0%` y cubre submit bloqueado, estado `creating`, seleccion de jugadores/entrada/pique/fichas, validacion de al menos una ficha y cierre por backdrop; overlay de pique deja de estar en `0%`, cubre jugador sin revelacion, reveal por fold, reveal por `passedWithJuego`, parseo de cartas y `dismiss-reveal`.
+- Riesgos abiertos: `Board.tsx` profunda, `app/play/[id]/page.tsx`, `AnimationLayer.tsx`, `ShuffleAnimation.tsx`, `ShowdownCinematic.tsx`, `TransferModal.tsx`, `game-header.tsx` y admin UI.
+- Siguiente lote: seguir Fase 3 con `AnimationLayer.tsx`/`ShuffleAnimation.tsx` o segunda pasada profunda a `Board.tsx`.
+
+## Checkpoint 17
+
+- Fecha: continuacion de Fase 3 sobre modales y flujo visible de mesa.
+- Coverage antes: `48.12%` statements, `48.12%` lines, `64.8%` functions, `74.45%` branches.
+- Coverage despues: `49.11%` statements, `49.11%` lines, `65.33%` functions, `74.72%` branches.
+- Archivos cubiertos: `components/game/TransferModal.tsx`.
+- Tests agregados: `components/game/__tests__/GameTransferModal.test.tsx`.
+- Riesgos cerrados: el modal de transferencia en mesa deja de estar en `0%` y cubre modal cerrado, busqueda por telefono sanitizado, lookup fallido, confirmacion de destinatario, validacion de monto minimo y saldo disponible, envio de transferencia, resultado exitoso, balance nuevo, cierre y error de transferencia.
+- Riesgos abiertos: `Board.tsx` profunda, `Lobby.tsx`, `app/play/[id]/page.tsx`, componentes compartidos en `0%`, admin UI y ramas residuales de providers/infra.
+- Siguiente lote: `Board.tsx` segunda pasada o `Lobby.tsx` para continuar el cierre de Fase 3 hacia `60%`.
+
+## Checkpoint 18
+
+- Fecha: cierre de componentes compartidos pequeños en `0%`.
+- Coverage antes: `49.11%` statements, `49.11%` lines, `65.33%` functions, `74.72%` branches.
+- Coverage despues: `49.66%` statements, `49.66%` lines, `66.17%` functions, `74.86%` branches.
+- Archivos cubiertos: `components/OrientationPortrait.tsx`, `components/pwa-lock-screen.tsx`, `components/PresenceTracker.tsx`, `components/ui/Toast.tsx`, `components/providers/FramerMotionProvider.tsx`.
+- Tests agregados: `components/__tests__/SharedZeroCoverage.test.tsx`.
+- Riesgos cerrados: restauracion de orientacion y salida de fullscreen en mobile, bloqueo/limpieza de scroll en lock screen PWA, estados de desbloqueo exitoso/fallido, tracking de presencia con lista vacia, montaje del provider de Framer Motion y autocierre temporizado de toast.
+- Riesgos abiertos: `Board.tsx` profunda, `Lobby.tsx`, `app/play/[id]/page.tsx`, `LandscapeLockOverlay.tsx`, `ClientErrorSuppressor.tsx`, `google-sign-in-button.tsx`, admin UI y ramas residuales de infra.
+- Siguiente lote: entrar a `Lobby.tsx` o `app/play/[id]/page.tsx` para capturar mas peso funcional antes del primer corte admin.
+
+## Checkpoint 19
+
+- Fecha: cruce de `50%` global con cierre de huecos aislados.
+- Coverage antes: `49.66%` statements, `49.66%` lines, `66.17%` functions, `74.86%` branches.
+- Coverage despues: `50.1%` statements, `50.1%` lines, `67.05%` functions, `75.16%` branches.
+- Archivos cubiertos: `components/replay/LandscapeLockOverlay.tsx`, `components/ClientErrorSuppressor.tsx`, `components/auth/google-sign-in-button.tsx`, `hooks/useCardPreloader.ts`, `lib/colyseus.ts`.
+- Tests agregados: `components/__tests__/MoreZeroCoverage.test.tsx`, `hooks/__tests__/useCardPreloader.test.tsx`, `lib/__tests__/colyseus.test.ts`.
+- Riesgos cerrados: overlay de replay en portrait/landscape, supresion acotada de errores benignos de LiveKit solo en development, boton Google con loading/error/redirect, precarga de cartas una sola vez y construccion de URL Colyseus desde env build/runtime/location.
+- Riesgos abiertos: `Board.tsx` profunda, `Lobby.tsx`, `app/play/[id]/page.tsx`, admin UI en `0%`, `redis.ts`, `admin-recovery-codes.ts` y paginas App Router publicas/admin sin seams.
+- Siguiente lote: `Lobby.tsx` o primer corte admin (`LedgerFilters.tsx`, `SupportConversationList.tsx`, `UserLedgerTable.tsx`) segun prioridad de producto.
+
+## Checkpoint 20
+
+- Fecha: segunda pasada sobre `Lobby.tsx` y primer corte admin pequeño.
+- Coverage antes: `50.1%` statements, `50.1%` lines, `67.05%` functions, `75.16%` branches.
+- Coverage despues: `50.79%` statements, `50.79%` lines, `68.51%` functions, `75.22%` branches.
+- Archivos cubiertos: `components/game/Lobby.tsx`, `components/admin/DashboardAutoRefresh.tsx`, `components/admin/DashboardWarnings.tsx`, `components/admin/DeleteTableButton.tsx`, `components/admin/TableActiveToggle.tsx`, `components/admin/UserSearch.tsx`.
+- Tests agregados/extendidos: `components/game/__tests__/Lobby.test.tsx`, `components/admin/__tests__/AdminSmallControls.test.tsx`.
+- Riesgos cerrados: mensajes realtime de lobby `rooms`, entrada a mesa activa, apertura de placeholder con config DB, bloqueo por saldo insuficiente, cierre admin de mesa, debounce de busqueda admin, autorefresh del dashboard, warnings degradados, toggle activo/inactivo y delete con error visible.
+- Riesgos abiertos: `Lobby.tsx` aun tiene ramas de error/mesa custom, `Board.tsx` profunda, `app/play/[id]/page.tsx`, admin UI pesada (`LedgerFilters`, `SupportConversationList`, `UserLedgerTable`, `CreateTableModal`) y utilidades infra (`redis.ts`, `admin-recovery-codes.ts`).
+- Siguiente lote: primer corte admin pesado con `LedgerFilters.tsx` o `ResponsiveDataView.tsx` para subir superficie en `0%` sin tocar negocio financiero.
+
+## Checkpoint 21
+
+- Fecha: primer corte admin de componentes reutilizables y controles operativos.
+- Coverage antes: `50.79%` statements, `50.79%` lines, `68.51%` functions, `75.22%` branches.
+- Coverage despues: `51.69%` statements, `51.69%` lines, `69.4%` functions, `75.57%` branches.
+- Archivos cubiertos: `components/admin/ResponsiveDataView.tsx`, `components/admin/PlayerControls.tsx`, `components/admin/TableControls.tsx`, `components/admin/RulesEditor.tsx`.
+- Tests agregados: `components/admin/__tests__/AdminControlsAndDataView.test.tsx`.
+- Riesgos cerrados: render dual tabla/cards de `ResponsiveDataView`, empty state, custom card renderer, expulsion de jugador con error, pausa/reanudacion/cierre de sala con confirmacion, guardado exitoso y fallido de reglamento.
+- Riesgos abiertos: admin UI pesada de datos (`LedgerFilters`, `SupportConversationList`, `UserLedgerTable`, `CreateTableModal`, `UserBalanceControl`, `UserBanControl`), `app/play/[id]/page.tsx`, ramas profundas de `Board.tsx` y `Lobby.tsx`.
+- Siguiente lote: `LedgerFilters.tsx` o `UserBalanceControl.tsx` por impacto admin/finanzas, con foco en UI y callbacks sin tocar ledger server-side.
+
+## Checkpoint 22
+
+- Fecha: admin financiero UI y moderacion de usuarios.
+- Coverage antes: `51.69%` statements, `51.69%` lines, `69.4%` functions, `75.57%` branches.
+- Coverage despues: `53.03%` statements, `53.03%` lines, `70.02%` functions, `76.02%` branches.
+- Archivos cubiertos: `components/admin/UserBalanceControl.tsx`, `components/admin/UserBanControl.tsx`.
+- Tests agregados: `components/admin/__tests__/AdminUserModeration.test.tsx`.
+- Riesgos cerrados: validacion de monto/motivo, credito/debito via `adjustUserBalance` sin modificar ledger server-side, errores visibles de ajuste, listado de sanciones, revocacion, sancion temporal con expiracion y veto permanente sin expiracion.
+- Checklist ledger: sin `UPDATE`/`DELETE` sobre `wallets_ledger`; sin cambios a RPC; tests limitados a UI/callbacks; no se altera atomicidad ni idempotencia financiera.
+- Riesgos abiertos: `LedgerFilters.tsx`, `UserLedgerTable.tsx`, `SupportConversationList.tsx`, `CreateTableModal.tsx`, `app/play/[id]/page.tsx`, ramas profundas de `Board.tsx` y `Lobby.tsx`.
+- Siguiente lote: `UserLedgerTable.tsx` o `LedgerFilters.tsx` para continuar cobertura admin sin tocar movimientos financieros.
+
+## Checkpoint 23
+
+- Fecha: admin filtros, realtime ledger y limpieza operativa.
+- Coverage antes: `53.03%` statements, `53.03%` lines, `70.02%` functions, `76.02%` branches.
+- Coverage despues: `53.83%` statements, `53.83%` lines, `70.89%` functions, `76.13%` branches.
+- Archivos cubiertos: `components/admin/AdminGlobalSearch.tsx`, `components/admin/AuditFilters.tsx`, `components/admin/CleanupStaleGamesButton.tsx`, `components/admin/LedgerRealtimeRefresh.tsx`.
+- Tests agregados: `components/admin/__tests__/AdminFiltersRealtimeCleanup.test.tsx`.
+- Riesgos cerrados: busqueda global admin con query sanitizada, limpieza de partidas huerfanas con exito/error, filtros de auditoria por accion/contexto/fecha, export CSV/JSON con descarga, suscripcion realtime a inserts de ledger y refresh debounceado con cleanup.
+- Checklist ledger: `LedgerRealtimeRefresh` solo observa `INSERT` realtime y refresca UI; no escribe en ledger ni modifica RPCs.
+- Riesgos abiertos: `LedgerFilters.tsx`, `UserLedgerTable.tsx`, `SupportConversationList.tsx`, `CreateTableModal.tsx`, paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI.
+- Siguiente lote: `LedgerFilters.tsx` por peso admin alto y porque solo toca URL/filter UI, no ledger writes.
