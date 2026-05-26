@@ -1412,3 +1412,15 @@ Ese lote combina:
 - Checklist ledger: `LedgerRealtimeRefresh` solo observa `INSERT` realtime y refresca UI; no escribe en ledger ni modifica RPCs.
 - Riesgos abiertos: `LedgerFilters.tsx`, `UserLedgerTable.tsx`, `SupportConversationList.tsx`, `CreateTableModal.tsx`, paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI.
 - Siguiente lote: `LedgerFilters.tsx` por peso admin alto y porque solo toca URL/filter UI, no ledger writes.
+
+## Checkpoint 24
+
+- Fecha: filtros admin de ledger.
+- Coverage antes: `53.83%` statements, `53.83%` lines, `70.89%` functions, `76.13%` branches.
+- Coverage despues: `54.98%` statements, `54.98%` lines, `71.38%` functions, `76.56%` branches.
+- Archivos cubiertos: `components/admin/LedgerFilters.tsx`.
+- Tests agregados: `components/admin/__tests__/LedgerFilters.test.tsx`.
+- Riesgos cerrados: filtros de usuarios por nombre/username/id, recalculo de total visible, empty state por busqueda, filtros de transacciones por tipo/direccion/busqueda, sistema/boveda, estados y render dual tabla/card.
+- Checklist ledger: pruebas solo de presentacion/filtros; no hay escrituras financieras ni cambios a `wallets_ledger`.
+- Riesgos abiertos: `UserLedgerTable.tsx`, `SupportConversationList.tsx`, `CreateTableModal.tsx`, paginas App Router admin/publicas, `app/play/[id]/page.tsx` y ramas profundas de game UI.
+- Siguiente lote: `UserLedgerTable.tsx` para completar la vista ledger por usuario.
