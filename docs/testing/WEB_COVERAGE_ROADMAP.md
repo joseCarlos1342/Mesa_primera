@@ -1424,3 +1424,15 @@ Ese lote combina:
 - Checklist ledger: pruebas solo de presentacion/filtros; no hay escrituras financieras ni cambios a `wallets_ledger`.
 - Riesgos abiertos: `UserLedgerTable.tsx`, `SupportConversationList.tsx`, `CreateTableModal.tsx`, paginas App Router admin/publicas, `app/play/[id]/page.tsx` y ramas profundas de game UI.
 - Siguiente lote: `UserLedgerTable.tsx` para completar la vista ledger por usuario.
+
+## Checkpoint 25
+
+- Fecha: tabla ledger por usuario.
+- Coverage antes: `54.98%` statements, `54.98%` lines, `71.38%` functions, `76.56%` branches.
+- Coverage despues: `55.87%` statements, `55.87%` lines, `71.87%` functions, `76.8%` branches.
+- Archivos cubiertos: `components/admin/UserLedgerTable.tsx`.
+- Tests agregados: `components/admin/__tests__/UserLedgerTable.test.tsx`.
+- Riesgos cerrados: historial por usuario, conceptos game/no-game, sala/ref, jugadores presentes, filtros por tipo/direccion, busqueda en descripcion/metadata y empty state.
+- Checklist ledger: pruebas solo de visualizacion/filtros; sin escrituras financieras ni cambios a ledger/RPC.
+- Riesgos abiertos: `SupportConversationList.tsx`, `CreateTableModal.tsx`, paginas App Router admin/publicas, `app/play/[id]/page.tsx` y ramas profundas de game UI.
+- Siguiente lote: `SupportConversationList.tsx` o `CreateTableModal.tsx`, segun retorno incremental y riesgo de mocks.
