@@ -18,7 +18,6 @@ describe('useGamePermissions', () => {
   })
 
   afterEach(() => {
-    // @ts-expect-error restoring test globals
     global.Notification = originalNotification
     Object.defineProperty(navigator, 'permissions', { configurable: true, value: originalPermissions })
     Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: originalMediaDevices })
