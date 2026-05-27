@@ -1556,3 +1556,15 @@ Ese lote combina:
 - Checklist soporte: Supabase server mockeado con cadena `from/select/order`; no hay socket real ni cambios a contrato server-side.
 - Riesgos abiertos: paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: pagina admin de security o disputes para avanzar con paginas medianas antes del dashboard principal.
+
+## Checkpoint 36
+
+- Fecha: seguridad administrativa y panel de hardening.
+- Coverage antes: `58.68%` statements, `58.68%` lines, `74.54%` functions, `77.66%` branches.
+- Coverage despues: `59.6%` statements, `59.6%` lines, `74.86%` functions, `77.29%` branches.
+- Archivos cubiertos: `app/(admin)/admin/security/page.tsx`, `app/(admin)/admin/security/AdminSecurityPanel.tsx`.
+- Tests agregados: `app/(admin)/admin/security/__tests__/page.test.tsx`.
+- Riesgos cerrados: snapshot de seguridad, estado AAL/TOTP, enlace de vuelta al panel, controles de cambio de email, recuperacion de contraseña, reset TOTP, recovery codes y cierre de sesiones.
+- Checklist seguridad: acciones server-side mockeadas; no se cambian flujos MFA, sesiones ni tokens; `useRouter` mockeado sin navegacion real.
+- Riesgos abiertos: ramas de avisos/redirect del panel de seguridad, paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: cruzar Fase 3 (`60%`) con una pagina admin mediana (`disputes`, `broadcast/history` o `users`) antes de atacar `app/play/[id]/page.tsx`.
