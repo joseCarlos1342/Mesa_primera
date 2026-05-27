@@ -1580,3 +1580,15 @@ Ese lote combina:
 - Hito: Fase 3 alcanzada (`60%` global web) con `60.16%` statements/lines.
 - Riesgos abiertos: paginas App Router admin grandes en `0%` (`admin`, `alerts`, `broadcast`, `tables`, `users`, `server-log`, `spectate`), `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: empezar Fase 4 (`75%`) priorizando paginas admin de mayor peso o `app/play/[id]/page.tsx` con seams controlados.
+
+## Checkpoint 38
+
+- Fecha: directorio admin de usuarios.
+- Coverage antes: `60.16%` statements, `60.16%` lines, `75.22%` functions, `77.4%` branches.
+- Coverage despues: `60.72%` statements, `60.72%` lines, `75.19%` functions, `77.54%` branches.
+- Archivos cubiertos: `app/(admin)/admin/users/page.tsx`.
+- Tests agregados: `app/(admin)/admin/users/__tests__/page.test.tsx`.
+- Riesgos cerrados: render dinamico sin cache, busqueda, deteccion basica de huellas compartidas, filtro `fraud`, empty state, usuarios baneados/admin, resumen desktop/mobile y seams hacia controles de balance/ban.
+- Checklist admin/ledger: controles financieros y de sancion mockeados como UI; no hay escrituras financieras ni cambios a acciones server-side.
+- Riesgos abiertos: paginas App Router admin grandes restantes (`admin`, `alerts`, `broadcast`, `tables`, `server-log`, `spectate`), `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: `admin/tables` o `admin/broadcast` por peso alto y componentes ya parcialmente cubiertos.
