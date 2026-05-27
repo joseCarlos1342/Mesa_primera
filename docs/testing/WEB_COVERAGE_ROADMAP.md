@@ -1520,3 +1520,15 @@ Ese lote combina:
 - Checklist admin UI: `RulesEditor` se mockea como seam de props; no se cambian tokens ni acciones server-side de settings.
 - Riesgos abiertos: paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: paginas admin pequeñas (`ledger`, `support`, `security`) con mocks de acciones/componentes antes de tocar dashboards grandes.
+
+## Checkpoint 33
+
+- Fecha: pagina admin de libro mayor global.
+- Coverage antes: `58.19%` statements, `58.19%` lines, `74.14%` functions, `77.58%` branches.
+- Coverage despues: `58.34%` statements, `58.34%` lines, `74.27%` functions, `77.6%` branches.
+- Archivos cubiertos: `app/(admin)/admin/ledger/page.tsx`.
+- Tests agregados: `app/(admin)/admin/ledger/__tests__/page.test.tsx`.
+- Riesgos cerrados: render dinamico sin cache, carga paralela de movimientos/usuarios, conexion a componentes de filtros/realtime y estado de error visible cuando falla la carga.
+- Checklist ledger: pagina testeada en modo solo lectura; acciones `getLedgerEntries`/`getUsersWithBalances` mockeadas; sin escrituras financieras ni cambios a `wallets_ledger`/RPC.
+- Riesgos abiertos: paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: `app/(admin)/admin/ledger/[userId]/page.tsx` para completar el par de vistas ledger.
