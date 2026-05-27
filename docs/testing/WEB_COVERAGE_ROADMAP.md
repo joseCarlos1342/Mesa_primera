@@ -1604,3 +1604,15 @@ Ese lote combina:
 - Checklist admin/ledger: datos financieros testeados como lectura UI; acciones y componentes de mantenimiento mockeados como seams; sin escrituras financieras ni cambios a `wallets_ledger`, RPCs o acciones server-side.
 - Riesgos abiertos: paginas App Router admin grandes restantes (`admin`, `alerts`, `broadcast`, `server-log`, `spectate`), `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: `admin/broadcast`, `admin/alerts` o `admin/server-log` para seguir reduciendo ceros antes de entrar a `app/play/[id]/page.tsx`.
+
+## Checkpoint 40
+
+- Fecha: pagina admin de broadcast global.
+- Coverage antes: `61.79%` statements, `61.79%` lines, `74.74%` functions, `77.48%` branches.
+- Coverage despues: `62.64%` statements, `62.64%` lines, `74.9%` functions, `77.64%` branches.
+- Archivos cubiertos: `app/(admin)/admin/broadcast/page.tsx`.
+- Tests agregados: `app/(admin)/admin/broadcast/__tests__/page.test.tsx`.
+- Riesgos cerrados: formulario inicial con preview, enlace al historial, boton deshabilitado sin contenido, cambio de tipo de broadcast, cancelacion por confirmacion, envio confirmado con payload correcto, overlay de exito con audiencia, limpieza diferida y manejo de error con `alert`.
+- Checklist admin: `sendBroadcast` mockeado como borde server-side; `framer-motion` y `next/link` se reemplazan por seams de render sincronico; no se cambia contrato de broadcast ni persistencia.
+- Riesgos abiertos: paginas App Router admin grandes restantes (`admin`, `alerts`, `server-log`, `spectate`), paginas admin financieras/depositos/retiros en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: `admin/alerts` o `admin/server-log` por peso alto sin tocar ledger; reservar `app/play/[id]/page.tsx` para un bloque con seams mas cuidadosos.
