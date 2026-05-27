@@ -1532,3 +1532,15 @@ Ese lote combina:
 - Checklist ledger: pagina testeada en modo solo lectura; acciones `getLedgerEntries`/`getUsersWithBalances` mockeadas; sin escrituras financieras ni cambios a `wallets_ledger`/RPC.
 - Riesgos abiertos: paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: `app/(admin)/admin/ledger/[userId]/page.tsx` para completar el par de vistas ledger.
+
+## Checkpoint 34
+
+- Fecha: pagina admin de ledger por usuario.
+- Coverage antes: `58.34%` statements, `58.34%` lines, `74.27%` functions, `77.6%` branches.
+- Coverage despues: `58.54%` statements, `58.54%` lines, `74.4%` functions, `77.66%` branches.
+- Archivos cubiertos: `app/(admin)/admin/ledger/[userId]/page.tsx`.
+- Tests agregados: `app/(admin)/admin/ledger/[userId]/__tests__/page.test.tsx`.
+- Riesgos cerrados: resolucion async de `params`, carga de perfil/ledger por usuario, calculo de creditos/debitos, saldo/operaciones visibles, fallback de usuario desconocido y seam hacia `UserLedgerTable`.
+- Checklist ledger: pruebas de visualizacion y calculo local sobre entradas mockeadas; sin escrituras financieras ni cambios a `wallets_ledger`/RPC.
+- Riesgos abiertos: paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: paginas admin pequeñas no financieras (`support`, `disputes`, `rules` ya cerrado) o una pagina de auth/admin para seguir reduciendo ceros.
