@@ -1544,3 +1544,15 @@ Ese lote combina:
 - Checklist ledger: pruebas de visualizacion y calculo local sobre entradas mockeadas; sin escrituras financieras ni cambios a `wallets_ledger`/RPC.
 - Riesgos abiertos: paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: paginas admin pequeñas no financieras (`support`, `disputes`, `rules` ya cerrado) o una pagina de auth/admin para seguir reduciendo ceros.
+
+## Checkpoint 35
+
+- Fecha: pagina admin de soporte tecnico.
+- Coverage antes: `58.54%` statements, `58.54%` lines, `74.4%` functions, `77.66%` branches.
+- Coverage despues: `58.68%` statements, `58.68%` lines, `74.54%` functions, `77.66%` branches.
+- Archivos cubiertos: `app/(admin)/admin/support/page.tsx`.
+- Tests agregados: `app/(admin)/admin/support/__tests__/page.test.tsx`.
+- Riesgos cerrados: consulta de tickets con perfil, obtencion de admin actual, seam hacia `SupportConversationList`, estado de servicio online y error visible sin consultar usuario cuando falla Supabase.
+- Checklist soporte: Supabase server mockeado con cadena `from/select/order`; no hay socket real ni cambios a contrato server-side.
+- Riesgos abiertos: paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: pagina admin de security o disputes para avanzar con paginas medianas antes del dashboard principal.
