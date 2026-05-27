@@ -1568,3 +1568,15 @@ Ese lote combina:
 - Checklist seguridad: acciones server-side mockeadas; no se cambian flujos MFA, sesiones ni tokens; `useRouter` mockeado sin navegacion real.
 - Riesgos abiertos: ramas de avisos/redirect del panel de seguridad, paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: cruzar Fase 3 (`60%`) con una pagina admin mediana (`disputes`, `broadcast/history` o `users`) antes de atacar `app/play/[id]/page.tsx`.
+
+## Checkpoint 37
+
+- Fecha: cruce de Fase 3 con paginas admin medianas.
+- Coverage antes: `59.6%` statements, `59.6%` lines, `74.86%` functions, `77.29%` branches.
+- Coverage despues: `60.16%` statements, `60.16%` lines, `75.22%` functions, `77.4%` branches.
+- Archivos cubiertos: `app/(admin)/admin/broadcast/history/page.tsx`, `app/(admin)/admin/disputes/page.tsx`.
+- Tests agregados: `app/(admin)/admin/broadcast/history/__tests__/page.test.tsx`, `app/(admin)/admin/disputes/__tests__/page.test.tsx`.
+- Riesgos cerrados: historial de broadcasts con loading/empty/error, estadisticas de push/read/fail, fallback de tipo desconocido, lista de disputas con estados/prioridades/enlaces, empty state y error de carga.
+- Hito: Fase 3 alcanzada (`60%` global web) con `60.16%` statements/lines.
+- Riesgos abiertos: paginas App Router admin grandes en `0%` (`admin`, `alerts`, `broadcast`, `tables`, `users`, `server-log`, `spectate`), `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: empezar Fase 4 (`75%`) priorizando paginas admin de mayor peso o `app/play/[id]/page.tsx` con seams controlados.
