@@ -1640,3 +1640,15 @@ Ese lote combina:
 - Checklist admin realtime: `getServerAlerts`/`resolveAlert` mockeadas como acciones server-side; Supabase cliente mockeado solo para canal realtime; sin cambios a tabla `server_alerts`, auth admin ni auditoria.
 - Riesgos abiertos: paginas App Router admin grandes restantes (`admin`, `spectate`), paginas admin financieras/depositos/retiros en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: `admin/page.tsx` para cerrar dashboard principal o `admin/spectate/[roomId]` antes de entrar a `app/play/[id]/page.tsx`.
+
+## Checkpoint 43
+
+- Fecha: dashboard principal admin.
+- Coverage antes: `64.38%` statements, `64.38%` lines, `75.37%` functions, `78.02%` branches.
+- Coverage despues: `65.59%` statements, `65.59%` lines, `75.5%` functions, `78.05%` branches.
+- Archivos cubiertos: `app/(admin)/admin/page.tsx`.
+- Tests agregados: `app/(admin)/admin/__tests__/page.test.tsx`.
+- Riesgos cerrados: render dinamico sin cache, carga de estadisticas, advertencias, estados de boveda/libro mayor, tooltips financieros de lectura, tarjetas KPI con enlaces, accesos rapidos admin, refresh timestamp, estados `DESCONOCIDO`/`ALERTA` y error visible de carga.
+- Checklist ledger/admin: `getAdminDashboardStats` mockeada como borde server-side; pruebas solo validan visualizacion y enlaces; sin cambios a RPCs, acciones financieras ni `wallets_ledger`.
+- Riesgos abiertos: pagina App Router admin grande restante `admin/spectate/[roomId]`, paginas admin financieras/depositos/retiros en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: `admin/spectate/[roomId]` para cerrar flujo de supervision o entrar a `app/play/[id]/page.tsx` con seams controlados.
