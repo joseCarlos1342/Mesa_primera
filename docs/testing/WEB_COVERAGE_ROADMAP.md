@@ -1472,3 +1472,15 @@ Ese lote combina:
 - Checklist seguridad admin: no se cambia algoritmo ni alfabeto; `crypto.randomInt` solo se mockea en tests para determinismo.
 - Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx`, `sitemap.ts`, `redis.ts` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: `redis.ts` o primera pagina App Router admin; `redis.ts` es pequeño y ayuda a cerrar infra antes de cambios con seams mas grandes.
+
+## Checkpoint 29
+
+- Fecha: utilidades Redis web y rate limit fallback.
+- Coverage antes: `57.56%` statements, `57.56%` lines, `72.96%` functions, `77.28%` branches.
+- Coverage despues: `57.74%` statements, `57.74%` lines, `73.62%` functions, `77.46%` branches.
+- Archivos cubiertos: `utils/redis.ts`.
+- Tests agregados: `utils/__tests__/redis.test.ts`.
+- Riesgos cerrados: publish/setex sin Redis configurado, rate limit en memoria, cliente Redis con opciones esperadas, expire del primer hit, limite excedido, fallback ante error Redis, silenciamiento de errores repetidos en development e IP por `x-forwarded-for`/`x-real-ip`/fallback.
+- Checklist infra: Redis e `next/headers` mockeados por modulo; sin abrir conexiones reales ni depender de puerto local.
+- Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx`, `sitemap.ts` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: atacar paginas App Router pequeñas o `sitemap.ts` antes de entrar a `app/play/[id]/page.tsx`.
