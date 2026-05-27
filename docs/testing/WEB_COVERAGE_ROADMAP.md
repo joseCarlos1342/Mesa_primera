@@ -1628,3 +1628,15 @@ Ese lote combina:
 - Checklist admin realtime: Supabase cliente y Colyseus HTTP mockeados en bordes; suscripcion realtime ejercida con handlers reales; sin cambios a tablas, policies ni acciones server-side.
 - Riesgos abiertos: paginas App Router admin grandes restantes (`admin`, `server-log`, `spectate`), paginas admin financieras/depositos/retiros en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: `admin/server-log` por similitud con realtime/alertas, o `admin/page.tsx` si se quiere bajar otro cero de alto peso antes de `app/play/[id]/page.tsx`.
+
+## Checkpoint 42
+
+- Fecha: pagina admin de log del servidor.
+- Coverage antes: `63.73%` statements, `63.73%` lines, `75.06%` functions, `77.85%` branches.
+- Coverage despues: `64.38%` statements, `64.38%` lines, `75.37%` functions, `78.02%` branches.
+- Archivos cubiertos: `app/(admin)/admin/server-log/page.tsx`.
+- Tests agregados: `app/(admin)/admin/server-log/__tests__/page.test.tsx`.
+- Riesgos cerrados: estado de carga, listado de alertas no resueltas, severidad/categoria/sala-juego, filtros por severidad y categoria, busqueda textual, toggle de resueltas, resolucion de alerta, insercion realtime, cleanup del canal y empty state ante error de carga.
+- Checklist admin realtime: `getServerAlerts`/`resolveAlert` mockeadas como acciones server-side; Supabase cliente mockeado solo para canal realtime; sin cambios a tabla `server_alerts`, auth admin ni auditoria.
+- Riesgos abiertos: paginas App Router admin grandes restantes (`admin`, `spectate`), paginas admin financieras/depositos/retiros en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: `admin/page.tsx` para cerrar dashboard principal o `admin/spectate/[roomId]` antes de entrar a `app/play/[id]/page.tsx`.
