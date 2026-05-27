@@ -1484,3 +1484,15 @@ Ese lote combina:
 - Checklist infra: Redis e `next/headers` mockeados por modulo; sin abrir conexiones reales ni depender de puerto local.
 - Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx`, `sitemap.ts` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: atacar paginas App Router pequeñas o `sitemap.ts` antes de entrar a `app/play/[id]/page.tsx`.
+
+## Checkpoint 30
+
+- Fecha: sitemap y redirect SEO publico.
+- Coverage antes: `57.74%` statements, `57.74%` lines, `73.62%` functions, `77.46%` branches.
+- Coverage despues: `57.87%` statements, `57.87%` lines, `73.88%` functions, `77.52%` branches.
+- Archivos cubiertos: `app/sitemap.ts`, `app/primera-riverada-los-4-ases/page.tsx`.
+- Tests agregados: `app/__tests__/sitemap.test.ts`, `app/primera-riverada-los-4-ases/__tests__/page.test.tsx`.
+- Riesgos cerrados: sitemap limitado a rutas publicas canonicas, exclusion de `/admin` y `/api`, metadata `noindex` de ruta historica de marca y redirect permanente a `/`.
+- Checklist SEO: sin cambiar URLs canonicas ni fechas; pruebas solo fijan el contrato existente.
+- Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/page.tsx`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: `app/page.tsx` si se puede mockear `LandingContent` sin perder valor, o primera pagina admin pequeña.
