@@ -1652,3 +1652,15 @@ Ese lote combina:
 - Checklist ledger/admin: `getAdminDashboardStats` mockeada como borde server-side; pruebas solo validan visualizacion y enlaces; sin cambios a RPCs, acciones financieras ni `wallets_ledger`.
 - Riesgos abiertos: pagina App Router admin grande restante `admin/spectate/[roomId]`, paginas admin financieras/depositos/retiros en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: `admin/spectate/[roomId]` para cerrar flujo de supervision o entrar a `app/play/[id]/page.tsx` con seams controlados.
+
+## Checkpoint 44
+
+- Fecha: pagina admin de supervision de mesa.
+- Coverage antes: `65.59%` statements, `65.59%` lines, `75.5%` functions, `78.05%` branches.
+- Coverage despues: `66.77%` statements, `66.77%` lines, `75.67%` functions, `78.02%` branches.
+- Archivos cubiertos: `app/(admin)/admin/spectate/[roomId]/page.tsx`.
+- Tests agregados: `app/(admin)/admin/spectate/[roomId]/__tests__/page.test.tsx`.
+- Riesgos cerrados: generacion de token de supervision, join Colyseus como espectador, render de estado recibido, admin blindness, contador de jugadores conectados, dealer, jugador botado, VoiceChat, mute/kick, sancion temporal con expulsion, sancion permanente sin expiracion, errores de sancion, errores de conexion/desconexion y cleanup de sala al desmontar.
+- Checklist realtime/admin: Colyseus y acciones server-side mockeadas en bordes; no se abren sockets reales; no se relaja Admin Blindness ni se exponen cartas.
+- Riesgos abiertos: paginas admin financieras/depositos/retiros y auditoria/replays en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: entrar a `app/play/[id]/page.tsx` con seams controlados o cerrar paginas admin financieras en modo solo lectura/acciones mockeadas.
