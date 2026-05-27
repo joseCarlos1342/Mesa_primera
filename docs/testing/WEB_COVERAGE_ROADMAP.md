@@ -1460,3 +1460,15 @@ Ese lote combina:
 - Checklist soporte realtime: socket mockeado con handlers reales por evento; `SupportChat` se reemplaza por seam visible de props; no se modifica contrato server-side de soporte.
 - Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx`, `sitemap.ts`, `redis.ts`, `admin-recovery-codes.ts` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: empezar paginas App Router admin con seams pequeños o atacar utilidades infra (`redis.ts`, `admin-recovery-codes.ts`) para acercarse a Fase 3 (`60%`).
+
+## Checkpoint 28
+
+- Fecha: utilidades de codigos de recuperacion admin.
+- Coverage antes: `57.49%` statements, `57.49%` lines, `72.3%` functions, `77.22%` branches.
+- Coverage despues: `57.56%` statements, `57.56%` lines, `72.96%` functions, `77.28%` branches.
+- Archivos cubiertos: `lib/admin-recovery-codes.ts`.
+- Tests agregados: `lib/__tests__/admin-recovery-codes.test.ts`.
+- Riesgos cerrados: normalizacion de codigos, formateo por grupos, hash estable del valor normalizado, generacion unica con cantidad por defecto y conteo personalizado.
+- Checklist seguridad admin: no se cambia algoritmo ni alfabeto; `crypto.randomInt` solo se mockea en tests para determinismo.
+- Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx`, `sitemap.ts`, `redis.ts` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: `redis.ts` o primera pagina App Router admin; `redis.ts` es pequeño y ayuda a cerrar infra antes de cambios con seams mas grandes.
