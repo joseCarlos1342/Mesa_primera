@@ -1496,3 +1496,15 @@ Ese lote combina:
 - Checklist SEO: sin cambiar URLs canonicas ni fechas; pruebas solo fijan el contrato existente.
 - Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/page.tsx`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: `app/page.tsx` si se puede mockear `LandingContent` sin perder valor, o primera pagina admin pequeña.
+
+## Checkpoint 31
+
+- Fecha: pagina landing canonica App Router.
+- Coverage antes: `57.87%` statements, `57.87%` lines, `73.88%` functions, `77.52%` branches.
+- Coverage despues: `58.05%` statements, `58.05%` lines, `74.01%` functions, `77.55%` branches.
+- Archivos cubiertos: `app/page.tsx`.
+- Tests agregados: `app/__tests__/page.test.tsx`.
+- Riesgos cerrados: composicion de landing via `LandingContent`, metadata SEO canonica, keywords principales, Open Graph y Twitter card.
+- Checklist SEO/UI: `LandingContent` se mockea como seam de composicion; no se modifican tokens ni estructura visual de la landing.
+- Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: primera pagina admin pequeña para reducir ceros de App Router sin entrar todavia a `app/play/[id]/page.tsx`.
