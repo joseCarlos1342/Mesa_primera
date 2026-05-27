@@ -1508,3 +1508,15 @@ Ese lote combina:
 - Checklist SEO/UI: `LandingContent` se mockea como seam de composicion; no se modifican tokens ni estructura visual de la landing.
 - Riesgos abiertos: paginas App Router admin/publicas en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: primera pagina admin pequeña para reducir ceros de App Router sin entrar todavia a `app/play/[id]/page.tsx`.
+
+## Checkpoint 32
+
+- Fecha: pagina admin de reglamento.
+- Coverage antes: `58.05%` statements, `58.05%` lines, `74.01%` functions, `77.55%` branches.
+- Coverage despues: `58.19%` statements, `58.19%` lines, `74.14%` functions, `77.58%` branches.
+- Archivos cubiertos: `app/(admin)/admin/rules/page.tsx`.
+- Tests agregados: `app/(admin)/admin/rules/__tests__/page.test.tsx`.
+- Riesgos cerrados: carga inicial de reglamento via `getRulebook`, entrega al editor, copy de formato Markdown e informacion de auditoria.
+- Checklist admin UI: `RulesEditor` se mockea como seam de props; no se cambian tokens ni acciones server-side de settings.
+- Riesgos abiertos: paginas App Router admin restantes en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: paginas admin pequeñas (`ledger`, `support`, `security`) con mocks de acciones/componentes antes de tocar dashboards grandes.
