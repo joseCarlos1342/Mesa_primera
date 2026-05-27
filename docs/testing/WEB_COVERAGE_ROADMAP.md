@@ -1664,3 +1664,15 @@ Ese lote combina:
 - Checklist realtime/admin: Colyseus y acciones server-side mockeadas en bordes; no se abren sockets reales; no se relaja Admin Blindness ni se exponen cartas.
 - Riesgos abiertos: paginas admin financieras/depositos/retiros y auditoria/replays en `0%`, `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: entrar a `app/play/[id]/page.tsx` con seams controlados o cerrar paginas admin financieras en modo solo lectura/acciones mockeadas.
+
+## Checkpoint 45
+
+- Fecha: primer bloque de pagina de juego del jugador.
+- Coverage antes: `66.77%` statements, `66.77%` lines, `75.67%` functions, `78.02%` branches.
+- Coverage despues: `68.85%` statements, `68.85%` lines, `75.06%` functions, `77.77%` branches.
+- Archivos cubiertos: `app/play/[id]/page.tsx`.
+- Tests agregados: `app/play/[id]/__tests__/page.test.tsx`.
+- Riesgos cerrados: join normal con Supabase/wallet/device, token de reconexion, filtrado de ghosts en lobby, ready toggle, reconexion con token guardado, hidratacion de cartas privadas, render de `Board` fuera de lobby, modales por eventos globales, abandono intencional con limpieza, voto de pique, eventos de sala (`room-config`, `pique-reopen`, `declarar-juego-option`, `paso-juego-choice`, `banda`, `error`, `insufficient-balance`), ForceLogout y bloqueo por saldo insuficiente antes de abrir Colyseus.
+- Checklist realtime/player: Colyseus, Supabase cliente y componentes pesados mockeados en bordes; no se abren sockets reales; las cartas privadas solo se introducen por mensaje `private-cards`.
+- Riesgos abiertos: ramas restantes de `app/play/[id]/page.tsx` (portrait/auto-unready, reconnect failure, leave no intencional, error de Colyseus, cambio de pique sin propuesta, countdown/listos), paginas admin financieras/depositos/retiros y auditoria/replays en `0%`, ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: segunda pasada sobre `app/play/[id]/page.tsx` para cerrar ramas restantes antes de volver a paginas admin financieras.
