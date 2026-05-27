@@ -1592,3 +1592,15 @@ Ese lote combina:
 - Checklist admin/ledger: controles financieros y de sancion mockeados como UI; no hay escrituras financieras ni cambios a acciones server-side.
 - Riesgos abiertos: paginas App Router admin grandes restantes (`admin`, `alerts`, `broadcast`, `tables`, `server-log`, `spectate`), `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: `admin/tables` o `admin/broadcast` por peso alto y componentes ya parcialmente cubiertos.
+
+## Checkpoint 39
+
+- Fecha: pagina admin de control de mesas.
+- Coverage antes: `60.72%` statements, `60.72%` lines, `75.19%` functions, `77.54%` branches.
+- Coverage despues: `61.79%` statements, `61.79%` lines, `74.74%` functions, `77.48%` branches.
+- Archivos cubiertos: `app/(admin)/admin/tables/page.tsx`.
+- Tests agregados: `app/(admin)/admin/tables/__tests__/page.test.tsx`.
+- Riesgos cerrados: render dinamico sin cache, carga de salas/mesas/financieros, estados en vivo `playing`/`paused`, jugadores y mesa libre, auditoria financiera, gestion de configuraciones y fallback ante errores de carga.
+- Checklist admin/ledger: datos financieros testeados como lectura UI; acciones y componentes de mantenimiento mockeados como seams; sin escrituras financieras ni cambios a `wallets_ledger`, RPCs o acciones server-side.
+- Riesgos abiertos: paginas App Router admin grandes restantes (`admin`, `alerts`, `broadcast`, `server-log`, `spectate`), `app/play/[id]/page.tsx` y ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
+- Siguiente lote: `admin/broadcast`, `admin/alerts` o `admin/server-log` para seguir reduciendo ceros antes de entrar a `app/play/[id]/page.tsx`.
