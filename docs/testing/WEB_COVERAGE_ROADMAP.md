@@ -1713,3 +1713,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `154` suites y `907` tests; gate web subido a `76%` statements/lines.
 - Riesgos abiertos: `passkey-actions.ts`, `google-auth.ts`, `app/(auth)/login/player/page.tsx` con ramas biometricas, `Board.tsx`/`Lobby.tsx` y ramas de middleware Supabase.
 - Siguiente lote: cubrir acciones de passkeys/google auth o entrar a ramas profundas de `Lobby.tsx` con seams controlados.
+
+## Checkpoint 49
+
+- Fecha: acciones de passkey y Google OAuth.
+- Coverage antes: `76.41%` statements, `76.41%` lines, `78.86%` functions, `78.92%` branches.
+- Coverage despues: `77.25%` statements, `77.25%` lines, `79.24%` functions, `78.73%` branches.
+- Archivos cubiertos: `app/(auth)/passkey-actions.ts`, `app/(auth)/google-auth.ts`.
+- Tests agregados: `app/(auth)/__tests__/passkey-actions.test.ts`, `app/(auth)/__tests__/google-auth.test.ts`.
+- Riesgos cerrados: registro passkey sin usuario, generacion de challenge httpOnly, verificacion de registro con upsert de credencial confiable, disponibilidad de login biometrico por telefono, generacion de opciones WebAuthn, login biometrico con creacion de sesion, challenge expirado y OAuth Google con callback PKCE y error accionable.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `156` suites y `916` tests; gate web subido a `77%` statements/lines.
+- Riesgos abiertos: ramas UI biometricas de `app/(auth)/login/player/page.tsx`, `Board.tsx`/`Lobby.tsx`, ramas residuales de middleware Supabase y componentes con funciones bajas (`NotificationCenter`, `SupportChat`, `LandingContent`).
+- Siguiente lote: cubrir login player biometrico/PIN/OTP en UI o entrar a `Lobby.tsx` para levantar branches/functions de game UI.
