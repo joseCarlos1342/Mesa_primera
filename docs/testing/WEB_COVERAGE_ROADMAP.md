@@ -1676,3 +1676,15 @@ Ese lote combina:
 - Checklist realtime/player: Colyseus, Supabase cliente y componentes pesados mockeados en bordes; no se abren sockets reales; las cartas privadas solo se introducen por mensaje `private-cards`.
 - Riesgos abiertos: ramas restantes de `app/play/[id]/page.tsx` (portrait/auto-unready, reconnect failure, leave no intencional, error de Colyseus, cambio de pique sin propuesta, countdown/listos), paginas admin financieras/depositos/retiros y auditoria/replays en `0%`, ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`).
 - Siguiente lote: segunda pasada sobre `app/play/[id]/page.tsx` para cerrar ramas restantes antes de volver a paginas admin financieras.
+
+## Checkpoint 46
+
+- Fecha: segunda pasada de sala de juego y cierre de paginas admin de auditoria/consultas/replays.
+- Coverage antes: `68.85%` statements, `68.85%` lines, `75.06%` functions, `77.77%` branches.
+- Coverage despues: `70.52%` statements, `70.52%` lines, `76.21%` functions, `78.26%` branches.
+- Archivos cubiertos: `app/play/[id]/page.tsx`, `app/(admin)/admin/audit/page.tsx`, `app/(admin)/admin/consultas/page.tsx`, `app/(admin)/admin/replays/page.tsx`.
+- Tests agregados/extendidos: `app/play/[id]/__tests__/page.test.tsx`, `app/(admin)/admin/audit/__tests__/page.test.tsx`, `app/(admin)/admin/consultas/__tests__/page.test.tsx`, `app/(admin)/admin/replays/__tests__/page.test.tsx`.
+- Riesgos cerrados: sala de juego cubre portrait con auto-unready y unlock de orientacion, countdown/listos, propuesta propia de pique, propuesta/cancelacion de pique, prompts de juego hacia `Board`, reapertura de pique, error Colyseus con limpieza de token, descarte por fold, rechazo de pique, fallback de reconexion expirada a join normal y error de join. Auditoria cubre acciones conocidas/desconocidas, actor sistema/admin, objetivo, detalles truncados, empty y error. Consultas globales cubre guia sin query, resultados/enlaces por entidad, CTA de disputa, empty y error. Replays cubre resumen, rake, jugadores unicos, ganador, enlaces de detalle, empty y fallback sin ganador.
+- Checklist realtime/admin: Colyseus, Supabase cliente, acciones admin y vistas de datos mockeadas en bordes; no se abren sockets reales; no se cambia contrato de replays/auditoria/busqueda ni se toca ledger.
+- Riesgos abiertos: paginas admin financieras/depositos/retiros, detalle/nueva disputa, detalle de replay, paginas auth admin y recovery pin en `0%`, ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`) y ramas residuales de `app/play/[id]/page.tsx` (`leave` no intencional/reload y fallback de nickname/device aleatorio).
+- Siguiente lote: cerrar otro grupo App Router en `0%` (`admin/disputes/[id]`, `admin/disputes/new`, `admin/replays/[gameId]`) o entrar a depositos/retiros con skill de ledger y pruebas solo UI/acciones mockeadas.
