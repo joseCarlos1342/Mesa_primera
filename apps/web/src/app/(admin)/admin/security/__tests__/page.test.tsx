@@ -23,6 +23,7 @@ const secureSnapshot = {
   email: 'admin@mesa.test',
   hasTotpFactor: true,
   currentAal: 'aal2',
+  nextAal: 'aal2',
   activeRecoveryCodes: 8,
 }
 

@@ -68,7 +68,7 @@ describe('AdminBroadcastPage', () => {
   })
 
   it('envia el broadcast confirmado, muestra exito y limpia el formulario despues del timeout', async () => {
-    mockSendBroadcast.mockResolvedValue({ audienceCount: 42 })
+    mockSendBroadcast.mockResolvedValue({ success: true, broadcastId: 'broadcast-1', audienceCount: 42 })
     render(<AdminBroadcastPage />)
 
     fireEvent.click(screen.getByRole('button', { name: /mantenimiento/i }))

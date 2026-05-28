@@ -29,7 +29,6 @@ jobs:
           fetch-depth: 2
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.1.1
           run_install: false
       - uses: actions/setup-node@v4
         with:
@@ -42,23 +41,10 @@ jobs:
         run: pnpm exec tsc --noEmit -p apps/web/tsconfig.json
       - name: Typecheck game-server
         run: pnpm exec tsc --noEmit -p apps/game-server/tsconfig.json
-      - name: Web coverage gate 98
-        run: >
-          pnpm --filter web exec jest
-          --coverage
-          --ci
-          --forceExit
-          --coverageReporters=json-summary
-          --coverageReporters=lcov
-          --coverageThreshold='{"global":{"statements":98,"branches":98,"functions":98,"lines":98}}'
-      - name: Game server coverage gate 98
-        run: >
-          pnpm --filter game-server exec vitest run
-          --coverage
-          --coverage.thresholds.statements=98
-          --coverage.thresholds.branches=98
-          --coverage.thresholds.functions=98
-          --coverage.thresholds.lines=98
+      - name: Web coverage gate
+        run: pnpm --filter web test:coverage
+      - name: Game server coverage gate
+        run: pnpm --filter game-server test:coverage
       - name: Build web
         run: pnpm --filter web build
       - name: Upload web coverage

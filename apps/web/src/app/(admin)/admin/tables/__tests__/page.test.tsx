@@ -48,7 +48,9 @@ describe('AdminTablesPage', () => {
         pique_pot_cents: 50000,
         min_bet_cents: 100000,
         max_players: 7,
-        players: [{ id: 'player-1', display_name: 'Ana', seat_number: 1, status: 'active', bet_current_cents: 20000 }],
+        started_at: '2026-05-25T10:00:00.000Z',
+        created_by: 'admin-1',
+        players: [{ id: 'player-1', user_id: 'user-1', display_name: 'Ana', seat_number: 1, status: 'active', bet_current_cents: 20000 }],
       },
       {
         id: 'room-paused-1',
@@ -58,11 +60,29 @@ describe('AdminTablesPage', () => {
         pique_pot_cents: 0,
         min_bet_cents: 50000,
         max_players: 5,
+        started_at: '2026-05-25T10:30:00.000Z',
+        created_by: 'admin-1',
         players: [],
       },
     ])
     mockGetTablesList.mockResolvedValue([
-      { id: 'table-1', name: 'Mesa comun', game_type: 'primera', max_players: 7, min_entry_cents: 500000, min_bet: 500000 },
+      {
+        id: 'table-1',
+        name: 'Mesa comun',
+        game_type: 'primera',
+        max_players: 7,
+        min_entry_cents: 500000,
+        min_pique_cents: 100000,
+        min_bet: 500000,
+        active_games: 1,
+        created_at: '2026-05-25T09:00:00.000Z',
+        table_category: 'common',
+        lobby_slot: 1,
+        disabled_chips: [],
+        is_active: true,
+        sort_order: 1,
+        games: [{ count: 1 }],
+      },
     ])
     mockGetTableFinancials.mockResolvedValue([
       {
@@ -74,6 +94,8 @@ describe('AdminTablesPage', () => {
         total_bets_cents: 500000,
         total_winnings_cents: 450000,
         total_rake_cents: 50000,
+        total_credits_cents: 500000,
+        total_debits_cents: 450000,
         last_activity: '2026-05-25T10:00:00.000Z',
       },
     ])

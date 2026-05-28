@@ -44,7 +44,7 @@ let profiles: Array<{ id: string; username: string }> = []
 let realtimeHandler: ((payload: { eventType: string; new: Record<string, unknown> }) => Promise<void>) | undefined
 
 function makeHelpQuery() {
-  const query = {
+  const query: Record<string, unknown> = {
     select: jest.fn(() => query),
     order: jest.fn(() => query),
     limit: jest.fn(() => query),
@@ -55,7 +55,7 @@ function makeHelpQuery() {
 }
 
 function makeProfilesQuery() {
-  const query = {
+  const query: Record<string, unknown> = {
     select: jest.fn(() => query),
     in: jest.fn(() => Promise.resolve({ data: profiles })),
     eq: jest.fn(() => query),
@@ -122,7 +122,7 @@ describe('AdminAlertsPage', () => {
     ]
     update.mockReturnValue({ eq: jest.fn(() => Promise.resolve({ error: null })) })
     mockCreateClient.mockReturnValue(makeSupabaseClient() as unknown as ReturnType<typeof createClient>)
-    mockRoomList.mockResolvedValue({ data: [{ roomId: 'room-alpha-1', clients: 3, metadata: { phase: 'PIQUE' } }] })
+    mockRoomList.mockResolvedValue({ data: [{ roomId: 'room-alpha-1', clients: 3, metadata: { phase: 'PIQUE' } }] } as Awaited<ReturnType<typeof colyseusClient.http.get>>)
   })
 
   afterEach(() => {
