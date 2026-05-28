@@ -1701,3 +1701,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `152` suites y `903` tests; Fase 4 (`75%`) alcanzada.
 - Riesgos abiertos: ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`), auth player device/verify en `0%`, `passkey-actions.ts`, `google-auth.ts` y deuda de typecheck preexistente en tests antiguos.
 - Siguiente lote: iniciar Fase 5 con ramas criticas de `Board.tsx`/`Lobby.tsx` o cerrar auth player device/verify antes de endurecer gates.
+
+## Checkpoint 48
+
+- Fecha: OTP de jugador y recuperacion.
+- Coverage antes: `75.83%` statements, `75.83%` lines, `78.59%` functions, `78.87%` branches.
+- Coverage despues: `76.41%` statements, `76.41%` lines, `78.86%` functions, `78.92%` branches.
+- Archivos cubiertos: `app/(auth)/login/player/verify/page.tsx`, `app/(auth)/login/player/device-verify/page.tsx`, `app/(auth)/recovery/verify/page.tsx`.
+- Tests agregados: `app/(auth)/login/player/verify/__tests__/page.test.tsx`, `app/(auth)/login/player/device-verify/__tests__/page.test.tsx`, `app/(auth)/recovery/verify/__tests__/page.test.tsx`.
+- Riesgos cerrados: pantallas OTP de login, verificacion de dispositivo y recuperacion cubren telefono de query string, `flow` enviado al server action, errores server-side y estado pendiente de envio.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `154` suites y `907` tests; gate web subido a `76%` statements/lines.
+- Riesgos abiertos: `passkey-actions.ts`, `google-auth.ts`, `app/(auth)/login/player/page.tsx` con ramas biometricas, `Board.tsx`/`Lobby.tsx` y ramas de middleware Supabase.
+- Siguiente lote: cubrir acciones de passkeys/google auth o entrar a ramas profundas de `Lobby.tsx` con seams controlados.

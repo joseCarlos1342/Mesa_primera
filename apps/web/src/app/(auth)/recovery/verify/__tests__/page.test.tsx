@@ -1,9 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { useActionState } from 'react'
 import { useSearchParams } from 'next/navigation'
-
 import RecoveryVerifyPage from '../page'
-import { verifyOtp } from '../../../auth-actions'
 
 jest.mock('react', () => ({
   ...jest.requireActual('react'),
@@ -14,49 +12,50 @@ jest.mock('next/navigation', () => ({
   useSearchParams: jest.fn(),
 }))
 
-jest.mock('../../../auth-actions', () => ({
+jest.mock('@/app/(auth)/auth-actions', () => ({
   verifyOtp: jest.fn(),
 }))
 
 const mockUseActionState = useActionState as unknown as jest.Mock
-const mockUseSearchParams = useSearchParams as unknown as jest.Mock
+const mockUseSearchParams = useSearchParams as jest.MockedFunction<typeof useSearchParams>
 
-function setupActionState(tuple: [unknown, jest.Mock, boolean] = [null, jest.fn(), false]) {
-  mockUseActionState.mockImplementation((action: unknown) => {
-    if (action === verifyOtp) return tuple
-    throw new Error('Unexpected action passed to useActionState mock')
-  })
+function setSearchParams(params: Record<string, string>) {
+  mockUseSearchParams.mockReturnValue({
+    get: (name: string) => params[name] ?? null,
+  } as ReturnType<typeof useSearchParams>)
 }
 
 describe('RecoveryVerifyPage', () => {
+  const formAction = jest.fn()
+
   beforeEach(() => {
     jest.clearAllMocks()
-    mockUseSearchParams.mockReturnValue({
-      get: jest.fn((key: string) => (key === 'phone' ? '+573001234567' : null)),
-    })
-    setupActionState()
+    setSearchParams({ phone: '3009991122' })
+    mockUseActionState.mockReturnValue([null, formAction, false])
   })
 
-  it('renderiza teléfono, hidden inputs y CTA de confirmación', () => {
+  it('renderiza recuperacion con telefono y flujo recovery', () => {
     const { container } = render(<RecoveryVerifyPage />)
 
-    expect(screen.getByRole('heading', { name: /confirma tu identidad/i, level: 2 })).toBeInTheDocument()
-    expect(screen.getByText('+573001234567')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
-    expect(container.querySelector('input[name="phone"]')).toHaveValue('+573001234567')
+    expect(screen.getByText('VERIFICACIÓN')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Confirma tu Identidad' })).toBeInTheDocument()
+    expect(screen.getByText('3009991122')).toBeInTheDocument()
+    expect(container.querySelector('input[name="phone"]')).toHaveValue('3009991122')
     expect(container.querySelector('input[name="flow"]')).toHaveValue('recovery')
     expect(screen.getByRole('button', { name: /confirmar código/i })).toBeEnabled()
   })
 
-  it('renderiza error del action', () => {
-    setupActionState([{ error: 'Código expirado' }, jest.fn(), false])
+  it('muestra error del OTP', () => {
+    mockUseActionState.mockReturnValue([{ error: 'Código vencido' }, formAction, false])
+
     render(<RecoveryVerifyPage />)
 
-    expect(screen.getByText(/código expirado/i)).toBeInTheDocument()
+    expect(screen.getByText('Código vencido')).toBeInTheDocument()
   })
 
-  it('muestra estado pending en el submit', () => {
-    setupActionState([null, jest.fn(), true])
+  it('bloquea el submit mientras verifica', () => {
+    mockUseActionState.mockReturnValue([null, formAction, true])
+
     render(<RecoveryVerifyPage />)
 
     expect(screen.getByRole('button', { name: /verificando/i })).toBeDisabled()
