@@ -67,7 +67,7 @@ describe('redis utils', () => {
 
   afterEach(() => {
     jest.restoreAllMocks()
-    process.env.NODE_ENV = originalNodeEnv
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv
     delete process.env.REDIS_URL
     delete (global as { redis?: unknown }).redis
   })
@@ -112,7 +112,7 @@ describe('redis utils', () => {
   })
 
   it('silencia errores repetidos de cliente Redis solo en desarrollo', async () => {
-    process.env.NODE_ENV = 'development'
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = 'development'
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
 
     await loadRedisModule('redis://localhost:6380')

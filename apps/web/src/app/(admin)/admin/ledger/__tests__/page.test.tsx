@@ -25,6 +25,7 @@ describe('AdminLedgerPage', () => {
     mockGetLedgerEntries.mockResolvedValue([
       {
         id: 'entry-1',
+        game_id: null,
         user_id: 'user-1',
         amount_cents: 5000,
         direction: 'credit',

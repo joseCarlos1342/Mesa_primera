@@ -14,7 +14,15 @@ jest.mock('@/components/admin/SupportConversationList', () => ({
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>
 
-function createSupabaseMock({ tickets = [{ id: 'ticket-1' }], error = null, userId = 'admin-1' } = {}) {
+function createSupabaseMock({
+  tickets = [{ id: 'ticket-1' }],
+  error = null,
+  userId = 'admin-1',
+}: {
+  tickets?: Array<{ id: string }> | null
+  error?: { message: string } | null
+  userId?: string | null
+} = {}) {
   return {
     from: jest.fn(() => ({
       select: jest.fn(() => ({

@@ -40,7 +40,7 @@ function createSocketMock() {
 }
 
 function ticket(overrides: Partial<SupportTicket> & { user?: { username: string; full_name: string; avatar_url: string | null } }) {
-  return {
+  return ({
     id: 'ticket-pending-001',
     user_id: 'user-1',
     status: 'pending',
@@ -56,7 +56,7 @@ function ticket(overrides: Partial<SupportTicket> & { user?: { username: string;
     updated_at: '2026-05-25T10:00:00.000Z',
     user: { username: 'ana', full_name: 'Ana Mesa', avatar_url: null },
     ...overrides,
-  }
+  } satisfies SupportTicket & { user: { username: string; full_name: string; avatar_url: string | null } })
 }
 
 describe('SupportConversationList', () => {

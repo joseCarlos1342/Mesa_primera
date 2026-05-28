@@ -23,6 +23,7 @@ describe('UserLedgerDetailPage', () => {
     mockGetUserLedger.mockResolvedValue([
       {
         id: 'credit-1',
+        game_id: null,
         user_id: 'user-1',
         amount_cents: 150000,
         direction: 'credit',
@@ -36,6 +37,7 @@ describe('UserLedgerDetailPage', () => {
       },
       {
         id: 'debit-1',
+        game_id: 'game-1',
         user_id: 'user-1',
         amount_cents: 50000,
         direction: 'debit',
@@ -71,7 +73,7 @@ describe('UserLedgerDetailPage', () => {
   })
 
   it('usa fallback cuando el perfil no existe', async () => {
-    mockGetUserProfile.mockResolvedValueOnce(null)
+    mockGetUserProfile.mockResolvedValueOnce(null as unknown as Awaited<ReturnType<typeof getUserProfile>>)
     mockGetUserLedger.mockResolvedValueOnce([])
 
     render(await UserLedgerDetailPage({ params: Promise.resolve({ userId: 'missing-user' }) }))
