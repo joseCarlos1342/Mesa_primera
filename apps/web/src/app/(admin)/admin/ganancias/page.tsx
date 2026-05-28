@@ -10,7 +10,8 @@ export default async function GananciasPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const parsedPage = parseInt(params.page || "1");
+  const page = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
   const pageSize = 50;
   const { entries, totalCount, stats } = await getAdminRakeData(page, pageSize);
 

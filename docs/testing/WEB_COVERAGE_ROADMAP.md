@@ -1688,3 +1688,16 @@ Ese lote combina:
 - Checklist realtime/admin: Colyseus, Supabase cliente, acciones admin y vistas de datos mockeadas en bordes; no se abren sockets reales; no se cambia contrato de replays/auditoria/busqueda ni se toca ledger.
 - Riesgos abiertos: paginas admin financieras/depositos/retiros, detalle/nueva disputa, detalle de replay, paginas auth admin y recovery pin en `0%`, ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`) y ramas residuales de `app/play/[id]/page.tsx` (`leave` no intencional/reload y fallback de nickname/device aleatorio).
 - Siguiente lote: cerrar otro grupo App Router en `0%` (`admin/disputes/[id]`, `admin/disputes/new`, `admin/replays/[gameId]`) o entrar a depositos/retiros con skill de ledger y pruebas solo UI/acciones mockeadas.
+
+## Checkpoint 47
+
+- Fecha: cierre de Fase 4 con paginas admin de detalle, finanzas y auth admin.
+- Coverage antes: `70.52%` statements, `70.52%` lines, `76.21%` functions, `78.26%` branches.
+- Coverage despues: `75.83%` statements, `75.83%` lines, `78.59%` functions, `78.87%` branches.
+- Archivos cubiertos: `app/(admin)/admin/disputes/[id]/page.tsx`, `app/(admin)/admin/disputes/[id]/dispute-actions.tsx`, `app/(admin)/admin/disputes/new/page.tsx`, `app/(admin)/admin/replays/[gameId]/page.tsx`, `app/(admin)/admin/deposits/page.tsx`, `app/(admin)/admin/deposits/DepositActions.tsx`, `app/(admin)/admin/withdrawals/page.tsx`, `app/(admin)/admin/withdrawals/WithdrawalActions.tsx`, `app/(admin)/admin/ganancias/page.tsx`, `app/(auth)/login/admin/page.tsx`, `app/(auth)/login/admin/mfa/page.tsx`, `app/(auth)/login/admin/mfa/setup/page.tsx`, `app/(auth)/recovery/pin/page.tsx`.
+- Tests agregados: `app/(admin)/admin/disputes/[id]/__tests__/page.test.tsx`, `app/(admin)/admin/disputes/new/__tests__/page.test.tsx`, `app/(admin)/admin/replays/[gameId]/__tests__/page.test.tsx`, `app/(admin)/admin/deposits/__tests__/page.test.tsx`, `app/(admin)/admin/withdrawals/__tests__/page.test.tsx`, `app/(admin)/admin/ganancias/__tests__/page.test.tsx`, `app/(auth)/login/admin/__tests__/page.test.tsx`, `app/(auth)/login/admin/mfa/__tests__/page.test.tsx`, `app/(auth)/login/admin/mfa/setup/__tests__/page.test.tsx`, `app/(auth)/recovery/pin/__tests__/page.test.tsx`.
+- Riesgos cerrados: detalle de disputa cubre resolucion, acciones y errores; nueva disputa cubre creacion, validacion y empty/error de busqueda; detalle de replay cubre timeline, estados, errores y fallback; depositos/retiros cubren listados, estados, acciones mockeadas y empty/error; ganancias cubre paginacion, filtros y normalizacion de pagina invalida; auth admin cubre validacion local, errores de login, MFA, setup MFA y recuperacion de PIN.
+- Checklist ledger/admin: bloque financiero probado solo en UI/lectura/callbacks con acciones mockeadas; no se tocaron RPCs, movimientos financieros ni `wallets_ledger`.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `152` suites y `903` tests; Fase 4 (`75%`) alcanzada.
+- Riesgos abiertos: ramas profundas de game UI (`Board.tsx`, `Lobby.tsx`), auth player device/verify en `0%`, `passkey-actions.ts`, `google-auth.ts` y deuda de typecheck preexistente en tests antiguos.
+- Siguiente lote: iniciar Fase 5 con ramas criticas de `Board.tsx`/`Lobby.tsx` o cerrar auth player device/verify antes de endurecer gates.
