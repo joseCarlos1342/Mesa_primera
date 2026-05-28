@@ -48,7 +48,7 @@ Antes de cerrar cambios relevantes:
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
 - Gate operativo temporal actual:
-  - Web: `75%` statements, `78%` branches, `78%` functions, `75%` lines.
+  - Web: `76%` statements, `78%` branches, `78%` functions, `76%` lines.
   - Game server: `87%` statements, `77%` branches, `87%` functions, `88%` lines.
 - Objetivo final estrategico sigue siendo `98%` en ambos frentes, pero CI usa un gate escalonado para reflejar el baseline real y bloquear regresiones, no el estado final aun no alcanzado.
 
