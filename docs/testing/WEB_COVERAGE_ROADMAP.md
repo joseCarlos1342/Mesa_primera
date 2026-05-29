@@ -1749,3 +1749,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `160` suites y `929` tests; gate web subido a `81%` statements/lines y `80%` functions.
 - Riesgos abiertos: app player (`friends`, `profile`, `stats`, `wallet`, replays) sigue en `0%`; ramas profundas de `Board.tsx`/`Lobby.tsx`; actions admin residuales en `0%`.
 - Siguiente lote: cubrir shells player rapidos (`dashboard`, `lobby`, `wallet`) o entrar a `friends/profile` con mocks de acciones Supabase.
+
+## Checkpoint 52
+
+- Fecha: shells principales del jugador.
+- Coverage antes: `81.08%` statements, `81.08%` lines, `80.21%` functions, `78.87%` branches.
+- Coverage despues: `81.52%` statements, `81.52%` lines, `80.81%` functions, `79%` branches.
+- Archivos cubiertos: `app/(player)/dashboard/page.tsx`, `app/(player)/lobby/page.tsx`, `app/(player)/wallet/page.tsx`, `app/(player)/wallet/deposit/page.tsx`, `app/(player)/leaderboard/page.tsx`.
+- Tests agregados: `app/(player)/__tests__/shell-pages.test.tsx`.
+- Riesgos cerrados: dashboard con wallet ok/error, lobby dinamico con mesas comunes/custom y fallback ante error de carga, wallet con contenido/error visible, deposito con monto precargado y retorno a wallet tras exito, leaderboard con categoria por defecto/seleccionada y tabs navegables.
+- Checklist financiero/player: deposito y wallet se prueban con `DepositForm`/acciones mockeadas en bordes; no se tocaron RPCs, movimientos financieros ni `wallets_ledger`.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `161` suites y `938` tests; gate web subido a `79%` branches.
+- Riesgos abiertos: `stats`, `friends`, `profile`, `replays` player siguen con cobertura baja o nula; ramas profundas de `Board.tsx`/`Lobby.tsx`; actions admin residuales en `0%`.
+- Siguiente lote: cubrir `friends/profile/replays` player con mocks Supabase o entrar a ramas criticas de `Lobby.tsx`/`Board.tsx`.
