@@ -1725,3 +1725,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `156` suites y `916` tests; gate web subido a `77%` statements/lines.
 - Riesgos abiertos: ramas UI biometricas de `app/(auth)/login/player/page.tsx`, `Board.tsx`/`Lobby.tsx`, ramas residuales de middleware Supabase y componentes con funciones bajas (`NotificationCenter`, `SupportChat`, `LandingContent`).
 - Siguiente lote: cubrir login player biometrico/PIN/OTP en UI o entrar a `Lobby.tsx` para levantar branches/functions de game UI.
+
+## Checkpoint 50
+
+- Fecha: paginas de registro admin, biometria y perfil Google.
+- Coverage antes: `77.25%` statements, `77.25%` lines, `79.24%` functions, `78.73%` branches.
+- Coverage despues: `78.61%` statements, `78.61%` lines, `79.71%` functions, `78.74%` branches.
+- Archivos cubiertos: `app/(auth)/register/admin/page.tsx`, `app/(auth)/register/player/biometric/page.tsx`, `app/(auth)/register/player/complete/page.tsx`.
+- Tests agregados: `app/(auth)/register/admin/__tests__/page.test.tsx`, `app/(auth)/register/player/biometric/__tests__/page.test.tsx`, `app/(auth)/register/player/complete/__tests__/page.test.tsx`.
+- Riesgos cerrados: alta admin con campos requeridos, error/pending de invitacion; soporte biometrico, fallback sin soporte, registro passkey con `device_trusted_id`, skip manual, exito con bypass y redirect diferido, cancelacion biometrica; perfil Google precargado, email conectado, validacion local de nickname/telefono, avatar oculto y errores server-side.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `159` suites y `925` tests; gate web subido a `78%` statements/lines y `79%` functions.
+- Riesgos abiertos: paginas legales/publicas en `0%`, `Board.tsx`/`Lobby.tsx`, ramas residuales de `passkey-actions.ts`, `middleware.ts` y componentes con branch/function coverage baja.
+- Siguiente lote: cubrir paginas legales/publicas rapidas para subir lines o entrar a `Lobby.tsx`/`Board.tsx` para subir confianza del juego.
