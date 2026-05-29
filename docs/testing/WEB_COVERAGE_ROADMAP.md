@@ -1737,3 +1737,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `159` suites y `925` tests; gate web subido a `78%` statements/lines y `79%` functions.
 - Riesgos abiertos: paginas legales/publicas en `0%`, `Board.tsx`/`Lobby.tsx`, ramas residuales de `passkey-actions.ts`, `middleware.ts` y componentes con branch/function coverage baja.
 - Siguiente lote: cubrir paginas legales/publicas rapidas para subir lines o entrar a `Lobby.tsx`/`Board.tsx` para subir confianza del juego.
+
+## Checkpoint 51
+
+- Fecha: paginas legales publicas.
+- Coverage antes: `78.61%` statements, `78.61%` lines, `79.71%` functions, `78.74%` branches.
+- Coverage despues: `81.08%` statements, `81.08%` lines, `80.21%` functions, `78.87%` branches.
+- Archivos cubiertos: `app/(legal)/privacy/page.tsx`, `app/(legal)/terms/page.tsx`, `app/(legal)/security-policy/page.tsx`, `app/(legal)/rules/page.tsx`.
+- Tests agregados: `app/(legal)/__tests__/pages.test.tsx`.
+- Riesgos cerrados: metadata legal/canonica, headings principales, secciones de privacidad, terminos de elegibilidad/billetera, enlace `security.txt`, alcance de seguridad, secciones de reglas publicas y CTA de registro.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `160` suites y `929` tests; gate web subido a `81%` statements/lines y `80%` functions.
+- Riesgos abiertos: app player (`friends`, `profile`, `stats`, `wallet`, replays) sigue en `0%`; ramas profundas de `Board.tsx`/`Lobby.tsx`; actions admin residuales en `0%`.
+- Siguiente lote: cubrir shells player rapidos (`dashboard`, `lobby`, `wallet`) o entrar a `friends/profile` con mocks de acciones Supabase.
