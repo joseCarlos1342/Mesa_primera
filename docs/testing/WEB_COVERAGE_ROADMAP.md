@@ -1762,3 +1762,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `161` suites y `938` tests; gate web subido a `79%` branches.
 - Riesgos abiertos: `stats`, `friends`, `profile`, `replays` player siguen con cobertura baja o nula; ramas profundas de `Board.tsx`/`Lobby.tsx`; actions admin residuales en `0%`.
 - Siguiente lote: cubrir `friends/profile/replays` player con mocks Supabase o entrar a ramas criticas de `Lobby.tsx`/`Board.tsx`.
+
+## Checkpoint 53
+
+- Fecha: paginas sociales y replays del jugador.
+- Coverage antes: `81.52%` statements, `81.52%` lines, `80.81%` functions, `79%` branches.
+- Coverage despues: `85.31%` statements, `85.31%` lines, `80.94%` functions, `79.16%` branches.
+- Archivos cubiertos: `app/(player)/friends/page.tsx`, `app/(player)/replays/page.tsx`, `app/(player)/replays/mesa/[roomId]/page.tsx`, `app/(player)/replays/[gameId]/page.tsx`.
+- Tests agregados: `app/(player)/friends/__tests__/page.test.tsx`, `app/(player)/replays/__tests__/pages.test.tsx`.
+- Riesgos cerrados: amigos cubre carga inicial, presencia realtime, apertura de modal, solicitudes, chat por querystring, eliminacion con exito/error y refresh. Replays cubre listado empty/datos, jugadores unicos, fallback de mesa sin nombre/jugadores, resultados positivos/negativos/neutros, detalle de mesa, visor sin replay, visor jugador, copia de seed, modo admin, legacy sin frames e hidratacion desde game-server.
+- Checklist realtime/player: Supabase realtime, presencia, fetch de game-server y componentes pesados de replay mockeados en bordes; no se abren sockets ni se cambia el contrato de replays.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `164` suites y `955` tests; gate web subido a `85%` statements/lines manteniendo `79%` branches y `80%` functions.
+- Riesgos abiertos: `profile`, `stats` y paginas wallet secundarias siguen con cobertura baja o nula; ramas profundas de `Board.tsx`/`Lobby.tsx`; componentes `friends/_components` siguen como deuda funcional.
+- Siguiente lote: cubrir `profile`/wallet secundarias si se busca line coverage rapido, o entrar a `Lobby.tsx`/`Board.tsx` para subir confianza critica de juego.
