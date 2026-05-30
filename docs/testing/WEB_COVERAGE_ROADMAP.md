@@ -1775,3 +1775,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `164` suites y `955` tests; gate web subido a `85%` statements/lines manteniendo `79%` branches y `80%` functions.
 - Riesgos abiertos: `profile`, `stats` y paginas wallet secundarias siguen con cobertura baja o nula; ramas profundas de `Board.tsx`/`Lobby.tsx`; componentes `friends/_components` siguen como deuda funcional.
 - Siguiente lote: cubrir `profile`/wallet secundarias si se busca line coverage rapido, o entrar a `Lobby.tsx`/`Board.tsx` para subir confianza critica de juego.
+
+## Checkpoint 54
+
+- Fecha: wallet secundario del jugador.
+- Coverage antes: `85.31%` statements, `85.31%` lines, `80.94%` functions, `79.16%` branches.
+- Coverage despues: `86.1%` statements, `86.1%` lines, `81.41%` functions, `79.39%` branches.
+- Archivos cubiertos: `app/(player)/wallet/history/page.tsx`, `app/(player)/wallet/history/HistoryList.tsx`, `app/(player)/wallet/withdraw/page.tsx`.
+- Tests agregados: `app/(player)/wallet/__tests__/secondary-pages.test.tsx`.
+- Riesgos cerrados: historial con error visible, enlace de regreso, empty state, tipos de transaccion, estados, montos credito/debito y detalle modal. Retiro cubre validacion local, bloqueo de caracteres invalidos, request exitosa con retorno a wallet y error accionable por alerta.
+- Checklist financiero/player: `getWalletHistory` y `requestWithdrawal` mockeadas en bordes; pruebas solo validan UI/callbacks; sin cambios a RPCs, acciones financieras ni `wallets_ledger`.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `165` suites y `961` tests; gate web subido a `86%` statements/lines y `81%` functions.
+- Riesgos abiertos: `profile` requiere estrategia especifica para evitar tests fragiles de formulario grande; `stats` tiene cambios concurrentes sin tocar; ramas profundas de `Board.tsx`/`Lobby.tsx` siguen como deuda critica.
+- Siguiente lote: cubrir `profile` con seams mas chicos o entrar a `Lobby.tsx`/`Board.tsx` para subir confianza del juego.
