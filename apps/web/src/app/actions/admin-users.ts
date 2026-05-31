@@ -78,17 +78,12 @@ export async function adjustUserBalance(userId: string, deltaCents: number, reas
   if (deltaCents === 0) throw new Error("El monto debe ser diferente de cero");
   if (!reason.trim()) throw new Error("El motivo del ajuste es obligatorio");
 
-  const direction = deltaCents > 0 ? 'credit' : 'debit';
   const amountCents = Math.abs(deltaCents);
 
-  const { data, error } = await supabase.rpc('process_ledger_entry', {
+  const { data, error } = await supabase.rpc('admin_adjust_user_balance', {
     p_user_id: userId,
-    p_amount_cents: amountCents,
-    p_type: 'adjustment',
-    p_direction: direction,
-    p_description: `Ajuste administrativo: ${reason.trim()}`,
-    p_approved_by: adminId,
-    p_metadata: { reason: reason.trim(), admin_id: adminId },
+    p_delta_cents: deltaCents,
+    p_reason: reason.trim(),
   });
 
   if (error) throw new Error(error.message);
@@ -101,22 +96,22 @@ export async function adjustUserBalance(userId: string, deltaCents: number, reas
 
   await supabase.from('notifications').insert({
     user_id: userId,
-    type: 'balance_adjustment',
-    title: direction === 'credit' ? 'Saldo Acreditado' : 'Saldo Debitado',
-    body: direction === 'credit'
-      ? `Se acreditaron ${formattedAmount} a tu cuenta. Motivo: ${reason.trim()}`
-      : `Se debitaron ${formattedAmount} de tu cuenta. Motivo: ${reason.trim()}`,
-    data: {
-      amount_cents: amountCents,
-      direction,
-      balance_after: data?.balance_after,
-    },
+      type: 'balance_adjustment',
+      title: deltaCents > 0 ? 'Saldo Acreditado' : 'Saldo Debitado',
+      body: deltaCents > 0
+        ? `Se acreditaron ${formattedAmount} a tu cuenta. Motivo: ${reason.trim()}`
+        : `Se debitaron ${formattedAmount} de tu cuenta. Motivo: ${reason.trim()}`,
+      data: {
+        amount_cents: amountCents,
+        direction: deltaCents > 0 ? 'credit' : 'debit',
+        balance_after: data?.balance_after,
+      },
   });
 
   // Registrar en audit log
   await logAdminAction(adminId, 'balance_adjusted', 'user', userId, {
     delta_cents: deltaCents,
-    direction,
+    direction: deltaCents > 0 ? 'credit' : 'debit',
     amount_cents: amountCents,
     balance_after: data?.balance_after,
     reason: reason.trim(),

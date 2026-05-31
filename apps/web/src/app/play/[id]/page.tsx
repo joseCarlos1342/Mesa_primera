@@ -79,10 +79,12 @@ export default function GameRoomPage() {
   /** Si el servidor reabrió el Pique para que los que pasaron puedan igualar */
   const [piqueReopenActive, setPiqueReopenActive] = useState(false)
   /** Prompt de resolución inmediata: Llevo Juego / No Llevo (paso definitivo con juego en APUESTA_4_CARTAS) */
-  const [pasoJuegoChoice, setPasoJuegoChoice] = useState<{ handType: string } | null>(null)
+  const [pasoJuegoChoice, setPasoJuegoChoice] = useState<{ hasJuego: boolean; handType: string } | null>(null)
   const hasAttemptedJoin = useRef(false)
   /** Marca si el jugador abandonó intencionalmente (evita auto-reconexión) */
   const abandonedRef = useRef(false)
+  const countdownTickAudioContextRef = useRef<AudioContext | null>(null)
+  const lastCountdownTickRef = useRef<number | null>(null)
 
   // Mantiene la pantalla encendida en móviles
   useWakeLock()
@@ -135,6 +137,61 @@ export default function GameRoomPage() {
       room.send('toggleReady', { isReady: false })
     }
   }, [isPortrait, room, phase, players])
+
+  useEffect(() => {
+    if (countdown < 1 || countdown > 5) {
+      lastCountdownTickRef.current = null
+      return
+    }
+
+    if (lastCountdownTickRef.current === countdown) return
+    lastCountdownTickRef.current = countdown
+
+    try {
+      const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }
+      const AudioContextConstructor = audioWindow.AudioContext || audioWindow.webkitAudioContext
+      if (!AudioContextConstructor) return
+
+      const audioContext = countdownTickAudioContextRef.current ?? new AudioContextConstructor()
+      countdownTickAudioContextRef.current = audioContext
+
+      if (audioContext.state === 'suspended') {
+        void audioContext.resume().catch(() => {})
+      }
+
+      const now = audioContext.currentTime
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+
+      oscillator.type = 'square'
+      oscillator.frequency.setValueAtTime(1600, now)
+      gainNode.gain.setValueAtTime(0.0001, now)
+      gainNode.gain.exponentialRampToValueAtTime(0.08, now + 0.005)
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.09)
+
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      oscillator.onended = () => {
+        oscillator.disconnect()
+        gainNode.disconnect()
+      }
+      oscillator.start(now)
+      oscillator.stop(now + 0.1)
+    } catch {
+      // El countdown debe seguir funcionando incluso si el navegador bloquea audio.
+    }
+  }, [countdown])
+
+  useEffect(() => {
+    return () => {
+      const audioContext = countdownTickAudioContextRef.current
+      countdownTickAudioContextRef.current = null
+      lastCountdownTickRef.current = null
+      if (audioContext) {
+        void audioContext.close().catch(() => {})
+      }
+    }
+  }, [])
 
   // Reset voto local si la propuesta cambia (nueva propuesta o se resolvió)
   useEffect(() => {
@@ -337,6 +394,8 @@ export default function GameRoomPage() {
           // Limpiar prompt de paso-juego cuando sale de APUESTA_4_CARTAS
           if (state.phase !== 'APUESTA_4_CARTAS') {
             setPasoJuegoChoice(null);
+          } else if (state.turnPlayerId !== joinedRoom.sessionId) {
+            setPasoJuegoChoice(null);
           }
           // Limpiar reapertura de pique cuando sale de PIQUE
           if (state.phase !== 'PIQUE') {
@@ -370,7 +429,7 @@ export default function GameRoomPage() {
         })
 
         // Prompt de resolución inmediata: Llevo Juego / No Llevo (paso definitivo con juego)
-        joinedRoom.onMessage("paso-juego-choice", (data: { handType: string }) => {
+        joinedRoom.onMessage("paso-juego-choice", (data: { hasJuego: boolean; handType: string }) => {
           setPasoJuegoChoice(data);
         })
 

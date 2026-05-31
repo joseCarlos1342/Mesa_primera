@@ -214,7 +214,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
           // Resolución inmediata: preguntar Llevo Juego / No Llevo ahora mismo
           r.pendingPasoJuegoPlayerId = client.sessionId;
           r.pendingPasoJuegoPhase = phase;
-          client.send('paso-juego-choice', { handType: hand.type });
+          client.send('paso-juego-choice', { hasJuego: true, handType: hand.type });
           r.state.lastAction = `${player.nickname} decide si lleva juego...`;
           console.log(`[MesaRoom] ${player.nickname} paso definitivo con juego (${hand.type}) en ${phase} — esperando decisión inmediata`);
           // NO llamar advanceNext() — turn queda en este jugador hasta que responda

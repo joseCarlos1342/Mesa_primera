@@ -462,6 +462,63 @@ A continuación se documentan las vulnerabilidades identificadas y corregidas du
 
 **Estado:** Documentado como comportamiento conocido. Los jugadores solo ven transacciones de vault (`deposit`, `withdrawal`, `refund`, `adjustment`). Las transacciones de juego son visibles en el historial de replays, no en el ledger de la wallet.
 
+### 11.6 RPCs de replay con `SECURITY DEFINER` sin guard interno
+
+**Descripción:** Las RPCs de replay corrían como `SECURITY DEFINER`. Si una función acepta `p_user_id` o expone vistas admin y no valida `auth.uid()` dentro de la propia función, puede saltarse RLS aunque la server action haga una verificación previa.
+
+**Corrección aplicada:** Migración `20260528000000_harden_replay_rpc_rls.sql`.
+
+- `get_player_replays`, `get_player_replays_by_mesa` y `get_player_replays_for_room` ahora exigen `auth.uid() = p_user_id`.
+- `get_admin_replays` y `get_replay_ledger` ahora exigen `public.is_admin()` dentro de la RPC.
+- `get_replay_ledger` solo devuelve ledger asociado a partidas `finished`.
+- Se revocó `EXECUTE` desde `PUBLIC` y se concedió únicamente a `authenticated`.
+- La regresión queda cubierta en `supabase/tests/20260528000000_replay_rpc_rls.test.sql`.
+
+### 11.7 Controles CLI obligatorios para Supabase
+
+Antes de mergear cambios de migraciones/RLS se deben ejecutar estos controles contra el proyecto Supabase online vinculado:
+
+```bash
+pnpm exec supabase db lint --linked --schema public,storage --level warning
+pnpm exec supabase db advisors --linked --type security --level warn
+```
+
+Si el rol temporal remoto `cli_login_postgres` falla, configurar `SUPABASE_DB_PASSWORD` o renovar la conexión del CLI antes del deploy. Estos comandos detectan, entre otros, tablas públicas sin RLS, policies creadas sobre tablas con RLS deshabilitado y avisos de seguridad del advisor de Supabase.
+
+### 11.8 RPCs financieras privilegiadas no expuestas al cliente
+
+**Descripción:** `process_ledger_entry` y `award_pot` son primitivas financieras `SECURITY DEFINER`. Si quedan ejecutables por `authenticated`, cualquier usuario autenticado podría intentar construir llamadas directas contra `/rest/v1/rpc/*`.
+
+**Corrección aplicada:** Migración `20260528001000_harden_financial_rpc_grants.sql`.
+
+- `process_ledger_entry` queda revocada para `PUBLIC`, `anon` y `authenticated`; solo `service_role` puede llamarla directamente.
+- `award_pot` queda revocada para `PUBLIC`, `anon` y `authenticated`; solo `service_role` puede llamarla directamente.
+- El ajuste manual del admin usa `admin_adjust_user_balance`, una RPC con guard interno `public.is_admin()` que delega en `process_ledger_entry` sin exponer la primitiva financiera cruda.
+- RPCs legacy remotas como `record_ledger_entry`, si existen, quedan revocadas para clientes y limitadas a `service_role`.
+
+### 11.9 Superficie RPC interna reducida
+
+**Descripción:** Funciones internas de trigger y agregados financieros aparecían como ejecutables desde roles cliente por grants heredados de PostgreSQL.
+
+**Corrección aplicada:** Migración `20260528004000_harden_internal_rpc_surface.sql`.
+
+- `handle_new_user`, triggers de notificación y `update_dispute_updated_at` quedan sin `EXECUTE` para `PUBLIC`, `anon` y `authenticated`.
+- `transfer_pique_banda` fija `search_path = public` y queda ejecutable solo por `service_role`.
+- `get_total_users_balance` y `get_vault_status` mantienen acceso al dashboard admin y al game-server, pero ahora validan `public.is_admin()` o `auth.role() = 'service_role'` dentro de la DB.
+- `process_admin_transaction` y `get_admin_ledger_summary` revocan acceso `anon` y conservan `authenticated` con guard interno admin.
+
+### 11.10 Grants por defecto y acceso anónimo a RPCs
+
+**Descripción:** PostgreSQL concede `EXECUTE` a `PUBLIC` para funciones nuevas si no se revoca explícitamente. Eso hacía que varias RPCs `SECURITY DEFINER` aparecieran como invocables por `anon` aunque tuvieran guard interno.
+
+**Corrección aplicada:** Migración `20260528005000_revoke_anon_rpc_surface.sql`.
+
+- Se revoca `EXECUTE` por defecto en funciones futuras del schema `public`.
+- Se revoca `PUBLIC`/`anon` de las RPCs de replay, admin, soporte, sanciones, bonus, transferencias y agregados.
+- Se re-concede `authenticated` solo a RPCs usadas por la app con sesión.
+- Se re-concede `service_role` solo a primitivas de game-server/finanzas.
+- Se mantienen como excepción pre-auth mínima `check_phone_exists`, `user_has_pin`, `is_device_trusted` y `lookup_passkey_device` porque se usan antes de iniciar sesión.
+
 ---
 
 ## 12. Modelo de Amenazas y Defensas

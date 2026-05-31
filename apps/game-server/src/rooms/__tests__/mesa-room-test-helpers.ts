@@ -1,4 +1,5 @@
 import type { ColyseusTestServer } from '@colyseus/testing';
+import { createServer } from 'node:net';
 
 interface CreateMesaTestContextOptions {
   tableId: string;
@@ -46,4 +47,23 @@ export async function createMesaTestContext(
 
 export async function waitForStatePropagation(delayMs: number = 100) {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+export async function getAvailableTestPort() {
+  return await new Promise<number>((resolve, reject) => {
+    const server = createServer();
+
+    server.once('error', reject);
+    server.listen(0, () => {
+      const address = server.address();
+      server.close(() => {
+        if (address && typeof address === 'object') {
+          resolve(address.port);
+          return;
+        }
+
+        reject(new Error('No se pudo reservar un puerto libre para Colyseus testing'));
+      });
+    });
+  });
 }

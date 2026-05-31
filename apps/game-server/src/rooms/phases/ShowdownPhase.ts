@@ -36,6 +36,17 @@ export const showdownPhase: IGamePhase = {
 
     if (activePlayers.length === 1) {
       const winner = activePlayers[0];
+      if (r.forcedShowdownRevealWinnerId === winner.id) {
+        console.log(`[MesaRoom] ${winner.nickname} debe mostrar obligatorio por juego declarado`);
+        winner.revealedCards = winner.cards;
+        r.state.lastAction = `¡${winner.nickname} gana con ${evaluateHand(winner.cards).type}!`;
+        r.state.turnPlayerId = winner.id;
+        r.state.showdownTimer = 0;
+        r.clearTurnTimer();
+        r.startShowdownAutoTimer();
+        return;
+      }
+
       if (r.state.pot === 0) {
         // Pot=0 (apuesta devuelta) pero queda un ganador con cartas:
         // Revelar obligatoriamente su mano antes de cerrar.

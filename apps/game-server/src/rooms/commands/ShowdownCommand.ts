@@ -23,6 +23,11 @@ export function handleDismissShowdown(room: MesaRoom, _client: Client): void {
   r.clearTurnTimer();
   r.clearShowdownAutoTimer();
 
+  if (r.pendingPiqueWinnerIds.length > 0) {
+    r.finalizeApuesta4PiqueShowdown();
+    return;
+  }
+
   // Caso 1: Showdown del pique (después de completar 4 cartas)
   if (r.pendingPiqueWinnerId) {
     r.state.players.forEach((p: Player) => { p.revealedCards = ""; });
@@ -271,11 +276,12 @@ export function handlePasoJuegoResponse(room: MesaRoom, client: Client, message:
   const player = r.state.players.get(client.sessionId);
   if (!player) return;
 
-  const { llevaJuego } = message;
+  const hand = evaluateHand(player.cards);
+  const llevaJuego = hand.type !== 'NINGUNA';
   r.pendingPasoJuegoPlayerId = "";
   r.pendingPasoJuegoPhase = "";
 
-  r.recordEvent({ event: 'action', phase: resolvePhase, player: client.sessionId, action: llevaJuego ? 'llevo-juego-inmediato' : 'no-llevo-juego', time: Date.now(), rng_state: r.getRngState() });
+  r.recordEvent({ event: 'action', phase: resolvePhase, player: client.sessionId, action: llevaJuego ? 'llevo-juego-inmediato' : 'no-llevo-juego', clientClaimed: message?.llevaJuego, serverOverride: message?.llevaJuego !== llevaJuego, time: Date.now(), rng_state: r.getRngState() });
 
   // Callback de siguiente fase según la fase actual
   const nextPhaseCallback = r.getNextPhaseCallback(resolvePhase);

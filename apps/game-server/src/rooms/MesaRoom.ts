@@ -1248,6 +1248,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (remaining.length <= 1) {
       this.resolvePiqueAfterApuesta4();
+      if (this.state.phase === 'SHOWDOWN') {
+        return;
+      }
       this.endHandEarlyAfterFoldOut();
       return;
     }

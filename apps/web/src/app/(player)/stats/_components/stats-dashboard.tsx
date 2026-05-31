@@ -121,6 +121,7 @@ function BonusCard({
   onUpdate: (bs: BonusStatus) => void;
 }) {
   const [claiming, setClaiming] = useState<number | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const [celebration, setCelebration] = useState<{ name: string; amount: number } | null>(null);
 
   const nextTier = bonusStatus.tiers.find((t) => !t.unlocked);
@@ -172,23 +173,31 @@ function BonusCard({
 
   const handleClaim = async (tierId: number) => {
     setClaiming(tierId);
-    const result = await claimBonus(tierId);
-    if (result.success) {
-      const claimed = bonusStatus.tiers.find((t) => t.id === tierId);
-      onUpdate({
-        ...bonusStatus,
-        tiers: bonusStatus.tiers.map((t) =>
-          t.id === tierId ? { ...t, claimed: true } : t
-        ),
-      });
-      // Fire celebration
-      if (claimed) {
-        setCelebration({ name: claimed.name, amount: claimed.bonus_amount_cents });
-        fireConfetti();
-        setTimeout(() => setCelebration(null), 4000);
+    setClaimError(null);
+    try {
+      const result = await claimBonus(tierId);
+      if (result.error) {
+        setClaimError(result.error);
+        return;
       }
+
+      if (result.success) {
+        const claimed = bonusStatus.tiers.find((t) => t.id === tierId);
+        onUpdate({
+          ...bonusStatus,
+          tiers: bonusStatus.tiers.map((t) =>
+            t.id === tierId ? { ...t, claimed: true } : t
+          ),
+        });
+        if (claimed) {
+          setCelebration({ name: claimed.name, amount: claimed.bonus_amount_cents });
+          fireConfetti();
+          setTimeout(() => setCelebration(null), 4000);
+        }
+      }
+    } finally {
+      setClaiming(null);
     }
-    setClaiming(null);
   };
 
   const formatCOP = (cents: number) =>
@@ -256,6 +265,12 @@ function BonusCard({
             />
           ))}
         </div>
+
+        {claimError && (
+          <p role="alert" className="rounded-2xl border border-brand-red/30 bg-brand-red/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-brand-red">
+            {claimError}
+          </p>
+        )}
       </div>
 
       {/* Celebration Overlay */}

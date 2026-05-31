@@ -12,6 +12,7 @@ interface ShowdownPlayer {
   nickname: string;
   revealedCards: string;
   isFolded: boolean;
+  passedWithJuego?: boolean;
   turnOrder?: number;
 }
 
@@ -42,7 +43,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
   const containerRef = useRef<HTMLDivElement>(null);
 
   const activePlayers = players
-    .filter(p => !p.isFolded && p.revealedCards)
+    .filter(p => p.revealedCards && (!p.isFolded || p.passedWithJuego))
     .sort((a, b) => (a.turnOrder || 99) - (b.turnOrder || 99)); // Mano (1) first, then 2, 3, etc.
 
   // Compute winner client-side (same logic as server: hand rank > points, La Mano +1)
