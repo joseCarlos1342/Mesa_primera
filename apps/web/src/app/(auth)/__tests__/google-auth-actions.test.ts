@@ -2,6 +2,10 @@ import { completeGoogleRegistration, getGoogleUserData } from '../auth-actions'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
+const TEST_PHONE_LOCAL = '3000000000'
+const TEST_PHONE_E164 = '+573000000000'
+const TEST_PHONE_QUERY = '%2B573000000000'
+
 jest.mock('@/app/actions/anti-fraud', () => ({
   enforceRateLimiting: jest.fn().mockResolvedValue({ success: true }),
 }))
@@ -122,7 +126,7 @@ describe('Google Auth Actions', () => {
       const fd = new FormData()
       fd.append('fullName', overrides.fullName ?? 'Jose Carlos')
       fd.append('nickname', overrides.nickname ?? 'ChepeGoogle')
-      fd.append('phone', overrides.phone ?? '3205802918')
+      fd.append('phone', overrides.phone ?? TEST_PHONE_LOCAL)
       fd.append('avatarId', overrides.avatarId ?? 'as-oros')
       return fd
     }
@@ -138,7 +142,7 @@ describe('Google Auth Actions', () => {
       expect(mockAdminSupabase.auth.admin.updateUserById).toHaveBeenCalledWith(
         'google-user-123',
         expect.objectContaining({
-          phone: '+573205802918',
+          phone: TEST_PHONE_E164,
           phone_confirm: false,
           user_metadata: expect.objectContaining({
             full_name: 'Jose Carlos',
@@ -154,13 +158,13 @@ describe('Google Auth Actions', () => {
 
       // OTP sent
       expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalledWith({
-        phone: '+573205802918',
+        phone: TEST_PHONE_E164,
         options: { shouldCreateUser: false },
       })
 
       // Redirect to verify page
       expect(redirect).toHaveBeenCalledWith(
-        '/register/player/verify?phone=%2B573205802918&flow=register',
+        `/register/player/verify?phone=${TEST_PHONE_QUERY}&flow=register`,
       )
     })
 
@@ -185,7 +189,7 @@ describe('Google Auth Actions', () => {
           user: {
             id: 'google-user-123',
             email: 'test@gmail.com',
-            phone: '+573205802918',
+            phone: TEST_PHONE_E164,
             user_metadata: {
               full_name: 'Google User',
               avatar_url: 'https://lh3.google.com/photo',

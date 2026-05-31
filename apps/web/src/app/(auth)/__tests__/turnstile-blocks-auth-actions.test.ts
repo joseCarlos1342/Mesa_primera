@@ -1,6 +1,8 @@
 import { registerPlayer, loginWithPin } from '../auth-actions'
 import { createClient } from '@/utils/supabase/server'
 
+const TEST_PHONE_LOCAL = '3000000000'
+
 jest.mock('@/lib/security/turnstile', () => ({
   verifyTurnstile: jest.fn().mockResolvedValue({
     success: false,
@@ -31,7 +33,7 @@ describe('turnstile blocks auth actions', () => {
 
   it('bloquea registerPlayer antes de crear cliente Supabase', async () => {
     const result = await registerPlayer(null, buildFormData({
-      phone: '3205802918',
+      phone: TEST_PHONE_LOCAL,
       fullName: 'Jose Carlos',
       nickname: 'Chepe',
       avatarId: 'as-oros',
@@ -45,7 +47,7 @@ describe('turnstile blocks auth actions', () => {
 
   it('bloquea loginWithPin antes de llamar a signInWithPassword', async () => {
     const result = await loginWithPin(null, buildFormData({
-      phone: '3205802918',
+      phone: TEST_PHONE_LOCAL,
       pin: '123456',
     }))
 

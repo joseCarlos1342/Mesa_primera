@@ -4,6 +4,10 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { enforceSessionPolicy } from '../auth-actions-helpers'
 
+const TEST_PHONE_LOCAL = '3000000000'
+const TEST_PHONE_E164 = '+573000000000'
+const TEST_PHONE_QUERY = '%2B573000000000'
+
 jest.mock('@/lib/security/turnstile', () => ({
   verifyTurnstile: jest.fn().mockResolvedValue({ success: true }),
 }))
@@ -84,14 +88,14 @@ describe('loginWithPin coverage', () => {
     const supabase = buildSupabase()
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
-    await loginWithPin(null, buildFormData({ phone: '3205802918', pin: '123456' }))
+    await loginWithPin(null, buildFormData({ phone: TEST_PHONE_LOCAL, pin: '123456' }))
 
     expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
-      phone: '+573205802918',
+      phone: TEST_PHONE_E164,
       password: '123456',
     })
     expect(supabase.rpc).toHaveBeenCalledWith('is_device_trusted', {
-      p_phone: '+573205802918',
+      p_phone: TEST_PHONE_E164,
       p_device_id: 'trusted-device-1',
     })
     expect(enforceSessionPolicy).toHaveBeenCalledWith('player-1')
@@ -116,7 +120,7 @@ describe('loginWithPin coverage', () => {
     })
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
-    const result = await loginWithPin(null, buildFormData({ phone: '3205802918', pin: '000000' }))
+    const result = await loginWithPin(null, buildFormData({ phone: TEST_PHONE_LOCAL, pin: '000000' }))
 
     expect(result).toEqual({
       error: 'Número o clave incorrectos. Verifica tus datos.',
@@ -133,7 +137,7 @@ describe('loginWithPin coverage', () => {
     })
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
-    const result = await loginWithPin(null, buildFormData({ phone: '3205802918', pin: '123456' }))
+    const result = await loginWithPin(null, buildFormData({ phone: TEST_PHONE_LOCAL, pin: '123456' }))
 
     expect(result).toEqual({
       error: expect.stringContaining('servidor de autenticación'),
@@ -145,13 +149,13 @@ describe('loginWithPin coverage', () => {
     mockCookieGet.mockReturnValue(undefined)
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
-    await loginWithPin(null, buildFormData({ phone: '3205802918', pin: '123456' }))
+    await loginWithPin(null, buildFormData({ phone: TEST_PHONE_LOCAL, pin: '123456' }))
 
     expect(supabase.auth.signOut).toHaveBeenCalled()
     expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({
-      phone: '+573205802918',
+      phone: TEST_PHONE_E164,
       options: { shouldCreateUser: false },
     })
-    expect(redirect).toHaveBeenCalledWith('/login/player/device-verify?phone=%2B573205802918')
+    expect(redirect).toHaveBeenCalledWith(`/login/player/device-verify?phone=${TEST_PHONE_QUERY}`)
   })
 })
