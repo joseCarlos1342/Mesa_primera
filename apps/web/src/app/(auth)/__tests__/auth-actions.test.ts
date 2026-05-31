@@ -11,6 +11,10 @@ jest.mock('@/app/actions/admin-audit', () => ({
   logAdminAction: jest.fn(),
 }))
 
+jest.mock('@/lib/security/turnstile', () => ({
+  verifyTurnstile: jest.fn().mockResolvedValue({ success: true }),
+}))
+
 // Mock de enforceRateLimiting
 jest.mock('@/app/actions/anti-fraud', () => ({
   enforceRateLimiting: jest.fn().mockResolvedValue({ success: true })
@@ -37,6 +41,9 @@ jest.mock('../auth-actions-helpers', () => ({
 }))
 
 describe('Auth Actions', () => {
+  const TEST_PHONE_LOCAL = '3000000000'
+  const TEST_PHONE_E164 = '+573000000000'
+  const TEST_PHONE_QUERY = '%2B573000000000'
   let mockSignInWithOtp: ReturnType<typeof jest.fn>;
 
   beforeEach(() => {
@@ -56,7 +63,7 @@ describe('Auth Actions', () => {
   describe('registerPlayer', () => {
     it('debe llamar a signInWithOtp con la metadata correcta y redirigir', async () => {
       const formData = new FormData()
-      formData.append('phone', '3205802918')
+      formData.append('phone', TEST_PHONE_LOCAL)
       formData.append('fullName', 'Jose Carlos')
       formData.append('nickname', 'Chepe')
       formData.append('avatarId', 'as-oros')
@@ -68,7 +75,7 @@ describe('Auth Actions', () => {
       }
 
       expect(mockSignInWithOtp).toHaveBeenCalledWith({
-        phone: '+573205802918',
+        phone: TEST_PHONE_E164,
         options: {
           shouldCreateUser: true,
           data: {
@@ -79,14 +86,14 @@ describe('Auth Actions', () => {
           },
         },
       })
-      expect(redirect).toHaveBeenCalledWith('/register/player/verify?phone=%2B573205802918')
+      expect(redirect).toHaveBeenCalledWith(`/register/player/verify?phone=${TEST_PHONE_QUERY}`)
     })
   })
 
   describe('loginWithPhone', () => {
     it('debe llamar a signInWithOtp solo con el telefono y redirigir', async () => {
       const formData = new FormData()
-      formData.append('phone', '3205802918')
+      formData.append('phone', TEST_PHONE_LOCAL)
 
       try {
         await loginWithPhone({}, formData)
@@ -95,12 +102,12 @@ describe('Auth Actions', () => {
       }
 
       expect(mockSignInWithOtp).toHaveBeenCalledWith({
-        phone: '+573205802918',
+        phone: TEST_PHONE_E164,
         options: {
           shouldCreateUser: false
         }
       })
-      expect(redirect).toHaveBeenCalledWith('/login/player/verify?phone=%2B573205802918&flow=login-set-pin')
+      expect(redirect).toHaveBeenCalledWith(`/login/player/verify?phone=${TEST_PHONE_QUERY}&flow=login-set-pin`)
     })
 
     it('debe devolver un error si signInWithOtp falla', async () => {
@@ -109,7 +116,7 @@ describe('Auth Actions', () => {
       })
 
       const formData = new FormData()
-      formData.append('phone', '3205802918')
+      formData.append('phone', TEST_PHONE_LOCAL)
 
       const result = await loginWithPhone({}, formData)
 
@@ -123,7 +130,7 @@ describe('Auth Actions', () => {
       })
 
       const formData = new FormData()
-      formData.append('phone', '3205802918')
+      formData.append('phone', TEST_PHONE_LOCAL)
 
       const result = await loginWithPhone({}, formData)
 
@@ -144,8 +151,8 @@ describe('Auth Actions', () => {
       }
       ;(createClient as any).mockResolvedValue(mockSupabase)
 
-      await expect(checkPhoneHasPin('3205802918')).resolves.toBe(true)
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('user_has_pin', { p_phone: '+573205802918' })
+      await expect(checkPhoneHasPin(TEST_PHONE_LOCAL)).resolves.toBe(true)
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('user_has_pin', { p_phone: TEST_PHONE_E164 })
     })
 
     it('devuelve false cuando la RPC responde con data=false', async () => {
@@ -155,7 +162,7 @@ describe('Auth Actions', () => {
       }
       ;(createClient as any).mockResolvedValue(mockSupabase)
 
-      await expect(checkPhoneHasPin('3205802918')).resolves.toBe(false)
+      await expect(checkPhoneHasPin(TEST_PHONE_LOCAL)).resolves.toBe(false)
     })
 
     it('devuelve null (desconocido) cuando la RPC retorna un error — no debe caer a false silenciosamente', async () => {
@@ -168,13 +175,13 @@ describe('Auth Actions', () => {
       }
       ;(createClient as any).mockResolvedValue(mockSupabase)
 
-      await expect(checkPhoneHasPin('3205802918')).resolves.toBeNull()
+      await expect(checkPhoneHasPin(TEST_PHONE_LOCAL)).resolves.toBeNull()
     })
 
     it('devuelve null cuando createClient falla (sin env Supabase)', async () => {
       ;(createClient as any).mockRejectedValueOnce(new Error('Missing required Supabase environment variables'))
 
-      await expect(checkPhoneHasPin('3205802918')).resolves.toBeNull()
+      await expect(checkPhoneHasPin(TEST_PHONE_LOCAL)).resolves.toBeNull()
     })
   })
 
