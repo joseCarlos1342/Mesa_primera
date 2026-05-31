@@ -80,6 +80,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   public juegoCallers: string[] = [];
   /** ID del ganador del pique pendiente de decidir mostrar/ocultar cartas. */
   public pendingPiqueWinnerId: string = "";
+  /** Ganadores pendientes del pique diferido de APUESTA_4_CARTAS (1 o varios en empate). */
+  public pendingPiqueWinnerIds: string[] = [];
+  /** Contestants revelados del pique diferido de APUESTA_4_CARTAS. */
+  public pendingPiqueContestantIds: string[] = [];
+  /** Continuación tras cerrar el reveal del pique diferido. */
+  public pendingPiqueContinuation: "DESCARTE" | "CLEANUP" | "REOPEN_BETTING" = "DESCARTE";
+  /** Callers pendientes de aplicar cuando el pique se resolvió visualmente primero. */
+  public pendingPiqueReopenCallers: { playerId: string; amount: number }[] = [];
   /** ID del jugador que declaró "llevo juego" en DESCARTE, pendiente de dismiss. */
   public pendingLlevoJuegoPlayerId: string = "";
   public pendingShowdownData: { overallWinnerId: string; potWinners: any[]; totalPayout: number; totalRake: number; activePlayers: Player[]; persisted?: boolean } | null = null;
@@ -109,12 +117,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   public piqueFoldCount = new Map<string, number>();
   /** Jugadores con "paso provisional" en APUESTA_4_CARTAS cuando quedan jugadores detrás por actuar */
   public pasoPendienteIds = new Set<string>();
+  /** Ganador único que debe mostrar obligatorio por llegar a showdown con juego declarado. */
+  public forcedShowdownRevealWinnerId: string = "";
   /** Jugador pendiente de decidir Llevo Juego / No Llevo en resolución inmediata */
   public pendingPasoJuegoPlayerId: string = "";
   /** Fase en la que se inició la resolución inmediata de paso-juego */
   public pendingPasoJuegoPhase: string = "";
   /** Fase desde la que se entró a PIQUE_REVEAL para saber a dónde volver */
   public phaseBeforePiqueReveal: string = "";
+  /** La Mano original al entrar a APUESTA_4_CARTAS, usada para desempates del pique. */
+  public apuesta4OriginalManoId: string = "";
   // ── JUEGO_VALIDACION: re-pregunta a todos tras all-check con juego ──
   /** Jugadores pendientes de responder en la fase JUEGO_VALIDACION. */
   public juegoValidationPendingIds = new Set<string>();
@@ -526,6 +538,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           const { overallWinnerId, potWinners, totalPayout, totalRake, activePlayers } = this.pendingShowdownData;
           this.pendingShowdownData = null;
           this.finalizeShowdown(overallWinnerId, potWinners, totalPayout, totalRake, activePlayers);
+        } else if (this.forcedShowdownRevealWinnerId) {
+          const winnerId = this.forcedShowdownRevealWinnerId;
+          this.forcedShowdownRevealWinnerId = "";
+          this.awardPot(winnerId);
         } else {
           // No pending showdown data — use endHandEarlyAfterFoldOut or direct LOBBY transition
           this.endHandEarlyAfterFoldOut();
@@ -602,7 +618,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.piqueRestartCount = 0;
     this.piqueFoldCount.clear();
     this.pendingPiqueWinnerId = "";
+    this.pendingPiqueWinnerIds = [];
+    this.pendingPiqueContestantIds = [];
+    this.pendingPiqueContinuation = "DESCARTE";
+    this.pendingPiqueReopenCallers = [];
     this.pendingShowdownData = null;
+    this.forcedShowdownRevealWinnerId = "";
+    this.apuesta4OriginalManoId = "";
     this.currentGameId = crypto.randomUUID();
     this.currentTimeline = [];
     this.snapshotBuilder.reset();
@@ -1247,6 +1269,97 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Flujo normal (sin juego, o ya se resolvió)
     this.resolvePiqueAfterApuesta4();
+    if (this.state.phase === 'SHOWDOWN') {
+      return;
+    }
+    this.startPhaseDescarte();
+  }
+
+  private compareHandsForPique(playerId: string, hand: HandEvaluation): HandEvaluation {
+    const manoId = this.apuesta4OriginalManoId || this.state.dealerId || this.state.activeManoId;
+    if (playerId !== manoId) {
+      return hand;
+    }
+
+    return { ...hand, points: hand.points + 1 };
+  }
+
+  private startApuesta4PiqueShowdown(
+    contestantIds: string[],
+    winnerIds: string[],
+    continuation: "DESCARTE" | "CLEANUP" | "REOPEN_BETTING" = "DESCARTE",
+    reopenCallers: { playerId: string; amount: number }[] = [],
+  ) {
+    this.pendingPiqueWinnerIds = [...winnerIds];
+    this.pendingPiqueContestantIds = [...contestantIds];
+    this.pendingPiqueContinuation = continuation;
+    this.pendingPiqueReopenCallers = [...reopenCallers];
+    this.pendingPiqueWinnerId = winnerIds.length === 1 ? winnerIds[0] : "";
+    this.state.phase = 'SHOWDOWN';
+    this.state.turnPlayerId = winnerIds[0] ?? "";
+    this.state.showdownTimer = 0;
+  }
+
+  public finalizeApuesta4PiqueShowdown() {
+    const contestantIds = [...this.pendingPiqueContestantIds];
+    const winnerIds = [...this.pendingPiqueWinnerIds];
+    const continuation = this.pendingPiqueContinuation;
+    const reopenCallers = [...this.pendingPiqueReopenCallers];
+
+    this.pendingPiqueContestantIds = [];
+    this.pendingPiqueWinnerIds = [];
+    this.pendingPiqueWinnerId = "";
+    this.pendingPiqueContinuation = "DESCARTE";
+    this.pendingPiqueReopenCallers = [];
+
+    if (winnerIds.length === 1) {
+      this.awardPiqueToContestant(winnerIds[0]);
+    } else if (winnerIds.length > 1) {
+      this.awardSplitPiqueToContestants(winnerIds);
+    }
+
+    for (const contestantId of contestantIds) {
+      const contestant = this.state.players.get(contestantId);
+      if (!contestant) continue;
+      contestant.revealedCards = "";
+      this.collectPlayerCards(contestantId, false);
+    }
+
+    const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter(p => !p.isFolded && p.connected);
+
+    if (remaining.length === 1 && this.state.pot > 0) {
+      const soloPlayer = remaining[0];
+      soloPlayer.chips += this.state.pot;
+      this.state.lastAction = `${soloPlayer.nickname} recupera su apuesta ($${(this.state.pot / 100).toLocaleString()})`;
+      console.log(`[MesaRoom] Devolviendo $${this.state.pot} a ${soloPlayer.nickname} tras resolver pique diferido`);
+
+      if (soloPlayer.supabaseUserId) {
+        SupabaseService.awardPot(soloPlayer.supabaseUserId, this.state.pot, 0, this.currentGameId).catch(console.error);
+      }
+
+      this.state.pot = 0;
+    }
+
+    if (remaining.length <= 1) {
+      this.clock.setTimeout(() => {
+        this.cleanupRound();
+      }, 3000);
+      return;
+    }
+
+    if (continuation === "REOPEN_BETTING") {
+      this.applyCallersAndReopenBetting(reopenCallers);
+      return;
+    }
+
+    if (continuation === "CLEANUP") {
+      this.clock.setTimeout(() => {
+        this.cleanupRound();
+      }, 3000);
+      return;
+    }
+
     this.startPhaseDescarte();
   }
 
@@ -1370,10 +1483,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
     }
 
-    // 2. Pagar pique al ganador
-    this.awardPiqueToContestant(winnerId);
-
-    // 3. Todos los claimants: folded, revelar cartas
+    // 2. Todos los claimants: folded, revelar cartas
     for (const cid of claimants) {
       const p = this.state.players.get(cid);
       if (!p) continue;
@@ -1395,11 +1505,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       }
     }
 
-    // 4. Procesar callers (si hay)
-    if (callers.length > 0) {
-      this.applyCallersAndReopenBetting(callers);
+    if (callers.length === 0) {
+      const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
+        .filter(p => !p.isFolded && p.connected);
+      this.startApuesta4PiqueShowdown(claimants, [winnerId], remaining.length <= 1 ? "CLEANUP" : "DESCARTE");
       return;
     }
+
+    this.startApuesta4PiqueShowdown(claimants, [winnerId], "REOPEN_BETTING", callers);
+    return;
 
     // 5. Sin callers: verificar cuántos quedan
     const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
@@ -1542,53 +1656,51 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       .filter(p => p.passedWithJuego);
 
     if (contestants.length === 0) {
-      // Nadie pasó con juego → Mano gana pique por defecto
-      const manoId = this.state.activeManoId || this.state.dealerId;
-      const mano = this.state.players.get(manoId);
-      if (mano) {
-        this.awardPiqueToContestant(manoId);
-        console.log(`[MesaRoom] Nadie pasó con juego — Mano (${mano.nickname}) gana pique por defecto`);
-      }
+      const unresolvedPiquePot = this.state.piquePot;
+      this.state.pot += unresolvedPiquePot;
+      this.state.piquePot = 0;
+      this.recordEvent({ event: 'pique_added_to_main_pot', piquePot: unresolvedPiquePot, time: Date.now(), rng_state: this.getRngState() });
+      console.log(`[MesaRoom] Nadie ganó el pique — $${unresolvedPiquePot} se suma al pozo principal`);
       return;
     }
 
     if (contestants.length === 1) {
-      this.awardPiqueToContestant(contestants[0].id);
-      contestants[0].revealedCards = "";
-      this.collectPlayerCards(contestants[0].id, false);
+      contestants[0].revealedCards = contestants[0].cards;
+      this.startApuesta4PiqueShowdown([contestants[0].id], [contestants[0].id]);
       return;
     }
 
-    // 2+ contestants: comparar por jerarquía de juego (SEGUNDA > CHIVO > PRIMERA)
-    const typeRank: Record<string, number> = { 'SEGUNDA': 3, 'CHIVO': 2, 'PRIMERA': 1 };
-    const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
+    const evaluations = contestants.map((contestant) => {
+      const hand = evaluateHand(contestant.cards);
+      return {
+        contestant,
+        comparedHand: this.compareHandsForPique(contestant.id, hand),
+      };
+    });
 
-    let winner = contestants[0];
-    let winnerHand = evaluateHand(winner.cards);
-    let winnerRank = typeRank[winnerHand.type] || 0;
-    let winnerSeatDist = ((this.seatOrder.indexOf(winner.id) - manoSeatIdx) + this.seatOrder.length) % this.seatOrder.length;
+    let best = evaluations[0].comparedHand;
+    let winnerIds = [evaluations[0].contestant.id];
 
-    for (let i = 1; i < contestants.length; i++) {
-      const p = contestants[i];
-      const h = evaluateHand(p.cards);
-      const rank = typeRank[h.type] || 0;
-      const seatDist = ((this.seatOrder.indexOf(p.id) - manoSeatIdx) + this.seatOrder.length) % this.seatOrder.length;
+    for (let i = 1; i < evaluations.length; i++) {
+      const current = evaluations[i];
+      const result = compareHands(current.comparedHand, best);
 
-      if (rank > winnerRank || (rank === winnerRank && seatDist < winnerSeatDist)) {
-        winner = p;
-        winnerHand = h;
-        winnerRank = rank;
-        winnerSeatDist = seatDist;
+      if (result > 0) {
+        best = current.comparedHand;
+        winnerIds = [current.contestant.id];
+      } else if (result === 0) {
+        winnerIds.push(current.contestant.id);
       }
     }
 
-    this.awardPiqueToContestant(winner.id);
-
-    // Recoger cartas de TODOS los contestants (ganador y perdedores)
     for (const contestant of contestants) {
-      contestant.revealedCards = "";
-      this.collectPlayerCards(contestant.id, false);
+      contestant.revealedCards = contestant.cards;
     }
+
+    this.startApuesta4PiqueShowdown(
+      contestants.map((contestant) => contestant.id),
+      winnerIds,
+    );
   }
 
   /** Paga el pique al ganador con 5% rake. */
@@ -1606,6 +1718,47 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
     }
     this.recordEvent({ event: 'pique_won_apuesta4', winner: winnerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
+    this.state.piquePot = 0;
+  }
+
+  public awardSplitPiqueToContestants(winnerIds: string[]) {
+    if (winnerIds.length === 0 || this.state.piquePot <= 0) return;
+
+    const totalPique = this.state.piquePot;
+    const shareBase = Math.floor(totalPique / winnerIds.length);
+    let remainder = totalPique % winnerIds.length;
+    let paidOut = 0;
+    const winnerNicknames: string[] = [];
+
+    for (const winnerId of winnerIds) {
+      const winner = this.state.players.get(winnerId);
+      if (!winner) continue;
+
+      const grossShare = shareBase + (remainder > 0 ? 1 : 0);
+      remainder = Math.max(0, remainder - 1);
+      const piqueRake = Math.min(grossShare, Math.ceil(grossShare * 0.05 / 100) * 100);
+      const piquePayout = grossShare - piqueRake;
+      winner.chips += piquePayout;
+      paidOut += piquePayout;
+      winnerNicknames.push(winner.nickname);
+
+      if (winner.supabaseUserId) {
+        SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
+      }
+
+      this.recordEvent({
+        event: 'pique_split_apuesta4',
+        winner: winnerId,
+        piquePot: totalPique,
+        payout: piquePayout,
+        rake: piqueRake,
+        winners: winnerIds,
+        time: Date.now(),
+        rng_state: this.getRngState(),
+      });
+    }
+
+    this.state.lastAction = `¡Pique dividido entre ${winnerNicknames.join(' y ')}! (+$${(paidOut / 100).toLocaleString()})`;
     this.state.piquePot = 0;
   }
 
@@ -1663,8 +1816,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.refundUncalledBet();
 
       // En APUESTA_4_CARTAS, resolver pique diferido antes de avanzar
-      if (this.state.phase === 'APUESTA_4_CARTAS') {
+      const wasApuesta4 = this.state.phase === 'APUESTA_4_CARTAS';
+      if (wasApuesta4) {
         this.resolvePiqueAfterApuesta4();
+        if (this.pendingPiqueWinnerIds.length > 0) {
+          return;
+        }
       }
 
       if (this.state.pot === 0 && activePlayers.length === 0 && this.state.piquePot === 0) {
@@ -1832,6 +1989,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // All players have declared — evaluate outcomes
     const withJuego = activePlayers.filter(p => p.declaredJuego === true);
     const withoutJuego = activePlayers.filter(p => p.declaredJuego === false);
+    this.forcedShowdownRevealWinnerId = "";
 
     if (withJuego.length >= 2) {
       // 2+ players with juego → fold the "no tengo juego" players, then betting round
@@ -1846,6 +2004,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         p.isFolded = true;
         if (p.id === this.state.activeManoId) this.transferMano();
       }
+      this.forcedShowdownRevealWinnerId = withJuego[0].id;
       this.startPhase6Showdown();
     } else {
       // Nobody has juego → points-based resolution among all active players
@@ -1885,7 +2044,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    */
   public calculateSidePots(activePlayers: Player[]): { amount: number; eligiblePlayerIds: string[] }[] {
     // Delegado a core/PotManager (refactor Fase 1.2). Comportamiento idéntico.
-    return calculateSidePotsPure(activePlayers);
+    const sidePots = calculateSidePotsPure(activePlayers);
+    const allocatedPot = sidePots.reduce((sum, sidePot) => sum + sidePot.amount, 0);
+    const unallocatedPot = this.state.pot - allocatedPot;
+
+    if (unallocatedPot > 0 && activePlayers.length > 0) {
+      sidePots.push({
+        amount: unallocatedPot,
+        eligiblePlayerIds: activePlayers.map(player => player.id),
+      });
+    }
+
+    return sidePots;
   }
 
   /**
@@ -2038,6 +2208,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   public cleanupRound() {
     this.clearTurnTimer();
     this.clearShowdownAutoTimer();
+    this.pendingPiqueWinnerId = "";
+    this.pendingPiqueWinnerIds = [];
+    this.pendingPiqueContestantIds = [];
+    this.pendingPiqueContinuation = "DESCARTE";
+    this.pendingPiqueReopenCallers = [];
+    this.forcedShowdownRevealWinnerId = "";
+    this.apuesta4OriginalManoId = "";
 
     Array.from(this.state.players.values() as IterableIterator<Player>).forEach(p => {
       p.isReady = false;

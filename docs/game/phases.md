@@ -27,6 +27,7 @@ Fuente de verdad resumida de las fases activas del motor segun `apps/game-server
 
 - Primera ronda de apuesta con mano completa inicial.
 - Aqui tambien viven validaciones de flujo como juego servido y resolucion del pique segun escenario.
+- Si nadie gana o reclama el pique en esta ronda, el `piquePot` no se adjudica por defecto: se suma al pozo principal y lo cobra quien gane el `SHOWDOWN`.
 
 ### 6. `DESCARTE`
 
@@ -51,6 +52,8 @@ Fuente de verdad resumida de las fases activas del motor segun `apps/game-server
 ### 11. `DECLARAR_JUEGO`
 
 - Declaracion de juego cuando la mano lo exige.
+- Si exactamente un jugador declara juego valido y los demas declaran `No Tengo Juego`, ese jugador gana por prueba de juego y pasa a `SHOWDOWN` con revelacion obligatoria.
+- Ese caso no usa `SHOWDOWN_WAIT`: el rival llego a la fase final y tiene derecho a verificar la combinacion ganadora.
 
 ### 12. `GUERRA_JUEGO`
 
@@ -59,6 +62,9 @@ Fuente de verdad resumida de las fases activas del motor segun `apps/game-server
 ### 13. `SHOWDOWN`
 
 - Revelacion final, evaluacion de manos y cierre logico de la mano.
+- Cuando 2+ jugadores compiten, las cartas se revelan obligatoriamente.
+- Cuando queda un unico ganador por `DECLARAR_JUEGO`, tambien hay revelacion obligatoria para probar el juego ganador.
+- `SHOWDOWN_WAIT` queda reservado para victoria por abandono/default, cuando el resto se retiro antes del cierre y el ganador puede elegir mostrar o no mostrar.
 
 ## Notas Importantes
 
