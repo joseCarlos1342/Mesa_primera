@@ -37,7 +37,7 @@ interface BoardProps {
   /** Si se reabrió el Pique para que los que pasaron puedan igualar. */
   piqueReopenActive?: boolean;
   /** Prompt de resolución inmediata de paso definitivo con juego. */
-  pasoJuegoChoice?: { handType: string } | null;
+  pasoJuegoChoice?: { hasJuego: boolean; handType: string } | null;
   /** Callback al resolver el prompt de paso-juego. */
   onPasoJuegoResolved?: () => void;
 }

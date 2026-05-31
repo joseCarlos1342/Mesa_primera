@@ -1456,11 +1456,17 @@ describe('MesaRoom via Colyseus Testing', () => {
       clients[2].send('action', { action: 'igualar' });
       await new Promise(r => setTimeout(r, 200));
 
-      // Should advance to DESCARTE — P2 is out of main pot
-      expect(room.state.phase).toBe('DESCARTE');
+      // Pique diferido → phase SHOWDOWN until dismissed
+      expect(room.state.phase).toBe('SHOWDOWN');
       expect(players[1].isFolded).toBe(true);
       expect(players[1].passedWithJuego).toBe(true);
       expect(players[2].isFolded).toBe(false);
+
+      // Dismiss showdown to continue to DESCARTE
+      clients[0].send('dismiss-showdown', {});
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(room.state.phase).toBe('DESCARTE');
     });
 
     it('P2 No Llevo Juego → fold, cartas devueltas, turno a P3', async () => {
@@ -1479,7 +1485,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       internalRoom.currentTimeline = [];
 
       players[0].cards = '07-O,06-C,05-E,01-B';
-      players[1].cards = '07-C,06-O,05-B,01-E'; // PRIMERA
+      players[1].cards = '02-O,03-O,05-O,04-C'; // NINGUNA — no tiene juego
       players[2].cards = '06-E,07-B,01-O,05-C';
       players.forEach(p => { p.isFolded = false; p.hasActed = false; p.roundBet = 0; p.supabaseUserId = `supa-${p.id}`; });
 
@@ -1489,11 +1495,8 @@ describe('MesaRoom via Colyseus Testing', () => {
       clients[0].send('action', { action: 'voy', amount: 500_000 });
       await new Promise(r => setTimeout(r, 200));
 
-      // P2 passes — has juego → prompt
+      // P2 passes — no juego → fold directo (sin prompt)
       clients[1].send('action', { action: 'paso' });
-      await new Promise(r => setTimeout(r, 200));
-      // P2 responds: No Llevo
-      clients[1].send('paso-juego-response', { llevaJuego: false });
       await new Promise(r => setTimeout(r, 200));
 
       expect(players[1].isFolded).toBe(true);
@@ -1534,14 +1537,20 @@ describe('MesaRoom via Colyseus Testing', () => {
       expect(players[2].passedWithJuego).toBe(false);
       expect(room.state.phase).toBe('APUESTA_4_CARTAS');
 
-      // P3 responds: Llevo Juego → pique deferred, advance to DESCARTE
+      // P3 responds: Llevo Juego → pique deferred
       clients[2].send('paso-juego-response', { llevaJuego: true });
       await new Promise(r => setTimeout(r, 200));
 
-      // Phase should go to DESCARTE (pique deferred, not PIQUE_REVEAL)
-      expect(room.state.phase).toBe('DESCARTE');
+      // Phase goes to SHOWDOWN (pique deferred)
+      expect(room.state.phase).toBe('SHOWDOWN');
       expect(players[2].passedWithJuego).toBe(true);
       expect(players[2].isFolded).toBe(true);
+
+      // Dismiss showdown to continue to DESCARTE
+      clients[0].send('dismiss-showdown', {});
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(room.state.phase).toBe('DESCARTE');
     });
 
     it('paso check (sin apuesta activa) sigue siendo check normal', async () => {
@@ -1870,6 +1879,9 @@ describe('MesaRoom via Colyseus Testing', () => {
       // Track fold-return-cards broadcast
       let foldReturnMsg: any = null;
       clients[1].onMessage('fold-return-cards', (data: any) => { foldReturnMsg = data; });
+
+      // Override Mano cards to NINGUNA so server evaluates llevaJuego=false
+      players[0].cards = '02-O,03-O,05-O,04-C';
 
       // La Mano responds: No Llevo
       clients[0].send('paso-juego-response', { llevaJuego: false });
@@ -3932,10 +3944,15 @@ describe('MesaRoom via Colyseus Testing', () => {
       clients[2].send('paso-juego-response', { llevaJuego: true });
       await new Promise(r => setTimeout(r, 200));
 
-      // P1 alone → betting rounds end → pique resolved between P2 (CHIVO) and P3 (PRIMERA)
+      // P1 alone → betting rounds end → pique deferred between P2 (CHIVO) and P3 (PRIMERA)
       // CHIVO > PRIMERA → P2 wins pique
-      // After resolution, should advance to DESCARTE (only P1 in main pot)
-      // Wait for phase transition
+      await new Promise(r => setTimeout(r, 300));
+
+      expect(room.state.phase).toBe('SHOWDOWN');
+      expect(room.state.piquePot).toBe(300_000);
+
+      // Dismiss showdown to award pique and continue
+      clients[0].send('dismiss-showdown', {});
       await new Promise(r => setTimeout(r, 300));
 
       // P2 (CHIVO) should have won pique
@@ -4293,19 +4310,27 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       const p2ChipsBefore = players[1].chips;
 
+      // P1 checks (no active bet → check normal, no prompt)
       clients[0].send('action', { action: 'paso' });
       await new Promise(r => setTimeout(r, 200));
-      clients[0].send('paso-juego-response', { llevaJuego: true });
-      await new Promise(r => setTimeout(r, 200));
 
+      // P2 bets → P1 y P3 enfrentan apuesta activa
       clients[1].send('action', { action: 'voy', amount: 500_000 });
       await new Promise(r => setTimeout(r, 200));
 
+      // P3 passes with juego → Llevo
       clients[2].send('action', { action: 'paso' });
       await new Promise(r => setTimeout(r, 200));
       clients[2].send('paso-juego-response', { llevaJuego: true });
+      await new Promise(r => setTimeout(r, 200));
+
+      // P1 passes with juego → Llevo
+      clients[0].send('action', { action: 'paso' });
+      await new Promise(r => setTimeout(r, 200));
+      clients[0].send('paso-juego-response', { llevaJuego: true });
       await new Promise(r => setTimeout(r, 250));
 
+      // Pique diferido → SHOWDOWN
       expect(room.state.phase).toBe('SHOWDOWN');
       expect(room.state.pot).toBe(0);
       expect(room.state.piquePot).toBe(300_000);
@@ -4322,7 +4347,7 @@ describe('MesaRoom via Colyseus Testing', () => {
     });
 
     it('divide el pique entre jugadores empatados que no son la mano', async () => {
-      const { room, internalRoom, ids, players } = await createMesaTestContext(colyseus, {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
         tableId: 'test-pique-empate-dividido',
         playerCount: 3,
       });
@@ -4404,7 +4429,9 @@ describe('MesaRoom via Colyseus Testing', () => {
       expect(players[1].isFolded).toBe(false);
       expect(players[2].isFolded).toBe(false);
 
-      expect(room.state.pot).toBe(potBefore);
+      // Nadie reclamó juego → piquePot se suma al pozo principal
+      expect(room.state.pot).toBe(potBefore + 300_000);
+      expect(room.state.piquePot).toBe(0);
       expect(room.state.phase).toBe('DESCARTE');
     });
 
@@ -9007,12 +9034,11 @@ describe('MesaRoom via Colyseus Testing', () => {
       internalRoom.currentGameId = 'test-rpaa4';
       internalRoom.currentTimeline = [];
 
-      const chipsBefore = players[0].chips;
+      const potBefore = room.state.pot;
       internalRoom.resolvePiqueAfterApuesta4();
-      await new Promise(r => setTimeout(r, 200));
 
-      expect(players[0].chips).toBeGreaterThan(chipsBefore);
       expect(room.state.piquePot).toBe(0);
+      expect(room.state.pot).toBe(potBefore + 1_000_000);
     });
 
     it('single contestant wins pique', async () => {
@@ -9035,6 +9061,7 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       const chipsBefore = players[1].chips;
       internalRoom.resolvePiqueAfterApuesta4();
+      internalRoom.finalizeApuesta4PiqueShowdown();
       await new Promise(r => setTimeout(r, 200));
 
       expect(players[1].chips).toBeGreaterThan(chipsBefore);
@@ -9061,6 +9088,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       internalRoom.currentTimeline = [];
 
       internalRoom.resolvePiqueAfterApuesta4();
+      internalRoom.finalizeApuesta4PiqueShowdown();
       await new Promise(r => setTimeout(r, 200));
 
       expect(room.state.piquePot).toBe(0);
@@ -9674,10 +9702,12 @@ describe('MesaRoom via Colyseus Testing', () => {
       players[1].passedWithJuego = false;
       players[2].passedWithJuego = false;
 
+      const potBefore = internalRoom.state.pot;
       internalRoom.resolvePiqueAfterApuesta4();
 
-      expect(SupabaseService.awardPot).toHaveBeenCalled();
+      expect(SupabaseService.awardPot).not.toHaveBeenCalled();
       expect(internalRoom.state.piquePot).toBe(0);
+      expect(internalRoom.state.pot).toBe(potBefore + 300_000);
     });
 
     it('awards pique to single contestant', async () => {
@@ -9697,6 +9727,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       players[2].passedWithJuego = false;
 
       internalRoom.resolvePiqueAfterApuesta4();
+      internalRoom.finalizeApuesta4PiqueShowdown();
 
       expect(SupabaseService.awardPot).toHaveBeenCalled();
       expect(internalRoom.state.piquePot).toBe(0);
@@ -9721,6 +9752,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       players[2].passedWithJuego = false;
 
       internalRoom.resolvePiqueAfterApuesta4();
+      internalRoom.finalizeApuesta4PiqueShowdown();
 
       expect(SupabaseService.awardPot).toHaveBeenCalled();
       expect(internalRoom.state.piquePot).toBe(0);
@@ -11116,7 +11148,7 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       const p1 = internalRoom.state.players.get(ids[1]);
       p1.isFolded = false; p1.connected = true;
-      p1.cards = '7-O,6-C,5-E,4-B';
+      p1.cards = '02-O,03-O,05-O,04-C'; // NINGUNA — server evaluará llevaJuego=false
 
       for (const id of ids) {
         if (id !== ids[1]) {
@@ -11443,6 +11475,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       p2.passedWithJuego = false;
 
       internalRoom.resolvePiqueAfterApuesta4();
+      internalRoom.finalizeApuesta4PiqueShowdown();
 
       expect(internalRoom.state.piquePot).toBe(0);
     });
@@ -11465,11 +11498,12 @@ describe('MesaRoom via Colyseus Testing', () => {
       p2.passedWithJuego = false;
 
       internalRoom.resolvePiqueAfterApuesta4();
+      internalRoom.finalizeApuesta4PiqueShowdown();
 
       expect(internalRoom.state.piquePot).toBe(0);
     });
 
-    it('0 contestants — mano wins by default', async () => {
+    it('0 contestants — pique added to main pot', async () => {
       const { internalRoom, ids } = await createMesaTestContext(colyseus, {
         tableId: 'rpa4-0contest-b5', playerCount: 3
       });
@@ -12560,6 +12594,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       const p1Before = players[1].chips;
 
       internalRoom.resolvePiqueAfterApuesta4();
+      internalRoom.finalizeApuesta4PiqueShowdown();
 
       // SEGUNDA > PRIMERA → player 1 wins
       const piqueRake = Math.ceil(600_000 * 0.05 / 100) * 100;
@@ -12594,6 +12629,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       const p0Before = players[0].chips;
 
       internalRoom.resolvePiqueAfterApuesta4();
+      internalRoom.finalizeApuesta4PiqueShowdown();
 
       // Same rank → player 0 is closest to mano (seat dist 0) → player 0 wins
       const piqueRake = Math.ceil(300_000 * 0.05 / 100) * 100;
@@ -12616,13 +12652,13 @@ describe('MesaRoom via Colyseus Testing', () => {
       players[0].connected = true;
 
       internalRoom.state.piquePot = 200_000;
-      const p0Before = players[0].chips;
+      const potBefore = internalRoom.state.pot;
 
       internalRoom.resolvePiqueAfterApuesta4();
 
-      // Mano (player 0) gets pique by default
-      const piqueRake = Math.ceil(200_000 * 0.05 / 100) * 100;
-      expect(players[0].chips).toBe(p0Before + 200_000 - piqueRake);
+      // Pique pot se suma al pozo principal cuando nadie reclama juego
+      expect(internalRoom.state.piquePot).toBe(0);
+      expect(internalRoom.state.pot).toBe(potBefore + 200_000);
     });
   });
 

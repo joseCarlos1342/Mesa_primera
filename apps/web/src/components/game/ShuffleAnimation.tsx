@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useGSAP } from '@gsap/react'
 import { gsap } from 'gsap'
 import { m } from 'framer-motion'
@@ -18,6 +18,9 @@ const CARD_H = 82
  */
 export function ShuffleAnimation() {
   const deckRef = useRef<HTMLDivElement>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const riffleNoiseBufferRef = useRef<AudioBuffer | null>(null)
+  const settleNoiseBufferRef = useRef<AudioBuffer | null>(null)
 
   useGSAP(() => {
     if (!deckRef.current) return
@@ -112,6 +115,134 @@ export function ShuffleAnimation() {
     addCycle(5)
     }) // end prefers-reduced-motion: no-preference
   }, { scope: deckRef })
+
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
+    const playShuffleSound = () => {
+      try {
+        const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }
+        const AudioContextConstructor = audioWindow.AudioContext || audioWindow.webkitAudioContext
+        if (!AudioContextConstructor) return
+
+        const audioContext = audioContextRef.current ?? new AudioContextConstructor()
+        audioContextRef.current = audioContext
+
+        const riffleBuffer = riffleNoiseBufferRef.current ?? (() => {
+          const nextBuffer = audioContext.createBuffer(1, Math.floor(audioContext.sampleRate * 1.2), audioContext.sampleRate)
+          const channelData = nextBuffer.getChannelData(0)
+          for (let i = 0; i < channelData.length; i++) {
+            const progress = i / channelData.length
+            const burstPhase = (progress * 22) % 1
+            const burstEnvelope = burstPhase < 0.36 ? 1 - burstPhase / 0.36 : 0.09
+            const grain = (Math.random() * 2 - 1) * 0.58
+            const rattle = Math.sin(progress * Math.PI * 110) * 0.12
+            const body = Math.sin(progress * Math.PI * 8) * 0.05
+            channelData[i] = (grain + rattle + body) * burstEnvelope * (1 - progress * 0.32)
+          }
+          riffleNoiseBufferRef.current = nextBuffer
+          return nextBuffer
+        })()
+
+        const settleBuffer = settleNoiseBufferRef.current ?? (() => {
+          const nextBuffer = audioContext.createBuffer(1, Math.floor(audioContext.sampleRate * 0.7), audioContext.sampleRate)
+          const channelData = nextBuffer.getChannelData(0)
+          for (let i = 0; i < channelData.length; i++) {
+            const progress = i / channelData.length
+            const grain = (Math.random() * 2 - 1) * 0.25
+            const crackle = Math.sin(progress * Math.PI * 18) * 0.05
+            const thud = Math.sin(progress * Math.PI * 5) * 0.03
+            channelData[i] = (grain + crackle + thud) * (1 - progress * 0.9)
+          }
+          settleNoiseBufferRef.current = nextBuffer
+          return nextBuffer
+        })()
+
+        const now = audioContext.currentTime
+        const clickOscillator = audioContext.createOscillator()
+        const clickFilter = audioContext.createBiquadFilter()
+        const clickGain = audioContext.createGain()
+        clickOscillator.type = 'triangle'
+        clickOscillator.frequency.setValueAtTime(2600, now)
+        clickOscillator.frequency.exponentialRampToValueAtTime(1180, now + 0.045)
+        clickFilter.type = 'bandpass'
+        clickFilter.frequency.setValueAtTime(1900, now)
+        clickFilter.Q.value = 3.2
+        clickGain.gain.setValueAtTime(0.0001, now)
+        clickGain.gain.exponentialRampToValueAtTime(0.11, now + 0.004)
+        clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06)
+        clickOscillator.connect(clickFilter)
+        clickFilter.connect(clickGain)
+        clickGain.connect(audioContext.destination)
+        clickOscillator.onended = () => {
+          clickOscillator.disconnect()
+          clickFilter.disconnect()
+          clickGain.disconnect()
+        }
+        clickOscillator.start(now)
+        clickOscillator.stop(now + 0.065)
+
+        const riffleSource = audioContext.createBufferSource()
+        const riffleFilter = audioContext.createBiquadFilter()
+        const riffleGain = audioContext.createGain()
+        riffleSource.buffer = riffleBuffer
+        riffleFilter.type = 'bandpass'
+        riffleFilter.frequency.setValueAtTime(1350, now)
+        riffleFilter.Q.value = 0.95
+        riffleGain.gain.setValueAtTime(0.0001, now)
+        riffleGain.gain.exponentialRampToValueAtTime(0.2, now + 0.04)
+        riffleGain.gain.exponentialRampToValueAtTime(0.11, now + 0.62)
+        riffleGain.gain.exponentialRampToValueAtTime(0.08, now + 1.08)
+        riffleSource.connect(riffleFilter)
+        riffleFilter.connect(riffleGain)
+        riffleGain.connect(audioContext.destination)
+        riffleSource.onended = () => {
+          riffleSource.disconnect()
+          riffleFilter.disconnect()
+          riffleGain.disconnect()
+        }
+        riffleSource.start(now + 0.012)
+        riffleSource.stop(now + 1.12)
+
+        const settleSource = audioContext.createBufferSource()
+        const settleFilter = audioContext.createBiquadFilter()
+        const settleGain = audioContext.createGain()
+        settleSource.buffer = settleBuffer
+        settleFilter.type = 'bandpass'
+        settleFilter.frequency.setValueAtTime(760, now + 1.02)
+        settleFilter.Q.value = 0.72
+        settleGain.gain.setValueAtTime(0.0001, now + 0.98)
+        settleGain.gain.exponentialRampToValueAtTime(0.075, now + 1.12)
+        settleGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.58)
+        settleSource.connect(settleFilter)
+        settleFilter.connect(settleGain)
+        settleGain.connect(audioContext.destination)
+        settleSource.onended = () => {
+          settleSource.disconnect()
+          settleFilter.disconnect()
+          settleGain.disconnect()
+        }
+        settleSource.start(now + 1.02)
+        settleSource.stop(now + 1.62)
+      } catch {
+        // La animacion visual debe continuar aunque el navegador bloquee el audio.
+      }
+    }
+
+    playShuffleSound()
+    intervalId = setInterval(playShuffleSound, 5000)
+
+    return () => {
+      if (intervalId !== null) clearInterval(intervalId)
+      riffleNoiseBufferRef.current = null
+      settleNoiseBufferRef.current = null
+      const audioContext = audioContextRef.current
+      audioContextRef.current = null
+      if (audioContext) {
+        void audioContext.close().catch(() => {})
+      }
+    }
+  }, [])
 
   return (
     <m.div

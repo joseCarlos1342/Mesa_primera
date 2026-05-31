@@ -254,4 +254,20 @@ describe('ActionControls', () => {
       expect(screen.getByText(/Tengo SEGUNDA/)).toBeInTheDocument();
     });
   });
+
+  describe('paso-juego-choice prompt', () => {
+    it('shows only Llevo Juego when the server confirms the player has juego', () => {
+      render(
+        <ActionControls
+          room={mockRoom}
+          phase="APUESTA_4_CARTAS"
+          isMyTurn={true}
+          pasoJuegoChoice={{ hasJuego: true, handType: 'PRIMERA' }}
+        />
+      );
+
+      expect(screen.getByText(/Llevo Juego/i)).toBeInTheDocument();
+      expect(screen.queryByText(/No Llevo/i)).not.toBeInTheDocument();
+    });
+  });
 });

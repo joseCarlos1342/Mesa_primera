@@ -139,8 +139,16 @@ describe('AnimationLayer', () => {
 
 describe('ShuffleAnimation', () => {
   beforeEach(() => {
+    jest.useFakeTimers()
     jest.clearAllMocks()
     useGSAPCallback = null
+  })
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers()
+    })
+    jest.useRealTimers()
   })
 
   it('renderiza banner y diez cartas de barajado', () => {
@@ -163,5 +171,112 @@ describe('ShuffleAnimation', () => {
     expect(timelineApi.addLabel).toHaveBeenCalledWith('end', 10)
     expect(timelineApi.set).toHaveBeenCalled()
     expect(timelineApi.to).toHaveBeenCalled()
+  })
+
+  it('reproduce sonido al iniciar cada ciclo de barajado', () => {
+    const setOscillatorFrequency = jest.fn()
+    const rampOscillatorFrequency = jest.fn()
+    const startOscillator = jest.fn()
+    const stopOscillator = jest.fn()
+    const oscillator = {
+      type: 'triangle',
+      frequency: {
+        setValueAtTime: setOscillatorFrequency,
+        exponentialRampToValueAtTime: rampOscillatorFrequency,
+      },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      start: startOscillator,
+      stop: stopOscillator,
+      onended: null as null | (() => void),
+    }
+    const startSource = jest.fn()
+    const stopSource = jest.fn()
+    const connectSource = jest.fn()
+    const disconnectSource = jest.fn()
+    const source = {
+      buffer: null,
+      connect: connectSource,
+      disconnect: disconnectSource,
+      start: startSource,
+      stop: stopSource,
+      onended: null as null | (() => void),
+    }
+    const setFilterFrequency = jest.fn()
+    const filter = {
+      type: 'bandpass',
+      frequency: { setValueAtTime: setFilterFrequency },
+      Q: { value: 0 },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    }
+    const setGain = jest.fn()
+    const rampGain = jest.fn()
+    const gain = {
+      gain: {
+        setValueAtTime: setGain,
+        exponentialRampToValueAtTime: rampGain,
+      },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    }
+    const createBuffer = jest.fn((_channels: number, frames: number) => ({
+      getChannelData: jest.fn(() => new Float32Array(frames)),
+    }))
+    const createBufferSource = jest.fn(() => source)
+    const createOscillator = jest.fn(() => oscillator)
+    const createBiquadFilter = jest.fn(() => filter)
+    const createGain = jest.fn(() => gain)
+    const close = jest.fn(() => Promise.resolve())
+    const audioContextMock = jest.fn(() => ({
+      state: 'running',
+      sampleRate: 48_000,
+      currentTime: 0,
+      destination: {},
+      createBuffer,
+      createBufferSource,
+      createOscillator,
+      createBiquadFilter,
+      createGain,
+      close,
+    }))
+
+    Object.defineProperty(window, 'AudioContext', {
+      configurable: true,
+      value: audioContextMock,
+    })
+
+    const { unmount } = render(<ShuffleAnimation />)
+
+    expect(audioContextMock).toHaveBeenCalledTimes(1)
+    expect(createBuffer).toHaveBeenNthCalledWith(1, 1, 57_600, 48_000)
+    expect(createBuffer).toHaveBeenNthCalledWith(2, 1, 33_600, 48_000)
+    expect(createBufferSource).toHaveBeenCalledTimes(2)
+    expect(createOscillator).toHaveBeenCalledTimes(1)
+    expect(startSource).toHaveBeenCalledTimes(2)
+    expect(stopSource).toHaveBeenCalledTimes(2)
+    expect(startOscillator).toHaveBeenCalledTimes(1)
+    expect(stopOscillator).toHaveBeenCalledTimes(1)
+    expect(rampOscillatorFrequency).toHaveBeenCalled()
+    expect(setFilterFrequency).toHaveBeenCalledWith(1350, 0)
+    expect(setFilterFrequency).toHaveBeenCalledWith(760, 1.02)
+    expect(rampGain).toHaveBeenCalledWith(0.2, 0.04)
+    expect(rampGain).toHaveBeenCalledWith(0.08, 1.08)
+    expect(rampGain).toHaveBeenCalledWith(0.075, 1.12)
+
+    act(() => {
+      jest.advanceTimersByTime(5000)
+    })
+
+    expect(createBufferSource).toHaveBeenCalledTimes(4)
+    expect(createOscillator).toHaveBeenCalledTimes(2)
+    expect(startSource).toHaveBeenCalledTimes(4)
+    expect(stopSource).toHaveBeenCalledTimes(4)
+    expect(startOscillator).toHaveBeenCalledTimes(2)
+    expect(stopOscillator).toHaveBeenCalledTimes(2)
+
+    unmount()
+
+    expect(close).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { ColyseusTestServer, boot } from '@colyseus/testing';
 import { MesaRoom } from '../MesaRoom';
-import { createMesaTestContext, waitForStatePropagation } from './mesa-room-test-helpers';
+import { createMesaTestContext, getAvailableTestPort } from './mesa-room-test-helpers';
 
 // Mock Redis subscriber
 vi.mock('../../services/redis', () => {
@@ -54,7 +54,9 @@ describe('JUEGO_VALIDACION Phase', () => {
   let colyseus: ColyseusTestServer;
 
   beforeAll(async () => {
-    const testPort = Number(process.env.COLYSEUS_TEST_PORT ?? 2570);
+    const testPort = process.env.COLYSEUS_TEST_PORT
+      ? Number(process.env.COLYSEUS_TEST_PORT)
+      : await getAvailableTestPort();
     colyseus = await boot({
       initializeGameServer: (gameServer) => {
         gameServer.define('mesa_primera', MesaRoom);
@@ -143,7 +145,7 @@ describe('JUEGO_VALIDACION Phase', () => {
     expect(internalRoom.state.phase).toBe('DESCARTE');
   });
 
-  it('should resolve claimant with juego winning pique and callers reopening betting', async () => {
+  it('reveals claimant with callers before reopening the main bet', async () => {
     const { internalRoom, ids, players } = await createMesaTestContext(colyseus, {
       tableId: 'juego-validation-test-3',
       playerCount: 3,
@@ -191,17 +193,25 @@ describe('JUEGO_VALIDACION Phase', () => {
 
     internalRoom.resolveJuegoValidation(activePlayers, playersWithJuego);
 
-    // P2 should have won pique and folded
+    // Antes de reabrir la apuesta principal, debe mostrarse la mano del claimant
     const p2 = internalRoom.state.players.get(ids[1]);
+    expect(internalRoom.state.phase).toBe('SHOWDOWN');
+    expect(internalRoom.state.piquePot).toBe(1_000_000);
+    expect(p2.revealedCards).toBe('1-E,6-E,7-E,3-O');
     expect(p2.passedWithJuego).toBe(true);
     expect(p2.isFolded).toBe(true);
-    expect(internalRoom.state.piquePot).toBe(0); // Pique awarded
+
+    internalRoom.finalizeApuesta4PiqueShowdown();
+
+    expect(internalRoom.state.piquePot).toBe(0); // Pique awarded after reveal closes
+    expect(p2.revealedCards).toBe('');
+    expect(p2.cards).toBe('');
 
     // P1 should have bet 2M
     const p1 = internalRoom.state.players.get(ids[0]);
     expect(p1.roundBet).toBe(2_000_000);
 
-    // Phase should be APUESTA_4_CARTAS (reopened)
+    // Phase should be APUESTA_4_CARTAS (reopened after reveal)
     expect(internalRoom.state.phase).toBe('APUESTA_4_CARTAS');
   });
 
@@ -270,5 +280,113 @@ describe('JUEGO_VALIDACION Phase', () => {
 
     // Effective bet in pot = 500_000 (minPique = 2M - 1.5M excess)
     expect(internalRoom.state.pot).toBe(500_000);
+  });
+
+  it('reveals claimant hand before collecting cards when everyone else passed', async () => {
+    const { internalRoom, ids, players } = await createMesaTestContext(colyseus, {
+      tableId: 'juego-validation-reveal-before-collect',
+      playerCount: 3,
+      chips: 100_000_000,
+    });
+
+    internalRoom.seatOrder = [...ids];
+    internalRoom.state.dealerId = ids[0];
+    internalRoom.state.activeManoId = ids[0];
+
+    for (const p of players) {
+      p.connected = true;
+      p.isFolded = false;
+      p.isReady = true;
+      p.hasActed = true;
+      p.roundBet = 0;
+    }
+
+    internalRoom.setPlayerCards(ids[0], '1-O,2-O,3-O,5-C');
+    internalRoom.setPlayerCards(ids[1], '1-E,2-E,3-C,5-B');
+    internalRoom.setPlayerCards(ids[2], '1-B,6-B,7-B,3-C'); // CHIVO
+
+    internalRoom.state.phase = 'APUESTA_4_CARTAS';
+    internalRoom.state.currentMaxBet = 0;
+    internalRoom.state.piquePot = 1_000_000;
+
+    internalRoom.resolveAndStartDescarte();
+    expect(internalRoom.state.phase).toBe('JUEGO_VALIDACION');
+
+    internalRoom.juegoValidationResponses.set(ids[0], { action: 'pass' });
+    internalRoom.juegoValidationResponses.set(ids[1], { action: 'pass' });
+    internalRoom.juegoValidationResponses.set(ids[2], { action: 'claim-juego' });
+    internalRoom.juegoValidationPendingIds.clear();
+
+    const activePlayers = Array.from(internalRoom.state.players.values())
+      .filter((p: any) => !p.isFolded && p.connected);
+    const playersWithJuego = internalRoom.juegoValidationPlayersWithJuego
+      .map((id: string) => internalRoom.state.players.get(id))
+      .filter(Boolean);
+
+    internalRoom.resolveJuegoValidation(activePlayers, playersWithJuego);
+
+    const claimant = internalRoom.state.players.get(ids[2]);
+    expect(internalRoom.state.phase).toBe('SHOWDOWN');
+    expect(internalRoom.state.piquePot).toBe(1_000_000);
+    expect(claimant.revealedCards).toBe('1-B,6-B,7-B,3-C');
+    expect(claimant.cards).toBe('1-B,6-B,7-B,3-C');
+
+    internalRoom.finalizeApuesta4PiqueShowdown();
+
+    expect(internalRoom.state.piquePot).toBe(0);
+    expect(claimant.revealedCards).toBe('');
+    expect(claimant.cards).toBe('');
+    expect(internalRoom.state.phase).toBe('DESCARTE');
+  });
+
+  it('refunds the lone remaining player after claimant reveal resolves', async () => {
+    const { internalRoom, ids, players } = await createMesaTestContext(colyseus, {
+      tableId: 'juego-validation-lone-refund',
+      playerCount: 3,
+      chips: 100_000_000,
+    });
+
+    internalRoom.seatOrder = [...ids];
+    internalRoom.state.dealerId = ids[0];
+    internalRoom.state.activeManoId = ids[0];
+
+    for (const p of players) {
+      p.connected = true;
+      p.isFolded = false;
+      p.isReady = true;
+      p.hasActed = true;
+      p.roundBet = 0;
+    }
+
+    players[1].isFolded = true; // Solo P1 queda para la apuesta principal
+    players[0].roundBet = 500_000;
+    players[0].totalMainBet = 500_000;
+    players[0].chips -= 500_000;
+    players[0].supabaseUserId = 'supa-p1';
+
+    internalRoom.setPlayerCards(ids[0], '1-O,2-O,3-O,5-C');
+    internalRoom.setPlayerCards(ids[1], '1-E,2-E,3-C,5-B');
+    internalRoom.setPlayerCards(ids[2], '1-B,6-B,7-B,3-C'); // CHIVO
+
+    internalRoom.state.phase = 'JUEGO_VALIDACION';
+    internalRoom.state.piquePot = 1_000_000;
+    internalRoom.state.pot = 500_000;
+
+    internalRoom.juegoValidationPlayersWithJuego = [ids[2]];
+    internalRoom.juegoValidationResponses.set(ids[0], { action: 'pass' });
+    internalRoom.juegoValidationResponses.set(ids[2], { action: 'claim-juego' });
+
+    const activePlayers = Array.from(internalRoom.state.players.values())
+      .filter((p: any) => !p.isFolded && p.connected);
+
+    internalRoom.resolveJuegoValidation(activePlayers, [internalRoom.state.players.get(ids[2])]);
+
+    const p1 = internalRoom.state.players.get(ids[0]);
+    expect(internalRoom.state.phase).toBe('SHOWDOWN');
+
+    internalRoom.finalizeApuesta4PiqueShowdown();
+
+    expect(internalRoom.state.pot).toBe(0);
+    expect(p1.chips).toBe(100_000_000);
   });
 })

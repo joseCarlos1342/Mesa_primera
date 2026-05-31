@@ -256,7 +256,7 @@ describe('GameRoomPage', () => {
       messageHandlers.get('room-config')?.({ disabledChips: [500, 1000] })
       messageHandlers.get('pique-reopen')?.({})
       messageHandlers.get('declarar-juego-option')?.({ hasJuego: true, handType: 'Primera' })
-      messageHandlers.get('paso-juego-choice')?.({ handType: 'Primera' })
+      messageHandlers.get('paso-juego-choice')?.({ hasJuego: true, handType: 'Primera' })
       messageHandlers.get('banda')?.({ winnerNickname: 'Ana', totalBanda: 2000, bandaPerPlayer: 1000, details: [{ id: 1 }, { id: 2 }] })
     })
     expect(screen.getByText(/Ana \+\$/)).toBeInTheDocument()
@@ -340,6 +340,61 @@ describe('GameRoomPage', () => {
     expect(send).toHaveBeenCalledWith('toggleReady', { isReady: false })
   })
 
+  it('reproduce un tick por cada segundo nuevo del countdown', async () => {
+    const resume = jest.fn(() => Promise.resolve())
+    const setFrequency = jest.fn()
+    const setGain = jest.fn()
+    const rampGain = jest.fn()
+    const oscillator = {
+      type: 'square',
+      frequency: { setValueAtTime: setFrequency },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      start: jest.fn(),
+      stop: jest.fn(),
+      onended: null as null | (() => void),
+    }
+    const gain = {
+      gain: {
+        setValueAtTime: setGain,
+        exponentialRampToValueAtTime: rampGain,
+      },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    }
+    const createOscillator = jest.fn(() => oscillator)
+    const createGain = jest.fn(() => gain)
+    const audioContextMock = jest.fn(() => ({
+      state: 'running',
+      currentTime: 0,
+      destination: {},
+      createOscillator,
+      createGain,
+      resume,
+      close: jest.fn(() => Promise.resolve()),
+    }))
+
+    Object.defineProperty(window, 'AudioContext', {
+      configurable: true,
+      value: audioContextMock,
+    })
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    emitState({ countdown: 4 })
+    emitState({ countdown: 3 })
+    emitState({ countdown: 3 })
+    emitState({ countdown: 2 })
+
+    expect(audioContextMock).toHaveBeenCalledTimes(1)
+    expect(createOscillator).toHaveBeenCalledTimes(3)
+    expect(createGain).toHaveBeenCalledTimes(3)
+    expect(oscillator.start).toHaveBeenCalledTimes(3)
+    expect(oscillator.stop).toHaveBeenCalledTimes(3)
+    expect(resume).not.toHaveBeenCalled()
+  })
+
   it('marca propuesta propia de pique sin mostrar botones de voto', async () => {
     render(<GameRoomPage />)
     await flushJoinDelay()
@@ -361,12 +416,39 @@ describe('GameRoomPage', () => {
     expect(screen.getByTestId('board')).toHaveTextContent('juego={"hasJuego":true,"handType":"Primera"}')
 
     act(() => {
-      messageHandlers.get('paso-juego-choice')?.({ handType: 'Primera' })
+      messageHandlers.get('paso-juego-choice')?.({ hasJuego: true, handType: 'Primera' })
     })
-    emitState({ phase: 'APUESTA_4_CARTAS', players: new Map([['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 4 }]]) })
-    expect(screen.getByTestId('board')).toHaveTextContent('paso={"handType":"Primera"}')
+    emitState({ phase: 'APUESTA_4_CARTAS', turnPlayerId: 'player-1', players: new Map([['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 4 }]]) })
+    expect(screen.getByTestId('board')).toHaveTextContent('paso={"hasJuego":true,"handType":"Primera"}')
 
     fireEvent.click(screen.getByRole('button', { name: /resolver paso/i }))
+    expect(screen.getByTestId('board')).toHaveTextContent('paso=null')
+  })
+
+  it('limpia paso-juego-choice cuando deja de ser el turno local', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    act(() => {
+      messageHandlers.get('paso-juego-choice')?.({ hasJuego: true, handType: 'Primera' })
+    })
+
+    emitState({
+      phase: 'APUESTA_4_CARTAS',
+      turnPlayerId: 'player-1',
+      players: new Map([['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 4 }]])
+    })
+    expect(screen.getByTestId('board')).toHaveTextContent('paso={"hasJuego":true,"handType":"Primera"}')
+
+    emitState({
+      phase: 'APUESTA_4_CARTAS',
+      turnPlayerId: 'player-2',
+      players: new Map([
+        ['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 4 }],
+        ['player-2', { id: 'player-2', nickname: 'Beto', connected: true, chips: 6_000_000, isReady: true, cardCount: 4 }],
+      ])
+    })
+
     expect(screen.getByTestId('board')).toHaveTextContent('paso=null')
   })
 

@@ -18,6 +18,7 @@ export const apuesta4CartasPhase: IGamePhase = {
     const r: Ctx = ctx;
     r.clearTurnTimer();
     r.state.phase = "APUESTA_4_CARTAS";
+    r.apuesta4OriginalManoId = r.state.activeManoId;
     console.log(`[MesaRoom] Iniciando APUESTA_4_CARTAS: ronda de apuestas con 4 cartas`);
     r.pasoPendienteIds.clear();
     r.state.players.forEach((p: Player) => { p.hasActed = false; p.roundBet = 0; });

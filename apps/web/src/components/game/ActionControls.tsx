@@ -33,7 +33,7 @@ interface ActionControlsProps {
   /** Si se reabrió el Pique para que los que pasaron puedan igualar. */
   piqueReopenActive?: boolean;
   /** Prompt de resolución inmediata: paso definitivo con juego en APUESTA_4_CARTAS. */
-  pasoJuegoChoice?: { handType: string } | null;
+  pasoJuegoChoice?: { hasJuego: boolean; handType: string } | null;
   /** Callback al resolver el prompt de paso-juego. */
   onPasoJuegoResolved?: () => void;
 }
@@ -67,26 +67,29 @@ export function ActionControls({
             Tienes {pasoJuegoChoice.handType}
           </span>
           <div className="flex flex-row gap-1">
-            <button
-              onClick={() => {
-                if (navigator.vibrate) navigator.vibrate(50);
-                room.send('paso-juego-response', { llevaJuego: true });
-                onPasoJuegoResolved?.();
-              }}
-              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
-            >
-              Llevo Juego
-            </button>
-            <button
-              onClick={() => {
-                if (navigator.vibrate) navigator.vibrate(50);
-                room.send('paso-juego-response', { llevaJuego: false });
-                onPasoJuegoResolved?.();
-              }}
-              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
-            >
-              No Llevo
-            </button>
+            {pasoJuegoChoice.hasJuego ? (
+              <button
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(50);
+                  room.send('paso-juego-response', { llevaJuego: true });
+                  onPasoJuegoResolved?.();
+                }}
+                className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+              >
+                Llevo Juego
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(50);
+                  room.send('paso-juego-response', { llevaJuego: false });
+                  onPasoJuegoResolved?.();
+                }}
+                className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
+              >
+                No Llevo
+              </button>
+            )}
           </div>
         </m.div>
       </AnimatePresence>

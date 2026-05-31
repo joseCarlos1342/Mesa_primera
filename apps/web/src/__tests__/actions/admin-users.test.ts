@@ -101,29 +101,24 @@ describe('Admin Users Server Actions', () => {
   });
 
   describe('adjustUserBalance', () => {
-    it('should call process_ledger_entry RPC with credit for positive delta', async () => {
+    it('should call admin_adjust_user_balance RPC with positive delta', async () => {
       const result = await adjustUserBalance('user-1', 5000, 'Bonificación por evento');
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('process_ledger_entry', {
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('admin_adjust_user_balance', {
         p_user_id: 'user-1',
-        p_amount_cents: 5000,
-        p_type: 'adjustment',
-        p_direction: 'credit',
-        p_description: 'Ajuste administrativo: Bonificación por evento',
-        p_approved_by: 'admin-id',
-        p_metadata: { reason: 'Bonificación por evento', admin_id: 'admin-id' },
+        p_delta_cents: 5000,
+        p_reason: 'Bonificación por evento',
       });
       expect(result.success).toBe(true);
     });
 
-    it('should call process_ledger_entry RPC with debit for negative delta', async () => {
+    it('should call admin_adjust_user_balance RPC with negative delta', async () => {
       await adjustUserBalance('user-1', -3000, 'Corrección por error');
 
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('process_ledger_entry', expect.objectContaining({
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('admin_adjust_user_balance', expect.objectContaining({
         p_user_id: 'user-1',
-        p_amount_cents: 3000,
-        p_direction: 'debit',
-        p_type: 'adjustment',
+        p_delta_cents: -3000,
+        p_reason: 'Corrección por error',
       }));
     });
 
