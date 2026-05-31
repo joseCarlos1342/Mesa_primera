@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
-const PLAYER_PHONE = process.env.E2E_PLAYER_PHONE ?? '3205802918'
+const PLAYER_PHONE = process.env.E2E_PLAYER_PHONE ?? '3000000000'
 const PLAYER_PIN = process.env.E2E_PLAYER_PIN ?? '123456'
 
 async function injectTurnstileToken(page: Page, token = 'e2e-turnstile-token') {
