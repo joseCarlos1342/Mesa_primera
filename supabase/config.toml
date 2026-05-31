@@ -245,7 +245,7 @@ max_frequency = "30s"
 
 # Use pre-defined map of phone number to OTP for testing.
 [auth.sms.test_otp]
-	573205802918 = "123456"
+	573000000000 = "123456"
 	573229122479 = "123456"
 	573125822841 = "123456"
 
