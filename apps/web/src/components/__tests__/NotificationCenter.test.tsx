@@ -158,6 +158,19 @@ describe('NotificationCenter', () => {
     expect(screen.getByText('1')).toBeInTheDocument()
   })
 
+  it('aplica feedback hover al botón de limpiar todo', async () => {
+    render(<NotificationCenter userId="user-1" />)
+    await screen.findByText('1')
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+
+    const clearButton = await screen.findByRole('button', { name: /limpiar todo/i })
+    fireEvent.mouseEnter(clearButton)
+    expect(clearButton).toHaveStyle({ background: 'rgba(212,175,55,0.18)' })
+
+    fireEvent.mouseLeave(clearButton)
+    expect(clearButton).toHaveStyle({ background: 'rgba(212,175,55,0.06)' })
+  })
+
   it('agrega notificaciones realtime, incrementa contador y reproduce audio', async () => {
     const play = jest.fn().mockResolvedValue(undefined)
     ;(window.Audio as unknown as jest.Mock).mockImplementation(() => ({ volume: 0, play } as unknown as HTMLAudioElement))
@@ -206,6 +219,18 @@ describe('NotificationCenter', () => {
         },
       })
     })).not.toThrow()
+  })
+
+  it('renderiza cuerpo vacío y fecha inválida sin romper el panel', async () => {
+    setupSupabase([{ ...notifications[0], id: 'invalid-date', body: '', created_at: 'fecha-invalida' }])
+    render(<NotificationCenter userId="user-1" />)
+    await screen.findByText('1')
+
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+
+    expect(await screen.findByText(/nueva solicitud/i)).toBeInTheDocument()
+    const timestamp = screen.getByText('', { selector: 'time' })
+    expect(timestamp).toHaveAttribute('dateTime', 'fecha-invalida')
   })
 
   it('navega y borra una notificación al pulsar Ir', async () => {
@@ -272,6 +297,24 @@ describe('NotificationCenter', () => {
     await waitFor(() => {
       expect(mockDeleteNotification).toHaveBeenCalledWith('n1')
     })
+  })
+
+  it('aplica feedback hover en botones de acción', async () => {
+    render(<NotificationCenter userId="user-1" />)
+    await screen.findByText('1')
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+
+    const goButton = (await screen.findAllByRole('button', { name: /ir/i }))[0]
+    fireEvent.mouseEnter(goButton)
+    expect(goButton).toHaveStyle({ background: 'rgba(212,175,55,0.22)' })
+    fireEvent.mouseLeave(goButton)
+    expect(goButton).toHaveStyle({ background: 'rgba(212,175,55,0.1)' })
+
+    const deleteButton = (await screen.findAllByRole('button', { name: /borrar/i }))[0]
+    fireEvent.mouseEnter(deleteButton)
+    expect(deleteButton).toHaveStyle({ background: 'rgba(239,68,68,0.2)' })
+    fireEvent.mouseLeave(deleteButton)
+    expect(deleteButton).toHaveStyle({ background: 'rgba(239,68,68,0.08)' })
   })
 
   it('no elimina visualmente si deleteNotification falla', async () => {
