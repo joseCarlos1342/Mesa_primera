@@ -5,10 +5,11 @@ import { client } from '@/lib/colyseus'
 import { createClient } from '@/utils/supabase/client'
 
 const push = jest.fn()
+const routerMock = { push }
 
 jest.mock('next/navigation', () => ({
   useParams: jest.fn(() => ({ id: 'room-123' })),
-  useRouter: jest.fn(() => ({ push })),
+  useRouter: jest.fn(() => routerMock),
 }))
 
 jest.mock('next/dynamic', () => ({
@@ -108,6 +109,15 @@ function makeSupabase(balance = 6_000_000) {
         })),
       })),
     })),
+  }
+}
+
+function makeAnonymousSupabase() {
+  return {
+    auth: {
+      getUser: jest.fn(() => Promise.resolve({ data: { user: null } })),
+    },
+    from: jest.fn(),
   }
 }
 
@@ -301,12 +311,15 @@ describe('GameRoomPage', () => {
 
   it('auto-cancela listo en portrait y desbloquea orientacion al desmontar', async () => {
     const unlock = jest.fn()
+    const exitFullscreen = jest.fn(() => Promise.resolve())
     window.matchMedia = jest.fn(() => ({
       matches: true,
       addEventListener: jest.fn(),
       removeEventListener: jest.fn(),
     })) as unknown as typeof window.matchMedia
     Object.defineProperty(window.screen, 'orientation', { configurable: true, value: { unlock } })
+    Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: document.body })
+    Object.defineProperty(document, 'exitFullscreen', { configurable: true, value: exitFullscreen })
 
     const { unmount } = render(<GameRoomPage />)
     await flushJoinDelay()
@@ -320,6 +333,7 @@ describe('GameRoomPage', () => {
       unmount()
     })
     expect(unlock).toHaveBeenCalled()
+    expect(exitFullscreen).toHaveBeenCalled()
   })
 
   it('muestra cuenta regresiva y permite anular listo cuando la mesa alcanza minimo', async () => {
@@ -338,6 +352,38 @@ describe('GameRoomPage', () => {
     expect(screen.getByText('4')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /anular listo/i }))
     expect(send).toHaveBeenCalledWith('toggleReady', { isReady: false })
+  })
+
+  it('muestra espera de listos cuando la mesa tiene minimo pero falta un jugador', async () => {
+    mockJoinById.mockResolvedValue(makeRoom({ state: { isFirstGame: false, minPlayers: 2 } }) as never)
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState({
+      players: new Map([
+        ['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 0 }],
+        ['player-2', { id: 'player-2', nickname: 'Beto', connected: true, chips: 5_500_000, isReady: false, cardCount: 0 }],
+      ]),
+    })
+
+    expect(await screen.findByText(/esperando listos \(1\/2\)/i)).toBeInTheDocument()
+  })
+
+  it('no muestra espera de listos cuando todos estan listos y no hay countdown', async () => {
+    mockJoinById.mockResolvedValue(makeRoom({ state: { isFirstGame: false, minPlayers: 2 } }) as never)
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState({
+      players: new Map([
+        ['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 0 }],
+        ['player-2', { id: 'player-2', nickname: 'Beto', connected: true, chips: 5_500_000, isReady: true, cardCount: 0 }],
+      ]),
+    })
+
+    expect(await screen.findByText('Sala de Espera')).toBeInTheDocument()
+    expect(screen.queryByText(/esperando listos/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/iniciando partida/i)).not.toBeInTheDocument()
   })
 
   it('reproduce un tick por cada segundo nuevo del countdown', async () => {
@@ -393,6 +439,47 @@ describe('GameRoomPage', () => {
     expect(oscillator.start).toHaveBeenCalledTimes(3)
     expect(oscillator.stop).toHaveBeenCalledTimes(3)
     expect(resume).not.toHaveBeenCalled()
+    act(() => {
+      oscillator.onended?.()
+    })
+    expect(oscillator.disconnect).toHaveBeenCalled()
+    expect(gain.disconnect).toHaveBeenCalled()
+  })
+
+  it('reanuda audio suspendido durante el countdown', async () => {
+    const resume = jest.fn(() => Promise.resolve())
+    const oscillator = {
+      type: 'square',
+      frequency: { setValueAtTime: jest.fn() },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      start: jest.fn(),
+      stop: jest.fn(),
+      onended: null as null | (() => void),
+    }
+    const gain = {
+      gain: { setValueAtTime: jest.fn(), exponentialRampToValueAtTime: jest.fn() },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    }
+    Object.defineProperty(window, 'AudioContext', {
+      configurable: true,
+      value: jest.fn(() => ({
+        state: 'suspended',
+        currentTime: 0,
+        destination: {},
+        createOscillator: jest.fn(() => oscillator),
+        createGain: jest.fn(() => gain),
+        resume,
+        close: jest.fn(() => Promise.resolve()),
+      })),
+    })
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState({ countdown: 5 })
+
+    expect(resume).toHaveBeenCalled()
   })
 
   it('marca propuesta propia de pique sin mostrar botones de voto', async () => {
@@ -508,6 +595,7 @@ describe('GameRoomPage', () => {
     expect(screen.getByText('Voto registrado')).toBeInTheDocument()
 
     act(() => {
+      messageHandlers.get('pique_approved')?.({})
       messageHandlers.get('pique_rejected')?.({})
       messageHandlers.get('fold-return-cards')?.({ playerId: 'player-2', cardCount: 2 })
     })
@@ -531,6 +619,63 @@ describe('GameRoomPage', () => {
 
     expect(sessionStorage.getItem('reconnectionToken_room-123')).toBe('fresh-token')
     expect(mockJoinById).toHaveBeenCalled()
+  })
+
+  it('avisa reconexion no expirada fallida y continua con join normal', async () => {
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    sessionStorage.setItem('reconnectionToken_room-123', 'stale-token')
+    mockReconnect.mockRejectedValue(new Error('network down'))
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    expect(consoleWarn).toHaveBeenCalledWith('Fallo al reconectar:', 'network down')
+    expect(sessionStorage.getItem('reconnectionToken_room-123')).toBe('fresh-token')
+    expect(mockJoinById).toHaveBeenCalled()
+  })
+
+  it('usa fallback anonimo de nickname y deviceId cuando no hay usuario ni storage', async () => {
+    const randomSpy = jest.spyOn(Math, 'random')
+    randomSpy.mockReturnValueOnce(0.123).mockReturnValueOnce(0.456789)
+    mockCreateClient.mockReturnValue(makeAnonymousSupabase() as unknown as ReturnType<typeof createClient>)
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    expect(sessionStorage.getItem('nickname_room-123')).toBe('Jugador 123')
+    expect(localStorage.getItem('deviceId')).toBe('dev_gfzy42h8x2m')
+    expect(mockJoinById).toHaveBeenCalledWith('room-123', expect.objectContaining({
+      nickname: 'Jugador 123',
+      deviceId: 'dev_gfzy42h8x2m',
+      userId: null,
+      chips: 1000,
+    }))
+  })
+
+  it('mantiene token y cierra room como no intencional al desmontar', async () => {
+    const { unmount } = render(<GameRoomPage />)
+    await flushJoinDelay()
+    await waitFor(() => expect(sessionStorage.getItem('reconnectionToken_room-123')).toBe('fresh-token'))
+
+    act(() => {
+      unmount()
+    })
+
+    expect(leave).toHaveBeenCalledWith(false)
+    expect(sessionStorage.getItem('reconnectionToken_room-123')).toBe('fresh-token')
+  })
+
+  it('muestra overlay de reconexion y recarga si la sala se cierra inesperadamente', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    act(() => {
+      _leaveHandler?.(4000)
+    })
+
+    expect(await screen.findByText('Sincronizando tu mesa...')).toBeInTheDocument()
+    expect(jest.getTimerCount()).toBeGreaterThan(0)
+    jest.clearAllTimers()
   })
 
   it('muestra error si no puede unirse a Colyseus', async () => {

@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { getSupabaseEnvErrorMessage } from '../env'
 
 // Mock env module
 jest.mock('../env', () => ({
@@ -17,21 +18,36 @@ const mockDeletedCookies: string[] = []
 const mockNextResponseCookies = { set: jest.fn(), delete: jest.fn((n: string) => mockDeletedCookies.push(n)) }
 
 jest.mock('next/server', () => {
+  function MockNextResponse(body?: BodyInit | null, init?: ResponseInit) {
+    return {
+      body,
+      status: init?.status,
+      headers: {
+        get: (key: string) => {
+          const headers = init?.headers as Record<string, string> | undefined
+          return headers?.[key] ?? null
+        },
+      },
+      cookies: mockNextResponseCookies,
+    }
+  }
+
+  MockNextResponse.next = jest.fn(() => ({
+    headers: new Map(),
+    cookies: mockNextResponseCookies,
+  }))
+
+  MockNextResponse.redirect = jest.fn((url: URL) => {
+    mockRedirectHeaders.clear()
+    mockRedirectHeaders.set('location', url.toString())
+    return {
+      headers: { get: (k: string) => mockRedirectHeaders.get(k) ?? null },
+      cookies: { set: jest.fn(), delete: jest.fn((n: string) => mockDeletedCookies.push(n)) },
+    }
+  })
+
   return {
-    NextResponse: {
-      next: jest.fn(() => ({
-        headers: new Map(),
-        cookies: mockNextResponseCookies,
-      })),
-      redirect: jest.fn((url: URL) => {
-        mockRedirectHeaders.clear()
-        mockRedirectHeaders.set('location', url.toString())
-        return {
-          headers: { get: (k: string) => mockRedirectHeaders.get(k) ?? null },
-          cookies: { set: jest.fn(), delete: jest.fn((n: string) => mockDeletedCookies.push(n)) },
-        }
-      }),
-    },
+    NextResponse: MockNextResponse,
   }
 })
 
@@ -101,6 +117,7 @@ describe('middleware – device-kick exemption for admin MFA pages', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockDeletedCookies.length = 0
+    ;(getSupabaseEnvErrorMessage as jest.Mock).mockReturnValue(null)
   })
 
   beforeAll(async () => {
@@ -119,6 +136,66 @@ describe('middleware – device-kick exemption for admin MFA pages', () => {
     // Should redirect to /login/player?kicked=true
     expect(res.headers.get('location')).toContain('/login/player')
     expect(res.headers.get('location')).toContain('kicked=true')
+    expect(mockDeletedCookies).toContain('session_device_id')
+  })
+
+  it('returns 500 when Supabase public env is missing', async () => {
+    ;(getSupabaseEnvErrorMessage as jest.Mock).mockReturnValue('Missing Supabase env')
+
+    const req = makeRequest('/dashboard')
+    const res = await updateSession(req)
+
+    expect(res).toMatchObject({ status: 500 })
+    expect(createServerClient).not.toHaveBeenCalled()
+  })
+
+  it('allows static files without auth redirects', async () => {
+    mockSupabase({ user: null })
+
+    const req = makeRequest('/manifest.json')
+    const res = await updateSession(req)
+
+    const location = res.headers?.get('location') ?? ''
+    expect(location).toBe('')
+  })
+
+  it('redirects unauthenticated private routes to player login', async () => {
+    mockSupabase({ user: null })
+
+    const req = makeRequest('/dashboard')
+    const res = await updateSession(req)
+
+    expect(res.headers.get('location')).toContain('/login/player')
+  })
+
+  it('keeps unauthenticated public and SEO pages accessible', async () => {
+    mockSupabase({ user: null })
+
+    const publicRes = await updateSession(makeRequest('/privacy'))
+    const seoRes = await updateSession(makeRequest('/primera-riverada-los-4-ases'))
+
+    expect(publicRes.headers?.get('location') ?? '').toBe('')
+    expect(seoRes.headers?.get('location') ?? '').toBe('')
+  })
+
+  it('applies Supabase cookie writes to request and response with inactivity maxAge', async () => {
+    let cookieBridge: { setAll: (cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>) => void } | null = null
+    ;(createServerClient as jest.Mock).mockImplementation((_url, _key, options) => {
+      cookieBridge = options.cookies
+      return {
+        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }) },
+      }
+    })
+
+    const req = makeRequest('/login/player')
+    await updateSession(req)
+    cookieBridge!.setAll([{ name: 'sb-token', value: 'abc', options: { path: '/' } }])
+
+    expect(req.cookies.set).toHaveBeenCalledWith('sb-token', 'abc')
+    expect(mockNextResponseCookies.set).toHaveBeenCalledWith('sb-token', 'abc', expect.objectContaining({
+      path: '/',
+      maxAge: 604800,
+    }))
   })
 
   it('does NOT kick an admin on /login/admin/mfa even if device cookie mismatches', async () => {
@@ -149,6 +226,77 @@ describe('middleware – device-kick exemption for admin MFA pages', () => {
     const location = res.headers?.get('location') ?? ''
     expect(location).not.toContain('kicked=true')
   })
+
+  it('redirects non-admin users away from admin paths', async () => {
+    mockSupabase({
+      user: { id: 'u1' },
+      profile: { role: 'player', last_device_id: null, phone: '+573001111111', username: 'player', full_name: 'Player', avatar_url: 'avatar', has_pin: true },
+    })
+
+    const res = await updateSession(makeRequest('/admin'))
+
+    expect(res.headers.get('location')).toBe('http://localhost:3000/')
+  })
+
+  it('forces admin MFA setup when no second factor is enrolled', async () => {
+    mockSupabase({
+      user: { id: 'admin1' },
+      profile: { role: 'admin', last_device_id: null, phone: null, username: 'admin', full_name: 'Admin', avatar_url: 'avatar', has_pin: true },
+      aalData: { currentLevel: 'aal1', nextLevel: 'aal1' },
+    })
+
+    const res = await updateSession(makeRequest('/admin'))
+
+    expect(res.headers.get('location')).toContain('/login/admin/mfa/setup')
+  })
+
+  it('forces admin MFA verification when aal2 is required but not current', async () => {
+    mockSupabase({
+      user: { id: 'admin1' },
+      profile: { role: 'admin', last_device_id: null, phone: null, username: 'admin', full_name: 'Admin', avatar_url: 'avatar', has_pin: true },
+      aalData: { currentLevel: 'aal1', nextLevel: 'aal2' },
+    })
+
+    const res = await updateSession(makeRequest('/admin'))
+
+    expect(res.headers.get('location')).toContain('/login/admin/mfa')
+  })
+
+  it('redirects authenticated admins away from player-only routes', async () => {
+    mockSupabase({
+      user: { id: 'admin1' },
+      profile: { role: 'admin', last_device_id: null, phone: null, username: 'admin', full_name: 'Admin', avatar_url: 'avatar', has_pin: true },
+      aalData: { currentLevel: 'aal2', nextLevel: 'aal2' },
+    })
+
+    const res = await updateSession(makeRequest('/dashboard'))
+
+    expect(res.headers.get('location')).toContain('/admin')
+  })
+
+  it('redirects authenticated admins from auth pages to admin dashboard', async () => {
+    mockSupabase({
+      user: { id: 'admin1' },
+      profile: { role: 'admin', last_device_id: null, phone: null, username: 'admin', full_name: 'Admin', avatar_url: 'avatar', has_pin: true },
+      aalData: { currentLevel: 'aal2', nextLevel: 'aal2' },
+    })
+
+    const res = await updateSession(makeRequest('/login/player'))
+
+    expect(res.headers.get('location')).toContain('/admin')
+  })
+
+  it('keeps authenticated admins on admin password recovery page', async () => {
+    mockSupabase({
+      user: { id: 'admin1' },
+      profile: { role: 'admin', last_device_id: null, phone: null, username: 'admin', full_name: 'Admin', avatar_url: 'avatar', has_pin: true },
+      aalData: { currentLevel: 'aal2', nextLevel: 'aal2' },
+    })
+
+    const res = await updateSession(makeRequest('/login/admin/password'))
+
+    expect(res.headers?.get('location') ?? '').toBe('')
+  })
 })
 
 describe('middleware – profile completeness enforcement', () => {
@@ -157,6 +305,7 @@ describe('middleware – profile completeness enforcement', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockDeletedCookies.length = 0
+    ;(getSupabaseEnvErrorMessage as jest.Mock).mockReturnValue(null)
   })
 
   beforeAll(async () => {
@@ -268,6 +417,28 @@ describe('middleware – profile completeness enforcement', () => {
     const location = res.headers?.get('location') ?? ''
     expect(location).not.toContain('/register/player/complete')
     expect(location).not.toContain('/register/player/pin')
+  })
+
+  it('redirects a complete player from root to dashboard', async () => {
+    mockSupabase({
+      user: { id: 'u8' },
+      profile: { role: 'player', last_device_id: null, phone: '+573001111111', username: 'testuser', full_name: 'Test User', avatar_url: 'avatar1', has_pin: true },
+    })
+
+    const res = await updateSession(makeRequest('/'))
+
+    expect(res.headers.get('location')).toContain('/dashboard')
+  })
+
+  it('redirects a complete player away from auth pages to dashboard', async () => {
+    mockSupabase({
+      user: { id: 'u8' },
+      profile: { role: 'player', last_device_id: null, phone: '+573001111111', username: 'testuser', full_name: 'Test User', avatar_url: 'avatar1', has_pin: true },
+    })
+
+    const res = await updateSession(makeRequest('/login/player'))
+
+    expect(res.headers.get('location')).toContain('/dashboard')
   })
 
   it('redirects a player with no profile data at all to /register/player/complete', async () => {

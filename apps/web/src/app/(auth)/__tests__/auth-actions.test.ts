@@ -1,4 +1,4 @@
-import { loginAdmin, loginWithPhone, redeemAdminRecoveryCode, registerPlayer, verifyAdminTotp, checkPhoneHasPin } from '../auth-actions'
+import { loginAdmin, loginWithPhone, redeemAdminRecoveryCode, registerAdmin, registerPlayer, verifyAdminTotp, checkPhoneHasPin } from '../auth-actions'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { enforceSessionPolicy } from '../auth-actions-helpers'
@@ -48,6 +48,7 @@ describe('Auth Actions', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.spyOn(console, 'error').mockImplementation(() => undefined)
     // @ts-expect-error -- NODE_ENV is read-only but needs to be overridden for tests
     process.env.NODE_ENV = 'test'; // Ensure we don't hit the DEV bypass
     mockSignInWithOtp = jest.fn().mockResolvedValue({ error: null })
@@ -58,6 +59,10 @@ describe('Auth Actions', () => {
       rpc: jest.fn().mockResolvedValue({ data: false, error: null }),
     }
     ;(createClient as any).mockResolvedValue(mockSupabase)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   describe('registerPlayer', () => {
@@ -247,6 +252,105 @@ describe('Auth Actions', () => {
       expect(updateEq).toHaveBeenCalledWith('id', 'recovery-1')
       expect(redirect).toHaveBeenCalledWith('/login/admin/mfa/setup?recovery=1')
     })
+
+    it('rechaza recuperación admin sin sesión, sin rol admin o con código inválido', async () => {
+      const formData = new FormData()
+      formData.append('code', 'ABCD-EFGH-JKLM')
+
+      ;(createClient as any).mockResolvedValueOnce({
+        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: { message: 'missing' } }) },
+      })
+      await expect(redeemAdminRecoveryCode(null, formData)).resolves.toEqual({ error: expect.stringContaining('Sesión inválida') })
+
+      ;(createClient as any).mockResolvedValueOnce({
+        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-123' } }, error: null }) },
+        from: jest.fn(() => ({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: { role: 'player' }, error: null }),
+        })),
+      })
+      await expect(redeemAdminRecoveryCode(null, formData)).resolves.toEqual({ error: 'Acceso denegado.' })
+
+      ;(createClient as any).mockResolvedValueOnce({
+        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-123' } }, error: null }) },
+        from: jest.fn((table: string) => {
+          if (table === 'profiles') return { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }) }
+          return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnThis(), is: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) }) }
+        }),
+      })
+      await expect(redeemAdminRecoveryCode(null, formData)).resolves.toEqual({ error: 'Código de recuperación inválido o ya utilizado.' })
+    })
+
+    it('devuelve errores al consumir código o desenrolar factor TOTP', async () => {
+      const formData = new FormData()
+      formData.append('code', 'ABCD-EFGH-JKLM')
+      const buildRecoverySupabase = (consumeError: unknown, unenrollError: unknown = null) => ({
+        auth: {
+          getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-123' } }, error: null }),
+          mfa: {
+            listFactors: jest.fn().mockResolvedValue({ data: { totp: [{ id: 'totp-1', status: 'verified' }], phone: [] }, error: null }),
+            unenroll: jest.fn().mockResolvedValue({ error: unenrollError }),
+          },
+        },
+        from: jest.fn((table: string) => {
+          if (table === 'profiles') return { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }) }
+          if (table === 'admin_mfa_recovery_codes') {
+            return {
+              select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnThis(), is: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'recovery-1' }, error: null }) }),
+              update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: consumeError }) }),
+            }
+          }
+          throw new Error(`Unexpected table ${table}`)
+        }),
+      })
+
+      ;(createClient as any).mockResolvedValueOnce(buildRecoverySupabase({ message: 'consume failed' }))
+      await expect(redeemAdminRecoveryCode(null, formData)).resolves.toEqual({ error: 'No se pudo consumir el código de recuperación.' })
+
+      ;(createClient as any).mockResolvedValueOnce(buildRecoverySupabase(null, { message: 'unenroll failed' }))
+      await expect(redeemAdminRecoveryCode(null, formData)).resolves.toEqual({ error: 'unenroll failed' })
+    })
+  })
+
+  describe('registerAdmin', () => {
+    const previousInvite = process.env.ADMIN_INVITE_TOKEN
+
+    afterEach(() => {
+      process.env.ADMIN_INVITE_TOKEN = previousInvite
+    })
+
+    it('rechaza token de invitación inválido o no configurado', async () => {
+      delete process.env.ADMIN_INVITE_TOKEN
+      const formData = new FormData()
+      formData.append('inviteToken', 'wrong')
+
+      await expect(registerAdmin(null, formData)).resolves.toEqual({ error: 'Token de invitación inválido o no configurado.' })
+      expect(createClient).not.toHaveBeenCalled()
+    })
+
+    it('registra admin con token válido, propaga errores y redirige al login', async () => {
+      process.env.ADMIN_INVITE_TOKEN = 'secret-token'
+      const signUp = jest.fn()
+        .mockResolvedValueOnce({ error: { message: 'Email already registered' } })
+        .mockResolvedValueOnce({ error: null })
+      ;(createClient as any).mockResolvedValue({ auth: { signUp } })
+      const formData = new FormData()
+      formData.append('inviteToken', 'secret-token')
+      formData.append('email', 'admin@mesa.test')
+      formData.append('password', 'SecureP4ss!')
+      formData.append('fullName', 'Admin Mesa')
+
+      await expect(registerAdmin(null, formData)).resolves.toEqual({ error: 'Email already registered' })
+      await registerAdmin(null, formData)
+
+      expect(signUp).toHaveBeenCalledWith(expect.objectContaining({
+        email: 'admin@mesa.test',
+        password: 'SecureP4ss!',
+        options: { data: { full_name: 'Admin Mesa', role: 'admin' } },
+      }))
+      expect(redirect).toHaveBeenCalledWith('/login/admin')
+    })
   })
 
   describe('loginAdmin', () => {
@@ -376,6 +480,23 @@ describe('Auth Actions', () => {
       expect(result).toEqual({ error: 'Invalid login credentials' })
       expect(redirect).not.toHaveBeenCalled()
     })
+
+    it('devuelve fieldErrors y mensaje seguro para login admin inválido o API key rota', async () => {
+      const invalid = new FormData()
+      invalid.append('email', 'bad')
+      invalid.append('password', '')
+
+      await expect(loginAdmin(null, invalid)).resolves.toHaveProperty('fieldErrors')
+
+      const supabase = buildAdminSupabase()
+      supabase.auth.signInWithPassword.mockResolvedValue({ data: { user: null }, error: { message: 'No API key found' } })
+      ;(createClient as any).mockResolvedValue(supabase)
+      const formData = new FormData()
+      formData.append('email', 'admin@mesa.test')
+      formData.append('password', 'SecureP4ss!')
+
+      await expect(loginAdmin(null, formData)).resolves.toEqual({ error: expect.stringContaining('servidor de autenticación') })
+    })
   })
 
   describe('verifyAdminTotp', () => {
@@ -477,6 +598,18 @@ describe('Auth Actions', () => {
 
       expect(result).toEqual({ error: 'Invalid TOTP code' })
       expect(redirect).not.toHaveBeenCalled()
+    })
+
+    it('returns challenge error before verifying TOTP', async () => {
+      const supabase = buildMfaSupabase()
+      supabase.auth.mfa.challenge.mockResolvedValue({ data: null, error: { message: 'challenge failed' } })
+      ;(createClient as any).mockResolvedValue(supabase)
+
+      const formData = new FormData()
+      formData.append('code', '123456')
+
+      await expect(verifyAdminTotp(null, formData)).resolves.toEqual({ error: 'challenge failed' })
+      expect(supabase.auth.mfa.verify).not.toHaveBeenCalled()
     })
 
     it('prefers verified TOTP factor over unverified one', async () => {

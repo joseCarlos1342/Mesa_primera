@@ -4,7 +4,7 @@ import { getBonusStatus } from '@/app/actions/bonus'
 import { StatsShell } from './_components/StatsShell'
 
 /** Async server component that fetches data and passes it down */
-async function StatsData() {
+export async function StatsData() {
   const [stats, leaderboard, bonusStatus] = await Promise.all([
     getMyStats(),
     getLeaderboard('total_ganadas'),
@@ -16,7 +16,7 @@ async function StatsData() {
   return <StatsClient initialStats={stats} initialLeaderboard={leaderboard} initialBonusStatus={bonusStatus} />
 }
 
-function StatsLoadingSkeleton() {
+export function StatsLoadingSkeleton() {
   return (
     <div className="space-y-8 animate-pulse">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

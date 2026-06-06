@@ -225,4 +225,21 @@ describe('ReplayFileService — 7-day Retention', () => {
     const listed = ReplayFileService.list();
     expect(listed.map(r => r.game_id)).not.toContain('game-expired');
   });
+
+  it('startCleanupJob ejecuta cleanup inmediato y programa intervalo de 6 horas', () => {
+    vi.useFakeTimers();
+    const intervalSpy = vi.spyOn(global, 'setInterval');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cleanupSpy = vi.spyOn(ReplayFileService, 'cleanup').mockReturnValue(0);
+
+    ReplayFileService.startCleanupJob();
+
+    expect(cleanupSpy).toHaveBeenCalledTimes(1);
+    expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 6 * 60 * 60 * 1000);
+    expect(logSpy).toHaveBeenCalledWith('[ReplayFileService] Cleanup job iniciado: cada 6h, retención=7 días');
+
+    vi.useRealTimers();
+    cleanupSpy.mockRestore();
+    logSpy.mockRestore();
+  });
 });

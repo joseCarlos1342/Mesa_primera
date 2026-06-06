@@ -19,7 +19,7 @@ COPY apps/game-server ./apps/game-server/
 RUN corepack enable && pnpm install --frozen-lockfile --filter game-server...
 
 # Instalar Chromium + ffmpeg de Playwright con sus dependencias de sistema
-RUN pnpm exec playwright install --with-deps chromium && pnpm exec playwright install ffmpeg
+RUN pnpm --filter game-server exec playwright install --with-deps chromium && pnpm --filter game-server exec playwright install ffmpeg
 
 # Set working directory to the game-server package
 WORKDIR /app/apps/game-server

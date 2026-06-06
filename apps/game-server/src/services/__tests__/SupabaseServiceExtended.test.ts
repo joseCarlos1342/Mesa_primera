@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Hoisted: set env vars + create mock refs BEFORE module evaluation ──
-const { mockRpc, mockFrom, mockReplayFileSave, mockReplayGetMonthDir } = vi.hoisted(() => {
+const { mockRpc, mockFrom, mockReplayFileSave, mockReplayGetMonthDir, mockRedis } = vi.hoisted(() => {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
   process.env.SUPABASE_URL = 'http://localhost:54321';
 
@@ -10,6 +10,10 @@ const { mockRpc, mockFrom, mockReplayFileSave, mockReplayGetMonthDir } = vi.hois
     mockFrom: vi.fn(),
     mockReplayFileSave: vi.fn().mockReturnValue(true),
     mockReplayGetMonthDir: vi.fn().mockReturnValue('2026-04'),
+    mockRedis: {
+      get: vi.fn(),
+      del: vi.fn(),
+    },
   };
 });
 
@@ -33,6 +37,10 @@ vi.mock('../ReplayFileService', () => ({
     save: mockReplayFileSave,
     getMonthDirFor: mockReplayGetMonthDir,
   },
+}));
+
+vi.mock('../redis', () => ({
+  redis: mockRedis,
 }));
 
 import { SupabaseService } from '../SupabaseService';
@@ -495,6 +503,144 @@ describe('SupabaseService — Extended Coverage', () => {
       const result = await SupabaseService.lookupUserByPhone('3001234567');
 
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('financial and access helpers', () => {
+    it('creates a game session with in_progress status', async () => {
+      const tableQuery = {
+        select: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'table-1' }, error: null }),
+      };
+      const gameQuery = {
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      };
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'tables') return tableQuery;
+        if (table === 'games') return gameQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      });
+
+      await SupabaseService.createGameSession('game-1', 'Mesa Principal');
+
+      expect(mockFrom).toHaveBeenCalledWith('games');
+      expect(gameQuery.upsert).toHaveBeenCalledWith({ id: 'game-1', table_id: expect.any(String), status: 'in_progress' });
+    });
+
+    it('refundPlayer returns success without RPC for non-positive amounts', async () => {
+      await expect(SupabaseService.refundPlayer('user-1', 0, 'game-1')).resolves.toEqual({ success: true });
+      expect(mockRpc).not.toHaveBeenCalled();
+    });
+
+    it('refundPlayer writes a credit ledger entry via process_ledger_entry', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
+      mockRpc.mockResolvedValue({ data: { balance_after: 250000 }, error: null });
+
+      await expect(SupabaseService.refundPlayer('user-1', 50000, 'game-1', {
+        roomId: 'room-1',
+        tableName: 'Mesa Principal',
+        reason: 'room_disposed',
+      })).resolves.toEqual({ success: true, balance_after: 250000 });
+      expect(mockRpc).toHaveBeenCalledWith('process_ledger_entry', expect.objectContaining({
+        p_user_id: 'user-1',
+        p_amount_cents: 50000,
+        p_type: 'refund',
+        p_direction: 'credit',
+        p_game_id: 'game-1',
+        p_reference_id: 'refund-game-1-1700000000000',
+        p_metadata: { room_id: 'room-1', table_name: 'Mesa Principal', reason: 'room_disposed' },
+      }));
+      (Date.now as any).mockRestore();
+    });
+
+    it('refundPlayer surfaces logical RPC rejection without throwing', async () => {
+      mockRpc.mockResolvedValue({ data: { error: 'duplicate refund' }, error: null });
+
+      await expect(SupabaseService.refundPlayer('user-1', 1000, 'game-1')).resolves.toEqual({
+        success: false,
+        error: 'duplicate refund',
+      });
+    });
+
+    it('transferBetweenPlayers returns balances and recipient name on success', async () => {
+      mockRpc.mockResolvedValue({
+        data: {
+          sender_balance_after: 90000,
+          recipient_balance_after: 110000,
+          recipient_name: 'Ana',
+        },
+        error: null,
+      });
+
+      await expect(SupabaseService.transferBetweenPlayers('sender-1', 'recipient-1', 10000, {
+        roomId: 'room-1',
+      })).resolves.toEqual({
+        success: true,
+        senderBalanceAfter: 90000,
+        recipientBalanceAfter: 110000,
+        recipientName: 'Ana',
+      });
+      expect(mockRpc).toHaveBeenCalledWith('transfer_between_players', {
+        p_recipient_id: 'recipient-1',
+        p_amount_cents: 10000,
+        p_description: 'Transferencia en mesa (sala: room-1)',
+        p_sender_id: 'sender-1',
+      });
+    });
+
+    it('transferBetweenPlayers surfaces RPC rejection', async () => {
+      mockRpc.mockResolvedValue({ data: { error: 'saldo insuficiente' }, error: null });
+
+      await expect(SupabaseService.transferBetweenPlayers('sender-1', 'recipient-1', 10000)).resolves.toEqual({
+        success: false,
+        error: 'saldo insuficiente',
+      });
+    });
+
+    it('validateSupervisionToken consumes a matching token', async () => {
+      mockRedis.get.mockResolvedValue(JSON.stringify({ adminId: 'admin-1', roomId: 'room-1' }));
+      mockRedis.del.mockResolvedValue(1);
+
+      await expect(SupabaseService.validateSupervisionToken('token-1', 'room-1')).resolves.toEqual({
+        valid: true,
+        adminId: 'admin-1',
+      });
+      expect(mockRedis.get).toHaveBeenCalledWith('supervision:token-1');
+      expect(mockRedis.del).toHaveBeenCalledWith('supervision:token-1');
+    });
+
+    it('validateSupervisionToken rejects missing or room-mismatched tokens without consuming them', async () => {
+      await expect(SupabaseService.validateSupervisionToken('', 'room-1')).resolves.toEqual({ valid: false });
+      mockRedis.get.mockResolvedValue(JSON.stringify({ adminId: 'admin-1', roomId: 'other-room' }));
+
+      await expect(SupabaseService.validateSupervisionToken('token-1', 'room-1')).resolves.toEqual({ valid: false });
+      expect(mockRedis.del).not.toHaveBeenCalled();
+    });
+
+    it('checkTableAccess returns blocked sanction details', async () => {
+      mockRpc.mockResolvedValue({
+        data: {
+          blocked: true,
+          sanction_type: 'full_suspension',
+          reason: 'fraude',
+          expires_at: '2026-01-31',
+        },
+        error: null,
+      });
+
+      await expect(SupabaseService.checkTableAccess('user-1')).resolves.toEqual({
+        blocked: true,
+        sanctionType: 'full_suspension',
+        reason: 'fraude',
+        expiresAt: '2026-01-31',
+      });
+    });
+
+    it('checkTableAccess fails open on RPC errors', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'db down' } });
+
+      await expect(SupabaseService.checkTableAccess('user-1')).resolves.toEqual({ blocked: false });
     });
   });
 });
