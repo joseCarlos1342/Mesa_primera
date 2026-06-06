@@ -17,14 +17,14 @@ Cobertura actual de `apps/web`:
 | Statements | `97.35%` |
 | Lines | `97.35%` |
 | Functions | `89.92%` |
-| Branches | `82.8%` |
+| Branches | `82.86%` |
 
 Resultado de la corrida:
 
 - `180` suites en verde.
-- `1250` tests pasando.
+- `1254` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f4e14e00015IPIS6C9DT8BUA`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f545fb5001MXORR4Koc9cEZa`.
 
 ## Meta Final
 
@@ -226,7 +226,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `97.35%` actual | baseline real ya medido con `181` suites y `1250` tests |
+| Fase 0 | `97.35%` actual | baseline real ya medido con `181` suites y `1254` tests |
 | Fase 1 | `95%` | cubrir auth/security y ramas restantes de admin tables |
 | Fase 2 | `96%` | cubrir infraestructura Supabase, hooks globales y shell compartido |
 | Fase 3 | `96.5%` | reforzar `auth-actions.ts` y `auth-actions-helpers.ts` sin ocultar errores de seguridad |
@@ -1942,3 +1942,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f4e14e00015IPIS6C9DT8BUA`.
 - Riesgos abiertos: `Board.tsx`, `Lobby.tsx`, `LandingContent.tsx` callbacks GSAP, `BroadcastBanner.tsx` fallback sin ref y server actions de menor prioridad.
 - Siguiente lote: `Board.tsx`/`Lobby.tsx` para confianza de juego o `PWAInstallPrompt.tsx`/`OrientationPortrait.tsx` para branches de shell.
+
+## Checkpoint 67
+
+- Fecha: prompt de instalacion PWA despues de checkpoint 66.
+- Coverage antes: `97.35%` statements, `97.35%` lines, `89.92%` functions, `82.8%` branches.
+- Coverage despues: `97.35%` statements, `97.35%` lines, `89.92%` functions, `82.86%` branches.
+- Archivos cubiertos: `PWAInstallPrompt.tsx`.
+- Tests agregados: standalone por media query y `navigator.standalone`, cooldown de descarte, install aceptado/descartado, banner sin prompt, guia iOS, click en overlay y stopPropagation del contenido.
+- Riesgos cerrados: `PWAInstallPrompt.tsx` sube a `100%` statements/functions/lines y `96.42%` branches.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `181` suites y `1254` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f545fb5001MXORR4Koc9cEZa`.
+- Riesgos abiertos: `Board.tsx`, `Lobby.tsx`, `LandingContent.tsx` callbacks GSAP, `OrientationPortrait.tsx` branch residual y server actions de menor prioridad.
+- Siguiente lote: `Board.tsx`/`Lobby.tsx` para confianza de juego u `OrientationPortrait.tsx` por branch residual de shell.
