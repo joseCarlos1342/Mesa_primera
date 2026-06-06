@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `97.01%` |
-| Lines | `97.01%` |
-| Functions | `88.49%` |
-| Branches | `82.01%` |
+| Statements | `97.06%` |
+| Lines | `97.06%` |
+| Functions | `89.82%` |
+| Branches | `82.11%` |
 
 Resultado de la corrida:
 
 - `180` suites en verde.
-- `1229` tests pasando.
+- `1234` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f2a028e0016nLyI4UuRqQ3HV`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f38a1eb001oLojVJ59ZTRP4Q`.
 
 ## Meta Final
 
@@ -40,7 +40,7 @@ Objetivo de calidad asociado:
 
 ## Realidad del Gap
 
-Pasar de `97.01%` a `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles. La web incluye:
+Pasar de `97.06%` a `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles. La web incluye:
 
 - App Router de Next.js.
 - formularios publicos de auth;
@@ -168,7 +168,7 @@ Riesgo:
 
 Estado actual:
 
-- `NotificationCenter.tsx`: `98.18%`, ramas `93.75%`, funciones `62.5%`.
+- `NotificationCenter.tsx`: `100%`, ramas `97.18%`, funciones `100%`.
 - `SupportChat.tsx`: `100%` statements/lines, ramas `83.44%`, funciones `86.66%`.
 - `components/providers/AppLockProvider.tsx`: `95.92%`, con ramas de browser/session aun pendientes.
 - Varios hooks estan sobre `88%`, pero branches siguen bajos.
@@ -226,7 +226,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `97.01%` actual | baseline real ya medido con `181` suites y `1229` tests |
+| Fase 0 | `97.06%` actual | baseline real ya medido con `181` suites y `1234` tests |
 | Fase 1 | `95%` | cubrir auth/security y ramas restantes de admin tables |
 | Fase 2 | `96%` | cubrir infraestructura Supabase, hooks globales y shell compartido |
 | Fase 3 | `96.5%` | reforzar `auth-actions.ts` y `auth-actions-helpers.ts` sin ocultar errores de seguridad |
@@ -1890,3 +1890,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f2a028e0016nLyI4UuRqQ3HV`.
 - Riesgos abiertos: `NotificationCenter.tsx` functions, `ShuffleAnimation.tsx` functions, callbacks de animacion GSAP en landing, ramas de stats dashboard y server actions de menor prioridad.
 - Siguiente lote: `NotificationCenter.tsx` o `ShuffleAnimation.tsx` por functions, o `stats-dashboard.tsx` por branches de UI.
+
+## Checkpoint 63
+
+- Fecha: shell de notificaciones y animacion de barajado despues de checkpoint 62.
+- Coverage antes: `97.01%` statements, `97.01%` lines, `88.49%` functions, `82.01%` branches.
+- Coverage despues: `97.06%` statements, `97.06%` lines, `89.82%` functions, `82.11%` branches.
+- Archivos cubiertos: `NotificationCenter.tsx` y `ShuffleAnimation.tsx`.
+- Tests agregados: hover real de botones, fecha invalida, cuerpo vacio, callbacks `onended` de audio, ausencia de `AudioContext`, audio bloqueado y formulas GSAP de posicionamiento.
+- Riesgos cerrados: `NotificationCenter.tsx` queda en `100%` statements/functions/lines; `ShuffleAnimation.tsx` queda en `100%` statements/functions/lines y branches `95.45%`.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `181` suites y `1234` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f38a1eb001oLojVJ59ZTRP4Q`.
+- Riesgos abiertos: ramas de `stats-dashboard.tsx`, `SupportConversationList.tsx`, `Board.tsx`, `Lobby.tsx` y server actions de menor prioridad.
+- Siguiente lote: `stats-dashboard.tsx` por branches de UI o `SupportConversationList.tsx` por coverage funcional del admin.

@@ -171,6 +171,23 @@ describe('ShuffleAnimation', () => {
     expect(timelineApi.addLabel).toHaveBeenCalledWith('end', 10)
     expect(timelineApi.set).toHaveBeenCalled()
     expect(timelineApi.to).toHaveBeenCalled()
+
+    const resetConfig = timelineApi.set.mock.calls[0][1] as {
+      y: (index: number) => number
+      rotation: (index: number) => number
+      zIndex: (index: number) => number
+    }
+    expect(resetConfig.y(4)).toBe(-2)
+    expect(resetConfig.rotation(4)).toBeCloseTo(-0.175)
+    expect(resetConfig.zIndex(4)).toBe(4)
+
+    const squareUpCall = timelineApi.to.mock.calls.find((call) => Array.isArray(call[0]) && typeof call[1]?.y === 'function')
+    const squareUpConfig = squareUpCall?.[1] as {
+      y: (index: number) => number
+      rotation: (index: number) => number
+    }
+    expect(squareUpConfig.y(6)).toBe(-3)
+    expect(squareUpConfig.rotation(6)).toBeCloseTo(0.525)
   })
 
   it('reproduce sonido al iniciar cada ciclo de barajado', () => {
@@ -278,5 +295,97 @@ describe('ShuffleAnimation', () => {
     unmount()
 
     expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it('desconecta nodos de audio cuando terminan oscillator y buffer sources', () => {
+    const oscillator = {
+      type: 'triangle',
+      frequency: {
+        setValueAtTime: jest.fn(),
+        exponentialRampToValueAtTime: jest.fn(),
+      },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      start: jest.fn(),
+      stop: jest.fn(),
+      onended: null as null | (() => void),
+    }
+    const createdSources = [0, 1].map(() => ({
+      buffer: null,
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      start: jest.fn(),
+      stop: jest.fn(),
+      onended: null as null | (() => void),
+    }))
+    const sourceQueue = [...createdSources]
+    const filters = [0, 1, 2].map(() => ({
+      type: 'bandpass',
+      frequency: { setValueAtTime: jest.fn() },
+      Q: { value: 0 },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    }))
+    const gains = [0, 1, 2].map(() => ({
+      gain: {
+        setValueAtTime: jest.fn(),
+        exponentialRampToValueAtTime: jest.fn(),
+      },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    }))
+    let filterIndex = 0
+    let gainIndex = 0
+    Object.defineProperty(window, 'AudioContext', {
+      configurable: true,
+      value: jest.fn(() => ({
+        sampleRate: 48_000,
+        currentTime: 0,
+        destination: {},
+        createBuffer: jest.fn((_channels: number, frames: number) => ({
+          getChannelData: jest.fn(() => new Float32Array(frames)),
+        })),
+        createBufferSource: jest.fn(() => sourceQueue.shift()),
+        createOscillator: jest.fn(() => oscillator),
+        createBiquadFilter: jest.fn(() => filters[filterIndex++]),
+        createGain: jest.fn(() => gains[gainIndex++]),
+        close: jest.fn(() => Promise.resolve()),
+      })),
+    })
+
+    const { unmount } = render(<ShuffleAnimation />)
+    oscillator.onended?.()
+    createdSources[0]?.onended?.()
+    createdSources[1]?.onended?.()
+
+    expect(oscillator.disconnect).toHaveBeenCalledTimes(1)
+    expect(filters[0].disconnect).toHaveBeenCalledTimes(1)
+    expect(gains[0].disconnect).toHaveBeenCalledTimes(1)
+    expect(filters[1].disconnect).toHaveBeenCalledTimes(1)
+    expect(gains[1].disconnect).toHaveBeenCalledTimes(1)
+    expect(filters[2].disconnect).toHaveBeenCalledTimes(1)
+    expect(gains[2].disconnect).toHaveBeenCalledTimes(1)
+
+    unmount()
+  })
+
+  it('mantiene la animación si audio no está disponible o está bloqueado', () => {
+    Object.defineProperty(window, 'AudioContext', { configurable: true, value: undefined })
+    Object.defineProperty(window, 'webkitAudioContext', { configurable: true, value: undefined })
+
+    const unavailable = render(<ShuffleAnimation />)
+    expect(screen.getByText(/Barajando/)).toBeInTheDocument()
+    unavailable.unmount()
+
+    Object.defineProperty(window, 'AudioContext', {
+      configurable: true,
+      value: jest.fn(() => {
+        throw new Error('blocked')
+      }),
+    })
+
+    const blocked = render(<ShuffleAnimation />)
+    expect(screen.getByText(/Barajando/)).toBeInTheDocument()
+    blocked.unmount()
   })
 })
