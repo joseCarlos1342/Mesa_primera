@@ -1,16 +1,21 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Leaderboard } from '../Leaderboard'
 import { StatsClient } from '../StatsClient'
 import { StatsShell } from '../StatsShell'
 import { StatsTabs } from '../StatsTabs'
 import { StatsTabContext } from '../stats-tab-context'
 import { getLeaderboard } from '@/app/actions/stats'
+import { claimBonus } from '@/app/actions/bonus'
+import confetti from 'canvas-confetti'
 
 jest.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   m: {
-    div: ({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, layoutId: _layoutId, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => (
+    div: ({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, layoutId: _layoutId, whileHover: _whileHover, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => (
       <div {...props}>{children}</div>
+    ),
+    p: ({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: React.HTMLAttributes<HTMLParagraphElement> & Record<string, unknown>) => (
+      <p {...props}>{children}</p>
     ),
   },
 }))
@@ -22,6 +27,12 @@ jest.mock('@/utils/avatars', () => ({
 jest.mock('@/app/actions/stats', () => ({
   getLeaderboard: jest.fn(),
 }))
+
+jest.mock('@/app/actions/bonus', () => ({
+  claimBonus: jest.fn(),
+}))
+
+jest.mock('canvas-confetti', () => jest.fn())
 
 jest.mock('../stats-dashboard', () => ({
   StatsDashboard: ({ stats, bonusStatus }: { stats: { games_played: number }, bonusStatus: { current_tier?: string } | null }) => (
@@ -59,6 +70,19 @@ const initialStats = {
 const initialLeaderboard = [
   { user_id: 'u1', username: 'Campeon', avatar_url: null, score: 20 },
 ]
+
+const baseBonusStatus = {
+  period: 'Junio 2026',
+  monthly_rake_cents: 20_000,
+  tiers: [
+    { id: 1, name: 'Bronce', min_rake_cents: 10_000, bonus_amount_cents: 2_500, unlocked: true, claimed: false },
+    { id: 2, name: 'Plata', min_rake_cents: 50_000, bonus_amount_cents: 10_000, unlocked: false, claimed: false },
+    { id: 3, name: 'Oro', min_rake_cents: 100_000, bonus_amount_cents: 25_000, unlocked: true, claimed: true },
+  ],
+}
+
+const mockClaimBonus = claimBonus as jest.MockedFunction<typeof claimBonus>
+const mockConfetti = confetti as jest.MockedFunction<typeof confetti>
 
 describe('stats shell and client components', () => {
   beforeEach(() => {
@@ -169,5 +193,76 @@ describe('Leaderboard visual ranking component', () => {
     expect(screen.getAllByText('Especiales')).toHaveLength(2)
     expect(screen.getByText('5')).toBeInTheDocument()
     expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('StatsDashboard real bonus behavior', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('renderiza métricas sin bono y evita división por cero en win rate', () => {
+    const ActualStatsDashboard = jest.requireActual('../stats-dashboard').StatsDashboard
+
+    render(<ActualStatsDashboard stats={{ ...initialStats, games_played: 0, games_won: 0 }} bonusStatus={null} />)
+
+    expect(screen.getByText('Partidas')).toBeInTheDocument()
+    expect(screen.getByText('0%')).toBeInTheDocument()
+    expect(screen.getByText('0 victorias')).toBeInTheDocument()
+    expect(screen.getByText('Jugadas Especiales')).toBeInTheDocument()
+    expect(screen.queryByText('Bono del Mes')).not.toBeInTheDocument()
+  })
+
+  it('muestra tiers reclamables, reclamados y bloqueados con progreso mensual', () => {
+    const ActualStatsDashboard = jest.requireActual('../stats-dashboard').StatsDashboard
+
+    render(<ActualStatsDashboard stats={initialStats} bonusStatus={baseBonusStatus} />)
+
+    expect(screen.getByText('Bono del Mes')).toBeInTheDocument()
+    expect(screen.getByText('Junio 2026')).toBeInTheDocument()
+    expect(screen.getByText('Disponible')).toBeInTheDocument()
+    expect(screen.getByText('¡Vas por buen camino, sigue jugando! 🔥')).toBeInTheDocument()
+    expect(screen.getByText('Bronce')).toBeInTheDocument()
+    expect(screen.getByText('Plata')).toBeInTheDocument()
+    expect(screen.getByText('Oro')).toBeInTheDocument()
+    expect(screen.getByText('Reclamado')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /reclamar/i })).toBeInTheDocument()
+  })
+
+  it('muestra error cuando claimBonus rechaza el reclamo', async () => {
+    const ActualStatsDashboard = jest.requireActual('../stats-dashboard').StatsDashboard
+    mockClaimBonus.mockResolvedValueOnce({ error: 'Bono ya reclamado' })
+
+    render(<ActualStatsDashboard stats={initialStats} bonusStatus={baseBonusStatus} />)
+    fireEvent.click(screen.getByRole('button', { name: /reclamar/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Bono ya reclamado')
+    expect(mockConfetti).not.toHaveBeenCalled()
+  })
+
+  it('marca tier como reclamado, dispara celebración y la oculta luego', async () => {
+    jest.useFakeTimers()
+    const ActualStatsDashboard = jest.requireActual('../stats-dashboard').StatsDashboard
+    mockClaimBonus.mockResolvedValueOnce({ success: true })
+
+    render(<ActualStatsDashboard stats={initialStats} bonusStatus={baseBonusStatus} />)
+    fireEvent.click(screen.getByRole('button', { name: /reclamar/i }))
+
+    expect(await screen.findByText('¡Bono Bronce!')).toBeInTheDocument()
+    expect(screen.getByText('+$25')).toBeInTheDocument()
+    expect(mockConfetti).toHaveBeenCalled()
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Reclamado')).toHaveLength(2)
+    })
+
+    act(() => {
+      jest.advanceTimersByTime(4_000)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('¡Bono Bronce!')).not.toBeInTheDocument()
+    })
+    jest.useRealTimers()
   })
 })
