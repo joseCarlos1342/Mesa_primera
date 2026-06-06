@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `97.06%` |
-| Lines | `97.06%` |
+| Statements | `97.21%` |
+| Lines | `97.21%` |
 | Functions | `89.82%` |
-| Branches | `82.11%` |
+| Branches | `82.34%` |
 
 Resultado de la corrida:
 
 - `180` suites en verde.
-- `1234` tests pasando.
+- `1238` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f38a1eb001oLojVJ59ZTRP4Q`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f3efd99001QELfgJX809Nrjh`.
 
 ## Meta Final
 
@@ -40,7 +40,7 @@ Objetivo de calidad asociado:
 
 ## Realidad del Gap
 
-Pasar de `97.06%` a `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles. La web incluye:
+Pasar de `97.21%` a `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles. La web incluye:
 
 - App Router de Next.js.
 - formularios publicos de auth;
@@ -226,7 +226,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `97.06%` actual | baseline real ya medido con `181` suites y `1234` tests |
+| Fase 0 | `97.21%` actual | baseline real ya medido con `181` suites y `1238` tests |
 | Fase 1 | `95%` | cubrir auth/security y ramas restantes de admin tables |
 | Fase 2 | `96%` | cubrir infraestructura Supabase, hooks globales y shell compartido |
 | Fase 3 | `96.5%` | reforzar `auth-actions.ts` y `auth-actions-helpers.ts` sin ocultar errores de seguridad |
@@ -1901,5 +1901,18 @@ Ese lote combina:
 - Riesgos cerrados: `NotificationCenter.tsx` queda en `100%` statements/functions/lines; `ShuffleAnimation.tsx` queda en `100%` statements/functions/lines y branches `95.45%`.
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `181` suites y `1234` tests.
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f38a1eb001oLojVJ59ZTRP4Q`.
-- Riesgos abiertos: ramas de `stats-dashboard.tsx`, `SupportConversationList.tsx`, `Board.tsx`, `Lobby.tsx` y server actions de menor prioridad.
-- Siguiente lote: `stats-dashboard.tsx` por branches de UI o `SupportConversationList.tsx` por coverage funcional del admin.
+- Riesgos abiertos: `SupportConversationList.tsx`, `Board.tsx`, `Lobby.tsx` y server actions de menor prioridad.
+- Siguiente lote: `SupportConversationList.tsx` por coverage funcional del admin o `Board.tsx`/`Lobby.tsx` para confianza del juego.
+
+## Checkpoint 64
+
+- Fecha: dashboard de estadisticas del jugador despues de checkpoint 63.
+- Coverage antes: `97.06%` statements, `97.06%` lines, `89.82%` functions, `82.11%` branches.
+- Coverage despues: `97.21%` statements, `97.21%` lines, `89.82%` functions, `82.34%` branches.
+- Archivos cubiertos: `stats-dashboard.tsx` con render real via `jest.requireActual`.
+- Tests agregados: win rate con cero partidas, dashboard sin bono, tiers reclamables/reclamados/bloqueados, progreso mensual, error de `claimBonus` y reclamo exitoso con celebracion/confetti.
+- Riesgos cerrados: `stats-dashboard.tsx` sube a `99.38%` statements, `94%` branches y `100%` functions sin tocar UI productiva.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `181` suites y `1238` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f3efd99001QELfgJX809Nrjh`.
+- Riesgos abiertos: `SupportConversationList.tsx`, `Board.tsx`, `Lobby.tsx`, `LandingContent.tsx` callbacks GSAP y server actions de menor prioridad.
+- Siguiente lote: `SupportConversationList.tsx` o ramas de juego (`Board.tsx`/`Lobby.tsx`) segun retorno de cobertura y riesgo.
