@@ -30,4 +30,16 @@ describe('getPublicTurnstileSiteKey', () => {
 
     expect(getPublicTurnstileSiteKey()).toBe('runtime-key')
   })
+
+  it('returns empty string when neither build-time nor runtime key exists', async () => {
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = '   '
+    window.__MESA_PRIMERA_RUNTIME_ENV__ = {
+      ...window.__MESA_PRIMERA_RUNTIME_ENV__,
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: undefined,
+    }
+
+    const { getPublicTurnstileSiteKey } = await import('@/lib/security/turnstile-env')
+
+    expect(getPublicTurnstileSiteKey()).toBe('')
+  })
 })

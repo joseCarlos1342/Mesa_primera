@@ -115,11 +115,13 @@ const originalScrollY = window.scrollY
 const scrollIntoViewMock = jest.fn()
 const observeMock = jest.fn()
 const disconnectMock = jest.fn()
+let intersectionCallback: ((entries: Array<{ isIntersecting: boolean }>) => void) | null = null
 let intervalCallback: (() => void) | null = null
 let clearIntervalMock: jest.SpyInstance
 
 describe('LandingContent', () => {
   beforeEach(() => {
+    intersectionCallback = null
     intervalCallback = null
     jest.spyOn(window, 'setInterval').mockImplementation(((callback: TimerHandler) => {
       intervalCallback = callback as () => void
@@ -143,11 +145,14 @@ describe('LandingContent', () => {
 
     Object.defineProperty(window, 'IntersectionObserver', {
       writable: true,
-      value: jest.fn().mockImplementation(() => ({
-        observe: observeMock,
-        disconnect: disconnectMock,
-        unobserve: jest.fn(),
-      })),
+      value: jest.fn().mockImplementation((callback) => {
+        intersectionCallback = callback
+        return {
+          observe: observeMock,
+          disconnect: disconnectMock,
+          unobserve: jest.fn(),
+        }
+      }),
     })
 
     Element.prototype.scrollIntoView = scrollIntoViewMock
@@ -181,6 +186,40 @@ describe('LandingContent', () => {
     const mobileNav = screen.getAllByRole('button', { name: 'Tutoriales' })
     expect(mobileNav).toHaveLength(2)
     expect(screen.getByRole('button', { name: /cerrar menú/i })).toBeInTheDocument()
+  })
+
+  it('navega desde el menú mobile y lo cierra al elegir sección', () => {
+    render(<LandingContent />)
+
+    fireEvent.click(screen.getByRole('button', { name: /abrir menú/i }))
+    const tutorialButtons = screen.getAllByRole('button', { name: 'Tutoriales' })
+    fireEvent.click(tutorialButtons[1])
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
+    expect(screen.getByRole('button', { name: /abrir menú/i })).toBeInTheDocument()
+  })
+
+  it('actualiza estado de scroll spy al desplazarse', () => {
+    render(<LandingContent />)
+    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 1000 })
+    const sectionOffsets: Record<string, number> = {
+      inicio: 0,
+      nosotros: 450,
+      servicios: 900,
+      'como-jugar': 1300,
+      tutoriales: 1700,
+      faq: 2100,
+      ubicacion: 2500,
+    }
+    for (const [id, offsetTop] of Object.entries(sectionOffsets)) {
+      Object.defineProperty(document.getElementById(id)!, 'offsetTop', { configurable: true, value: offsetTop })
+    }
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(screen.getAllByRole('button', { name: 'Servicios' })[0]).toHaveClass('text-brand-gold')
   })
 
   it('navega al hacer click en el hint del hero', () => {
@@ -220,6 +259,39 @@ describe('LandingContent', () => {
     expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^eventos especiales$/i, level: 3 })).toBeInTheDocument()
   })
 
+  it('avanza automáticamente el carrusel de fotos y pausa con hover', () => {
+    render(<LandingContent />)
+
+    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section') as HTMLElement
+    const carousel = photoCarouselSection.querySelector('.relative.overflow-hidden') as Element
+
+    act(() => {
+      intervalCallback?.()
+    })
+    expect(within(photoCarouselSection).getByRole('heading', { name: /^mesas de juego$/i, level: 3 })).toBeInTheDocument()
+
+    fireEvent.mouseEnter(carousel)
+    expect(clearIntervalMock).toHaveBeenCalled()
+
+    fireEvent.mouseLeave(carousel)
+    expect(window.setInterval).toHaveBeenCalled()
+  })
+
+  it('permite navegar el carrusel de fotos con gestos táctiles', () => {
+    render(<LandingContent />)
+
+    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section') as HTMLElement
+    const carousel = photoCarouselSection.querySelector('.relative.overflow-hidden') as Element
+
+    fireEvent.touchStart(carousel, { touches: [{ clientX: 200 }] })
+    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 20 }] })
+    expect(within(photoCarouselSection).getByRole('heading', { name: /^mesas de juego$/i, level: 3 })).toBeInTheDocument()
+
+    fireEvent.touchStart(carousel, { touches: [{ clientX: 20 }] })
+    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 200 }] })
+    expect(within(photoCarouselSection).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
+  })
+
   it('pausa el autoplay al hacer hover y vuelve a rotar con el intervalo', () => {
     render(<LandingContent />)
 
@@ -246,6 +318,36 @@ describe('LandingContent', () => {
     fireEvent.click(screen.getByRole('button', { name: /cerrar tutorial/i }))
 
     expect(screen.queryByTestId('tutorial-walkthrough-dynamic')).not.toBeInTheDocument()
+  })
+
+  it('navega carrusel de tutoriales y cierra tutorial al tocar backdrop', async () => {
+    render(<LandingContent />)
+
+    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
+    fireEvent.click(within(tutorialsSection).getByRole('button', { name: /siguiente/i }))
+    fireEvent.click(within(tutorialsSection).getByRole('button', { name: /anterior/i }))
+
+    const tutorialTrackViewport = tutorialsSection.querySelector('.overflow-hidden.flex-1') as Element
+    fireEvent.touchStart(tutorialTrackViewport, { touches: [{ clientX: 200 }] })
+    fireEvent.touchEnd(tutorialTrackViewport, { changedTouches: [{ clientX: 20 }] })
+
+    fireEvent.click(within(tutorialsSection).getByText(/cómo registrarte/i))
+    const overlay = await screen.findByTestId('tutorial-walkthrough-dynamic')
+    fireEvent.click(overlay.closest('.fixed')!)
+
+    expect(screen.queryByTestId('tutorial-walkthrough-dynamic')).not.toBeInTheDocument()
+  })
+
+  it('muestra el mapa dinámico cuando el placeholder intersecta', () => {
+    render(<LandingContent />)
+
+    expect(screen.getByText(/cargando mapa/i)).toBeInTheDocument()
+    act(() => {
+      intersectionCallback?.([{ isIntersecting: true }])
+    })
+
+    expect(screen.getByTestId('location-map-dynamic')).toBeInTheDocument()
+    expect(disconnectMock).toHaveBeenCalled()
   })
 
   it('renderiza ubicación, placeholder del mapa y CTAs externos', () => {

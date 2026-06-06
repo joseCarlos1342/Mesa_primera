@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 
 import { NotificationCenter } from '../NotificationCenter'
@@ -28,6 +28,7 @@ const updateChainEqMock = jest.fn()
 const selectMock = jest.fn()
 const fromMock = jest.fn()
 const updateIsMock = jest.fn()
+let realtimeHandler: ((payload: { new: (typeof notifications)[number] }) => void) | null = null
 
 const mockUseRouter = useRouter as unknown as jest.Mock
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>
@@ -54,7 +55,7 @@ const notifications = [
   },
 ]
 
-function setupSupabase() {
+function setupSupabase(initialNotifications = notifications) {
   const updateBuilder = {
     eq: updateChainEqMock,
   }
@@ -70,7 +71,7 @@ function setupSupabase() {
   }
   eqMock.mockReturnValue(selectBuilder)
   orderMock.mockReturnValue(selectBuilder)
-  limitMock.mockResolvedValue({ data: notifications })
+  limitMock.mockResolvedValue({ data: initialNotifications })
   selectMock.mockReturnValue(selectBuilder)
 
   fromMock.mockImplementation(() => ({
@@ -90,6 +91,11 @@ describe('NotificationCenter', () => {
     jest.clearAllMocks()
     mockUseRouter.mockReturnValue({ push })
     mockDeleteNotification.mockResolvedValue({ success: true } as never)
+    realtimeHandler = null
+    onMock.mockImplementation((_event, _filter, callback) => {
+      realtimeHandler = callback
+      return { subscribe: subscribeMock }
+    })
     setupSupabase()
     jest.spyOn(window, 'Audio').mockImplementation(() => ({ volume: 0, play: jest.fn().mockResolvedValue(undefined) } as unknown as HTMLAudioElement))
   })
@@ -101,6 +107,22 @@ describe('NotificationCenter', () => {
       expect(screen.getByRole('button', { name: /notificaciones/i })).toBeInTheDocument()
       expect(screen.getByText('1')).toBeInTheDocument()
     })
+  })
+
+  it('no consulta Supabase si no hay userId', () => {
+    render(<NotificationCenter userId="" />)
+
+    expect(fromMock).not.toHaveBeenCalled()
+    expect(screen.queryByText('1')).not.toBeInTheDocument()
+  })
+
+  it('muestra estado vacío cuando no hay notificaciones', async () => {
+    setupSupabase([])
+    render(<NotificationCenter userId="user-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+
+    expect(await screen.findByText(/tu buzón está vacío/i)).toBeInTheDocument()
   })
 
   it('abre el panel, formatea montos y permite limpiar todo', async () => {
@@ -119,6 +141,71 @@ describe('NotificationCenter', () => {
     await waitFor(() => {
       expect(updateIsMock).toHaveBeenCalled()
     })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /limpiar todo/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('mantiene contador si limpiar todo falla en Supabase', async () => {
+    updateIsMock.mockResolvedValueOnce({ error: { message: 'DB offline' } })
+
+    render(<NotificationCenter userId="user-1" />)
+    await screen.findByText('1')
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /limpiar todo/i }))
+
+    await waitFor(() => expect(updateIsMock).toHaveBeenCalled())
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+
+  it('agrega notificaciones realtime, incrementa contador y reproduce audio', async () => {
+    const play = jest.fn().mockResolvedValue(undefined)
+    ;(window.Audio as unknown as jest.Mock).mockImplementation(() => ({ volume: 0, play } as unknown as HTMLAudioElement))
+    setupSupabase([])
+    render(<NotificationCenter userId="user-1" />)
+
+    await waitFor(() => expect(realtimeHandler).toBeTruthy())
+    act(() => {
+      realtimeHandler!({
+        new: {
+          id: 'n3',
+          type: 'game_invite',
+          title: 'Invitación',
+          body: 'Te invitaron a jugar',
+          created_at: '2025-01-03T10:00:00.000Z',
+          read_at: null,
+          data: {},
+        },
+      })
+    })
+
+    expect(await screen.findByText('1')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+    expect(await screen.findByText(/invitación/i)).toBeInTheDocument()
+    expect(play).toHaveBeenCalled()
+  })
+
+  it('ignora errores al reproducir audio realtime', async () => {
+    ;(window.Audio as unknown as jest.Mock).mockImplementation(() => {
+      throw new Error('Audio blocked')
+    })
+    setupSupabase([])
+    render(<NotificationCenter userId="user-1" />)
+
+    await waitFor(() => expect(realtimeHandler).toBeTruthy())
+    expect(() => act(() => {
+      realtimeHandler!({
+        new: {
+          id: 'n4',
+          type: 'info',
+          title: 'Info',
+          body: '',
+          created_at: 'fecha-invalida',
+          read_at: null,
+          data: {},
+        },
+      })
+    })).not.toThrow()
   })
 
   it('navega y borra una notificación al pulsar Ir', async () => {
@@ -137,6 +224,41 @@ describe('NotificationCenter', () => {
     })
   })
 
+  it.each([
+    ['game_invite', {}, '/lobby'],
+    ['friend_accepted', {}, '/friends'],
+    ['friend_removed', {}, '/friends'],
+    ['direct_message', { senderId: 'friend-1' }, '/friends?chat=friend-1'],
+    ['direct_message', {}, '/friends'],
+    ['deposit_success', {}, '/wallet'],
+    ['withdraw_success', {}, '/wallet'],
+    ['wallet_update', {}, '/wallet'],
+  ])('navega según tipo %s', async (type, data, expectedPath) => {
+    setupSupabase([{ ...notifications[0], id: `nav-${type}`, type, data }])
+    render(<NotificationCenter userId="user-1" />)
+    await screen.findByText('1')
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /ir/i }))[0])
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith(expectedPath))
+  })
+
+  it('cierra panel sin navegar cuando el tipo no tiene destino', async () => {
+    setupSupabase([{ ...notifications[0], id: 'unknown', type: 'system' }])
+    render(<NotificationCenter userId="user-1" />)
+    await screen.findByText('1')
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /ir/i }))[0])
+
+    await waitFor(() => expect(mockDeleteNotification).toHaveBeenCalledWith('unknown'))
+    expect(push).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(screen.queryByText(/nueva solicitud/i)).not.toBeInTheDocument()
+    })
+  })
+
   it('borra una notificación manualmente', async () => {
     render(<NotificationCenter userId="user-1" />)
     await waitFor(() => {
@@ -150,5 +272,17 @@ describe('NotificationCenter', () => {
     await waitFor(() => {
       expect(mockDeleteNotification).toHaveBeenCalledWith('n1')
     })
+  })
+
+  it('no elimina visualmente si deleteNotification falla', async () => {
+    mockDeleteNotification.mockResolvedValueOnce({ success: false } as never)
+    render(<NotificationCenter userId="user-1" />)
+    await screen.findByText('1')
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /borrar/i }))[0])
+
+    await waitFor(() => expect(mockDeleteNotification).toHaveBeenCalledWith('n1'))
+    expect(screen.getByText(/nueva solicitud/i)).toBeInTheDocument()
   })
 })

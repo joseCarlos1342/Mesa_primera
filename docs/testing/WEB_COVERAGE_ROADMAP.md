@@ -8,22 +8,23 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-06-04. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `19.06%` |
-| Lines | `19.06%` |
-| Functions | `39.03%` |
-| Branches | `63.28%` |
+| Statements | `97.01%` |
+| Lines | `97.01%` |
+| Functions | `88.49%` |
+| Branches | `82.01%` |
 
 Resultado de la corrida:
 
-- `58` suites en verde.
-- `504` tests pasando.
-- La suite actual es funcionalmente util, pero la cobertura es baja porque ahora se mide mucha superficie UI que antes no entraba al reporte.
+- `180` suites en verde.
+- `1229` tests pasando.
+- La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f2a028e0016nLyI4UuRqQ3HV`.
 
 ## Meta Final
 
@@ -39,7 +40,7 @@ Objetivo de calidad asociado:
 
 ## Realidad del Gap
 
-Pasar de `19.06%` a `98%` en la web no es un ajuste menor ni un sprint corto. La web incluye:
+Pasar de `97.01%` a `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles. La web incluye:
 
 - App Router de Next.js.
 - formularios publicos de auth;
@@ -50,7 +51,7 @@ Pasar de `19.06%` a `98%` en la web no es un ajuste menor ni un sprint corto. La
 - wrappers y providers;
 - integraciones con Supabase, Turnstile, WebAuthn, sockets y PWA.
 
-Por tanto, la meta debe abordarse como un programa de trabajo por etapas, no como una unica tarea de testing.
+Por tanto, la meta final debe abordarse como hardening incremental. Los proximos puntos porcentuales costaran mas que los primeros porque la superficie restante esta en modulos con acoplamiento alto, side effects o muchos branches.
 
 ## Principios de Implementacion
 
@@ -116,63 +117,61 @@ Esto es correcto para medir superficie real. El problema no es configuracion inc
 
 ## Diagnostico: Donde se Hunde la Cobertura
 
-### A. Landing publica
-
-Estado actual aproximado:
-
-- `components/landing/*`: practicamente `0%`
-- `LandingContent.tsx`: `0%`
-- `LandingAnimations.tsx`: `0%`
-- `LocationMap.tsx`: `0%`
-- `components/landing/tutorials/*`: `0%`
-
-Riesgo:
-
-- es un arbol grande;
-- tiene dynamic imports;
-- usa GSAP;
-- tiene tutorial carousel;
-- contiene copy SEO y CTAs publicos;
-- hoy pesa mucho en lines y statements.
-
-### B. Auth UI del jugador
+### A. Actions grandes de servidor
 
 Estado actual:
 
-- `app/(auth)/login/player/page.tsx`: sin cobertura directa relevante;
-- `app/(auth)/register/player/page.tsx`: sin cobertura directa relevante;
-- otras pantallas de verify/pin/recovery con coverage muy parcial o nula.
+- `app/actions/replays.ts`: `100%` statements, con branches principales cubiertos.
+- `app/actions/admin-rake.ts`: `100%` statements, con errores y mapeos cubiertos.
+- `app/actions/admin-ledger.ts`: `100%` statements, branches `84.21%`.
+- `app/actions/admin-tables.ts`: `99.77%` statements, branches `67.81%`.
+- `app/(auth)/auth-actions.ts`: `95.02%` statements/lines, branches `73.91%`, functions `100%`.
+- `app/actions/support.ts`: `100%` statements, branches `56.33%`; quedan ramas de fallback y errores secundarios.
+
+Riesgo:
+
+- concentran cientos de lineas sin cubrir o con ramas criticas;
+- mezclan auth, Supabase, Redis, fetch externo, storage y side effects;
+- requieren mocks cuidadosos para no probar solo mocks;
+- algunos tocan dominios sensibles como soporte, replays, auth y ledger.
+
+### B. Auth y seguridad
+
+Estado actual:
+
+- `app/(auth)/auth-actions.ts`: `95.02%`, con ramas pendientes menores en fallbacks de recuperación, Google registration y errores secundarios.
+- `app/(auth)/auth-actions-helpers.ts`: `100%`.
+- `passkey-actions.ts`: `100%` statements/lines/functions, branches `87.5%`.
+- Las paginas de login/registro tienen buena base, pero quedan ramas de error y variantes de recovery/admin.
 
 Riesgo:
 
 - login y registro son flujos de conversion criticos;
-- mezclan validacion local, server actions, Turnstile, OTP, PIN, passkeys y mensajes de error.
+- mezclan validacion local, server actions, Turnstile, OTP, PIN, passkeys, sesiones, cookies y mensajes de error.
 
-### C. Wallet y dashboard del jugador
+### C. Game UI y mesa
 
 Estado actual:
 
-- `components/dashboard/PlayerDashboard.tsx`: `0%`
-- `components/wallet/WalletContent.tsx`: `0%`
-- `components/wallet/TransferModal.tsx`: `0%`
-- `components/wallet/TransactionModal.tsx`: `0%`
+- `components/game/Lobby.tsx`: `96.7%`, branches `74.63%`.
+- `components/game/Board.tsx`: `88.82%`, ramas `78.2%`, funciones `85.71%`.
+- `app/play/[id]/page.tsx`: `99.68%`, ramas `86.29%`, funciones `78.26%`; queda deuda menor en callback de reload y catch defensivo de audio.
 
 Riesgo:
 
-- superficie muy visible para el usuario;
-- alta carga de estados vacios, listados, errores y acciones financieras;
-- un bug aqui afecta soporte, conversion y confianza.
+- UI compleja;
+- flujos simultaneos;
+- multiples permisos/estados del jugador;
+- el coverage actual no garantiza confianza funcional suficiente sobre edge cases multiplayer.
 
 ### D. Shell compartido y experiencia transversal
 
 Estado actual:
 
-- `BroadcastBanner.tsx`: `0%`
-- `NotificationCenter.tsx`: `0%`
-- `PWAInstallPrompt.tsx`: `0%`
-- `VoiceChat.tsx`: `0%`
-- `SupportChat.tsx`: `0%`
-- varios providers con cobertura baja o nula.
+- `NotificationCenter.tsx`: `98.18%`, ramas `93.75%`, funciones `62.5%`.
+- `SupportChat.tsx`: `100%` statements/lines, ramas `83.44%`, funciones `86.66%`.
+- `components/providers/AppLockProvider.tsx`: `95.92%`, con ramas de browser/session aun pendientes.
+- Varios hooks estan sobre `88%`, pero branches siguen bajos.
 
 Riesgo:
 
@@ -180,28 +179,28 @@ Riesgo:
 - estados sincronizados con browser APIs;
 - propensos a regresiones silenciosas.
 
-### E. Game UI
+### E. Landing publica
 
 Estado actual:
 
-- `Lobby.tsx`: `0%`
-- multiples overlays/modales en `0%`
-- `Board.tsx`: lineas relativamente altas, pero ramas y funciones insuficientes para una pieza tan critica.
+- `components/landing/LandingContent.tsx`: `89.08%`, funciones `65.71%`.
+- `components/landing/LandingAnimations.tsx`: `90%`, funciones `50%`.
+- Tutoriales de landing tienen cobertura alta en lineas, con algunos branches pendientes.
 
 Riesgo:
 
-- UI compleja;
-- flujos simultaneos;
-- multiples permisos/estados del jugador;
-- el coverage actual no garantiza confianza funcional suficiente.
+- arbol grande;
+- dynamic imports y animaciones;
+- muchos handlers y estados visuales aun no ejercitados por tests.
 
 ### F. Infra web de Supabase y hooks
 
 Estado actual:
 
-- `utils/supabase/server.ts`: muy bajo;
-- `utils/supabase/client.ts`: `0%`;
-- varios hooks utiles siguen en `0%`.
+- `utils/supabase/middleware.ts`: `99.16%`, branches `96.55%`.
+- `utils/supabase/client.ts`: `79.16%`.
+- `utils/supabase/server.ts`: `93.54%`.
+- Hooks globales: `96.69%`, con branches `87%`.
 
 Riesgo:
 
@@ -227,14 +226,13 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `19%` actual | baseline real ya medido |
-| Fase 1 | `30%` | cerrar huecos grandes de landing + auth player |
-| Fase 2 | `45%` | dashboard, wallet, shell transversal |
-| Fase 3 | `60%` | game UI critica y providers importantes |
-| Fase 4 | `75%` | hooks, infra web, rutas API y ramas de error |
-| Fase 5 | `85%` | consolidacion por dominios y limpieza de huecos |
-| Fase 6 | `92%` | coverage casi completa sobre UI y edge cases |
-| Fase 7 | `98%` | hardening final y gate total estricto |
+| Fase 0 | `97.01%` actual | baseline real ya medido con `181` suites y `1229` tests |
+| Fase 1 | `95%` | cubrir auth/security y ramas restantes de admin tables |
+| Fase 2 | `96%` | cubrir infraestructura Supabase, hooks globales y shell compartido |
+| Fase 3 | `96.5%` | reforzar `auth-actions.ts` y `auth-actions-helpers.ts` sin ocultar errores de seguridad |
+| Fase 4 | `97%` | cerrar ramas de `Board`, `Lobby`, providers y hooks con casos reales |
+| Fase 5 | `97.5%` | subir functions/branches en landing, shell y notification/support UI |
+| Fase 6 | `98%` | hardening final, edge cases y gate estricto en las cuatro metricas |
 
 ## Estrategia General para Llegar a la Meta
 
@@ -1788,3 +1786,107 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `165` suites y `961` tests; gate web subido a `86%` statements/lines y `81%` functions.
 - Riesgos abiertos: `profile` requiere estrategia especifica para evitar tests fragiles de formulario grande; `stats` tiene cambios concurrentes sin tocar; ramas profundas de `Board.tsx`/`Lobby.tsx` siguen como deuda critica.
 - Siguiente lote: cubrir `profile` con seams mas chicos o entrar a `Lobby.tsx`/`Board.tsx` para subir confianza del juego.
+
+## Checkpoint 55
+
+- Fecha: segunda pasada de mesa `Board.tsx`.
+- Coverage antes: `95.95%` statements, `95.95%` lines, `85.82%` functions, `80.19%` branches.
+- Coverage despues: `96.09%` statements, `96.09%` lines, `86.4%` functions, `80.33%` branches.
+- Archivos cubiertos: `components/game/Board.tsx` mediante `components/game/__tests__/Board.misc.test.tsx`.
+- Tests agregados: cobertura de banner `admin:status`, jugador en espera, fases `STARTING`/`BARAJANDO`/`PIQUE_REVEAL`/`SHOWDOWN`, decision de ganador en `SHOWDOWN_WAIT`, seleccion y limpieza de descarte, apuesta con fichas, bloqueo por saldo insuficiente y resolucion de `pasoJuegoChoice`.
+- Riesgos cerrados: `Board.tsx` sube a `88.82%` statements, `78.2%` branches y `85.71%` functions; las rutas criticas de UI de mesa ya ejercitan mas callbacks reales sin tocar produccion.
+- Resultado de verificacion: `pnpm --filter web test -- components/game/__tests__/Board.manoTransfer.test.tsx components/game/__tests__/Board.misc.test.tsx` verde con `16` tests; `pnpm --filter web test:coverage` verde con `180` suites y `1171` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e95900d98001pbkppLs7qx7fuh`.
+- Riesgos abiertos: `app/play/[id]/page.tsx`, ramas restantes de `auth-actions.ts`/`passkey-actions.ts`, `SupportChat.tsx`, `LandingContent.tsx`, `ActionControls.tsx` functions y ramas residuales de `Lobby.tsx`/`Board.tsx`.
+- Siguiente lote: cubrir ramas de `app/play/[id]/page.tsx` o cerrar auth/passkeys para subir branches antes de endurecer gates.
+
+## Checkpoint 56
+
+- Fecha: segunda pasada de runtime de sala `app/play/[id]/page.tsx`.
+- Coverage antes: `96.09%` statements, `96.09%` lines, `86.4%` functions, `80.33%` branches.
+- Coverage despues: `96.2%` statements, `96.2%` lines, `86.5%` functions, `80.6%` branches.
+- Archivos cubiertos: `app/play/[id]/page.tsx` y `app/play/[id]/play-room-shell.ts` mediante tests existentes ampliados.
+- Tests agregados: espera de listos sin countdown, mesa lista sin mensaje residual, audio de countdown suspendido y limpieza `onended`, fullscreen cleanup al desmontar, reconexion no expirada fallida con fallback a join normal, fallback anonimo de nickname/deviceId, desmontaje no intencional con `leave(false)` y overlay por cierre inesperado de sala.
+- Riesgos cerrados: `app/play/[id]/page.tsx` sube a `99.68%` statements, `86.29%` branches y `78.26%` functions; quedan fuera solo el callback de `window.location.reload` en jsdom y el catch defensivo de audio.
+- Resultado de verificacion: `pnpm exec jest --runTestsByPath 'src/app/play/[id]/__tests__/page.test.tsx'` verde con `25` tests; cobertura focalizada de la ruta verde en tests con `27` tests; `pnpm --filter web test:coverage` verde con `180` suites y `1178` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9594eb45001pnxClIiSaGk2ji`.
+- Riesgos abiertos: `SupportChat.tsx`, `LandingContent.tsx`, ramas restantes de `auth-actions.ts`/`passkey-actions.ts`, hooks globales (`useFullscreen`, `useGamePermissions`, `useNotificationSocket`) y branches residuales de `Lobby.tsx`/`Board.tsx`.
+- Siguiente lote: subir functions/branches de shell compartido o entrar a auth/passkeys para mejorar branches antes de endurecer gates.
+
+## Checkpoint 57
+
+- Fecha: hardening de `ActionControls.tsx`.
+- Coverage antes: `96.2%` statements, `96.2%` lines, `86.5%` functions, `80.6%` branches.
+- Coverage despues: `96.25%` statements, `96.25%` lines, `87.16%` functions, `80.74%` branches.
+- Archivos cubiertos: `components/game/ActionControls.tsx` mediante `components/game/__tests__/ActionControls.test.tsx`.
+- Tests agregados: pique fijo pagable, pique fijo con resto, pique libre bajo minimo con confirm deshabilitado, igualar/resto en fases de 4 cartas, raise con limpiar/confirmar, `llevo-juego` en descarte y resolucion de `paso-juego-choice` para Llevo/No Llevo.
+- Riesgos cerrados: `ActionControls.tsx` sube a `98.99%` statements, `95.38%` branches y `100%` functions; los callbacks inline criticos ahora se ejercitan con envios reales a `room.send`.
+- Resultado de verificacion: `pnpm --filter web test -- components/game/__tests__/ActionControls.test.tsx` verde con `24` tests; cobertura focalizada del componente en `98.99%`; `pnpm --filter web test:coverage` verde con `180` suites y `1185` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9597cc4a001aUbRHAB5tlDNGg`.
+- Riesgos abiertos: `LandingContent.tsx`, `NotificationCenter.tsx` functions, `ShuffleAnimation.tsx` functions, hooks globales y ramas restantes de auth/passkeys.
+- Siguiente lote: `passkey-actions.ts`/`auth-actions.ts` para seguir subiendo branches de seguridad o `LandingContent.tsx` por peso de functions.
+
+## Checkpoint 58
+
+- Fecha: hardening de `SupportChat.tsx`.
+- Coverage antes: `96.25%` statements, `96.25%` lines, `87.16%` functions, `80.74%` branches.
+- Coverage despues: `96.37%` statements, `96.37%` lines, `87.64%` functions, `81.07%` branches.
+- Archivos cubiertos: `components/SupportChat.tsx` mediante `components/__tests__/SupportChat.test.tsx`.
+- Tests agregados: notificacion de mensaje remoto con chat flotante cerrado, eventos socket de finalizacion/atencion, compatibilidad legacy admin/jugador, cierre con error, apertura por teclado con Space, cierre con boton X, selector de adjuntos, primera consulta flotante, nueva solicitud desde chat finalizado y respuesta admin que marca pendiente como atendido.
+- Riesgos cerrados: `SupportChat.tsx` sube a `100%` statements/lines, `83.44%` branches y `86.66%` functions; quedan cubiertos flujos visibles de soporte, socket y adjuntos sin tocar UI productiva.
+- Resultado de verificacion: `pnpm --filter web test -- components/__tests__/SupportChat.test.tsx` verde con `19` tests; cobertura focalizada en `100%` statements/lines; `pnpm --filter web test:coverage` verde con `180` suites y `1196` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e959e696b001u3ylDgOvuxyPB6`.
+- Riesgos abiertos: `LandingContent.tsx`, `NotificationCenter.tsx` functions, `ShuffleAnimation.tsx` functions, hooks globales (`useFullscreen`, `useGamePermissions`, `useNotificationSocket`) y ramas restantes de `auth-actions.ts`.
+- Siguiente lote: `auth-actions.ts` para branches de seguridad, o `LandingContent.tsx` si se busca subir functions globales por peso.
+
+## Checkpoint 59
+
+- Fecha: hardening de `passkey-actions.ts`.
+- Coverage antes: `96.37%` statements, `96.37%` lines, `87.64%` functions, `81.07%` branches.
+- Coverage despues: `96.44%` statements, `96.44%` lines, `87.64%` functions, `81.32%` branches.
+- Archivos cubiertos: `app/(auth)/passkey-actions.ts` mediante `app/(auth)/__tests__/passkey-actions.test.ts`.
+- Tests agregados: registro sin challenge, excepcion de verificacion, respuesta no verificada, error de upsert, rate limit de opciones/login, login sin dispositivos confiables, dispositivo no reconocido, telefono que no coincide, excepcion/unverified en autenticacion, error de `generateLink` y error de `verifyOtp`.
+- Riesgos cerrados: `passkey-actions.ts` sube a `100%` statements/lines/functions y `87.5%` branches; quedan cubiertos errores de biometria, sesion magic link y persistencia de credenciales sin tocar codigo productivo.
+- Resultado de verificacion: `pnpm exec jest --runTestsByPath 'src/app/(auth)/__tests__/passkey-actions.test.ts'` verde con `13` tests; cobertura focalizada en `100%` statements/lines/functions; `pnpm --filter web test:coverage` verde con `180` suites y `1202` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e95a14b1800116WJaKatvxyzMq`.
+- Riesgos abiertos: ramas menores restantes de `auth-actions.ts`, `LandingContent.tsx`, `NotificationCenter.tsx` functions, `ShuffleAnimation.tsx` functions y hooks globales.
+- Siguiente lote: `LandingContent.tsx` por functions globales o hooks (`useFullscreen`, `useNotificationSocket`) para branches.
+
+## Checkpoint 60
+
+- Fecha: hardening amplio de `auth-actions.ts`.
+- Coverage antes: `96.44%` statements, `96.44%` lines, `87.64%` functions, `81.32%` branches.
+- Coverage despues: `96.82%` statements, `96.82%` lines, `87.83%` functions, `81.73%` branches.
+- Archivos cubiertos: `app/(auth)/auth-actions.ts` mediante `otp-and-pin-actions.test.ts` y `auth-actions.test.ts`.
+- Tests agregados: errores de registro Supabase/OTP/perfil, sanción de cuenta en OTP, login PIN con dispositivo confiable, errores normalizados de PIN/OTP, recuperación de `auth.user` faltante desde perfil, perfil baneado/creación fallida, recuperación de PIN con reintento, errores de `setPlayerPin`, errores de `redeemAdminRecoveryCode`, `registerAdmin`, errores de login admin y error de challenge TOTP.
+- Riesgos cerrados: `auth-actions.ts` sube a `95.02%` statements/lines, `73.91%` branches y `100%` functions; se cubren flujos sensibles de sanciones, recuperación de usuarios, MFA admin, PIN y errores de infraestructura.
+- Resultado de verificacion: `pnpm exec jest --runTestsByPath 'src/app/(auth)/__tests__/auth-actions.test.ts' 'src/app/(auth)/__tests__/otp-and-pin-actions.test.ts'` verde con `57` tests; cobertura focalizada de `auth-actions.ts` en `95.02%`; `pnpm --filter web test:coverage` verde con `180` suites y `1216` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f1be70b0011TreSw0lFe5QOc`.
+- Riesgos abiertos: `LandingContent.tsx`, `NotificationCenter.tsx` functions, `ShuffleAnimation.tsx` functions, hooks globales y ramas menores de Google registration.
+- Siguiente lote: `LandingContent.tsx` para subir functions globales o hooks globales para mejorar branches.
+
+## Checkpoint 61
+
+- Fecha: landing publica despues de checkpoint 60.
+- Coverage antes: `96.82%` statements, `96.82%` lines, `87.83%` functions, `81.73%` branches.
+- Coverage despues: `96.94%` statements, `96.94%` lines, `88.49%` functions, `81.81%` branches.
+- Archivos cubiertos: `components/landing/LandingContent.tsx` mediante `LandingContent.test.tsx`.
+- Tests agregados: navegacion mobile, scroll spy, lazy map por `IntersectionObserver`, autoplay/pausa del carrusel de fotos, gestos tactiles en carruseles y cierre de tutorial por backdrop.
+- Riesgos cerrados: handlers visibles de la landing publica quedan caracterizados sin tocar UI productiva ni animaciones GSAP.
+- Resultado de verificacion: `pnpm exec jest --runTestsByPath 'src/components/landing/__tests__/LandingContent.test.tsx'` verde con `15` tests; `pnpm --filter web test:coverage` verde con `180` suites y `1222` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f20e6c2001ELHMUZ6KqdjKcT`.
+- Riesgos abiertos: callbacks de animacion GSAP en `LandingContent.tsx`, `NotificationCenter.tsx` functions, `ShuffleAnimation.tsx` functions, hooks globales y ramas menores de Google registration.
+- Siguiente lote: hooks globales (`useFullscreen`, `useNotificationSocket`) o `NotificationCenter.tsx`/`ShuffleAnimation.tsx` para subir functions y branches sin inflar tests de animacion.
+
+## Checkpoint 62
+
+- Fecha: hooks globales despues de checkpoint 61.
+- Coverage antes: `96.94%` statements, `96.94%` lines, `88.49%` functions, `81.81%` branches.
+- Coverage despues: `97.01%` statements, `97.01%` lines, `88.49%` functions, `82.01%` branches.
+- Archivos cubiertos: `useFullscreen.ts`, `useGamePermissions.ts` y `useNotificationSocket.ts`.
+- Tests agregados: fullscreen estandar y WebKit, sincronizacion por `fullscreenchange`, errores silenciosos del navegador, permisos iniciales denied, cambios de permiso de microfono, deteccion mobile, fallback sin `getUserMedia`, URL local de Socket.IO y log de desconexion.
+- Riesgos cerrados: hooks transversales de browser APIs suben a `96.69%` statements y `87%` branches; `useFullscreen.ts` queda en `100%`.
+- Resultado de verificacion: `pnpm exec jest --runTestsByPath 'src/hooks/__tests__/useFullscreen.test.tsx' 'src/hooks/__tests__/useGamePermissions.test.tsx' 'src/hooks/__tests__/useNotificationSocket.test.tsx'` verde con `12` tests; `pnpm --filter web test:coverage` verde con `181` suites y `1229` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f2a028e0016nLyI4UuRqQ3HV`.
+- Riesgos abiertos: `NotificationCenter.tsx` functions, `ShuffleAnimation.tsx` functions, callbacks de animacion GSAP en landing, ramas de stats dashboard y server actions de menor prioridad.
+- Siguiente lote: `NotificationCenter.tsx` o `ShuffleAnimation.tsx` por functions, o `stats-dashboard.tsx` por branches de UI.

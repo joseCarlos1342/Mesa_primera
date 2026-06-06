@@ -54,4 +54,26 @@ describe('useNotificationSocket', () => {
     unmount()
     expect(disconnectMock).toHaveBeenCalledTimes(1)
   })
+
+  it('deriva URL local cuando no hay runtime env y registra desconexiones', () => {
+    Object.defineProperty(window, '__MESA_PRIMERA_RUNTIME_ENV__', {
+      configurable: true,
+      value: undefined,
+    })
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const handlers: Record<string, (...args: unknown[]) => void> = {}
+    onMock.mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
+      handlers[event] = handler
+    })
+
+    renderHook(() => useNotificationSocket('user-2'))
+
+    expect(mockIo).toHaveBeenCalledWith('http://localhost:2568/notifications', expect.objectContaining({
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+    }))
+
+    handlers.disconnect?.('transport close')
+    expect(consoleSpy).toHaveBeenCalledWith('[NotifSocket] Disconnected: transport close')
+  })
 })
