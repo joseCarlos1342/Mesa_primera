@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `97.21%` |
-| Lines | `97.21%` |
-| Functions | `89.82%` |
-| Branches | `82.34%` |
+| Statements | `97.34%` |
+| Lines | `97.34%` |
+| Functions | `89.92%` |
+| Branches | `82.68%` |
 
 Resultado de la corrida:
 
 - `180` suites en verde.
-- `1238` tests pasando.
+- `1246` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f3efd99001QELfgJX809Nrjh`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f46a4fb001TuV3GF63ZkSDkl`.
 
 ## Meta Final
 
@@ -40,7 +40,7 @@ Objetivo de calidad asociado:
 
 ## Realidad del Gap
 
-Pasar de `97.21%` a `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles. La web incluye:
+Pasar de `97.34%` a `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles. La web incluye:
 
 - App Router de Next.js.
 - formularios publicos de auth;
@@ -226,7 +226,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `97.21%` actual | baseline real ya medido con `181` suites y `1238` tests |
+| Fase 0 | `97.34%` actual | baseline real ya medido con `181` suites y `1246` tests |
 | Fase 1 | `95%` | cubrir auth/security y ramas restantes de admin tables |
 | Fase 2 | `96%` | cubrir infraestructura Supabase, hooks globales y shell compartido |
 | Fase 3 | `96.5%` | reforzar `auth-actions.ts` y `auth-actions-helpers.ts` sin ocultar errores de seguridad |
@@ -1916,3 +1916,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f3efd99001QELfgJX809Nrjh`.
 - Riesgos abiertos: `SupportConversationList.tsx`, `Board.tsx`, `Lobby.tsx`, `LandingContent.tsx` callbacks GSAP y server actions de menor prioridad.
 - Siguiente lote: `SupportConversationList.tsx` o ramas de juego (`Board.tsx`/`Lobby.tsx`) segun retorno de cobertura y riesgo.
+
+## Checkpoint 65
+
+- Fecha: soporte admin realtime despues de checkpoint 64.
+- Coverage antes: `97.21%` statements, `97.21%` lines, `89.82%` functions, `82.34%` branches.
+- Coverage despues: `97.34%` statements, `97.34%` lines, `89.92%` functions, `82.68%` branches.
+- Archivos cubiertos: `SupportConversationList.tsx`.
+- Tests agregados: runtime socket URL, fallbacks de usuario/avatar, cierre de vista, empty states, ticket creado duplicado, eventos attended/finalized, mensajes legacy, finalizados no reabiertos y audio bloqueado.
+- Riesgos cerrados: `SupportConversationList.tsx` sube a `100%` statements/lines, `98.14%` branches y `88.88%` functions.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `181` suites y `1246` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f46a4fb001TuV3GF63ZkSDkl`.
+- Riesgos abiertos: `Board.tsx`, `Lobby.tsx`, `LandingContent.tsx` callbacks GSAP, `BroadcastBanner.tsx` branches y server actions de menor prioridad.
+- Siguiente lote: `Board.tsx`/`Lobby.tsx` para confianza de juego o `BroadcastBanner.tsx` por branches de shell compartido.

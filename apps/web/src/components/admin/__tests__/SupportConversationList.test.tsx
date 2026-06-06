@@ -19,6 +19,10 @@ jest.mock('@/app/actions/support', () => ({
   closeSupportTicket: jest.fn(),
 }))
 
+jest.mock('@/utils/avatars', () => ({
+  getAvatarSvg: jest.fn((avatarId?: string | null) => avatarId === 'avatar-ok' ? <svg data-testid="support-avatar" /> : null),
+}))
+
 const mockIo = io as jest.MockedFunction<typeof io>
 const mockCloseSupportTicket = closeSupportTicket as jest.MockedFunction<typeof closeSupportTicket>
 
@@ -73,6 +77,10 @@ describe('SupportConversationList', () => {
     })) as unknown as typeof Audio
   })
 
+  afterEach(() => {
+    delete (window as Window & typeof globalThis & { __MESA_PRIMERA_RUNTIME_ENV__?: unknown }).__MESA_PRIMERA_RUNTIME_ENV__
+  })
+
   it('muestra tickets por estado, contadores y abre el chat seleccionado', () => {
     render(
       <SupportConversationList
@@ -98,6 +106,41 @@ describe('SupportConversationList', () => {
     fireEvent.click(screen.getByText('Beto Club'))
     expect(screen.getByTestId('support-chat')).toHaveTextContent('Chat ticket-attended-1 user-2 admin embedded')
     expect(screen.getByText(/Sesión #ticket-a · Atendido/)).toBeInTheDocument()
+  })
+
+  it('usa runtime socket URL y muestra fallbacks de usuario sin nombre', () => {
+    ;(window as Window & typeof globalThis & { __MESA_PRIMERA_RUNTIME_ENV__?: { NEXT_PUBLIC_SOCKET_URL: string } }).__MESA_PRIMERA_RUNTIME_ENV__ = {
+      NEXT_PUBLIC_SOCKET_URL: 'https://socket.runtime.test',
+    }
+    render(<SupportConversationList adminId="admin-1" initialTickets={[
+      ticket({ id: 'fallback-user', user: { username: '', full_name: '', avatar_url: null } }),
+    ]} />)
+
+    expect(mockIo).toHaveBeenCalledWith('https://socket.runtime.test/support', { withCredentials: true })
+    expect(screen.getByText('U')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Usuario'))
+    expect(screen.getByText('Chat Principal')).toBeInTheDocument()
+  })
+
+  it('permite cerrar la vista seleccionada sin cerrar el ticket', () => {
+    render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-view-close' })]} />)
+
+    fireEvent.click(screen.getByText('Ana Mesa'))
+    expect(screen.getByTestId('support-chat')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTitle('Cerrar vista'))
+
+    expect(screen.getByText('Centro de Comando')).toBeInTheDocument()
+    expect(mockCloseSupportTicket).not.toHaveBeenCalled()
+  })
+
+  it('muestra empty states de pendientes y finalizados', () => {
+    render(<SupportConversationList adminId="admin-1" initialTickets={[]} />)
+
+    expect(screen.getByText('No hay tickets pendientes')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'FINALIZADOS' }))
+    expect(screen.getByText('No hay historial')).toBeInTheDocument()
   })
 
   it('incorpora tickets y mensajes realtime sin reabrir tickets finalizados', () => {
@@ -131,8 +174,21 @@ describe('SupportConversationList', () => {
     expect(screen.queryByText('No debe cambiar')).not.toBeInTheDocument()
   })
 
+  it('continúa si el navegador bloquea audio de notificación', () => {
+    global.Audio = jest.fn().mockImplementation(() => {
+      throw new Error('audio blocked')
+    }) as unknown as typeof Audio
+    render(<SupportConversationList adminId="admin-1" initialTickets={[]} />)
+
+    expect(() => socket.trigger('support:ticket-created', { ticketId: 'audio-blocked', userId: 'user-audio', username: 'audio', preview: 'Sin sonido' })).not.toThrow()
+    expect(screen.getByText(/Sin sonido/)).toBeInTheDocument()
+  })
+
   it('finaliza un ticket desde admin, emite realtime y muestra estado cerrado', async () => {
-    render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-close-1' })]} />)
+    render(<SupportConversationList adminId="admin-1" initialTickets={[
+      ticket({ id: 'ticket-close-1' }),
+      ticket({ id: 'ticket-keep-open', user_id: 'user-2', last_message_preview: 'Sigo pendiente', user: { username: 'beto', full_name: 'Beto Club', avatar_url: null } }),
+    ]} />)
 
     fireEvent.click(screen.getByText('Ana Mesa'))
     fireEvent.click(screen.getAllByRole('button', { name: /finalizar chat/i })[0])
@@ -145,6 +201,79 @@ describe('SupportConversationList', () => {
     fireEvent.click(screen.getByText('Ana Mesa'))
     expect(screen.getByText('FINALIZADO')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /finalizar chat/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'PENDIENTES' }))
+    expect(screen.getByText(/Sigo pendiente/)).toBeInTheDocument()
+  })
+
+  it('actualiza estados por eventos realtime de atendido y finalizado', () => {
+    render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-state-1' })]} />)
+
+    socket.trigger('support:ticket-attended', { ticketId: 'ticket-state-1' })
+    fireEvent.click(screen.getByRole('button', { name: 'ATENDIDOS' }))
+    expect(screen.getByText('Ana Mesa')).toBeInTheDocument()
+    expect(screen.getByText('Atendido')).toBeInTheDocument()
+
+    socket.trigger('support:ticket-finalized', { ticketId: 'ticket-state-1', closedByRole: 'player' })
+    fireEvent.click(screen.getByRole('button', { name: 'FINALIZADOS' }))
+    expect(screen.getByText('Ana Mesa')).toBeInTheDocument()
+    expect(screen.getByText('Finalizado')).toBeInTheDocument()
+  })
+
+  it('ignora cambios de estado que no aplican al ticket actual', () => {
+    render(
+      <SupportConversationList
+        adminId="admin-1"
+        initialTickets={[
+          ticket({ id: 'pending-keep', status: 'pending', last_message_preview: 'Pendiente real' }),
+          ticket({ id: 'final-keep', status: 'finalized', last_message_preview: 'Finalizado real' }),
+        ]}
+      />,
+    )
+
+    socket.trigger('support:ticket-attended', { ticketId: 'final-keep' })
+    socket.trigger('support:ticket-finalized', { ticketId: 'missing-ticket', closedByRole: 'admin' })
+
+    expect(screen.getByText(/Pendiente real/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'FINALIZADOS' }))
+    expect(screen.getByText(/Finalizado real/)).toBeInTheDocument()
+  })
+
+  it('procesa mensajes legacy existentes y crea tickets nuevos sin duplicar creados', () => {
+    render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'legacy-1', last_message_preview: 'Antes' })]} />)
+
+    socket.trigger('support:ticket-created', { ticketId: 'legacy-new', userId: 'user-new', username: 'nuevo', preview: 'Primer mensaje' })
+    socket.trigger('support:ticket-created', { ticketId: 'legacy-new', userId: 'user-new', username: 'nuevo', preview: 'Duplicado' })
+    expect(screen.getByText(/Primer mensaje/)).toBeInTheDocument()
+    expect(screen.queryByText(/Duplicado/)).not.toBeInTheDocument()
+
+    socket.trigger('support:incoming', { ticketId: 'legacy-1', userId: 'user-1', message: 'Mensaje legacy actualizado' })
+    expect(screen.getByText(/Mensaje legacy actualizado/)).toBeInTheDocument()
+
+    socket.trigger('support:incoming', { userId: 'legacy-user-only', message: 'Ticket creado por legacy' })
+    expect(screen.getByText(/Ticket creado por legacy/)).toBeInTheDocument()
+  })
+
+  it('mantiene tickets finalizados intactos ante eventos legacy y muestra avatar cuando existe', () => {
+    render(
+      <SupportConversationList
+        adminId="admin-1"
+        initialTickets={[
+          ticket({ id: 'final-avatar', status: 'finalized', last_message_preview: 'Cerrado', user: { username: 'avatar', full_name: 'Avatar User', avatar_url: 'avatar-ok' } }),
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'FINALIZADOS' }))
+    expect(screen.getByTestId('support-avatar')).toBeInTheDocument()
+    socket.trigger('support:incoming', { ticketId: 'final-avatar', userId: 'user-1', message: 'No reabrir' })
+
+    expect(screen.getByText(/Cerrado/)).toBeInTheDocument()
+    expect(screen.queryByText(/No reabrir/)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Avatar User'))
+    expect(screen.getAllByTestId('support-avatar')).toHaveLength(2)
+    expect(screen.getByText('CHAT FINALIZADO')).toBeInTheDocument()
   })
 
   it('muestra empty states, respeta errores de cierre y desconecta el socket', async () => {
