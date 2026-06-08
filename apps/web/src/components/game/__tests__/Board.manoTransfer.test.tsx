@@ -140,6 +140,10 @@ describe('Board — Mano transfer deferral during reveal overlays', () => {
 
     // NOW the announcement should appear
     expect(screen.getByText('Player2 es la nueva mano')).toBeInTheDocument();
+
+    act(() => { jest.advanceTimersByTime(4000); });
+
+    expect(screen.queryByText(/es la nueva mano/)).not.toBeInTheDocument();
   });
 
   it('immediately shows mano announcement during non-blocking phases', () => {

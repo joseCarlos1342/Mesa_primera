@@ -41,27 +41,35 @@ jest.mock('@/utils/supabase/client', () => ({
 }))
 
 jest.mock('@/components/game/DepositModal', () => ({
-  DepositModal: ({ isOpen }: { isOpen: boolean }) => <div data-testid="deposit-modal">open:{String(isOpen)}</div>,
+  DepositModal: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => (
+    <div data-testid="deposit-modal">
+      open:{String(isOpen)}
+      {isOpen && <button type="button" onClick={onClose}>Cerrar depósito</button>}
+    </div>
+  ),
 }))
 
 jest.mock('@/components/game/CustomMesaModal', () => ({
-  CustomMesaModal: ({ isOpen, onCreateMesa, creating }: { isOpen: boolean; onCreateMesa: (options: any) => void; creating: boolean }) => (
+  CustomMesaModal: ({ isOpen, onClose, onCreateMesa, creating }: { isOpen: boolean; onClose: () => void; onCreateMesa: (options: any) => void; creating: boolean }) => (
     <div data-testid="custom-mesa-modal">
       open:{String(isOpen)} creating:{String(creating)}
       {isOpen && (
-        <button
-          type="button"
-          onClick={() => onCreateMesa({
-            tableName: 'Mesa VIP Test',
-            maxPlayers: 4,
-            minEntry: 7000000,
-            minPique: 900000,
-            disabledChips: [1000, 2000],
-            isCustom: true,
-          })}
-        >
-          Crear VIP
-        </button>
+        <>
+          <button type="button" onClick={onClose}>Cerrar VIP</button>
+          <button
+            type="button"
+            onClick={() => onCreateMesa({
+              tableName: 'Mesa VIP Test',
+              maxPlayers: 4,
+              minEntry: 7000000,
+              minPique: 900000,
+              disabledChips: [1000, 2000],
+              isCustom: true,
+            })}
+          >
+            Crear VIP
+          </button>
+        </>
       )}
     </div>
   ),
@@ -156,6 +164,20 @@ describe('Lobby', () => {
 
     await waitFor(() => {
       expect(console.error).toHaveBeenCalledWith('Lobby Connection Error:', expect.any(Error))
+    })
+  })
+
+  it('usa avatar de metadata cuando el perfil no trae avatar_url', async () => {
+    singleMock.mockReset()
+    authGetUserMock.mockResolvedValueOnce({ data: { user: { id: 'user-1', user_metadata: { avatar_url: 'metadata-avatar' } } } })
+    singleMock
+      .mockResolvedValueOnce({ data: { id: 'user-1', role: 'player', username: 'Chepe', avatar_url: null } })
+      .mockResolvedValueOnce({ data: { balance_cents: 6500000 } })
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await waitFor(() => {
+      expect(localStorage.getItem('avatarUrl')).toBe('metadata-avatar')
     })
   })
 
@@ -286,6 +308,46 @@ describe('Lobby', () => {
     })
   })
 
+  it('tolera conexión creada sin transport.close al abrir mesa normal', async () => {
+    const connectionClose = jest.fn()
+    createMock.mockResolvedValueOnce({
+      roomId: 'created-room',
+      reconnectionToken: 'created-token',
+      connection: { close: connectionClose },
+    })
+    singleMock.mockReset()
+    singleMock
+      .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: 'Admin', avatar_url: null } })
+      .mockResolvedValueOnce({ data: { balance_cents: 8000000 } })
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+    await screen.findByText('80,000')
+
+    fireEvent.click(screen.getByTitle('Nueva Mesa Normal'))
+
+    await waitFor(() => {
+      expect(connectionClose).toHaveBeenCalled()
+      expect(push).toHaveBeenCalledWith('/play/created-room')
+    })
+  })
+
+  it('muestra error si falla crear mesa normal admin', async () => {
+    createMock.mockRejectedValueOnce(new Error('create failed'))
+    singleMock.mockReset()
+    singleMock
+      .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: 'Admin', avatar_url: null } })
+      .mockResolvedValueOnce({ data: { balance_cents: 8000000 } })
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+    await screen.findByText('80,000')
+
+    fireEvent.click(screen.getByTitle('Nueva Mesa Normal'))
+
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalledWith('Room Creation Error:', expect.any(Error))
+    })
+  })
+
   it('abre modal de depósito cuando admin intenta crear mesa normal sin saldo', async () => {
     singleMock.mockReset()
     singleMock
@@ -299,6 +361,9 @@ describe('Lobby', () => {
 
     expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:true')
     expect(createMock).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar depósito' }))
+    expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:false')
   })
 
   it('crea mesa personalizada desde modal VIP admin', async () => {
@@ -310,6 +375,10 @@ describe('Lobby', () => {
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
     await screen.findByText('90,000')
+
+    fireEvent.click(screen.getByTitle('Mesa Personalizada'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar VIP' }))
+    expect(screen.getByTestId('custom-mesa-modal')).toHaveTextContent('open:false')
 
     fireEvent.click(screen.getByTitle('Mesa Personalizada'))
     fireEvent.click(screen.getByRole('button', { name: 'Crear VIP' }))
@@ -327,6 +396,91 @@ describe('Lobby', () => {
         avatarUrl: 'avatar-admin',
       }))
       expect(screen.getByTestId('custom-mesa-modal')).toHaveTextContent('open:false')
+      expect(push).toHaveBeenCalledWith('/play/created-room')
+    })
+  })
+
+  it('tolera conexión creada sin transport.close al crear mesa VIP', async () => {
+    const connectionClose = jest.fn()
+    createMock.mockResolvedValueOnce({
+      roomId: 'created-room',
+      reconnectionToken: 'created-token',
+      connection: { close: connectionClose },
+    })
+    singleMock.mockReset()
+    singleMock
+      .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: 'Admin', avatar_url: 'avatar-admin' } })
+      .mockResolvedValueOnce({ data: { balance_cents: 9000000 } })
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+    await screen.findByText('90,000')
+
+    fireEvent.click(screen.getByTitle('Mesa Personalizada'))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear VIP' }))
+
+    await waitFor(() => {
+      expect(connectionClose).toHaveBeenCalled()
+      expect(push).toHaveBeenCalledWith('/play/created-room')
+    })
+  })
+
+  it('renderiza placeholder custom desde tablas admin y lo crea con reglas DB', async () => {
+    render(
+      <Lobby
+        lobbyTables={{
+          common: [],
+          custom: [
+            { id: 'vip-1', name: 'Mesa Privada', game_type: 'primera_28', max_players: 4, table_category: 'custom', lobby_slot: null, min_entry_cents: 6000000, min_pique_cents: 900000, disabled_chips: [1000, 2000, 5000], sort_order: 1 },
+          ],
+        }}
+      />,
+    )
+
+    await screen.findByText('65,000')
+    expect(screen.getByText('PRIVADA')).toBeInTheDocument()
+    expect(screen.getAllByText('MESA RESERVADA').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'ABRIR MESA' }).at(-1)!)
+
+    await waitFor(() => {
+      expect(createMock).toHaveBeenCalledWith('mesa', expect.objectContaining({
+        tableName: 'Mesa Privada',
+        maxPlayers: 4,
+        minEntry: 6000000,
+        minPique: 900000,
+        disabledChips: [1000, 2000, 5000],
+        isCustom: true,
+      }))
+    })
+  })
+
+  it('restaura estado si falla crear mesa placeholder', async () => {
+    createMock.mockRejectedValueOnce(new Error('fixed create failed'))
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+    await screen.findByText('65,000')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0])
+
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalledWith('Error creating fixed table:', expect.any(Error))
+    })
+    expect(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0]).not.toBeDisabled()
+  })
+
+  it('ignora errores al cerrar conexión alternativa en mesa placeholder creada', async () => {
+    createMock.mockResolvedValueOnce({
+      roomId: 'created-room',
+      reconnectionToken: 'created-token',
+      connection: { close: jest.fn(() => { throw new Error('close failed') }) },
+    })
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+    await screen.findByText('65,000')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0])
+
+    await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/play/created-room')
     })
   })

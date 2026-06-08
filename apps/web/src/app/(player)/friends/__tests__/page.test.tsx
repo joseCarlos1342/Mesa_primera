@@ -42,14 +42,17 @@ jest.mock('@/components/ui/Toast', () => ({
 }))
 
 jest.mock('../_components/FriendsList', () => ({
-  FriendsList: ({ friends, onChat, onRemove, onAction }: {
+  FriendsList: ({ friends, onChat, onRemove, onAction, onRefresh }: {
     friends: Array<{ friendshipId: string; nickname?: string; status: string; profile: { id: string; username: string } }>
     onChat: (friend: unknown) => void
     onRemove: (id: string) => void
     onAction: (message: string, type: string) => void
+    onRefresh: () => void
   }) => (
     <div>
       <p>Lista amigos: {friends.length}</p>
+      <button type="button" onClick={onRefresh}>Refrescar amigos</button>
+      <button type="button" onClick={() => onRemove('missing-friendship')}>Eliminar inexistente</button>
       {friends.map((friend) => (
         <article key={friend.friendshipId}>
           <span>{friend.nickname || friend.profile.username}</span>
@@ -64,14 +67,16 @@ jest.mock('../_components/FriendsList', () => ({
 }))
 
 jest.mock('../_components/FriendRequests', () => ({
-  FriendRequests: ({ requests, onAction }: {
+  FriendRequests: ({ requests, onAction, onRefresh }: {
     requests: Array<{ id: string; requester: { username: string } }>
     onAction: (message: string, type: string) => void
+    onRefresh: () => void
   }) => (
     <div>
       <p>Solicitudes pendientes: {requests.length}</p>
       {requests.map((request) => <span key={request.id}>{request.requester.username}</span>)}
       <button type="button" onClick={() => onAction('Solicitud aceptada', 'success')}>Responder solicitud</button>
+      <button type="button" onClick={onRefresh}>Refrescar solicitudes</button>
     </div>
   ),
 }))
@@ -148,6 +153,25 @@ describe('FriendsPage', () => {
     await user.click(screen.getByLabelText('Agregar amigo'))
 
     expect(screen.getByRole('button', { name: 'Cerrar agregar amigo' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar agregar amigo' }))
+    expect(screen.queryByRole('button', { name: 'Cerrar agregar amigo' })).not.toBeInTheDocument()
+  })
+
+  it('refresca por evento realtime y remueve canal al desmontar', async () => {
+    const realtime = mockSupabaseRealtime()
+
+    const { unmount } = render(<FriendsPage />)
+    await screen.findByText('Lista amigos: 1')
+
+    const realtimeHandler = realtime.on.mock.calls[0]?.[2]
+    await act(async () => {
+      realtimeHandler()
+    })
+
+    expect(mockGetFriendships).toHaveBeenCalledTimes(2)
+    unmount()
+    expect(realtime.removeChannel).toHaveBeenCalledWith({ name: 'friendships-changes' })
   })
 
   it('muestra solicitudes pendientes al cambiar de pestaña', async () => {
@@ -160,6 +184,15 @@ describe('FriendsPage', () => {
 
     expect(screen.getByText('Solicitudes pendientes: 1')).toBeInTheDocument()
     expect(screen.getByText('Luis')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Responder solicitud' }))
+    await act(async () => {
+      jest.advanceTimersByTime(20)
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('success: Solicitud aceptada')
+
+    await user.click(screen.getByRole('button', { name: 'Refrescar solicitudes' }))
+    expect(mockGetFriendships).toHaveBeenCalledTimes(2)
   })
 
   it('abre chat desde querystring cuando el amigo existe', async () => {
@@ -169,6 +202,45 @@ describe('FriendsPage', () => {
 
     expect(await screen.findByLabelText('chat directo')).toHaveTextContent('Chat con Ana')
     expect(searchParamsGet).toHaveBeenCalledWith('chat')
+  })
+
+  it('ignora querystring de chat si no corresponde a un amigo cargado', async () => {
+    searchParamsGet.mockReturnValue('friend-missing')
+
+    render(<FriendsPage />)
+
+    await screen.findByText('Lista amigos: 1')
+    expect(screen.queryByLabelText('chat directo')).not.toBeInTheDocument()
+  })
+
+  it('abre y cierra chat desde la lista, y permite acciones/refresh de lista', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+
+    const { container } = render(<FriendsPage />)
+    await screen.findByText('Lista amigos: 1')
+
+    await user.click(screen.getByRole('button', { name: 'Chat Ana' }))
+    expect(screen.getByLabelText('chat directo')).toHaveTextContent('Chat con Ana')
+    const chatBackdrop = Array.from(container.querySelectorAll('div')).find((el) => el.className.includes('bg-black/60'))
+    expect(chatBackdrop).toBeTruthy()
+    await user.click(chatBackdrop as HTMLElement)
+    expect(screen.queryByLabelText('chat directo')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Chat Ana' }))
+    await user.click(screen.getByRole('button', { name: 'Cerrar chat' }))
+    expect(screen.queryByLabelText('chat directo')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Toast lista' }))
+    await act(async () => {
+      jest.advanceTimersByTime(20)
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('success: Accion lista')
+
+    await user.click(screen.getByRole('button', { name: 'Refrescar amigos' }))
+    expect(mockGetFriendships).toHaveBeenCalledTimes(2)
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar inexistente' }))
+    expect(screen.queryByText('¿Eliminar Amigo?')).not.toBeInTheDocument()
   })
 
   it('confirma eliminacion de amigo, refresca datos y muestra toast de exito', async () => {
@@ -190,6 +262,47 @@ describe('FriendsPage', () => {
     await waitFor(() => expect(mockRemoveFriendship).toHaveBeenCalledWith('friendship-1'))
     expect(mockGetFriendships).toHaveBeenCalledTimes(2)
     expect(screen.getByRole('status')).toHaveTextContent('success: Amigo eliminado correctamente')
+  })
+
+  it('permite cancelar el modal de eliminación con botón cancelar y cerrar', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+
+    const { container } = render(<FriendsPage />)
+    await screen.findByText('Lista amigos: 1')
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar Ana' }))
+    expect(screen.getByText('¿Eliminar Amigo?')).toBeInTheDocument()
+    const deleteBackdrop = Array.from(container.querySelectorAll('div')).find((el) => el.className.includes('bg-black/80'))
+    expect(deleteBackdrop).toBeTruthy()
+    await user.click(deleteBackdrop as HTMLElement)
+    expect(screen.queryByText('¿Eliminar Amigo?')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar Ana' }))
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByText('¿Eliminar Amigo?')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar Ana' }))
+    await user.click(screen.getByLabelText('Cerrar'))
+    expect(screen.queryByText('¿Eliminar Amigo?')).not.toBeInTheDocument()
+    expect(mockRemoveFriendship).not.toHaveBeenCalled()
+  })
+
+  it('usa username como nombre a eliminar si el amigo no tiene nickname', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+    mockGetFriendships.mockResolvedValueOnce({
+      friends: [
+        { friendshipId: 'friendship-1', nickname: undefined, profile: { id: 'friend-1', username: 'Ana' } },
+      ],
+      pendingIncoming: [],
+      pendingOutgoing: [],
+    } as never)
+
+    render(<FriendsPage />)
+
+    await screen.findByText('Lista amigos: 1')
+    await user.click(screen.getByRole('button', { name: 'Eliminar Ana' }))
+
+    expect(screen.getAllByText('Ana').length).toBeGreaterThan(0)
   })
 
   it('muestra toast de error si falla eliminar amigo', async () => {

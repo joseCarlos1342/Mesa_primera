@@ -437,7 +437,7 @@ describe('SupabaseService — Extended Coverage', () => {
   describe('lookupUserByPhone', () => {
     it('returns user on successful lookup', async () => {
       mockRpc.mockResolvedValue({
-        data: { found: true, user_id: 'user-2', username: 'TestPlayer' },
+        data: { found: true, user_id: 'user-2', username: 'TestPlayer', avatar_url: 'avatar-ok' },
         error: null,
       });
 
@@ -446,6 +446,7 @@ describe('SupabaseService — Extended Coverage', () => {
       expect(result.success).toBe(true);
       expect(result.userId).toBe('user-2');
       expect(result.name).toBe('TestPlayer');
+      expect(result.avatar_url).toBe('avatar-ok');
     });
 
     it('normalizes a 10-digit Colombian number', async () => {
