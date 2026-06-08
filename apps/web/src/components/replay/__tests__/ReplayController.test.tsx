@@ -5,7 +5,7 @@ import type { ReplayFrame } from '@/types/replay';
 jest.mock('framer-motion', () => {
   const React = require('react');
   const passthrough = (tag: string) =>
-    React.forwardRef(({ children, ...props }: any, ref: any) =>
+    React.forwardRef(({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: any, ref: any) =>
       React.createElement(tag, { ...props, ref }, children),
     );
   return {
@@ -137,6 +137,38 @@ describe('ReplayController', () => {
     expect(screen.getByTestId('replay-phase')).toHaveTextContent(/pique/i);
   });
 
+  it('barra espaciadora alterna reproducción sin cambiar frame inmediatamente', () => {
+    render(<ReplayController frames={FRAMES} intervalMs={1000} />);
+
+    fireEvent.keyDown(window, { key: ' ' });
+    expect(screen.getByTestId('replay-play')).toHaveAccessibleName('Pausar');
+    expect(screen.getByTestId('replay-phase')).toHaveTextContent(/pique/i);
+
+    fireEvent.keyDown(window, { key: ' ' });
+    expect(screen.getByTestId('replay-play')).toHaveAccessibleName('Reproducir');
+  });
+
+  it('si matchMedia falla, play sigue funcionando sin solicitar fullscreen', async () => {
+    const requestFullscreen = jest.fn().mockResolvedValue(undefined);
+    const originalProtoRfs = (HTMLElement.prototype as any).requestFullscreen;
+    const originalMm = window.matchMedia;
+    (HTMLElement.prototype as any).requestFullscreen = requestFullscreen;
+    (window as any).matchMedia = jest.fn(() => { throw new Error('matchMedia unavailable'); });
+
+    try {
+      render(<ReplayController frames={FRAMES} intervalMs={1000} />);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('replay-play'));
+      });
+
+      expect(requestFullscreen).not.toHaveBeenCalled();
+      expect(screen.getByTestId('replay-play')).toHaveAccessibleName('Pausar');
+    } finally {
+      (HTMLElement.prototype as any).requestFullscreen = originalProtoRfs;
+      (window as any).matchMedia = originalMm;
+    }
+  });
+
   it('muestra mensaje degradado si no hay frames', () => {
     render(<ReplayController frames={[]} />);
     expect(screen.getByTestId('replay-empty')).toBeInTheDocument();
@@ -218,6 +250,63 @@ describe('ReplayController', () => {
       expect(screen.getByTestId('replay-floating-exit')).toBeInTheDocument();
     } finally {
       (HTMLElement.prototype as any).requestFullscreen = originalProtoRfs;
+      (window as any).matchMedia = originalMm;
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        get: () => null,
+      });
+    }
+  });
+
+  it('controles flotantes navegan, pausan y salen de fullscreen', async () => {
+    const requestFullscreen = jest.fn().mockResolvedValue(undefined);
+    const exitFullscreen = jest.fn().mockResolvedValue(undefined);
+    const originalProtoRfs = (HTMLElement.prototype as any).requestFullscreen;
+    const originalExit = (document as any).exitFullscreen;
+    const originalMm = window.matchMedia;
+    (HTMLElement.prototype as any).requestFullscreen = requestFullscreen;
+    (document as any).exitFullscreen = exitFullscreen;
+    (window as any).matchMedia = jest.fn().mockImplementation((q: string) => ({
+      matches: q.includes('max-width'),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    }));
+
+    try {
+      render(<ReplayController frames={FRAMES} initialIndex={1} intervalMs={1000} />);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('replay-play'));
+      });
+      const callTarget = requestFullscreen.mock.instances[0] as HTMLElement;
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        get: () => callTarget,
+      });
+      await act(async () => {
+        document.dispatchEvent(new Event('fullscreenchange'));
+      });
+
+      fireEvent.click(screen.getByTestId('replay-floating-next'));
+      expect(screen.getByTestId('replay-phase')).toHaveTextContent(/apuesta/i);
+
+      fireEvent.click(screen.getByTestId('replay-floating-prev'));
+      expect(screen.getByTestId('replay-phase')).toHaveTextContent(/descarte/i);
+
+      fireEvent.click(screen.getByTestId('replay-floating-play'));
+      expect(screen.getByTestId('replay-floating-play')).toHaveAccessibleName('Reproducir');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('replay-floating-exit'));
+      });
+      expect(exitFullscreen).toHaveBeenCalled();
+    } finally {
+      (HTMLElement.prototype as any).requestFullscreen = originalProtoRfs;
+      (document as any).exitFullscreen = originalExit;
       (window as any).matchMedia = originalMm;
       Object.defineProperty(document, 'fullscreenElement', {
         configurable: true,

@@ -1,7 +1,13 @@
 import {
   acceptFriendRequest,
+  deleteNotification,
+  getDirectMessages,
   getFriendships,
+  getLeaderboard,
+  getNotifications,
   inviteToPlay,
+  markNotificationAsRead,
+  removeFriendship,
   searchUsers,
   sendDirectMessage,
   sendFriendRequest,
@@ -24,13 +30,17 @@ const currentUser = {
   user_metadata: { username: 'Rivera' },
 }
 
-function buildAuth(user: typeof currentUser | null = currentUser) {
+type MockAuthUser = Omit<typeof currentUser, 'user_metadata'> & {
+  user_metadata: Record<string, unknown>
+}
+
+function buildAuth(user: MockAuthUser | null = currentUser) {
   return {
     getUser: jest.fn().mockResolvedValue({ data: { user } }),
   }
 }
 
-function queuedSupabase(queues: Record<string, unknown[]>, user: typeof currentUser | null = currentUser) {
+function queuedSupabase(queues: Record<string, unknown[]>, user: MockAuthUser | null = currentUser) {
   return {
     auth: buildAuth(user),
     from: jest.fn((table: string) => {
@@ -44,11 +54,49 @@ function queuedSupabase(queues: Record<string, unknown[]>, user: typeof currentU
 describe('social actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(createClient as jest.Mock).mockReset()
+    ;(revalidatePath as jest.Mock).mockReset()
+    jest.spyOn(console, 'error').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   it('no busca usuarios cuando el texto tiene menos de tres caracteres', async () => {
     await expect(searchUsers('jo')).resolves.toEqual([])
     expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('obtiene leaderboard por periodo/categoría y devuelve vacío si RPC falla', async () => {
+    const rpc = jest.fn()
+      .mockResolvedValueOnce({ data: [{ user_id: 'user-1', score: 120 }], error: null })
+      .mockResolvedValueOnce({ data: null, error: new Error('rpc failed') })
+    ;(createClient as jest.Mock).mockResolvedValue({ rpc })
+
+    await expect(getLeaderboard('monthly', 'wins')).resolves.toEqual([{ user_id: 'user-1', score: 120 }])
+    await expect(getLeaderboard('weekly', 'chips')).resolves.toEqual([])
+
+    expect(rpc).toHaveBeenNthCalledWith(1, 'get_leaderboard', { p_period: 'monthly', p_category: 'wins' })
+    expect(rpc).toHaveBeenNthCalledWith(2, 'get_leaderboard', { p_period: 'weekly', p_category: 'chips' })
+    expect(console.error).toHaveBeenCalledWith('Error fetching leaderboard', expect.any(Error))
+  })
+
+  it('no busca usuarios si no hay sesión y devuelve vacío ante error de búsqueda', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(searchUsers('ana')).resolves.toEqual([])
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const limit = jest.fn().mockResolvedValue({ data: null, error: new Error('search failed') })
+    const neq = jest.fn().mockReturnValue({ limit })
+    const or = jest.fn().mockReturnValue({ neq })
+    const select = jest.fn().mockReturnValue({ or })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ profiles: [{ select }] }))
+
+    await expect(searchUsers('ana')).resolves.toEqual([])
+    expect(console.error).toHaveBeenCalledWith('Error searching users', expect.any(Error))
   })
 
   it('busca usuarios por username, nombre o teléfono excluyendo al usuario actual', async () => {
@@ -107,6 +155,41 @@ describe('social actions', () => {
     expect(or).toHaveBeenCalledWith('user_id.eq.user-123,friend_id.eq.user-123')
   })
 
+  it('maneja amistades sin sesión, error de lectura y nickname cuando el usuario no inició', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(getFriendships()).resolves.toEqual({ friends: [], pendingIncoming: [], pendingOutgoing: [] })
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const orWithError = jest.fn().mockResolvedValue({ data: null, error: new Error('friendships failed') })
+    const selectWithError = jest.fn().mockReturnValue({ or: orWithError })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ friendships: [{ select: selectWithError }] }))
+
+    await expect(getFriendships()).resolves.toEqual({ friends: [], pendingIncoming: [], pendingOutgoing: [] })
+    expect(console.error).toHaveBeenCalledWith('Error fetching friendships', expect.any(Error))
+
+    const friendships = [{
+      id: 'friendship-received-accepted',
+      status: 'accepted',
+      user_id: 'friend-1',
+      friend_id: 'user-123',
+      user: { id: 'friend-1', username: 'ana' },
+      friend: { id: 'user-123', username: 'rivera' },
+      nickname_for_friend: 'Rivera',
+      nickname_for_user: 'Mesa Ana',
+    }]
+    const or = jest.fn().mockResolvedValue({ data: friendships, error: null })
+    const select = jest.fn().mockReturnValue({ or })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ friendships: [{ select }] }))
+
+    await expect(getFriendships()).resolves.toEqual({
+      friends: [{ friendshipId: 'friendship-received-accepted', profile: { id: 'friend-1', username: 'ana' }, nickname: 'Mesa Ana' }],
+      pendingIncoming: [],
+      pendingOutgoing: [],
+    })
+  })
+
   it('crea una solicitud de amistad y notifica al receptor', async () => {
     const friendshipInsert = jest.fn().mockResolvedValue({ error: null })
     const notificationInsert = jest.fn().mockResolvedValue({ error: null })
@@ -134,6 +217,20 @@ describe('social actions', () => {
     expect(supabase.from).not.toHaveBeenCalled()
   })
 
+  it('maneja solicitud de amistad sin sesión y no notifica cuando insert falla', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(sendFriendRequest('friend-1')).resolves.toEqual({ error: 'No autenticado' })
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const friendshipInsert = jest.fn().mockResolvedValue({ error: new Error('duplicate') })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ friendships: [{ insert: friendshipInsert }] }))
+
+    await expect(sendFriendRequest('friend-1')).resolves.toEqual({ success: false })
+    expect(revalidatePath).toHaveBeenCalledWith('/friends')
+  })
+
   it('acepta una solicitud y notifica al iniciador original', async () => {
     const friendEq = jest.fn().mockResolvedValue({ error: null })
     const idEqForUpdate = jest.fn().mockReturnValue({ eq: friendEq })
@@ -155,6 +252,57 @@ describe('social actions', () => {
       type: 'friend_accepted',
       data: { friendId: 'user-123' },
     }))
+  })
+
+  it('maneja aceptar amistad sin sesión, error de update y amistad sin iniciador', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(acceptFriendRequest('friendship-1')).resolves.toEqual({ error: 'No autenticado' })
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const friendEqWithError = jest.fn().mockResolvedValue({ error: new Error('not receiver') })
+    const idEqForUpdateWithError = jest.fn().mockReturnValue({ eq: friendEqWithError })
+    const updateWithError = jest.fn().mockReturnValue({ eq: idEqForUpdateWithError })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ friendships: [{ update: updateWithError }] }))
+
+    await expect(acceptFriendRequest('friendship-1')).resolves.toEqual({ error: 'Error al aceptar.' })
+    expect(console.error).toHaveBeenCalledWith('Error accepting friend request', expect.any(Error))
+
+    const friendEq = jest.fn().mockResolvedValue({ error: null })
+    const idEqForUpdate = jest.fn().mockReturnValue({ eq: friendEq })
+    const update = jest.fn().mockReturnValue({ eq: idEqForUpdate })
+    const single = jest.fn().mockResolvedValue({ data: null, error: null })
+    const idEqForSelect = jest.fn().mockReturnValue({ single })
+    const select = jest.fn().mockReturnValue({ eq: idEqForSelect })
+    const supabase = queuedSupabase({ friendships: [{ update }, { select }] })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(supabase)
+
+    await expect(acceptFriendRequest('friendship-1')).resolves.toEqual({ success: true })
+    expect(supabase.from).toHaveBeenCalledTimes(2)
+  })
+
+  it('elimina amistad si pertenece al usuario y maneja errores o falta de sesión', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(removeFriendship('friendship-1')).resolves.toEqual({ error: 'No autenticado' })
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const eqWithError = jest.fn().mockResolvedValue({ error: new Error('delete failed') })
+    const deleteWithError = jest.fn().mockReturnValue({ eq: eqWithError })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ friendships: [{ delete: deleteWithError }] }))
+
+    await expect(removeFriendship('friendship-1')).resolves.toEqual({ error: 'Error al eliminar.' })
+    expect(console.error).toHaveBeenCalledWith('Error removing friendship', expect.any(Error))
+
+    const eq = jest.fn().mockResolvedValue({ error: null })
+    const deleteFn = jest.fn().mockReturnValue({ eq })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ friendships: [{ delete: deleteFn }] }))
+
+    await expect(removeFriendship('friendship-1')).resolves.toEqual({ success: true })
+    expect(eq).toHaveBeenCalledWith('id', 'friendship-1')
+    expect(revalidatePath).toHaveBeenCalledWith('/friends')
   })
 
   it('envía mensaje directo y crea notificación truncada para el receptor', async () => {
@@ -179,6 +327,98 @@ describe('social actions', () => {
     }))
   })
 
+  it('maneja mensaje directo sin sesión, error de insert y notificación sin truncar', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(sendDirectMessage('friend-1', 'Hola')).resolves.toEqual({ error: 'No autenticado' })
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const singleWithError = jest.fn().mockResolvedValue({ data: null, error: new Error('insert failed') })
+    const selectWithError = jest.fn().mockReturnValue({ single: singleWithError })
+    const insertWithError = jest.fn().mockReturnValue({ select: selectWithError })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ direct_messages: [{ insert: insertWithError }] }))
+
+    await expect(sendDirectMessage('friend-1', 'Hola')).resolves.toEqual({ error: 'Error al enviar mensaje' })
+
+    const userWithoutUsername = { id: 'user-123', email: 'mesa@correo.test', user_metadata: {} }
+    const single = jest.fn().mockResolvedValue({ data: { id: 'message-2', content: 'Hola' }, error: null })
+    const select = jest.fn().mockReturnValue({ single })
+    const messageInsert = jest.fn().mockReturnValue({ select })
+    const notificationInsert = jest.fn().mockResolvedValue({ error: null })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+      direct_messages: [{ insert: messageInsert }],
+      notifications: [{ insert: notificationInsert }],
+    }, userWithoutUsername))
+
+    await expect(sendDirectMessage('friend-1', 'Hola')).resolves.toEqual({ success: true, message: { id: 'message-2', content: 'Hola' } })
+    expect(notificationInsert).toHaveBeenCalledWith(expect.objectContaining({ body: 'mesa: Hola' }))
+  })
+
+  it('obtiene mensajes directos en ambos sentidos y devuelve vacío ante error o sin sesión', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(getDirectMessages('friend-1')).resolves.toEqual([])
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const order = jest.fn().mockResolvedValue({ data: [{ id: 'dm-1' }], error: null })
+    const or = jest.fn().mockReturnValue({ order })
+    const select = jest.fn().mockReturnValue({ or })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ direct_messages: [{ select }] }))
+
+    await expect(getDirectMessages('friend-1')).resolves.toEqual([{ id: 'dm-1' }])
+    expect(or).toHaveBeenCalledWith('and(sender_id.eq.user-123,receiver_id.eq.friend-1),and(sender_id.eq.friend-1,receiver_id.eq.user-123)')
+    expect(order).toHaveBeenCalledWith('created_at', { ascending: true })
+
+    const orderWithError = jest.fn().mockResolvedValue({ data: null, error: new Error('dm failed') })
+    const orWithError = jest.fn().mockReturnValue({ order: orderWithError })
+    const selectWithError = jest.fn().mockReturnValue({ or: orWithError })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ direct_messages: [{ select: selectWithError }] }))
+
+    await expect(getDirectMessages('friend-1')).resolves.toEqual([])
+    expect(console.error).toHaveBeenCalledWith('Error fetching DMs', expect.any(Error))
+  })
+
+  it('lee, marca y elimina notificaciones respetando sesión, errores y revalidación', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(getNotifications()).resolves.toEqual([])
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const limit = jest.fn().mockResolvedValue({ data: [{ id: 'n1' }], error: null })
+    const order = jest.fn().mockReturnValue({ limit })
+    const eqForSelect = jest.fn().mockReturnValue({ order })
+    const select = jest.fn().mockReturnValue({ eq: eqForSelect })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ notifications: [{ select }] }))
+
+    await expect(getNotifications()).resolves.toEqual([{ id: 'n1' }])
+    expect(eqForSelect).toHaveBeenCalledWith('user_id', 'user-123')
+    expect(order).toHaveBeenCalledWith('created_at', { ascending: false })
+    expect(limit).toHaveBeenCalledWith(50)
+
+    const limitWithError = jest.fn().mockResolvedValue({ data: null, error: new Error('notifications failed') })
+    const orderWithError = jest.fn().mockReturnValue({ limit: limitWithError })
+    const eqWithError = jest.fn().mockReturnValue({ order: orderWithError })
+    const selectWithError = jest.fn().mockReturnValue({ eq: eqWithError })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ notifications: [{ select: selectWithError }] }))
+    await expect(getNotifications()).resolves.toEqual([])
+
+    const markEq = jest.fn().mockResolvedValue({ error: null })
+    const update = jest.fn().mockReturnValue({ eq: markEq })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ notifications: [{ update }] }))
+    await expect(markNotificationAsRead('n1')).resolves.toEqual({ success: true })
+    expect(update).toHaveBeenCalledWith({ is_read: true })
+    expect(revalidatePath).toHaveBeenCalledWith('/')
+
+    const deleteEq = jest.fn().mockResolvedValue({ error: new Error('delete notification failed') })
+    const deleteFn = jest.fn().mockReturnValue({ eq: deleteEq })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ notifications: [{ delete: deleteFn }] }))
+    await expect(deleteNotification('n1')).resolves.toEqual({ success: false })
+    expect(revalidatePath).toHaveBeenCalledWith('/')
+  })
+
   it('actualiza el apodo correcto cuando el usuario inició la amistad', async () => {
     const single = jest.fn().mockResolvedValue({ data: { user_id: 'user-123', friend_id: 'friend-1' }, error: null })
     const idEqForSelect = jest.fn().mockReturnValue({ single })
@@ -194,6 +434,31 @@ describe('social actions', () => {
     expect(update).toHaveBeenCalledWith({ nickname_for_friend: 'Socio' })
     expect(or).toHaveBeenCalledWith('user_id.eq.user-123,friend_id.eq.user-123')
     expect(revalidatePath).toHaveBeenCalledWith('/friends')
+  })
+
+  it('actualiza apodo del iniciador contrario y maneja sesión, amistad inexistente y error', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(updateFriendNickname('friendship-1', 'Socio')).resolves.toEqual({ error: 'No autenticado' })
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const singleMissing = jest.fn().mockResolvedValue({ data: null, error: null })
+    const idEqForMissing = jest.fn().mockReturnValue({ single: singleMissing })
+    const selectMissing = jest.fn().mockReturnValue({ eq: idEqForMissing })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ friendships: [{ select: selectMissing }] }))
+    await expect(updateFriendNickname('friendship-1', 'Socio')).resolves.toEqual({ error: 'Amistad no encontrada' })
+
+    const single = jest.fn().mockResolvedValue({ data: { user_id: 'friend-1', friend_id: 'user-123' }, error: null })
+    const idEqForSelect = jest.fn().mockReturnValue({ single })
+    const select = jest.fn().mockReturnValue({ eq: idEqForSelect })
+    const orWithError = jest.fn().mockResolvedValue({ error: new Error('update failed') })
+    const idEqForUpdate = jest.fn().mockReturnValue({ or: orWithError })
+    const update = jest.fn().mockReturnValue({ eq: idEqForUpdate })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ friendships: [{ select }, { update }] }))
+
+    await expect(updateFriendNickname('friendship-1', 'Socio')).resolves.toEqual({ error: 'Error al actualizar apodo' })
+    expect(update).toHaveBeenCalledWith({ nickname_for_user: 'Socio' })
   })
 
   it('invita a jugar usando el username del perfil actual', async () => {
@@ -213,5 +478,30 @@ describe('social actions', () => {
       body: 'MesaPro te ha invitado a una mesa. ¡Únete ahora!',
       data: { senderId: 'user-123' },
     }))
+  })
+
+  it('invita a jugar con fallback y maneja falta de sesión o error de insert', async () => {
+    const unauthSupabase = queuedSupabase({}, null)
+    ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
+
+    await expect(inviteToPlay('friend-1')).resolves.toEqual({ error: 'No autenticado' })
+    expect(unauthSupabase.from).not.toHaveBeenCalled()
+
+    const single = jest.fn().mockResolvedValue({ data: null, error: null })
+    const eq = jest.fn().mockReturnValue({ single })
+    const select = jest.fn().mockReturnValue({ eq })
+    const insert = jest.fn().mockResolvedValue({ error: null })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ profiles: [{ select }], notifications: [{ insert }] }))
+
+    await expect(inviteToPlay('friend-1')).resolves.toEqual({ success: true })
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ body: 'Un amigo te ha invitado a una mesa. ¡Únete ahora!' }))
+
+    const singleForError = jest.fn().mockResolvedValue({ data: { username: 'MesaPro' }, error: null })
+    const eqForError = jest.fn().mockReturnValue({ single: singleForError })
+    const selectForError = jest.fn().mockReturnValue({ eq: eqForError })
+    const insertWithError = jest.fn().mockResolvedValue({ error: new Error('invite failed') })
+    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ profiles: [{ select: selectForError }], notifications: [{ insert: insertWithError }] }))
+
+    await expect(inviteToPlay('friend-1')).resolves.toEqual({ error: 'Error al enviar invitación' })
   })
 })

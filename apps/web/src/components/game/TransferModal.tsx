@@ -64,13 +64,13 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
       }
     }
 
-    const handleLookup = (data: { success: boolean; userId?: string; name?: string; error?: string }) => {
+    const handleLookup = (data: { success: boolean; userId?: string; name?: string; avatar_url?: string | null; error?: string }) => {
       setLoading(false)
       if (data.success && data.userId && data.name) {
         setRecipient({
           id: data.userId,
           username: data.name,
-          avatar_url: null,
+          avatar_url: data.avatar_url ?? null,
           level: 1,
         })
         setStep('confirm-recipient')

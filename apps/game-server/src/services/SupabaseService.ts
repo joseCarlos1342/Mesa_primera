@@ -444,7 +444,7 @@ export class SupabaseService {
    */
   static async lookupUserByPhone(
     phone: string
-  ): Promise<{ success: boolean; userId?: string; name?: string; error?: string }> {
+  ): Promise<{ success: boolean; userId?: string; name?: string; avatar_url?: string | null; error?: string }> {
     if (!supabaseKey) return { success: false, error: 'Supabase no configurado' };
     try {
       const normalized = this.normalizePhone(phone);
@@ -459,6 +459,7 @@ export class SupabaseService {
         success: true,
         userId: data.user_id,
         name: data.username,
+        avatar_url: data.avatar_url ?? null,
       };
     } catch (e) {
       console.error('[SupabaseService] Error looking up user by phone:', e);
@@ -519,4 +520,3 @@ export class SupabaseService {
     }
   }
 }
-

@@ -161,6 +161,16 @@ describe('Board misc guards and banners', () => {
 
     expect(screen.getByTestId('disabled-chips')).toHaveTextContent('1000')
     fireEvent.click(screen.getByRole('button', { name: /agregar chip/i }))
+    fireEvent.click(screen.getByRole('button', { name: /agregar chip/i }))
+    await waitFor(() => expect(screen.getByTestId('chip-total')).toHaveTextContent('1000000'))
+
+    fireEvent.click(screen.getByRole('button', { name: /quitar chip/i }))
+    await waitFor(() => expect(screen.getByTestId('chip-total')).toHaveTextContent('500000'))
+
+    fireEvent.click(screen.getByRole('button', { name: /quitar chip/i }))
+    await waitFor(() => expect(screen.getByTestId('chip-total')).toHaveTextContent('0'))
+
+    fireEvent.click(screen.getByRole('button', { name: /agregar chip/i }))
     await waitFor(() => expect(screen.getByTestId('chip-total')).toHaveTextContent('500000'))
 
     fireEvent.click(screen.getByRole('button', { name: /confirmar apuesta/i }))
@@ -198,5 +208,125 @@ describe('Board misc guards and banners', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /resolver paso juego/i }))
     expect(onPasoJuegoResolved).toHaveBeenCalled()
+  })
+
+  it('dispara animación de reparto para cartas privadas nuevas sin tratar hidratación inicial como deal', async () => {
+    const room = createRoom()
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
+    room.state.phase = 'LOBBY'
+
+    const { rerender } = render(<Board room={room} phase="LOBBY" pot={0} piquePot={0} players={players} myCards="" />)
+
+    expect(dispatchSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'animate-deal' }))
+
+    room.state.phase = 'PIQUE'
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} myCards="01-O,02-C" />)
+
+    await waitFor(() => {
+      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'animate-deal',
+        detail: { toPlayerId: 'player-1', cards: ['01-O', '02-C'], isFaceUp: true },
+      }))
+    })
+
+    dispatchSpy.mockRestore()
+  })
+
+  it('dispara animación de descarte cuando desaparecen cartas privadas', async () => {
+    const room = createRoom()
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
+    room.state.phase = 'LOBBY'
+
+    const { rerender } = render(<Board room={room} phase="LOBBY" pot={0} piquePot={0} players={players} myCards="01-O,02-C" />)
+
+    room.state.phase = 'DESCARTE'
+    rerender(<Board room={room} phase="DESCARTE" pot={0} piquePot={0} players={players} myCards="02-C" />)
+
+    await waitFor(() => {
+      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'animate-discard',
+        detail: { fromPlayerId: 'player-1', cards: ['01-O'] },
+      }))
+    })
+
+    dispatchSpy.mockRestore()
+  })
+
+  it('anima cartas traseras de oponentes cuando aumenta cardCount fuera de reveal', async () => {
+    const room = createRoom()
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
+    room.state.phase = 'LOBBY'
+    const initialPlayers = [players[0], { ...players[1], cardCount: 0 }]
+
+    const { rerender } = render(<Board room={room} phase="LOBBY" pot={0} piquePot={0} players={initialPlayers} />)
+
+    room.state.phase = 'PIQUE'
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={[players[0], { ...players[1], cardCount: 2 }]} />)
+
+    await waitFor(() => {
+      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'animate-deal',
+        detail: expect.objectContaining({ toPlayerId: 'player-2', isFaceUp: false }),
+      }))
+    })
+    const dealEvent = dispatchSpy.mock.calls.find(([event]) => event.type === 'animate-deal')?.[0] as CustomEvent
+    expect(dealEvent.detail.cards).toHaveLength(2)
+    expect(dealEvent.detail.cards[0]).toMatch(/^back-/)
+
+    dispatchSpy.mockRestore()
+  })
+
+  it('anima cartas reveladas de oponentes durante showdown', async () => {
+    const room = createRoom()
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
+    room.state.phase = 'LOBBY'
+    const initialPlayers = [players[0], { ...players[1], revealedCards: '' }]
+
+    const { rerender } = render(<Board room={room} phase="LOBBY" pot={0} piquePot={0} players={initialPlayers} />)
+
+    room.state.phase = 'SHOWDOWN'
+    rerender(<Board room={room} phase="SHOWDOWN" pot={0} piquePot={0} players={[players[0], { ...players[1], revealedCards: '03-E' }]} />)
+
+    await waitFor(() => {
+      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'animate-deal',
+        detail: { toPlayerId: 'player-2', cards: ['03-E'], isFaceUp: true },
+      }))
+    })
+
+    dispatchSpy.mockRestore()
+  })
+
+  it('representa stack plegado y cartas reveladas de oponentes según estado', () => {
+    const room = createRoom()
+    room.state.phase = 'PIQUE'
+
+    const { rerender } = render(
+      <Board room={room} phase="PIQUE" pot={0} piquePot={0} players={[players[0], { ...players[1], cardCount: 3, isFolded: true }]} />,
+    )
+
+    expect(screen.getAllByTestId('card').filter(card => card.dataset.hidden === 'true')).toHaveLength(2)
+
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={[players[0], { ...players[1], revealedCards: '04-B', isFolded: true }]} />)
+
+    expect(screen.getByText('4-B')).toBeInTheDocument()
+    expect(screen.getByText('4-B').closest('[class*="grayscale"]')).toBeInTheDocument()
+  })
+
+  it('usa fallback centrado para transferencia de mano si los asientos no están en el DOM', () => {
+    const room = createRoom()
+    room.state.phase = 'PIQUE'
+    const getElementByIdSpy = jest.spyOn(document, 'getElementById')
+    getElementByIdSpy.mockReturnValue(null)
+
+    const { rerender } = render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} />)
+
+    room.state.dealerId = 'player-2'
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} />)
+
+    expect(screen.getByText(/ana es la nueva mano/i)).toBeInTheDocument()
+    expect(screen.getByTestId('mano-icon')).toBeInTheDocument()
+
+    getElementByIdSpy.mockRestore()
   })
 })

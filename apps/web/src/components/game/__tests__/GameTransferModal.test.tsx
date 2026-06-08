@@ -9,6 +9,10 @@ jest.mock('framer-motion', () => ({
   },
 }))
 
+jest.mock('@/utils/avatars', () => ({
+  getAvatarSvg: jest.fn((avatarId?: string | null) => avatarId === 'avatar-ok' ? <svg data-testid="game-transfer-avatar" /> : null),
+}))
+
 type MessageData = {
   success: boolean
   userId?: string
@@ -16,6 +20,7 @@ type MessageData = {
   recipientName?: string
   amountCents?: number
   newBalance?: number
+  avatar_url?: string | null
   error?: string
 }
 
@@ -151,6 +156,91 @@ describe('GameTransferModal', () => {
 
     fireEvent.click(screen.getByText('Cancelar'))
     expect(screen.getByText('Ingresar monto')).toBeInTheDocument()
+  })
+
+  it('navega hacia atras entre destinatario, monto y confirmacion', async () => {
+    const room = makeRoom()
+    render(<GameTransferModal isOpen onClose={jest.fn()} room={asRoom(room)} myChips={250000} />)
+
+    fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
+    fireEvent.click(screen.getByRole('button', { name: /buscar/i }))
+    room.emitMessage('lookup-result', { success: true, userId: 'user-2', name: 'Ana' })
+
+    expect(await screen.findByText('Confirmar destinatario')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button')[0])
+    expect(screen.getByText('Buscar jugador')).toBeInTheDocument()
+
+    room.emitMessage('lookup-result', { success: true, userId: 'user-2', name: 'Ana' })
+    fireEvent.click(await screen.findByText('Confirmar ✓'))
+    expect(screen.getByText('Ingresar monto')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button')[0])
+    expect(screen.getByText('Confirmar destinatario')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Confirmar ✓'))
+    fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '1000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+    expect(screen.getByText('Revisar datos')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button')[0])
+    expect(screen.getByText('Ingresar monto')).toBeInTheDocument()
+  })
+
+  it('permite buscar otro jugador y limpia el destinatario previo', async () => {
+    const room = makeRoom()
+    render(<GameTransferModal isOpen onClose={jest.fn()} room={asRoom(room)} myChips={250000} />)
+
+    fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
+    fireEvent.click(screen.getByRole('button', { name: /buscar/i }))
+    room.emitMessage('lookup-result', { success: true, userId: 'user-2', name: 'Ana' })
+
+    expect(await screen.findByText('Ana')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Buscar Otro'))
+
+    expect(screen.getByText('Buscar jugador')).toBeInTheDocument()
+    expect(screen.queryByText('Ana')).not.toBeInTheDocument()
+  })
+
+  it('muestra avatar custom cuando lookup lo devuelve', async () => {
+    const room = makeRoom()
+    render(<GameTransferModal isOpen onClose={jest.fn()} room={asRoom(room)} myChips={250000} />)
+
+    fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
+    fireEvent.click(screen.getByRole('button', { name: /buscar/i }))
+    room.emitMessage('lookup-result', { success: true, userId: 'user-2', name: 'Ana', avatar_url: 'avatar-ok' })
+
+    expect(await screen.findByTestId('game-transfer-avatar')).toBeInTheDocument()
+  })
+
+  it('muestra errores por defecto cuando el servidor no envia detalle', async () => {
+    const room = makeRoom()
+    render(<GameTransferModal isOpen onClose={jest.fn()} room={asRoom(room)} myChips={250000} />)
+
+    fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
+    fireEvent.click(screen.getByRole('button', { name: /buscar/i }))
+    room.emitMessage('lookup-result', { success: false })
+
+    expect(await screen.findByText('Usuario no encontrado')).toBeInTheDocument()
+    fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
+    room.emitMessage('lookup-result', { success: true, userId: 'user-2', name: 'Ana' })
+    fireEvent.click(await screen.findByText('Confirmar ✓'))
+    fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '1000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }))
+    room.emitMessage('transfer-result', { success: false })
+
+    expect(await screen.findByText('Error en la transferencia')).toBeInTheDocument()
+  })
+
+  it('desregistra listeners al desmontar mientras esta abierto', () => {
+    const room = makeRoom()
+    const { unmount } = render(<GameTransferModal isOpen onClose={jest.fn()} room={asRoom(room)} myChips={250000} />)
+
+    expect(room.onMessage).toHaveBeenCalledWith('transfer-result', expect.any(Function))
+    expect(room.onMessage).toHaveBeenCalledWith('lookup-result', expect.any(Function))
+
+    unmount()
+
+    expect(room.onMessage).toHaveBeenLastCalledWith('lookup-result', expect.any(Function))
+    expect(room.onMessage).toHaveBeenCalledTimes(4)
   })
 
   it('no busca ni transfiere si falta room', () => {

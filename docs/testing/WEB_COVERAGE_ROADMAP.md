@@ -8,23 +8,23 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-06-04. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-06-08. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `97.35%` |
-| Lines | `97.35%` |
-| Functions | `89.92%` |
-| Branches | `82.91%` |
+| Statements | `98.23%` |
+| Lines | `98.23%` |
+| Functions | `92.39%` |
+| Branches | `85.03%` |
 
 Resultado de la corrida:
 
-- `182` suites en verde.
-- `1257` tests pasando.
+- `185` suites en verde.
+- `1325` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_e9f5a68ee0016FlMA8b0yKcGzI`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ea8fcc1fa0014615lov3BJwOY1`.
 
 ## Meta Final
 
@@ -40,7 +40,7 @@ Objetivo de calidad asociado:
 
 ## Realidad del Gap
 
-Pasar de `97.35%` a `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles. La web incluye:
+Mantener y extender el `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles, especialmente `functions` y `branches`. La web incluye:
 
 - App Router de Next.js.
 - formularios publicos de auth;
@@ -153,8 +153,8 @@ Riesgo:
 
 Estado actual:
 
-- `components/game/Lobby.tsx`: `96.7%`, branches `74.63%`.
-- `components/game/Board.tsx`: `88.82%`, ramas `78.2%`, funciones `85.71%`.
+- `components/game/Lobby.tsx`: `99.71%`, branches `80.51%`, functions `93.33%`.
+- `components/game/Board.tsx`: `100%` statements/lines, ramas `89.78%`, funciones `92.85%`.
 - `app/play/[id]/page.tsx`: `99.68%`, ramas `86.29%`, funciones `78.26%`; queda deuda menor en callback de reload y catch defensivo de audio.
 
 Riesgo:
@@ -1968,3 +1968,122 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f5a68ee0016FlMA8b0yKcGzI`.
 - Riesgos abiertos: `Board.tsx`, `Lobby.tsx`, `LandingContent.tsx` callbacks GSAP y server actions de menor prioridad.
 - Siguiente lote: `Board.tsx`/`Lobby.tsx` para confianza de juego.
+
+## Checkpoint 69
+
+- Fecha: hardening de tablero de juego despues de checkpoint 68.
+- Coverage antes: `97.35%` statements, `97.35%` lines, `89.92%` functions, `82.91%` branches.
+- Coverage despues: `97.59%` statements, `97.59%` lines, `90.01%` functions, `83.26%` branches.
+- Archivos cubiertos: `Board.tsx` mediante `Board.misc.test.tsx` y `Board.manoTransfer.test.tsx`.
+- Tests agregados: animacion de reparto de cartas privadas, animacion de descarte, reparto de cartas traseras a oponentes, cartas reveladas en showdown, stack plegado de oponente, fallback centrado de transferencia de mano y limpieza del mensaje diferido.
+- Riesgos cerrados: `Board.tsx` sube a `100%` statements/lines, `89.78%` branches y `92.85%` functions; quedan caracterizados side effects de mesa (`animate-deal`, `animate-discard`) y ramas visibles de descarte/showdown sin tocar UI productiva.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath src/components/game/__tests__/Board.misc.test.tsx src/components/game/__tests__/Board.manoTransfer.test.tsx` verde con `22` tests; cobertura focalizada de `Board.tsx` en `100%` statements/lines; `pnpm --filter web test:coverage` verde con `182` suites y `1263` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8e01f04001YrUgjXNo2RkK43`.
+- Riesgos abiertos: `Lobby.tsx`, `LandingContent.tsx` callbacks GSAP, `social-actions.ts`, paginas admin con functions bajos y server actions de menor prioridad.
+- Siguiente lote: `Lobby.tsx` para cerrar mas confianza de juego o `social-actions.ts` por peso global de actions.
+
+## Checkpoint 70
+
+- Fecha: hardening de lobby de juego despues de checkpoint 69.
+- Coverage antes: `97.59%` statements, `97.59%` lines, `90.01%` functions, `83.26%` branches.
+- Coverage despues: `97.64%` statements, `97.64%` lines, `90.2%` functions, `83.39%` branches.
+- Archivos cubiertos: `Lobby.tsx` mediante `Lobby.test.tsx`.
+- Tests agregados: avatar desde metadata cuando el perfil no tiene avatar, cierre alternativo de conexion al crear mesa normal/VIP, error de creacion de mesa normal admin, placeholder custom desde tablas admin, error al crear placeholder fijo, cierre alternativo fallido tolerado y callbacks de cierre de modales.
+- Riesgos cerrados: `Lobby.tsx` sube a `99.71%` statements/lines, `80.51%` branches y `93.33%` functions; quedan protegidos fallbacks de Colyseus, estado de creacion y reglas DB para mesas custom sin tocar UI productiva.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath src/components/game/__tests__/Lobby.test.tsx` verde con `23` tests; cobertura focalizada de `Lobby.tsx` en `99.71%` statements/lines; `pnpm --filter web test:coverage` verde con `182` suites y `1270` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8e353fd001L0vgC2kM3qL7K3`.
+- Riesgos abiertos: `LandingContent.tsx` callbacks GSAP, `social-actions.ts`, `admin-search.ts`, `admin-sanctions.ts`, ramas de soporte y paginas admin con funciones bajas.
+- Siguiente lote: `social-actions.ts` por peso global de actions o `LandingContent.tsx` si se prioriza functions restantes de UI publica.
+
+## Checkpoint 71
+
+- Fecha: hardening de acciones sociales despues de checkpoint 70.
+- Coverage antes: `97.64%` statements, `97.64%` lines, `90.2%` functions, `83.39%` branches.
+- Coverage despues: `97.87%` statements, `97.87%` lines, functions y branches en mejora incremental.
+- Archivos cubiertos: `social-actions.ts` mediante `social-actions.test.ts`.
+- Tests agregados: leaderboard RPC, busqueda con auth/error, clasificacion de amistades, solicitudes, aceptar/eliminar amigos, DMs, notificaciones, nicknames e invitaciones.
+- Riesgos cerrados: `social-actions.ts` queda en `100%` statements/lines/functions y `92.59%` branches.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8eab292001s1pkKL70yPfJlp`.
+
+## Checkpoint 72
+
+- Fecha: hardening de busqueda admin.
+- Coverage antes: `97.87%` statements/lines.
+- Coverage despues: `97.99%` statements/lines.
+- Archivos cubiertos: `admin-search.ts` mediante `admin-search.test.ts`.
+- Tests agregados: auth/admin, UUID en multiples tablas, seed, username, rama defensiva `unknown`, respuestas null Supabase y audit log.
+- Riesgos cerrados: `admin-search.ts` queda en `100%` statements/lines/functions y `97.5%` branches.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8ed396e001XWmq7U40drp937`.
+
+## Checkpoint 73
+
+- Fecha: hardening de sanciones admin.
+- Coverage antes: `97.99%` statements/lines.
+- Coverage despues: `98.1%` statements/lines.
+- Archivos cubiertos: `admin-sanctions.ts` mediante `admin-sanctions.test.ts`.
+- Tests agregados: autorizacion, creacion/revocacion de sanciones, auditoria, revalidacion, RPCs de eligibility/table access y errores/null.
+- Riesgos cerrados: `admin-sanctions.ts` queda en `100%` statements/lines/functions y `96.77%` branches.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8eeff4a001YYFHwylshq1ich`.
+
+## Checkpoint 74
+
+- Fecha: hardening de acciones de replays.
+- Coverage antes: `98.1%` statements/lines.
+- Coverage despues: `98.15%` statements/lines.
+- Archivos cubiertos: `replays.ts` mediante `replays-actions.test.ts`.
+- Tests agregados: errores/null en RPCs, fallback game-server sin URL/no OK/json invalido/catch, admin auth, errores replay/ledger y frames desde game-server.
+- Riesgos cerrados: `replays.ts` queda en `100%` statements/lines/functions y `98.18%` branches.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8f0c155001AuWCeecBk6VsBw`.
+
+## Checkpoint 75
+
+- Fecha: hardening de auditoria admin.
+- Coverage antes: `98.15%` statements/lines.
+- Coverage despues: `98.19%` statements/lines.
+- Archivos cubiertos: `admin-audit.ts` mediante `admin-audit.test.ts`.
+- Tests agregados: log admin/system con defaults/opciones, auth admin, filtros, nombres admin, errores y data null.
+- Riesgos cerrados: `admin-audit.ts` queda en `100%` statements/lines/functions y `97.67%` branches.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8f272f6001iAj0KLg2yve669`.
+
+## Checkpoint 76
+
+- Fecha: hardening de replay controller.
+- Coverage antes: `98.19%` statements/lines.
+- Coverage despues: `98.2%` statements/lines.
+- Archivos cubiertos: `ReplayController.tsx` mediante `ReplayController.test.tsx`.
+- Tests agregados: espacio play/pause, tolerancia a fallo de `matchMedia`, controles flotantes fullscreen prev/next/play/exit.
+- Riesgos cerrados: `ReplayController.tsx` queda en `100%` statements/lines/functions y `96.49%` branches.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8f4670e001OIGUCLQ9O9vt3b`.
+
+## Checkpoint 77
+
+- Fecha: hardening de transferencia wallet.
+- Coverage antes: `98.2%` statements/lines.
+- Coverage despues: `98.21%` statements/lines.
+- Archivos cubiertos: `components/wallet/TransferModal.tsx` mediante `TransferModal.test.tsx`.
+- Tests agregados: telefono sanitizado/Enter, avatar custom, no busqueda vacia, limpiar error al editar, volver entre pasos y cierre de resultado.
+- Riesgos cerrados: `TransferModal.tsx` de wallet queda en `100%` statements/lines, `93.33%` functions y `97.91%` branches.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8f5ef52001QRmKODAQ0D76rk`.
+
+## Checkpoint 78
+
+- Fecha: hardening de pagina de amigos.
+- Coverage antes: `98.21%` statements/lines.
+- Coverage despues: `98.22%` statements/lines, `92.2%` functions, `84.95%` branches.
+- Archivos cubiertos: `app/(player)/friends/page.tsx` mediante `page.test.tsx`.
+- Tests agregados: realtime refresh/cleanup, modal agregar/cerrar, solicitudes refresh/toast, querystring chat inexistente, chat open/close/backdrop, lista refresh/toast, eliminar inexistente, cancelar/cerrar eliminacion y fallback username.
+- Riesgos cerrados: `friends/page.tsx` queda en `100%` statements/lines, `87.5%` functions y `97.87%` branches.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8f83449001z5Unke38LJ6eFK`.
+
+## Checkpoint 79
+
+- Fecha: hardening de transferencia en mesa y contrato de lookup.
+- Coverage antes: `98.22%` statements/lines, `92.2%` functions, `84.95%` branches.
+- Coverage despues: `98.23%` statements/lines, `92.39%` functions, `85.03%` branches.
+- Archivos cubiertos: `components/game/TransferModal.tsx`, `components/game/__tests__/GameTransferModal.test.tsx`, `game-server/src/services/SupabaseService.ts`.
+- Tests agregados: navegacion hacia atras entre destinatario/monto/confirmacion, buscar otro jugador, errores por defecto sin detalle del servidor, limpieza de listeners al desmontar y avatar custom desde `lookup-result`.
+- Riesgos cerrados: `components/game/TransferModal.tsx` queda en `100%` statements/lines, `94.11%` functions y `95.08%` branches; el contrato `lookupUserByPhone` ahora propaga `avatar_url` opcional cuando el RPC lo devuelve.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath src/components/game/__tests__/GameTransferModal.test.tsx` verde con `11` tests; `pnpm --filter game-server exec vitest run src/services/__tests__/SupabaseServiceExtended.test.ts` verde con `32` tests; `pnpm --filter web test:coverage` verde con `185` suites y `1325` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8fcc1fa0014615lov3BJwOY1`.
+- Riesgos abiertos: functions/branches siguen por debajo de `98%`; deuda principal en `LandingContent.tsx`, `LandingAnimations.tsx`, `SupportChat.tsx`, `app/play/[id]/page.tsx`, actions admin con branches bajos e infraestructura Supabase.
+- Siguiente lote: priorizar `LandingContent.tsx`/`LandingAnimations.tsx` si se busca subir functions globales, o server actions admin/security si se busca subir branches con mas valor de negocio.
