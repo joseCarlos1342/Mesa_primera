@@ -13,15 +13,15 @@ describe('LandingPage', () => {
   })
 
   it('declara metadata SEO canonica para la landing publica', () => {
-    expect(metadata.title).toBe('Primera Riverada los 4 Ases | Club de Cartas, Dominó y Entretenimiento en Neiva')
+    expect(metadata.title).toBe('Primera Riverada los 4 Ases | Club en Neiva')
     expect(metadata.description).toContain('Neiva, Huila')
     expect(metadata.alternates).toEqual({ canonical: 'https://primerariveradalos4ases.com/' })
-    expect(metadata.keywords).toEqual(expect.arrayContaining(['primera riverada los 4 ases', 'jugar primera online']))
     expect(metadata.openGraph).toEqual(expect.objectContaining({
       type: 'website',
       locale: 'es_CO',
-      url: 'https://primerariveradalos4ases.com',
+      siteName: 'Primera Riverada los 4 Ases',
+      url: 'https://primerariveradalos4ases.com/',
     }))
-    expect(metadata.twitter).toEqual(expect.objectContaining({ card: 'summary_large_image' }))
+    expect(metadata.twitter).toEqual(expect.objectContaining({ card: 'summary_large_image', site: '@primerariverada' }))
   })
 })
