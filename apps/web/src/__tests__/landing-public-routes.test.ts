@@ -40,6 +40,14 @@ describe('Middleware public route whitelist', () => {
   })
 })
 
+describe('Proxy public asset exclusions', () => {
+  const source = fs.readFileSync(path.resolve(__dirname, '../proxy.ts'), 'utf-8')
+
+  it('excludes the generated social preview image from auth middleware', () => {
+    expect(source).toContain('og-image')
+  })
+})
+
 // ────────────────────────────────────────────────
 // 2. Player dashboard at /dashboard
 // ────────────────────────────────────────────────
