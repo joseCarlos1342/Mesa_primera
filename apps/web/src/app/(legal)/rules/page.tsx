@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     url: 'https://primerariveradalos4ases.com/rules',
     type: 'article',
     locale: 'es_CO',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Reglas Primera Riverada los 4 Ases' }],
+    images: [{ url: '/og-image', width: 1200, height: 630, alt: 'Reglas Primera Riverada los 4 Ases' }],
   },
 }
 
