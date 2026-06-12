@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Primera Riverada los 4 Ases">
+  <style>
+    .bg { fill: #052e1b; }
+    .card { fill: #f8fafc; }
+    .mark { fill: #10b981; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #020617; }
+      .card { fill: #f8fafc; }
+      .mark { fill: #34d399; }
+    }
+  </style>
+  <rect class="bg" width="64" height="64" rx="16" />
+  <rect class="card" x="18" y="10" width="28" height="44" rx="5" transform="rotate(8 32 32)" />
+  <path class="mark" d="M33.2 19.8c4.1 4.2 8 8.9 8 14.2 0 4.4-3 7.3-6.7 7.3-1.4 0-2.5-.3-3.4-.9.3 2.1 1.1 4.1 2.5 6h-8.1c1.5-1.9 2.3-3.9 2.6-6-.9.6-2.1.9-3.4.9-3.8 0-6.8-2.9-6.8-7.3 0-5.3 4-10 8.1-14.2l3.6-3.6 3.6 3.6Z" />
+</svg>
