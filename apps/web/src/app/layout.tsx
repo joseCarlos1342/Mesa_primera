@@ -53,7 +53,7 @@ export const metadata: Metadata = {
       "Juega a la Primera online con amigos. Club privado de cartas en tiempo real con billetera digital.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image",
         width: 1200,
         height: 630,
         alt: "Primera Riverada los 4 Ases - Mesa de Juego",
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     title: "Primera Riverada los 4 Ases | Juego de Cartas Online",
     description:
       "Juega a la Primera online con amigos. Club privado de cartas en tiempo real.",
-    images: ["/og-image.png"],
+    images: ["/og-image"],
   },
   manifest: "/manifest.json",
   icons: {
@@ -146,7 +146,7 @@ export default async function RootLayout({
     "alternateName": ["Los 4 Ases", "Mesa de Juego Dario", "Tomadero los 4 Ases", "Primera Riverada Dario", "Primera Riverda", "Primera Riverada Neiva", "Mesa de Primera Neiva"],
     "description": "Club presencial y online de juego de cartas Primera, dominó, bebidas y entretenimiento en Neiva, Huila.",
     "url": "https://primerariveradalos4ases.com",
-    "image": "https://primerariveradalos4ases.com/og-image.png",
+    "image": "https://primerariveradalos4ases.com/og-image",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Cra. 7 #06-87",

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     url: "https://primerariveradalos4ases.com/login/player",
     type: "website",
     locale: "es_CO",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Iniciar Sesión — Primera Riverada los 4 Ases" }],
+    images: [{ url: "/og-image", width: 1200, height: 630, alt: "Iniciar Sesión — Primera Riverada los 4 Ases" }],
   },
   robots: { index: false, follow: true },
 };

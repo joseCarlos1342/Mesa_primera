@@ -46,6 +46,12 @@ const securityHeaders = [
   { key: "X-Email-Obfuscation", value: "off" },
 ];
 
+const socialImageHeaders = [
+  { key: "Access-Control-Allow-Origin", value: "*" },
+  { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
+  { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: true,
@@ -69,6 +75,14 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        source: "/og-image",
+        headers: socialImageHeaders,
+      },
+      {
+        source: "/og-image.png",
+        headers: socialImageHeaders,
       },
     ];
   },
