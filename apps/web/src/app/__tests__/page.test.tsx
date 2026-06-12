@@ -21,7 +21,8 @@ describe('LandingPage', () => {
       locale: 'es_CO',
       siteName: 'Primera Riverada los 4 Ases',
       url: 'https://primerariveradalos4ases.com/',
+      images: [{ url: '/og-image', width: 1200, height: 630, alt: 'Primera Riverada los 4 Ases, club de cartas en Neiva' }],
     }))
-    expect(metadata.twitter).toEqual(expect.objectContaining({ card: 'summary_large_image', site: '@primerariverada' }))
+    expect(metadata.twitter).toEqual(expect.objectContaining({ card: 'summary_large_image', site: '@primerariverada', images: ['/og-image'] }))
   })
 })
