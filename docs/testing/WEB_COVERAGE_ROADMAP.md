@@ -8,23 +8,23 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-06-08. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-06-20. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `98.23%` |
-| Lines | `98.23%` |
-| Functions | `92.39%` |
-| Branches | `85.03%` |
+| Statements | `97.85%` |
+| Lines | `97.85%` |
+| Functions | `92.4%` |
+| Branches | `85.11%` |
 
 Resultado de la corrida:
 
-- `185` suites en verde.
-- `1325` tests pasando.
+- `186` suites en verde.
+- `1332` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ea8fcc1fa0014615lov3BJwOY1`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee66c6850001URwt0k24jy6Ixu`.
 
 ## Meta Final
 
@@ -200,6 +200,7 @@ Estado actual:
 - `utils/supabase/middleware.ts`: `99.16%`, branches `96.55%`.
 - `utils/supabase/client.ts`: `79.16%`.
 - `utils/supabase/server.ts`: `93.54%`.
+- `lib/app-lock-session.ts`: `100%` statements/lines/functions, `93.75%` branches tras caracterizar session markers, bypass one-shot, cookie de redirect y fallbacks seguros ante storage bloqueado.
 - Hooks globales: `96.69%`, con branches `87%`.
 
 Riesgo:
@@ -226,13 +227,13 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `97.35%` actual | baseline real ya medido con `182` suites y `1257` tests |
-| Fase 1 | `95%` | cubrir auth/security y ramas restantes de admin tables |
-| Fase 2 | `96%` | cubrir infraestructura Supabase, hooks globales y shell compartido |
-| Fase 3 | `96.5%` | reforzar `auth-actions.ts` y `auth-actions-helpers.ts` sin ocultar errores de seguridad |
-| Fase 4 | `97%` | cerrar ramas de `Board`, `Lobby`, providers y hooks con casos reales |
-| Fase 5 | `97.5%` | subir functions/branches en landing, shell y notification/support UI |
-| Fase 6 | `98%` | hardening final, edge cases y gate estricto en las cuatro metricas |
+| Fase 0 | `97.85%` actual | baseline real ya medido con `186` suites y `1332` tests |
+| Fase 1 | `97.9%` | cerrar huecos pequenos de infra/shell que suben confianza sin mocks fragiles |
+| Fase 2 | `98%` statements/lines | recuperar el umbral estrategico de lineas/statements sin degradar aserciones |
+| Fase 3 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
+| Fase 4 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
+| Fase 5 | `90%` branches | endurecer acciones admin/security, soporte y paths defensivos |
+| Fase 6 | `98%` en las cuatro metricas | hardening final, edge cases y gate estricto sostenible |
 
 ## Estrategia General para Llegar a la Meta
 
@@ -1171,8 +1172,8 @@ Mientras el repo no este cerca del objetivo final, el equipo debe operar con dos
 
 Gate operativo vigente hoy en CI:
 
-- Web: `35%` statements, `70%` branches, `55%` functions, `35%` lines.
-- Game server: `85%` statements, `75%` branches, `85%` functions, `86%` lines.
+- Web: `86%` statements, `79%` branches, `81%` functions, `86%` lines.
+- Game server: `87%` statements, `77%` branches, `87%` functions, `88%` lines.
 
 Justificacion:
 
@@ -2087,3 +2088,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ea8fcc1fa0014615lov3BJwOY1`.
 - Riesgos abiertos: functions/branches siguen por debajo de `98%`; deuda principal en `LandingContent.tsx`, `LandingAnimations.tsx`, `SupportChat.tsx`, `app/play/[id]/page.tsx`, actions admin con branches bajos e infraestructura Supabase.
 - Siguiente lote: priorizar `LandingContent.tsx`/`LandingAnimations.tsx` si se busca subir functions globales, o server actions admin/security si se busca subir branches con mas valor de negocio.
+
+## Checkpoint 80
+
+- Fecha: 2026-06-20, rebase documental y hardening de App Lock session.
+- Coverage antes: `97.82%` statements/lines, `92.3%` functions, `85.02%` branches; `185` suites y `1326` tests.
+- Coverage despues: `97.85%` statements/lines, `92.4%` functions, `85.11%` branches; `186` suites y `1332` tests.
+- Archivos cubiertos: `lib/app-lock-session.ts` mediante `app-lock-session.test.ts`.
+- Tests agregados: marcado/consulta/limpieza de sesion validada, bypass one-shot desde `sessionStorage`, consumo de cookie de redirect, prioridad de `sessionStorage` sobre cookie, degradacion segura cuando `sessionStorage` falla y fallback de cookie con storage bloqueado.
+- Riesgos cerrados: el contrato transversal de bloqueo biometrico/PWA deja de depender solo de tests indirectos del provider; quedan protegidos los paths de auth client-side, redirect server-side y browser storage restrictivo.
+- Resultado de verificacion: `pnpm --filter web test -- src/lib/__tests__/app-lock-session.test.ts` verde con `6` tests; `pnpm --filter web test:coverage` verde con `186` suites y `1332` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee66c6850001URwt0k24jy6Ixu`.
+- Riesgos abiertos: functions y branches siguen lejos de `98%`; deuda principal actual en `LandingContent.tsx`/`LandingAnimations.tsx` por callbacks, `app/og-image/route.tsx` en `0%`, server actions admin/security/support con branches bajos, `SupportChat.tsx`, `Board.tsx`/`Lobby.tsx` y paginas App Router con funciones residuales.
+- Siguiente lote: priorizar `app/og-image/route.tsx` si se busca recuperar statements/lines con un caso de render estable, o `admin-security.ts`/`support.ts` si se priorizan branches de mayor riesgo operativo.
