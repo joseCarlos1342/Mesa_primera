@@ -1,4 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { useGSAP } from '@gsap/react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 import { LandingContent } from '../LandingContent'
 
@@ -41,6 +44,12 @@ jest.mock('gsap', () => {
     },
   }
 })
+
+jest.mock('gsap/ScrollTrigger', () => ({
+  ScrollTrigger: {
+    batch: jest.fn(),
+  },
+}))
 
 jest.mock('next/dynamic', () => ({
   __esModule: true,
@@ -119,8 +128,14 @@ let intersectionCallback: ((entries: Array<{ isIntersecting: boolean }>) => void
 let intervalCallback: (() => void) | null = null
 let clearIntervalMock: jest.SpyInstance
 
+type BatchOptions = {
+  onEnter: (batch: Element[]) => void
+  onLeaveBack: (batch: Element[]) => void
+}
+
 describe('LandingContent', () => {
   beforeEach(() => {
+    jest.clearAllMocks()
     intersectionCallback = null
     intervalCallback = null
     jest.spyOn(window, 'setInterval').mockImplementation(((callback: TimerHandler) => {
@@ -175,6 +190,40 @@ describe('LandingContent', () => {
     expect(screen.getAllByRole('link', { name: /^iniciar sesión$/i })[0]).toHaveAttribute('href', '/login/player')
     expect(screen.getByRole('heading', { name: /preguntas frecuentes/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByText(/¿dónde queda primera riverada los 4 ases/i)).toBeInTheDocument()
+  })
+
+  it('configura animaciones GSAP de landing cuando el usuario permite movimiento', () => {
+    render(<LandingContent />)
+    ;(gsap.utils.toArray as jest.Mock).mockImplementation((selector: string) => Array.from(document.querySelectorAll(selector)))
+    ;(gsap.matchMedia as jest.Mock).mockReturnValue({ add: jest.fn((_, callback) => callback()) })
+
+    const animationCallback = (useGSAP as jest.Mock).mock.calls[0][0] as () => void
+    act(() => {
+      animationCallback()
+    })
+
+    expect(gsap.timeline).toHaveBeenCalledWith({ defaults: { ease: 'power4.out' } })
+    expect(gsap.to).toHaveBeenCalledWith(expect.any(Element), expect.objectContaining({ repeat: -1, yoyo: true }))
+    expect(gsap.fromTo).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ y: 40, opacity: 0, scale: 0.7 }),
+      expect.objectContaining({ scrollTrigger: expect.objectContaining({ start: 'top 85%' }) }),
+    )
+    expect(ScrollTrigger.batch).toHaveBeenCalledWith('[data-stagger-card]', expect.objectContaining({ start: 'top 88%' }))
+
+    const batchElement = document.querySelector('[data-stagger-card]') as Element
+    const batchOptions = (ScrollTrigger.batch as jest.Mock).mock.calls[0][1] as BatchOptions
+    batchOptions.onEnter([batchElement])
+    expect(gsap.to).toHaveBeenLastCalledWith(
+      [batchElement],
+      expect.objectContaining({ y: 0, opacity: 1, scale: 1, overwrite: true }),
+    )
+
+    batchOptions.onLeaveBack([batchElement])
+    expect(gsap.to).toHaveBeenLastCalledWith(
+      [batchElement],
+      expect.objectContaining({ y: 50, opacity: 0, scale: 0.92, overwrite: true }),
+    )
   })
 
   it('abre y cierra el menú mobile', () => {

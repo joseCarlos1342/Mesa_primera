@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `98.38%` |
-| Lines | `98.38%` |
-| Functions | `92.78%` |
-| Branches | `86.24%` |
+| Statements | `98.8%` |
+| Lines | `98.8%` |
+| Functions | `92.89%` |
+| Branches | `86.23%` |
 
 Resultado de la corrida:
 
 - `187` suites en verde.
-- `1397` tests pasando.
+- `1398` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee6fa0eb2001TdHH50lHVIC66x`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee714a8b10015B1XZv4q0HLYXf`.
 
 ## Meta Final
 
@@ -183,7 +183,7 @@ Riesgo:
 
 Estado actual:
 
-- `components/landing/LandingContent.tsx`: `89.08%`, funciones `68.57%`.
+- `components/landing/LandingContent.tsx`: `99.86%`, funciones `72.97%`.
 - `components/landing/LandingAnimations.tsx`: `100%`, funciones `100%`.
 - Tutoriales de landing tienen cobertura alta en lineas, con algunos branches pendientes.
 
@@ -227,7 +227,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `98.38%` statements/lines y `86.24%` branches actual | baseline real ya medido con `187` suites y `1397` tests |
+| Fase 0 | `98.8%` statements/lines y `86.23%` branches actual | baseline real ya medido con `187` suites y `1398` tests |
 | Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
 | Fase 2 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
 | Fase 3 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
@@ -2179,3 +2179,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee6fa0eb2001TdHH50lHVIC66x`.
 - Riesgos abiertos: functions globales siguen en `92.78%`; deuda principal en `LandingContent.tsx`, `app/play/[id]/page.tsx`, `Card.tsx`, `TutorialWalkthrough.tsx`, paginas admin con callbacks sin cubrir y ramas residuales de actions admin/wallet.
 - Siguiente lote: seguir con functions visibles en `LandingContent.tsx` y `app/play/[id]/page.tsx`, o alternar con branches de `admin-users.ts`/`admin-tables.ts`.
+
+## Checkpoint 87
+
+- Fecha: 2026-06-20, ejecucion controlada de animaciones internas de landing.
+- Coverage antes: `98.38%` statements/lines, `92.78%` functions, `86.24%` branches; `187` suites y `1397` tests.
+- Coverage despues: `98.8%` statements/lines, `92.89%` functions, `86.23%` branches; `187` suites y `1398` tests.
+- Archivos cubiertos: `components/landing/LandingContent.tsx` mediante `LandingContent.test.tsx`.
+- Tests agregados: ejecucion del callback registrado en `useGSAP`, con `toArray`, `matchMedia` y callbacks de `ScrollTrigger.batch` controlados para validar timelines, animaciones flotantes, wave heading, batch enter/leave y media query desktop.
+- Riesgos cerrados: `LandingContent.tsx` sube de `89.08%` a `99.86%` statements/lines y de `68.57%` a `72.97%` functions sin tocar produccion ni depender de GSAP real en jsdom.
+- Resultado de verificacion: `pnpm --filter web exec jest src/components/landing/__tests__/LandingContent.test.tsx --runInBand` verde con `20` tests; `pnpm --filter web test:coverage` verde con `187` suites y `1398` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee714a8b10015B1XZv4q0HLYXf`.
+- Riesgos abiertos: functions globales siguen en `92.89%`; deuda principal en `app/play/[id]/page.tsx`, `Card.tsx`, `TutorialWalkthrough.tsx`, paginas admin con callbacks sin cubrir y branches de `admin-users.ts`/`admin-tables.ts`/`wallet.ts`.
+- Siguiente lote: atacar functions de `app/play/[id]/page.tsx` o branches server-side en `admin-users.ts`/`admin-tables.ts` para mantener avance balanceado.
