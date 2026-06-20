@@ -17,14 +17,14 @@ Cobertura actual de `apps/web`:
 | Statements | `98.27%` |
 | Lines | `98.27%` |
 | Functions | `92.49%` |
-| Branches | `85.12%` |
+| Branches | `85.5%` |
 
 Resultado de la corrida:
 
 - `187` suites en verde.
-- `1335` tests pasando.
+- `1356` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee68240e9001JFtFBTFI8w3bUr`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee6daca84001NS51uezB8R4wRf`.
 
 ## Meta Final
 
@@ -227,7 +227,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `98.27%` actual | baseline real ya medido con `187` suites y `1335` tests |
+| Fase 0 | `98.27%` statements/lines y `85.5%` branches actual | baseline real ya medido con `187` suites y `1356` tests |
 | Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
 | Fase 2 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
 | Fase 3 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
@@ -2114,3 +2114,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee68240e9001JFtFBTFI8w3bUr`.
 - Riesgos abiertos: functions/branches siguen por debajo de la meta estrategica; deuda principal en `LandingContent.tsx`/`LandingAnimations.tsx`, `admin-security.ts`, `support.ts`, `admin-disputes.ts`, `Board.tsx`/`Lobby.tsx`, `SupportChat.tsx` y paginas App Router con funciones residuales.
 - Siguiente lote: priorizar `admin-security.ts`/`support.ts` para subir branches con valor operativo, o `LandingContent.tsx` si se busca elevar functions globales.
+
+## Checkpoint 82
+
+- Fecha: 2026-06-20, hardening de acciones de soporte.
+- Coverage antes: `98.27%` statements/lines, `92.49%` functions, `85.12%` branches; `187` suites y `1335` tests.
+- Coverage despues: `98.27%` statements/lines, `92.49%` functions, `85.5%` branches; `187` suites y `1356` tests.
+- Archivos cubiertos: `app/actions/support.ts` mediante `support-actions.test.ts`.
+- Tests agregados: errores de creacion de ticket, primer mensaje, append/close RPC tecnico y funcional, defaults de rol admin/player, get/list/history con errores y datos nulos, adjuntos sin archivo/ticket inexistente/admin en ticket ajeno/metadata fallida y errores de URL firmada.
+- Riesgos cerrados: `support.ts` sube de `56.33%` a `86.81%` branches; quedan protegidos fallbacks reales de soporte, storage, permisos admin y errores de RPC sin probar implementacion interna ni snapshots.
+- Resultado de verificacion: `pnpm --filter web test -- src/app/actions/__tests__/support-actions.test.ts` verde con `41` tests; `pnpm --filter web test:coverage` verde con `187` suites y `1356` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee6daca84001NS51uezB8R4wRf`.
+- Riesgos abiertos: branches globales siguen bajo `86%`; deuda principal en `admin-security.ts`, `admin-disputes.ts`, `admin-settings.ts`, `admin-supervision.ts`, `admin-server-alerts.ts`, `Board.tsx`/`Lobby.tsx` y funciones de `LandingContent.tsx`/`LandingAnimations.tsx`.
+- Siguiente lote: priorizar `admin-security.ts` para cerrar ramas de MFA/sesiones/auth admin, o `admin-disputes.ts` si se busca otro salto fuerte de branches server-side.
