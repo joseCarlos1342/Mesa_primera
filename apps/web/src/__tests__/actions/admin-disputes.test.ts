@@ -10,6 +10,8 @@ import {
   listDisputes,
 } from '@/app/actions/admin-disputes'
 import { createClient } from '@/utils/supabase/server'
+import { revalidatePath } from 'next/cache'
+import { logAdminAction } from '@/app/actions/admin-audit'
 
 jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
@@ -87,19 +89,18 @@ describe('Admin Disputes Server Actions', () => {
   describe('createDispute', () => {
     it('inserts a new dispute case and returns the id', async () => {
       const disputeId = 'dispute-001'
+      const insert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { id: disputeId },
+            error: null,
+          }),
+        }),
+      })
 
       mockSupabase.from.mockImplementation((table: string) => {
         if (table === 'admin_dispute_cases') {
-          return {
-            insert: jest.fn().mockReturnValue({
-              select: jest.fn().mockReturnValue({
-                single: jest.fn().mockResolvedValue({
-                  data: { id: disputeId },
-                  error: null,
-                }),
-              }),
-            }),
-          }
+          return { insert }
         }
         if (table === 'admin_audit_log') {
           return {
@@ -129,6 +130,18 @@ describe('Admin Disputes Server Actions', () => {
 
       expect(result.error).toBeUndefined()
       expect(result.data).toEqual({ id: disputeId })
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Sospecha de colusión',
+        description: 'Jugadores X e Y muestran patrones inusuales',
+        priority: 'high',
+        opened_by: 'admin-id',
+        support_ticket_id: 'ticket-1',
+      }))
+      expect(logAdminAction).toHaveBeenCalledWith('admin-id', 'dispute_created', 'dispute', disputeId, expect.objectContaining({
+        evidence_count: 2,
+        support_ticket_id: 'ticket-1',
+      }))
+      expect(revalidatePath).toHaveBeenCalledWith('/admin/disputes')
     })
 
     it('validates required fields', async () => {
@@ -139,6 +152,67 @@ describe('Admin Disputes Server Actions', () => {
         evidence_snapshot: [],
       })
       expect(result.error).toBe('El título es obligatorio')
+    })
+
+    it('recorta texto y guarda support_ticket_id null cuando no se envia ticket', async () => {
+      const insert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({ data: { id: 'd-2' }, error: null }),
+        }),
+      })
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') return { insert }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await expect(createDispute({
+        title: '  Caso sin ticket  ',
+        description: '  revisar mesa  ',
+        priority: 'low',
+        evidence_snapshot: [],
+      })).resolves.toEqual({ data: { id: 'd-2' } })
+
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Caso sin ticket',
+        description: 'revisar mesa',
+        support_ticket_id: null,
+      }))
+    })
+
+    it('propaga errores al insertar una disputa', async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') {
+          return {
+            insert: jest.fn().mockReturnValue({
+              select: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({ data: null, error: { message: 'No se pudo crear' } }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await expect(createDispute({
+        title: 'Caso',
+        description: 'Desc',
+        priority: 'medium',
+        evidence_snapshot: [],
+      })).resolves.toEqual({ error: 'No se pudo crear' })
+      expect(logAdminAction).not.toHaveBeenCalled()
+      expect(revalidatePath).not.toHaveBeenCalled()
     })
   })
 
@@ -178,6 +252,36 @@ describe('Admin Disputes Server Actions', () => {
       expect(result.error).toBeUndefined()
       expect(result.data!.status).toBe('investigating')
       expect(result.data!.assigned_to).toBe('admin-2')
+      expect(logAdminAction).toHaveBeenCalledWith('admin-id', 'dispute_assigned', 'dispute', 'd-1', {
+        assigned_to: 'admin-2',
+      })
+      expect(revalidatePath).toHaveBeenCalledWith('/admin/disputes')
+    })
+
+    it('propaga errores al asignar una disputa', async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') {
+          return {
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({ data: null, error: { message: 'No asignable' } }),
+                }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await expect(assignDispute('d-1', 'admin-2')).resolves.toEqual({ error: 'No asignable' })
+      expect(revalidatePath).not.toHaveBeenCalled()
     })
   })
 
@@ -222,11 +326,66 @@ describe('Admin Disputes Server Actions', () => {
       expect(result.error).toBeUndefined()
       expect(result.data!.status).toBe('resolved')
       expect(result.data!.resolution_notes).toBe('No se encontró evidencia')
+      expect(logAdminAction).toHaveBeenCalledWith('admin-id', 'dispute_resolved', 'dispute', 'd-1', {
+        resolution_notes: 'No se encontró evidencia',
+      })
     })
 
     it('requires resolution notes', async () => {
       const result = await resolveDispute('d-1', '')
       expect(result.error).toBe('Las notas de resolución son obligatorias')
+    })
+
+    it('recorta notas de resolucion antes de persistir', async () => {
+      const update = jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: { id: 'd-1', status: 'resolved', resolution_notes: 'Cierre', resolved_by: 'admin-id' },
+              error: null,
+            }),
+          }),
+        }),
+      })
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') return { update }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await resolveDispute('d-1', '  Cierre  ')
+
+      expect(update).toHaveBeenCalledWith(expect.objectContaining({ resolution_notes: 'Cierre' }))
+    })
+
+    it('propaga errores al resolver una disputa', async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') {
+          return {
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({ data: null, error: { message: 'No se pudo resolver' } }),
+                }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await expect(resolveDispute('d-1', 'Cierre')).resolves.toEqual({ error: 'No se pudo resolver' })
     })
   })
 
@@ -265,6 +424,38 @@ describe('Admin Disputes Server Actions', () => {
 
       expect(result.error).toBeUndefined()
       expect(result.data!.status).toBe('dismissed')
+    })
+
+    it('requiere razon para descartar disputa', async () => {
+      await expect(dismissDispute('d-1', '   ')).resolves.toEqual({
+        error: 'La razón de descarte es obligatoria',
+      })
+      expect(createClient).not.toHaveBeenCalled()
+    })
+
+    it('propaga errores al descartar una disputa', async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') {
+          return {
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({ data: null, error: { message: 'No se pudo descartar' } }),
+                }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await expect(dismissDispute('d-1', 'Falsa alarma')).resolves.toEqual({ error: 'No se pudo descartar' })
     })
   })
 
@@ -315,6 +506,29 @@ describe('Admin Disputes Server Actions', () => {
       expect(result.data!.id).toBe('d-1')
       expect(result.data!.status).toBe('open')
     })
+
+    it('propaga errores al obtener una disputa', async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({ data: null, error: { message: 'Disputa no encontrada' } }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await expect(getDispute('d-1')).resolves.toEqual({ error: 'Disputa no encontrada' })
+    })
   })
 
   // ── listDisputes ──────────────────────────────────────────
@@ -351,6 +565,52 @@ describe('Admin Disputes Server Actions', () => {
       expect(result.error).toBeUndefined()
       expect(result.data!).toHaveLength(2)
       expect(result.data![0].id).toBe('d-2')
+    })
+
+    it('devuelve lista vacia cuando no hay disputas', async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') {
+          return {
+            select: jest.fn().mockReturnValue({
+              order: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await expect(listDisputes(10)).resolves.toEqual({ data: [] })
+    })
+
+    it('propaga errores al listar disputas', async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admin_dispute_cases') {
+          return {
+            select: jest.fn().mockReturnValue({
+              order: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue({ data: null, error: { message: 'Listado no disponible' } }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+            }),
+          }),
+        }
+      })
+
+      await expect(listDisputes()).resolves.toEqual({ error: 'Listado no disponible' })
     })
   })
 })
