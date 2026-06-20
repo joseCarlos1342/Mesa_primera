@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `97.85%` |
-| Lines | `97.85%` |
-| Functions | `92.4%` |
-| Branches | `85.11%` |
+| Statements | `98.27%` |
+| Lines | `98.27%` |
+| Functions | `92.49%` |
+| Branches | `85.12%` |
 
 Resultado de la corrida:
 
-- `186` suites en verde.
-- `1332` tests pasando.
+- `187` suites en verde.
+- `1335` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee66c6850001URwt0k24jy6Ixu`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee68240e9001JFtFBTFI8w3bUr`.
 
 ## Meta Final
 
@@ -227,12 +227,12 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `97.85%` actual | baseline real ya medido con `186` suites y `1332` tests |
-| Fase 1 | `97.9%` | cerrar huecos pequenos de infra/shell que suben confianza sin mocks fragiles |
-| Fase 2 | `98%` statements/lines | recuperar el umbral estrategico de lineas/statements sin degradar aserciones |
-| Fase 3 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
-| Fase 4 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
-| Fase 5 | `90%` branches | endurecer acciones admin/security, soporte y paths defensivos |
+| Fase 0 | `98.27%` actual | baseline real ya medido con `187` suites y `1335` tests |
+| Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
+| Fase 2 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
+| Fase 3 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
+| Fase 4 | `90%` branches | endurecer acciones admin/security, soporte y paths defensivos |
+| Fase 5 | `95%` functions | cerrar handlers residuales de UI publica/game/shell |
 | Fase 6 | `98%` en las cuatro metricas | hardening final, edge cases y gate estricto sostenible |
 
 ## Estrategia General para Llegar a la Meta
@@ -2101,3 +2101,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee66c6850001URwt0k24jy6Ixu`.
 - Riesgos abiertos: functions y branches siguen lejos de `98%`; deuda principal actual en `LandingContent.tsx`/`LandingAnimations.tsx` por callbacks, `app/og-image/route.tsx` en `0%`, server actions admin/security/support con branches bajos, `SupportChat.tsx`, `Board.tsx`/`Lobby.tsx` y paginas App Router con funciones residuales.
 - Siguiente lote: priorizar `app/og-image/route.tsx` si se busca recuperar statements/lines con un caso de render estable, o `admin-security.ts`/`support.ts` si se priorizan branches de mayor riesgo operativo.
+
+## Checkpoint 81
+
+- Fecha: 2026-06-20, cierre de ruta OG publica.
+- Coverage antes: `97.85%` statements/lines, `92.4%` functions, `85.11%` branches; `186` suites y `1332` tests.
+- Coverage despues: `98.27%` statements/lines, `92.49%` functions, `85.12%` branches; `187` suites y `1335` tests.
+- Archivos cubiertos: `app/og-image/route.tsx` mediante `route.test.tsx`.
+- Tests agregados: runtime edge/revalidacion diaria, dimensiones OG `1200x630`, cache inmutable y textos SEO visibles de la tarjeta social.
+- Riesgos cerrados: la ruta publica usada por Open Graph/Twitter deja de estar en `0%`; se protege el contrato que enlaza la metadata de landing con la imagen social sin hacer snapshots visuales ni depender del renderer real de `next/og`.
+- Resultado de verificacion: `pnpm --filter web test -- src/app/og-image/__tests__/route.test.tsx` verde con `3` tests; `pnpm --filter web test:coverage` verde con `187` suites y `1335` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee68240e9001JFtFBTFI8w3bUr`.
+- Riesgos abiertos: functions/branches siguen por debajo de la meta estrategica; deuda principal en `LandingContent.tsx`/`LandingAnimations.tsx`, `admin-security.ts`, `support.ts`, `admin-disputes.ts`, `Board.tsx`/`Lobby.tsx`, `SupportChat.tsx` y paginas App Router con funciones residuales.
+- Siguiente lote: priorizar `admin-security.ts`/`support.ts` para subir branches con valor operativo, o `LandingContent.tsx` si se busca elevar functions globales.
