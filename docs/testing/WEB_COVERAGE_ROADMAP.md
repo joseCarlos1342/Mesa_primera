@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `98.33%` |
-| Lines | `98.33%` |
-| Functions | `92.49%` |
-| Branches | `86.21%` |
+| Statements | `98.38%` |
+| Lines | `98.38%` |
+| Functions | `92.78%` |
+| Branches | `86.24%` |
 
 Resultado de la corrida:
 
 - `187` suites en verde.
-- `1392` tests pasando.
+- `1397` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee6f17db60016rV8cbNTXOF0cj`.
+- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee6fa0eb2001TdHH50lHVIC66x`.
 
 ## Meta Final
 
@@ -183,8 +183,8 @@ Riesgo:
 
 Estado actual:
 
-- `components/landing/LandingContent.tsx`: `89.08%`, funciones `65.71%`.
-- `components/landing/LandingAnimations.tsx`: `90%`, funciones `50%`.
+- `components/landing/LandingContent.tsx`: `89.08%`, funciones `68.57%`.
+- `components/landing/LandingAnimations.tsx`: `100%`, funciones `100%`.
 - Tutoriales de landing tienen cobertura alta en lineas, con algunos branches pendientes.
 
 Riesgo:
@@ -227,7 +227,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `98.33%` statements/lines y `86.21%` branches actual | baseline real ya medido con `187` suites y `1392` tests |
+| Fase 0 | `98.38%` statements/lines y `86.24%` branches actual | baseline real ya medido con `187` suites y `1397` tests |
 | Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
 | Fase 2 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
 | Fase 3 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
@@ -2166,3 +2166,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee6f17db60016rV8cbNTXOF0cj`.
 - Riesgos abiertos: functions globales siguen en `92.49%`; deuda principal en `LandingContent.tsx`/`LandingAnimations.tsx`, `app/play/[id]/page.tsx`, `Card.tsx`, `TutorialWalkthrough.tsx`, `admin-tables.ts`, `admin-users.ts`, `wallet.ts` y ramas residuales de `admin-security.ts`.
 - Siguiente lote: cambiar foco a functions globales (`LandingContent.tsx`/`LandingAnimations.tsx`) o seguir branches en `admin-users.ts`/`admin-tables.ts`.
+
+## Checkpoint 86
+
+- Fecha: 2026-06-20, hardening de callbacks de landing publica.
+- Coverage antes: `98.33%` statements/lines, `92.49%` functions, `86.21%` branches; `187` suites y `1392` tests.
+- Coverage despues: `98.38%` statements/lines, `92.78%` functions, `86.24%` branches; `187` suites y `1397` tests.
+- Archivos cubiertos: `components/landing/LandingContent.tsx` y `components/landing/LandingAnimations.tsx` mediante sus suites existentes.
+- Tests agregados: boton de marca hacia inicio, swipe corto de fotos sin cambio de slide, click interno de modal de tutorial sin cerrar, swipe hacia atras en tutoriales y callbacks `onEnter`/`onLeaveBack` de `ScrollTrigger.batch`.
+- Riesgos cerrados: `LandingAnimations.tsx` queda en `100%` statements/lines/functions y `93.75%` branches; `LandingContent.tsx` sube functions de `65.71%` a `68.57%` sin probar implementacion interna de GSAP.
+- Resultado de verificacion: `pnpm --filter web exec jest src/components/landing/__tests__/LandingContent.test.tsx src/components/landing/__tests__/LandingAnimations.test.tsx --runInBand` verde con `23` tests; `pnpm --filter web test:coverage` verde con `187` suites y `1397` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee6fa0eb2001TdHH50lHVIC66x`.
+- Riesgos abiertos: functions globales siguen en `92.78%`; deuda principal en `LandingContent.tsx`, `app/play/[id]/page.tsx`, `Card.tsx`, `TutorialWalkthrough.tsx`, paginas admin con callbacks sin cubrir y ramas residuales de actions admin/wallet.
+- Siguiente lote: seguir con functions visibles en `LandingContent.tsx` y `app/play/[id]/page.tsx`, o alternar con branches de `admin-users.ts`/`admin-tables.ts`.
