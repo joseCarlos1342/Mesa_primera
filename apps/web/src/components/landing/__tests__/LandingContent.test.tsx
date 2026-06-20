@@ -230,6 +230,14 @@ describe('LandingContent', () => {
     expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
   })
 
+  it('navega al inicio desde el botón de marca', () => {
+    render(<LandingContent />)
+
+    fireEvent.click(screen.getByRole('button', { name: /primera riverada los 4 ases/i }))
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
+  })
+
   it('renderiza servicios, pasos y enlaces legales', () => {
     render(<LandingContent />)
 
@@ -292,6 +300,18 @@ describe('LandingContent', () => {
     expect(within(photoCarouselSection).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
   })
 
+  it('ignora gestos táctiles cortos en el carrusel de fotos', () => {
+    render(<LandingContent />)
+
+    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section') as HTMLElement
+    const carousel = photoCarouselSection.querySelector('.relative.overflow-hidden') as Element
+
+    fireEvent.touchStart(carousel, { touches: [{ clientX: 120 }] })
+    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 90 }] })
+
+    expect(within(photoCarouselSection).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
+  })
+
   it('pausa el autoplay al hacer hover y vuelve a rotar con el intervalo', () => {
     render(<LandingContent />)
 
@@ -336,6 +356,32 @@ describe('LandingContent', () => {
     fireEvent.click(overlay.closest('.fixed')!)
 
     expect(screen.queryByTestId('tutorial-walkthrough-dynamic')).not.toBeInTheDocument()
+  })
+
+  it('mantiene abierto el tutorial al hacer click dentro del contenido del modal', async () => {
+    render(<LandingContent />)
+
+    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
+    fireEvent.click(within(tutorialsSection).getByText(/cómo instalar la app/i))
+
+    const tutorial = await screen.findByTestId('tutorial-walkthrough-dynamic')
+    fireEvent.click(tutorial)
+
+    expect(screen.getByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
+  })
+
+  it('permite volver en el carrusel de tutoriales con gesto táctil hacia la derecha', () => {
+    render(<LandingContent />)
+
+    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
+    const tutorialTrackViewport = tutorialsSection.querySelector('.overflow-hidden.flex-1') as Element
+
+    fireEvent.touchStart(tutorialTrackViewport, { touches: [{ clientX: 200 }] })
+    fireEvent.touchEnd(tutorialTrackViewport, { changedTouches: [{ clientX: 20 }] })
+    fireEvent.touchStart(tutorialTrackViewport, { touches: [{ clientX: 20 }] })
+    fireEvent.touchEnd(tutorialTrackViewport, { changedTouches: [{ clientX: 200 }] })
+
+    expect(within(tutorialsSection).getByText('1 / 5')).toBeInTheDocument()
   })
 
   it('muestra el mapa dinámico cuando el placeholder intersecta', () => {

@@ -8,6 +8,10 @@ jest.mock('@gsap/react', () => ({
 }))
 
 type TimelineMock = { from: jest.Mock<TimelineMock> }
+type BatchOptions = {
+  onEnter: (batch: Element[]) => void
+  onLeaveBack: (batch: Element[]) => void
+}
 const timelineApi = {} as TimelineMock
 const timelineFrom = jest.fn(() => timelineApi)
 timelineApi.from = timelineFrom
@@ -73,6 +77,25 @@ describe('LandingAnimations', () => {
     )
     expect(ScrollTrigger.batch).toHaveBeenCalledWith('[data-stagger-card]', expect.objectContaining({ start: 'top 88%' }))
     expect(gsap.matchMedia).toHaveBeenCalled()
+  })
+
+  it('ejecuta los callbacks de entrada y salida del batch de tarjetas', () => {
+    renderAnimationHarness(false)
+
+    const batchElement = document.querySelector('[data-stagger-card]') as Element
+    const batchOptions = (ScrollTrigger.batch as jest.Mock).mock.calls[0][1] as BatchOptions
+
+    batchOptions.onEnter([batchElement])
+    expect(gsap.to).toHaveBeenLastCalledWith(
+      [batchElement],
+      expect.objectContaining({ y: 0, opacity: 1, scale: 1, overwrite: true }),
+    )
+
+    batchOptions.onLeaveBack([batchElement])
+    expect(gsap.to).toHaveBeenLastCalledWith(
+      [batchElement],
+      expect.objectContaining({ y: 50, opacity: 0, scale: 0.92, overwrite: true }),
+    )
   })
 
   it('no configura animaciones si el usuario prefiere movimiento reducido', () => {
