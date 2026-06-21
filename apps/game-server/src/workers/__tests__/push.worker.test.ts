@@ -71,6 +71,8 @@ describe('push worker', () => {
   });
 
   it('does not query Supabase when no key is configured', async () => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await import('../push.worker');
 
