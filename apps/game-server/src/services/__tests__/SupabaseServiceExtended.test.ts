@@ -63,6 +63,140 @@ describe('SupabaseService — Extended Coverage', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  describe('ledger RPC helpers', () => {
+    it('awardPot delegates payout and rake to the atomic award_pot RPC', async () => {
+      mockRpc.mockResolvedValue({ data: { balance_after: 125000 }, error: null });
+
+      await expect(SupabaseService.awardPot('winner-1', 95000, 5000, 'game-1', 'table-1', {
+        roomId: 'room-1',
+        tableName: 'Mesa Principal',
+        playersPresent: [{ odisplayName: 'Ana' }],
+      })).resolves.toEqual({ success: true, balance_after: 125000 });
+
+      expect(mockRpc).toHaveBeenCalledWith('award_pot', {
+        p_winner_id: 'winner-1',
+        p_payout: 95000,
+        p_rake: 5000,
+        p_game_id: 'game-1',
+        p_table_id: 'table-1',
+        p_pot_details: {
+          payout: 95000,
+          rake: 5000,
+          total: 100000,
+          table_id: 'table-1',
+          room_id: 'room-1',
+          table_name: 'Mesa Principal',
+          players_present: [{ odisplayName: 'Ana' }],
+          commission_pct: 0.05,
+        },
+      });
+    });
+
+    it('awardPot returns a structured failure for logical RPC errors', async () => {
+      mockRpc.mockResolvedValue({ data: { error: 'duplicate payout' }, error: null });
+
+      await expect(SupabaseService.awardPot('winner-1', 95000, 5000, 'game-1')).resolves.toEqual({
+        success: false,
+        error: 'Error: duplicate payout',
+      });
+    });
+
+    it('recordBet writes a debit ledger entry with phase metadata', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
+      mockRpc.mockResolvedValue({ data: { balance_after: 75000 }, error: null });
+
+      await expect(SupabaseService.recordBet('user-1', 25000, 'game-1', 'table-ignored', {
+        roomId: 'room-1',
+        tableName: 'Mesa Principal',
+        phase: 'GUERRA',
+      })).resolves.toEqual({ success: true, balance_after: 75000 });
+
+      expect(mockRpc).toHaveBeenCalledWith('process_ledger_entry', {
+        p_user_id: 'user-1',
+        p_amount_cents: 25000,
+        p_type: 'bet',
+        p_direction: 'debit',
+        p_game_id: 'game-1',
+        p_table_id: null,
+        p_description: 'Apuesta en mesa (GUERRA)',
+        p_reference_id: 'bet-game-1-1700000000000',
+        p_metadata: { room_id: 'room-1', table_name: 'Mesa Principal', phase: 'GUERRA' },
+      });
+    });
+
+    it('recordBet marks insufficient-balance RPC rejections', async () => {
+      mockRpc.mockResolvedValue({ data: { error: 'saldo insuficiente' }, error: null });
+
+      await expect(SupabaseService.recordBet('user-1', 25000, 'game-1')).resolves.toEqual({
+        success: false,
+        error: 'saldo insuficiente',
+        isBalanceError: true,
+      });
+    });
+
+    it('transferPiqueBanda sends all losers through the atomic banda RPC', async () => {
+      mockRpc.mockResolvedValue({ data: { total_banda: 20000, payout: 19000, rake: 1000 }, error: null });
+
+      await expect(SupabaseService.transferPiqueBanda('winner-1', [
+        { userId: 'loser-1', amountCents: 10000 },
+        { userId: 'loser-2', amountCents: 10000 },
+      ], 'game-1', { roomId: 'room-1', tableName: 'Mesa Principal' })).resolves.toEqual({
+        success: true,
+        totalBanda: 20000,
+        payout: 19000,
+        rake: 1000,
+      });
+
+      expect(mockRpc).toHaveBeenCalledWith('transfer_pique_banda', {
+        p_transfer_id: 'game-1',
+        p_winner_id: 'winner-1',
+        p_losers: [
+          { user_id: 'loser-1', amount_cents: 10000 },
+          { user_id: 'loser-2', amount_cents: 10000 },
+        ],
+        p_game_id: 'game-1',
+        p_metadata: { room_id: 'room-1', table_name: 'Mesa Principal', reason: 'banda' },
+      });
+    });
+
+    it('transferPiqueBanda falls back to individual ledger calls when atomic RPC fails', async () => {
+      mockRpc
+        .mockResolvedValueOnce({ data: { error: 'rpc unavailable' }, error: null })
+        .mockResolvedValueOnce({ data: { balance_after: 90000 }, error: null })
+        .mockResolvedValueOnce({ data: { balance_after: 80000 }, error: null })
+        .mockResolvedValueOnce({ data: { balance_after: 118900 }, error: null });
+
+      await expect(SupabaseService.transferPiqueBanda('winner-1', [
+        { userId: 'loser-1', amountCents: 10000 },
+        { userId: 'loser-2', amountCents: 0 },
+        { userId: 'loser-3', amountCents: 10000 },
+      ], 'game-1', { roomId: 'room-1', tableName: 'Mesa Principal' })).resolves.toEqual({
+        success: false,
+        totalBanda: 20000,
+        payout: 19000,
+        rake: 1000,
+        error: 'Error: rpc unavailable',
+      });
+
+      expect(mockRpc).toHaveBeenNthCalledWith(2, 'process_ledger_entry', expect.objectContaining({
+        p_user_id: 'loser-1',
+        p_amount_cents: 10000,
+        p_direction: 'debit',
+        p_metadata: expect.objectContaining({ phase: 'BANDA' }),
+      }));
+      expect(mockRpc).toHaveBeenNthCalledWith(3, 'process_ledger_entry', expect.objectContaining({
+        p_user_id: 'loser-3',
+        p_amount_cents: 10000,
+        p_direction: 'debit',
+      }));
+      expect(mockRpc).toHaveBeenNthCalledWith(4, 'award_pot', expect.objectContaining({
+        p_winner_id: 'winner-1',
+        p_payout: 19000,
+        p_rake: 1000,
+      }));
+    });
+  });
+
   // ── updatePlayerStats ─────────────────────────────────────
 
   describe('updatePlayerStats', () => {

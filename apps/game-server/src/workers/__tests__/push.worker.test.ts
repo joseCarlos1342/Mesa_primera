@@ -137,4 +137,18 @@ describe('push worker', () => {
     expect(warnSpy).toHaveBeenCalledWith('[Redis Silenced - PushWorker]:', 'redis down');
     expect(errorSpy).toHaveBeenCalledWith('[PushWorker] Job job-2 failed:', expect.any(Error));
   });
+
+  it('logs Redis worker errors as errors outside development', async () => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-role');
+    vi.stubEnv('NODE_ENV', 'production');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    supabaseMock.createClient.mockReturnValue({ from: vi.fn() });
+    await import('../push.worker');
+
+    const error = workerMock.on.mock.calls.find(call => call[0] === 'error')![1];
+    const redisError = new Error('redis unavailable');
+    error(redisError);
+
+    expect(errorSpy).toHaveBeenCalledWith('[PushWorker] Redis Error:', redisError);
+  });
 });
