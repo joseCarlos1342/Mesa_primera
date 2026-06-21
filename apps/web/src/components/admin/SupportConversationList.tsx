@@ -40,8 +40,8 @@ export function SupportConversationList({ initialTickets, adminId: _adminId }: {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL
-      || (typeof window !== 'undefined' && (window as any).__MESA_PRIMERA_RUNTIME_ENV__?.NEXT_PUBLIC_SOCKET_URL)
+    const socketUrl = (typeof window !== 'undefined' && (window as any).__MESA_PRIMERA_RUNTIME_ENV__?.NEXT_PUBLIC_SOCKET_URL)
+      || process.env.NEXT_PUBLIC_SOCKET_URL
       || (typeof window !== 'undefined' ? `${window.location.protocol === 'https:' ? 'https:' : 'http:'}//${window.location.hostname}:2568` : 'http://127.0.0.1:2568');
     const s = io(`${socketUrl}/support`, { withCredentials: true });
     setSocket(s);
