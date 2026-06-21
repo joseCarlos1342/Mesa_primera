@@ -51,6 +51,25 @@ describe('push-notifications service', () => {
     });
   });
 
+  it('stops Redis queue retries in development', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+
+    await import('../push-notifications');
+
+    const retryStrategy = queueMock.instances[0].options.connection.retryStrategy;
+    expect(retryStrategy(3)).toBeNull();
+  });
+
+  it('backs off Redis queue retries outside development', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    await import('../push-notifications');
+
+    const retryStrategy = queueMock.instances[0].options.connection.retryStrategy;
+    expect(retryStrategy(3)).toBe(150);
+    expect(retryStrategy(100)).toBe(2000);
+  });
+
   it('sends web push payload as JSON and returns true on success', async () => {
     webpushMock.sendNotification.mockResolvedValue(undefined);
     const { sendWebPush } = await import('../push-notifications');
