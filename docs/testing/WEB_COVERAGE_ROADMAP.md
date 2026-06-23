@@ -2260,3 +2260,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef2091650001CeVHvvmdSDc2Q3`.
 - Riesgos abiertos: functions globales siguen por debajo de `98%`; deuda principal en `LandingContent.tsx`, paginas App Router con callbacks, `TransactionModal.tsx`, `admin-broadcast.ts`, `admin-dashboard.ts` y ramas server-side residuales.
 - Siguiente lote: `LandingContent.tsx` o paginas App Router para functions de UI, alternando con `admin-broadcast.ts`/`admin-dashboard.ts` para branches admin.
+
+## Checkpoint 93
+
+- Fecha: 2026-06-22, hardening de landing pública.
+- Coverage antes: `98.85%` statements/lines, `93.17%` functions, `86.71%` branches; `188` suites y `1419` tests.
+- Coverage despues: `98.86%` statements/lines, `93.17%` functions, `86.77%` branches; `188` suites y `1421` tests.
+- Archivos cubiertos: `components/landing/LandingContent.tsx` mediante `LandingContent.test.tsx`.
+- Tests agregados: preferencia de movimiento reducido, resize del carrusel de tutoriales, touchend sin inicio, cleanup de listener y transform del carrusel de fotos.
+- Riesgos cerrados: `LandingContent.tsx` queda en `100%` statements/lines y sube branches a `94.61%`; se elimina un callback muerto del carrusel sin cambio visual.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/components/landing/__tests__/LandingContent.test.tsx' --runInBand` verde con `22` tests; `pnpm --filter web test:coverage` verde con `188` suites y `1421` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef222d58d001ojkfZrLOjxo1Os`.
+- Riesgos abiertos: functions globales siguen por debajo de `98%`; deuda principal en paginas App Router con callbacks, `TransactionModal.tsx`, `admin-broadcast.ts`, `admin-dashboard.ts`, `LocationMap.tsx` y branches server-side residuales.
+- Siguiente lote: atacar paginas App Router para subir functions de UI o `admin-broadcast.ts`/`admin-dashboard.ts` para branches admin.
