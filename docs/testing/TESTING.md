@@ -45,15 +45,16 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `98.86%` statements, `86.77%` branches, `93.17%` functions, `98.86%` lines con `188` suites y `1421` tests pasando (`2026-06-22`).
-- Medicion game-server vigente: `94.93%` statements, `85.23%` branches, `97%` functions, `96.13%` lines con `27` suites y `758` tests pasando (`2026-06-20`).
+- Medicion web vigente: `99.11%` statements, `87.84%` branches, `93.17%` functions, `99.11%` lines con `188` suites y `1471` tests pasando (`2026-06-22`).
+- Medicion game-server vigente: `95.3%` statements, `85.75%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `764` tests pasando (`2026-06-22`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
 - Frentes flojos actuales de game-server: `MesaRoom.ts` por volumen de reglas, `SupabaseService.ts` en catch/fail-open residuales y ramas defensivas de comandos.
-- Gate operativo temporal actual:
-  - Web: `86%` statements, `79%` branches, `81%` functions, `86%` lines.
-  - Game server: `87%` statements, `77%` branches, `87%` functions, `88%` lines.
+- Gate operativo actual (subido tras Fase 1 del plan de hardening de cobertura):
+  - Web: `88%` statements, `82%` branches, `84%` functions, `88%` lines.
+  - Game server: `88%` statements, `79%` branches, `88%` functions, `89%` lines.
 - Objetivo final estrategico sigue siendo `98%` en ambos frentes, pero CI usa un gate escalonado para reflejar el baseline real y bloquear regresiones, no el estado final aun no alcanzado.
+- Hardening de cobertura Fase 1 (2026-06-22): 56 tests nuevos centrados en zonas debiles criticas (`auth-actions.ts`, `MesaRoom.refundAllActiveBets` para reembolso de piquePot en desconexion masiva, `AdminSecurityPanel`, `recovery/page.tsx`, `security/page.tsx`). Subidas clave: `auth-actions.ts` branches 74.8% → 85.71%; `recovery/page.tsx` 11.11% branches → 100%; `AdminSecurityPanel.tsx` 26.92% branches → 100%.
 
 ## Roadmap de Cobertura Web
 

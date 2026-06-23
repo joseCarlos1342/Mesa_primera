@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `98.85%` |
-| Lines | `98.85%` |
-| Functions | `93.08%` |
-| Branches | `86.59%` |
+| Statements | `99.11%` |
+| Lines | `99.11%` |
+| Functions | `93.17%` |
+| Branches | `87.84%` |
 
 Resultado de la corrida:
 
 - `188` suites en verde.
-- `1418` tests pasando.
+- `1471` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-06-22.
 
@@ -125,7 +125,7 @@ Estado actual:
 - `app/actions/admin-rake.ts`: `100%` statements, con errores y mapeos cubiertos.
 - `app/actions/admin-ledger.ts`: `100%` statements, branches `84.21%`.
 - `app/actions/admin-tables.ts`: `100%` statements, branches `79.16%`.
-- `app/(auth)/auth-actions.ts`: `95.29%` statements/lines, branches `74.8%`, functions `100%`.
+- `app/(auth)/auth-actions.ts`: `99.54%` statements/lines, branches `85.71%`, functions `100%` (Fase 1 del plan de hardening cubrió fieldErrors faltantes, verifyOtp edge cases, checkAccountSanction edge, phone recovery, completeGoogleRegistration rollback/duplicate/otp errors, admin TOTP setup edge, redeemAdminRecoveryCode sin TOTP, enrollAdminTotp error, checkPhoneHasPin catch no-Error, getGoogleUserData metadata vacía, rate limit + turnstile bloqueado).
 - `app/actions/support.ts`: `100%` statements, branches `86.81%`; quedan ramas de fallback y errores secundarios de menor prioridad.
 
 Riesgo:
@@ -139,7 +139,7 @@ Riesgo:
 
 Estado actual:
 
-- `app/(auth)/auth-actions.ts`: `95.29%`, con ramas pendientes menores en fallbacks de recuperación, Google registration y errores secundarios.
+- `app/(auth)/auth-actions.ts`: `99.54%` statements/lines, `85.71%` branches, `100%` functions tras Fase 1 del plan de hardening (jun 2026). Quedan 2 branches menores en `verifyOtp` (rama de éxito sin error).
 - `app/(auth)/auth-actions-helpers.ts`: `100%`.
 - `passkey-actions.ts`: `100%` statements/lines/functions, branches `87.5%`.
 - Las paginas de login/registro tienen buena base, pero quedan ramas de error y variantes de recovery/admin.
@@ -1860,7 +1860,7 @@ Ese lote combina:
 - Coverage despues: `96.82%` statements, `96.82%` lines, `87.83%` functions, `81.73%` branches.
 - Archivos cubiertos: `app/(auth)/auth-actions.ts` mediante `otp-and-pin-actions.test.ts` y `auth-actions.test.ts`.
 - Tests agregados: errores de registro Supabase/OTP/perfil, sanción de cuenta en OTP, login PIN con dispositivo confiable, errores normalizados de PIN/OTP, recuperación de `auth.user` faltante desde perfil, perfil baneado/creación fallida, recuperación de PIN con reintento, errores de `setPlayerPin`, errores de `redeemAdminRecoveryCode`, `registerAdmin`, errores de login admin y error de challenge TOTP.
-- Riesgos cerrados: `auth-actions.ts` sube a `95.02%` statements/lines, `73.91%` branches y `100%` functions; se cubren flujos sensibles de sanciones, recuperación de usuarios, MFA admin, PIN y errores de infraestructura.
+- Riesgos cerrados: `auth-actions.ts` sube a `99.54%` statements/lines, `85.71%` branches y `100%` functions tras Fase 1 del plan de hardening (jun 2026); se cubren flujos sensibles de sanciones, recuperación de usuarios, MFA admin, PIN, errores de infraestructura, rollback de Google registration, completeGoogleRegistration, rate limit + Turnstile bloqueados.
 - Resultado de verificacion: `pnpm exec jest --runTestsByPath 'src/app/(auth)/__tests__/auth-actions.test.ts' 'src/app/(auth)/__tests__/otp-and-pin-actions.test.ts'` verde con `57` tests; cobertura focalizada de `auth-actions.ts` en `95.02%`; `pnpm --filter web test:coverage` verde con `180` suites y `1216` tests.
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_e9f1be70b0011TreSw0lFe5QOc`.
 - Riesgos abiertos: `LandingContent.tsx`, `NotificationCenter.tsx` functions, `ShuffleAnimation.tsx` functions, hooks globales y ramas menores de Google registration.
