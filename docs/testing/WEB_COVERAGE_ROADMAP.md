@@ -8,7 +8,7 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-06-20. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-06-22. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
@@ -17,14 +17,14 @@ Cobertura actual de `apps/web`:
 | Statements | `98.8%` |
 | Lines | `98.8%` |
 | Functions | `92.89%` |
-| Branches | `86.23%` |
+| Branches | `86.38%` |
 
 Resultado de la corrida:
 
 - `187` suites en verde.
-- `1398` tests pasando.
+- `1403` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo guardado localmente por OpenCode: `/home/jose/.local/share/opencode/tool-output/tool_ee714a8b10015B1XZv4q0HLYXf`.
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-06-22.
 
 ## Meta Final
 
@@ -125,8 +125,8 @@ Estado actual:
 - `app/actions/admin-rake.ts`: `100%` statements, con errores y mapeos cubiertos.
 - `app/actions/admin-ledger.ts`: `100%` statements, branches `84.21%`.
 - `app/actions/admin-tables.ts`: `99.77%` statements, branches `67.81%`.
-- `app/(auth)/auth-actions.ts`: `95.02%` statements/lines, branches `73.91%`, functions `100%`.
-- `app/actions/support.ts`: `100%` statements, branches `56.33%`; quedan ramas de fallback y errores secundarios.
+- `app/(auth)/auth-actions.ts`: `95.29%` statements/lines, branches `74.8%`, functions `100%`.
+- `app/actions/support.ts`: `100%` statements, branches `86.81%`; quedan ramas de fallback y errores secundarios de menor prioridad.
 
 Riesgo:
 
@@ -139,7 +139,7 @@ Riesgo:
 
 Estado actual:
 
-- `app/(auth)/auth-actions.ts`: `95.02%`, con ramas pendientes menores en fallbacks de recuperación, Google registration y errores secundarios.
+- `app/(auth)/auth-actions.ts`: `95.29%`, con ramas pendientes menores en fallbacks de recuperación, Google registration y errores secundarios.
 - `app/(auth)/auth-actions-helpers.ts`: `100%`.
 - `passkey-actions.ts`: `100%` statements/lines/functions, branches `87.5%`.
 - Las paginas de login/registro tienen buena base, pero quedan ramas de error y variantes de recovery/admin.
@@ -227,7 +227,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `98.8%` statements/lines y `86.23%` branches actual | baseline real ya medido con `187` suites y `1398` tests |
+| Fase 0 | `98.8%` statements/lines y `86.38%` branches actual | baseline real ya medido con `187` suites y `1403` tests |
 | Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
 | Fase 2 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
 | Fase 3 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
@@ -2184,7 +2184,7 @@ Ese lote combina:
 
 - Fecha: 2026-06-20, ejecucion controlada de animaciones internas de landing.
 - Coverage antes: `98.38%` statements/lines, `92.78%` functions, `86.24%` branches; `187` suites y `1397` tests.
-- Coverage despues: `98.8%` statements/lines, `92.89%` functions, `86.23%` branches; `187` suites y `1398` tests.
+- Coverage despues: `98.8%` statements/lines, `92.89%` functions, `86.24%` branches; `187` suites y `1398` tests.
 - Archivos cubiertos: `components/landing/LandingContent.tsx` mediante `LandingContent.test.tsx`.
 - Tests agregados: ejecucion del callback registrado en `useGSAP`, con `toArray`, `matchMedia` y callbacks de `ScrollTrigger.batch` controlados para validar timelines, animaciones flotantes, wave heading, batch enter/leave y media query desktop.
 - Riesgos cerrados: `LandingContent.tsx` sube de `89.08%` a `99.86%` statements/lines y de `68.57%` a `72.97%` functions sin tocar produccion ni depender de GSAP real en jsdom.
@@ -2192,3 +2192,17 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ee714a8b10015B1XZv4q0HLYXf`.
 - Riesgos abiertos: functions globales siguen en `92.89%`; deuda principal en `app/play/[id]/page.tsx`, `Card.tsx`, `TutorialWalkthrough.tsx`, paginas admin con callbacks sin cubrir y branches de `admin-users.ts`/`admin-tables.ts`/`wallet.ts`.
 - Siguiente lote: atacar functions de `app/play/[id]/page.tsx` o branches server-side en `admin-users.ts`/`admin-tables.ts` para mantener avance balanceado.
+
+## Checkpoint 88
+
+- Fecha: 2026-06-22, hardening de acciones admin de usuarios.
+- Coverage antes: `98.8%` statements/lines, `92.89%` functions, `86.24%` branches; `187` suites y `1398` tests.
+- Coverage despues: `98.8%` statements/lines, `92.89%` functions, `86.38%` branches; `187` suites y `1403` tests.
+- Archivos cubiertos: `app/actions/admin-users.ts` mediante `admin-users.test.ts`.
+- Tests agregados: normalizacion de perfiles parciales, error de consulta, rechazo sin sesion, ban con motivo por defecto/auditoria y error de actualizacion sin auditoria ni revalidacion.
+- Riesgos cerrados: `admin-users.ts` sube a `100%` statements/lines/functions y `88.33%` branches; quedan protegidos mapeos defensivos, permisos admin, callbacks de auditoria y fallos de actualizacion sin tocar ledger ni RPCs.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/__tests__/actions/admin-users.test.ts' --runInBand` verde con `18` tests; cobertura focalizada de `admin-users.ts` en `100%` statements/lines/functions y `88.33%` branches; `pnpm --filter web test:coverage` verde con `187` suites y `1403` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef1d084ad001R0kAgfpHr12egp`.
+- Checklist ledger/admin: `adjustUserBalance` sigue ejercitado solo contra RPC mockeada; no se modificaron RPCs, movimientos financieros ni `wallets_ledger`.
+- Riesgos abiertos: functions globales siguen en `92.89%`; deuda principal en `app/play/[id]/page.tsx`, `Card.tsx`, `TutorialWalkthrough.tsx`, `admin-tables.ts`, `wallet.ts`, `admin-broadcast.ts` y ramas residuales de `admin-security.ts`.
+- Siguiente lote: `admin-tables.ts` o `wallet.ts` para seguir elevando branches server-side con valor operativo, alternando luego con functions de UI (`Card.tsx`/`TutorialWalkthrough.tsx`).
