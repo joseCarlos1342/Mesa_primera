@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `98.83%` |
-| Lines | `98.83%` |
-| Functions | `92.89%` |
-| Branches | `86.55%` |
+| Statements | `98.85%` |
+| Lines | `98.85%` |
+| Functions | `93.08%` |
+| Branches | `86.59%` |
 
 Resultado de la corrida:
 
-- `187` suites en verde.
-- `1414` tests pasando.
+- `188` suites en verde.
+- `1418` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-06-22.
 
@@ -227,7 +227,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `98.83%` statements/lines y `86.55%` branches actual | baseline real ya medido con `187` suites y `1414` tests |
+| Fase 0 | `98.85%` statements/lines, `93.08%` functions y `86.59%` branches actual | baseline real ya medido con `188` suites y `1418` tests |
 | Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
 | Fase 2 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
 | Fase 3 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
@@ -2234,3 +2234,16 @@ Ese lote combina:
 - Checklist ledger: sin cambios productivos; sin `UPDATE`/`DELETE` sobre `wallets_ledger`; pruebas limitadas a lectura de ledger y creación de solicitud de depósito con Supabase mockeado.
 - Riesgos abiertos: functions globales siguen en `92.89%`; deuda principal en `Card.tsx`, `TutorialWalkthrough.tsx`, `admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts`, `TransactionModal.tsx` y ramas residuales de auth/security.
 - Siguiente lote: priorizar `Card.tsx`/`TutorialWalkthrough.tsx` para subir functions globales o `admin-broadcast.ts`/`admin-dashboard.ts` para seguir branches server-side/admin.
+
+## Checkpoint 91
+
+- Fecha: 2026-06-22, cobertura directa de carta de mesa.
+- Coverage antes: `98.83%` statements/lines, `92.89%` functions, `86.55%` branches; `187` suites y `1414` tests.
+- Coverage despues: `98.85%` statements/lines, `93.08%` functions, `86.59%` branches; `188` suites y `1418` tests.
+- Archivos cubiertos: `components/game/Card.tsx` mediante `Card.test.tsx`.
+- Tests agregados: imagen visible con valor padded/suit mapeado, transición de carga, fallback textual al error de imagen, carta oculta sin cara visible y cara vacía sin palo/valor.
+- Riesgos cerrados: `Card.tsx` sube a `100%` statements/lines/functions y `89.47%` branches; se protege el fallback visual sin snapshots ni dependencia real de Framer Motion.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/components/game/__tests__/Card.test.tsx' --runInBand` verde con `4` tests; cobertura focalizada de `Card.tsx` en `100%` statements/lines/functions y `89.47%` branches; `pnpm --filter web test:coverage` verde con `188` suites y `1418` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef1f0c6730015eKTDe4HK11glo`.
+- Riesgos abiertos: functions globales siguen por debajo de `98%`; deuda principal en `TutorialWalkthrough.tsx`, `LandingContent.tsx`, paginas App Router con callbacks, `TransactionModal.tsx` y branches server-side admin.
+- Siguiente lote: `TutorialWalkthrough.tsx` para seguir subiendo functions de UI o `admin-broadcast.ts`/`admin-dashboard.ts` para branches admin.
