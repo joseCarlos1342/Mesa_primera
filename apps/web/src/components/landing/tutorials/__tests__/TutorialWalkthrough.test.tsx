@@ -2,23 +2,38 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import { TutorialWalkthrough } from '../TutorialWalkthrough'
 
+type MockTimeline = {
+  to: () => MockTimeline
+  call: (fn: () => void) => MockTimeline
+  set: () => MockTimeline
+}
+
 jest.mock('gsap', () => ({
   __esModule: true,
   default: {
-    timeline: jest.fn(() => ({
-      to: jest.fn().mockReturnThis(),
-      call: jest.fn((fn: () => void) => {
-        fn()
-        return { set: jest.fn().mockReturnThis(), to: jest.fn().mockReturnThis() }
-      }),
-      set: jest.fn().mockReturnThis(),
-    })),
+    timeline: jest.fn((config?: { onComplete?: () => void }) => {
+      const api: MockTimeline = {
+        to: jest.fn((): MockTimeline => {
+          config?.onComplete?.()
+          return api
+        }),
+        call: jest.fn((fn: () => void): MockTimeline => {
+          fn()
+          return api
+        }),
+        set: jest.fn((): MockTimeline => api),
+      }
+
+      return api
+    }),
     fromTo: jest.fn(),
   },
 }))
 
 jest.mock('../MockPhoneFrame', () => ({
-  MockPhoneFrame: ({ children }: { children: React.ReactNode }) => <div data-testid="mock-phone-frame">{children}</div>,
+  MockPhoneFrame: ({ children, landscape }: { children: React.ReactNode; landscape?: boolean }) => (
+    <div data-landscape={landscape ? 'true' : 'false'} data-testid="mock-phone-frame">{children}</div>
+  ),
 }))
 
 jest.mock('../TutorialPlayer', () => ({
@@ -26,7 +41,9 @@ jest.mock('../TutorialPlayer', () => ({
     <div>
       <span>Paso actual: {currentStep + 1}</span>
       <span>Total pasos: {steps.length}</span>
+      <button type="button" onClick={() => onStepChange(0)}>Ir al paso 1</button>
       <button type="button" onClick={() => onStepChange(1)}>Ir al paso 2</button>
+      <button type="button" onClick={() => onStepChange(-1)}>Ir fuera de rango</button>
     </div>
   ),
 }))
@@ -40,7 +57,7 @@ describe('TutorialWalkthrough', () => {
   it('renderiza el primer paso dentro del frame y el player', () => {
     render(<TutorialWalkthrough steps={steps} />)
 
-    expect(screen.getByTestId('mock-phone-frame')).toBeInTheDocument()
+    expect(screen.getByTestId('mock-phone-frame')).toHaveAttribute('data-landscape', 'false')
     expect(screen.getByText('Pantalla 1')).toBeInTheDocument()
     expect(screen.getByText(/paso actual: 1/i)).toBeInTheDocument()
     expect(screen.getByText(/total pasos: 2/i)).toBeInTheDocument()
@@ -52,7 +69,21 @@ describe('TutorialWalkthrough', () => {
     fireEvent.click(screen.getByRole('button', { name: /ir al paso 2/i }))
 
     expect(screen.getByText('Pantalla 2')).toBeInTheDocument()
+    expect(screen.getByTestId('mock-phone-frame')).toHaveAttribute('data-landscape', 'true')
     expect(screen.getByText(/pantalla horizontal durante el juego/i)).toBeInTheDocument()
+  })
+
+  it('permite volver al paso anterior y bloquea cambios fuera de rango', () => {
+    render(<TutorialWalkthrough steps={steps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /ir al paso 2/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ir al paso 1/i }))
+
+    expect(screen.getByText('Pantalla 1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /ir fuera de rango/i }))
+
+    expect(screen.getByText('Pantalla 1')).toBeInTheDocument()
   })
 
   it('llama onClose cuando se hace click en volver a tutoriales', () => {

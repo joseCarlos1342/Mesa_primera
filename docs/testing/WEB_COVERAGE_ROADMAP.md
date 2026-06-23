@@ -2247,3 +2247,16 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef1f0c6730015eKTDe4HK11glo`.
 - Riesgos abiertos: functions globales siguen por debajo de `98%`; deuda principal en `TutorialWalkthrough.tsx`, `LandingContent.tsx`, paginas App Router con callbacks, `TransactionModal.tsx` y branches server-side admin.
 - Siguiente lote: `TutorialWalkthrough.tsx` para seguir subiendo functions de UI o `admin-broadcast.ts`/`admin-dashboard.ts` para branches admin.
+
+## Checkpoint 92
+
+- Fecha: 2026-06-22, cobertura de walkthrough de tutoriales.
+- Coverage antes: `98.85%` statements/lines, `93.08%` functions, `86.59%` branches; `188` suites y `1418` tests.
+- Coverage despues: `98.85%` statements/lines, `93.17%` functions, `86.71%` branches; `188` suites y `1419` tests.
+- Archivos cubiertos: `components/landing/tutorials/TutorialWalkthrough.tsx` mediante `TutorialWalkthrough.test.tsx`.
+- Tests agregados: orientación landscape del frame, transición a paso horizontal, vuelta al paso anterior y bloqueo de índices fuera de rango.
+- Riesgos cerrados: `TutorialWalkthrough.tsx` sube a `100%` statements/lines/functions y `95.65%` branches; se cubren handlers de navegación sin depender de animaciones reales de GSAP.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/components/landing/tutorials/__tests__/TutorialWalkthrough.test.tsx' --runInBand` verde con `4` tests; cobertura focalizada de `TutorialWalkthrough.tsx` en `100%` statements/lines/functions y `95.65%` branches; `pnpm --filter web test:coverage` verde con `188` suites y `1419` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef2091650001CeVHvvmdSDc2Q3`.
+- Riesgos abiertos: functions globales siguen por debajo de `98%`; deuda principal en `LandingContent.tsx`, paginas App Router con callbacks, `TransactionModal.tsx`, `admin-broadcast.ts`, `admin-dashboard.ts` y ramas server-side residuales.
+- Siguiente lote: `LandingContent.tsx` o paginas App Router para functions de UI, alternando con `admin-broadcast.ts`/`admin-dashboard.ts` para branches admin.
