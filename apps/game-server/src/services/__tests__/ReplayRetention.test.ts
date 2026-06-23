@@ -4,6 +4,17 @@ import * as path from 'path';
 import * as os from 'os';
 import { ReplayFileService, ReplayData } from '../ReplayFileService';
 
+type MutableReplayFileService = typeof ReplayFileService & {
+  BASE_DIR: string;
+  initialized: boolean;
+};
+
+function setReplayStorageDir(baseDir: string) {
+  const mutableService = ReplayFileService as unknown as MutableReplayFileService;
+  mutableService.BASE_DIR = baseDir;
+  mutableService.initialized = false;
+}
+
 // ── Helper: crear replay con fecha específica ──
 
 function makeReplay(gameId: string, createdAt: Date, roomId?: string): ReplayData {
@@ -33,12 +44,12 @@ describe('ReplayFileService — 7-day Retention', () => {
     // Crear un directorio temporal para cada test
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'replay-test-'));
     // Forzar el BASE_DIR al directorio temporal (readonly bypass)
-    (ReplayFileService as any).BASE_DIR = tmpDir;
-    // Resetear el estado interno del servicio
-    (ReplayFileService as any).initialized = false;
+    setReplayStorageDir(tmpDir);
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
     // Limpiar directorio temporal
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
@@ -54,6 +65,42 @@ describe('ReplayFileService — 7-day Retention', () => {
     expect(loaded).not.toBeNull();
     expect(loaded!.game_id).toBe('game-001');
     expect(loaded!.players[0].nickname).toBe('Player1');
+  });
+
+  it('save retorna false cuando falla la escritura del archivo', () => {
+    const replay = makeReplay('game-save-error', new Date());
+    const monthDir = ReplayFileService.getMonthDirFor(replay.created_at);
+    const replayPathAsDir = path.join(tmpDir, monthDir, 'game-save-error.json');
+    fs.mkdirSync(replayPathAsDir, { recursive: true });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const saved = ReplayFileService.save(replay);
+
+    expect(saved).toBe(false);
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[ReplayFileService] Error saving replay game-save-error:',
+      expect.stringContaining('EISDIR')
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it('load retorna null cuando falla la lectura del directorio base', () => {
+    const replay = makeReplay('game-load-error', new Date());
+    const monthDir = ReplayFileService.getMonthDirFor(replay.created_at);
+    fs.mkdirSync(path.join(tmpDir, monthDir), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, monthDir, 'game-load-error.json'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const loaded = ReplayFileService.load('game-load-error');
+
+    expect(loaded).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[ReplayFileService] Error loading replay game-load-error:',
+      expect.stringContaining('EISDIR')
+    );
+
+    errorSpy.mockRestore();
   });
 
   // ── cleanup: borra archivos >7 días ──
@@ -95,6 +142,20 @@ describe('ReplayFileService — 7-day Retention', () => {
     const deleted = ReplayFileService.cleanup();
     expect(deleted).toBe(0);
     expect(fs.existsSync(filePath)).toBe(true);
+  });
+
+  it('cleanup retorna 0 y registra el error cuando no puede leer el almacenamiento', () => {
+    const fileBaseDir = path.join(tmpDir, 'not-a-directory');
+    fs.writeFileSync(fileBaseDir, 'not a directory', 'utf-8');
+    setReplayStorageDir(fileBaseDir);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const deleted = ReplayFileService.cleanup();
+
+    expect(deleted).toBe(0);
+    expect(errorSpy).toHaveBeenCalledWith('[ReplayFileService] Cleanup error:', expect.stringContaining('ENOTDIR'));
+
+    errorSpy.mockRestore();
   });
 
   it('cleanup elimina carpetas mensuales vacías', () => {
@@ -162,6 +223,20 @@ describe('ReplayFileService — 7-day Retention', () => {
 
     const listed = ReplayFileService.list({ limit: 3 });
     expect(listed.length).toBe(3);
+  });
+
+  it('list retorna vacío y registra el error cuando no puede leer el almacenamiento', () => {
+    const fileBaseDir = path.join(tmpDir, 'not-a-directory');
+    fs.writeFileSync(fileBaseDir, 'not a directory', 'utf-8');
+    setReplayStorageDir(fileBaseDir);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const listed = ReplayFileService.list();
+
+    expect(listed).toEqual([]);
+    expect(errorSpy).toHaveBeenCalledWith('[ReplayFileService] Error listing replays:', expect.stringContaining('ENOTDIR'));
+
+    errorSpy.mockRestore();
   });
 
   // ── cleanup combinado con list ──
