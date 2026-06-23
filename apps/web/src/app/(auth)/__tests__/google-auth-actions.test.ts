@@ -119,6 +119,26 @@ describe('Google Auth Actions', () => {
         avatarUrl: 'https://example.com/pic.jpg',
       })
     })
+
+    it('debe devolver strings vacíos cuando user_metadata no tiene ningún campo de fallback', async () => {
+      mockSupabase.auth.getUser.mockResolvedValueOnce({
+        data: {
+          user: {
+            id: 'u1',
+            email: 'bare@gmail.com',
+            user_metadata: {},
+          },
+        },
+      })
+
+      const result = await getGoogleUserData()
+
+      expect(result).toEqual({
+        fullName: '',
+        email: 'bare@gmail.com',
+        avatarUrl: '',
+      })
+    })
   })
 
   describe('completeGoogleRegistration', () => {
@@ -239,6 +259,98 @@ describe('Google Auth Actions', () => {
 
       expect(result).toEqual({
         error: expect.stringContaining('ya están en uso'),
+      })
+    })
+
+    it('debe devolver mensaje genérico si updateUserById falla por razón distinta a duplicado', async () => {
+      mockAdminSupabase.auth.admin.updateUserById.mockResolvedValueOnce({
+        error: { message: 'invalid input syntax for type uuid' },
+      })
+
+      const result = await completeGoogleRegistration({}, buildFormData())
+
+      expect(result).toEqual({
+        error: 'Error al actualizar tu perfil. Intenta de nuevo.',
+      })
+    })
+
+    it('debe hacer rollback del teléfono y reportar error genérico si falla el update de profiles', async () => {
+      const updateEq = jest.fn().mockResolvedValue({
+        error: { code: '42501', message: 'rls violation' },
+      })
+      const update = jest.fn().mockReturnValue({ eq: updateEq })
+      mockSupabase.from.mockReturnValueOnce({ update })
+
+      const result = await completeGoogleRegistration({}, buildFormData())
+
+      expect(result).toEqual({
+        error: 'Error al guardar tu perfil. Intenta de nuevo.',
+      })
+      expect(mockAdminSupabase.auth.admin.updateUserById).toHaveBeenCalledWith(
+        'google-user-123',
+        { phone: '', phone_confirm: false },
+      )
+    })
+
+    it('debe hacer rollback del teléfono y reportar "apodo en uso" si profiles viola unique constraint', async () => {
+      const updateEq = jest.fn().mockResolvedValue({
+        error: { code: '23505', message: 'duplicate key value violates unique constraint "profiles_username_key"' },
+      })
+      const update = jest.fn().mockReturnValue({ eq: updateEq })
+      mockSupabase.from.mockReturnValueOnce({ update })
+
+      const result = await completeGoogleRegistration({}, buildFormData())
+
+      expect(result).toEqual({
+        error: 'El apodo ya está en uso. Elige uno diferente.',
+      })
+      expect(mockAdminSupabase.auth.admin.updateUserById).toHaveBeenCalledWith(
+        'google-user-123',
+        { phone: '', phone_confirm: false },
+      )
+    })
+
+    it('debe continuar y no romper el flujo si el rollback del teléfono también falla', async () => {
+      const updateEq = jest.fn().mockResolvedValue({
+        error: { code: '42501', message: 'rls violation' },
+      })
+      const update = jest.fn().mockReturnValue({ eq: updateEq })
+      mockSupabase.from.mockReturnValueOnce({ update })
+
+      // First updateUserById (real) succeeds, rollback one rejects
+      mockAdminSupabase.auth.admin.updateUserById
+        .mockResolvedValueOnce({ error: null })
+        .mockRejectedValueOnce(new Error('rollback boom'))
+
+      const result = await completeGoogleRegistration({}, buildFormData())
+
+      expect(result).toEqual({
+        error: 'Error al guardar tu perfil. Intenta de nuevo.',
+      })
+    })
+
+    it('debe informar "SMS no disponible" cuando signInWithOtp devuelve otp_disabled', async () => {
+      mockSupabase.auth.signInWithOtp.mockResolvedValueOnce({
+        error: { message: 'otp_disabled' },
+      })
+
+      const result = await completeGoogleRegistration({}, buildFormData())
+
+      expect(result).toEqual({
+        error: 'El servicio de SMS no está disponible. Inténtalo más tarde.',
+      })
+      expect(redirect).not.toHaveBeenCalled()
+    })
+
+    it('debe informar error genérico de OTP si signInWithOtp falla por razón distinta a otp_disabled', async () => {
+      mockSupabase.auth.signInWithOtp.mockResolvedValueOnce({
+        error: { message: 'sms provider timeout' },
+      })
+
+      const result = await completeGoogleRegistration({}, buildFormData())
+
+      expect(result).toEqual({
+        error: 'No pudimos enviar el código de verificación. Intenta de nuevo.',
       })
     })
   })

@@ -14208,4 +14208,178 @@ describe('MesaRoom via Colyseus Testing', () => {
     });
   });
 
+  describe('refundAllActiveBets — piquePot refund (mass disconnect)', () => {
+    it('distributes the piquePot among non-folded contributors and refunds each one', async () => {
+      const { internalRoom, players } = await createMesaTestContext(colyseus, {
+        tableId: 'refund-all-pique-happy', playerCount: 3,
+      });
+      internalRoom.state.piquePot = 1_000_001; // 1_000_001 / 3 = 333333 rem 2
+      internalRoom.state.pot = 0;
+      internalRoom.currentGameId = 'game-refund-all-happy';
+      vi.mocked(SupabaseService.refundPlayer).mockClear();
+      vi.mocked(AlertService.refundFailed).mockClear();
+
+      // 3 non-folded contributors (default isFolded is false)
+      players[0].supabaseUserId = 'uid-r0';
+      players[1].supabaseUserId = 'uid-r1';
+      players[2].supabaseUserId = 'uid-r2';
+      const chipsBefore = players.map(p => p.chips);
+
+      internalRoom.refundAllActiveBets();
+
+      const piqueCalls = vi.mocked(SupabaseService.refundPlayer).mock.calls.filter(
+        c => c[3]?.reason?.includes('pique'),
+      );
+      expect(piqueCalls.length).toBe(3);
+      // First contributor gets share + remainder
+      expect(piqueCalls[0][0]).toBe('uid-r0');
+      expect(piqueCalls[0][1]).toBe(333333 + 2);
+      expect(piqueCalls[1][0]).toBe('uid-r1');
+      expect(piqueCalls[1][1]).toBe(333333);
+      expect(piqueCalls[2][0]).toBe('uid-r2');
+      expect(piqueCalls[2][1]).toBe(333333);
+      // Chips were credited for each contributor
+      expect(players[0].chips - chipsBefore[0]).toBe(333333 + 2);
+      expect(players[1].chips - chipsBefore[1]).toBe(333333);
+      expect(players[2].chips - chipsBefore[2]).toBe(333333);
+      expect(internalRoom.state.piquePot).toBe(0);
+      expect(internalRoom.state.pot).toBe(0);
+    });
+
+    it('distributes remainder to the first contributor even when the rest receive a small share', async () => {
+      const { internalRoom, players } = await createMesaTestContext(colyseus, {
+        tableId: 'refund-all-pique-remainder', playerCount: 3,
+      });
+      internalRoom.state.piquePot = 1_000_007; // 1_000_007 / 3 = 333335 rem 2
+      internalRoom.state.pot = 0;
+      internalRoom.currentGameId = 'game-refund-all-rem';
+      vi.mocked(SupabaseService.refundPlayer).mockClear();
+
+      players[0].supabaseUserId = 'uid-r0';
+      players[1].supabaseUserId = 'uid-r1';
+      players[2].supabaseUserId = 'uid-r2';
+
+      internalRoom.refundAllActiveBets();
+
+      const piqueCalls = vi.mocked(SupabaseService.refundPlayer).mock.calls.filter(
+        c => c[3]?.reason?.includes('pique'),
+      );
+      expect(piqueCalls.length).toBe(3);
+      expect(piqueCalls[0][1]).toBe(333335 + 2);
+      expect(piqueCalls[1][1]).toBe(333335);
+      expect(piqueCalls[2][1]).toBe(333335);
+    });
+
+    it('skips the piquePot block and resets the value when there are no non-folded contributors', async () => {
+      const { internalRoom, players } = await createMesaTestContext(colyseus, {
+        tableId: 'refund-all-pique-empty', playerCount: 3,
+      });
+      internalRoom.state.piquePot = 50_000;
+      internalRoom.state.pot = 0;
+      internalRoom.currentGameId = 'game-refund-all-empty';
+      vi.mocked(SupabaseService.refundPlayer).mockClear();
+
+      // All folded: nothing to distribute
+      players[0].supabaseUserId = 'uid-r0'; players[0].isFolded = true;
+      players[1].supabaseUserId = 'uid-r1'; players[1].isFolded = true;
+      players[2].supabaseUserId = 'uid-r2'; players[2].isFolded = true;
+
+      internalRoom.refundAllActiveBets();
+
+      const piqueCalls = vi.mocked(SupabaseService.refundPlayer).mock.calls.filter(
+        c => c[3]?.reason?.includes('pique'),
+      );
+      expect(piqueCalls.length).toBe(0);
+      expect(internalRoom.state.piquePot).toBe(0);
+    });
+
+    it('only refunds contributors whose refund amount is greater than zero', async () => {
+      const { internalRoom, players } = await createMesaTestContext(colyseus, {
+        tableId: 'refund-all-pique-tiny', playerCount: 2,
+      });
+      // 1 / 2 = 0, remainder 1, so only first contributor gets 1
+      internalRoom.state.piquePot = 1;
+      internalRoom.state.pot = 0;
+      internalRoom.currentGameId = 'game-refund-all-tiny';
+      vi.mocked(SupabaseService.refundPlayer).mockClear();
+
+      players[0].supabaseUserId = 'uid-r0';
+      players[1].supabaseUserId = 'uid-r1';
+
+      const chipsBefore = players.map(p => p.chips);
+
+      internalRoom.refundAllActiveBets();
+
+      const piqueCalls = vi.mocked(SupabaseService.refundPlayer).mock.calls.filter(
+        c => c[3]?.reason?.includes('pique'),
+      );
+      expect(piqueCalls.length).toBe(1);
+      expect(piqueCalls[0][0]).toBe('uid-r0');
+      expect(piqueCalls[0][1]).toBe(1);
+      expect(players[0].chips - chipsBefore[0]).toBe(1);
+      expect(players[1].chips - chipsBefore[1]).toBe(0);
+    });
+
+    it('emits an AlertService.refundFailed alert when a pique refund rejects', async () => {
+      const { internalRoom, players } = await createMesaTestContext(colyseus, {
+        tableId: 'refund-all-pique-fail', playerCount: 2,
+      });
+      internalRoom.state.piquePot = 500_000;
+      internalRoom.state.pot = 0;
+      internalRoom.currentGameId = 'game-refund-all-fail';
+      vi.mocked(SupabaseService.refundPlayer).mockClear();
+      vi.mocked(AlertService.refundFailed).mockClear();
+
+      players[0].supabaseUserId = 'uid-fail-0';
+      players[1].supabaseUserId = 'uid-fail-1';
+
+      // Make every refundPlayer call reject (so the .catch fires)
+      vi.mocked(SupabaseService.refundPlayer).mockRejectedValue(new Error('pique-refund-boom'));
+
+      internalRoom.refundAllActiveBets();
+      // Allow the Promise rejection .catch to flush
+      await new Promise((r) => setImmediate(r));
+
+      const piqueCalls = vi.mocked(SupabaseService.refundPlayer).mock.calls.filter(
+        c => c[3]?.reason?.includes('pique'),
+      );
+      expect(piqueCalls.length).toBe(2);
+      expect(AlertService.refundFailed).toHaveBeenCalledWith(
+        'uid-fail-0',
+        250000,
+        'game-refund-all-fail',
+        expect.stringContaining('pique-refund-boom'),
+        expect.any(String),
+      );
+      expect(AlertService.refundFailed).toHaveBeenCalledWith(
+        'uid-fail-1',
+        250000,
+        'game-refund-all-fail',
+        expect.stringContaining('pique-refund-boom'),
+        expect.any(String),
+      );
+    });
+  });
+
+  describe('deriveHint — fold mapping (legacy action strings)', () => {
+    it('maps "bote", "botarse" and "me-boto" actions to kind:fold', async () => {
+      const { internalRoom } = await createMesaTestContext(colyseus, {
+        tableId: 'derive-hint-fold', playerCount: 2,
+      });
+
+      expect(internalRoom.deriveHint({ event: 'action', action: 'bote', player: 'p1' })).toEqual({
+        kind: 'fold',
+        targetPlayerId: 'p1',
+      });
+      expect(internalRoom.deriveHint({ event: 'action', action: 'botarse', player: 'p2' })).toEqual({
+        kind: 'fold',
+        targetPlayerId: 'p2',
+      });
+      expect(internalRoom.deriveHint({ event: 'action', action: 'me-boto', player: 'p3' })).toEqual({
+        kind: 'fold',
+        targetPlayerId: 'p3',
+      });
+    });
+  });
+
 });

@@ -30,6 +30,9 @@ jest.mock('@/app/actions/anti-fraud', () => ({
   enforceRateLimiting: jest.fn().mockResolvedValue({ success: true }),
 }))
 
+const { enforceRateLimiting } = require('@/app/actions/anti-fraud')
+const { verifyTurnstile } = require('@/lib/security/turnstile')
+
 jest.mock('next/headers', () => ({
   cookies: jest.fn(),
 }))
@@ -265,6 +268,63 @@ describe('OTP y PIN auth actions', () => {
     }))).resolves.toEqual({ error: 'Error de verificación. Intenta de nuevo.' })
   })
 
+  it('verifyOtp en registro sigue redirigiendo a PIN cuando falla el update de profiles', async () => {
+    const firstEq = jest.fn().mockResolvedValue({
+      error: { code: '42501', message: 'rls denied updating phone' },
+    })
+    const update = jest.fn().mockReturnValue({ eq: firstEq })
+    const supabase = buildSupabase({ from: jest.fn().mockReturnValue({ update }), update })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+    const consoleErrSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    await expect(verifyOtp(null, formData({
+      phone: TEST_PHONE_E164,
+      token: '123456',
+      flow: 'register',
+    }))).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(consoleErrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[VERIFY_OTP] Error saving phone to profile'),
+      'user-123',
+      '42501',
+      'rls denied updating phone',
+    )
+    expect(redirect).toHaveBeenCalledWith('/register/player/pin')
+  })
+
+  it('verifyOtp redirige a /register/player/pin para usuarios legacy con flow=login-set-pin', async () => {
+    const supabase = buildSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(verifyOtp(null, formData({
+      phone: TEST_PHONE_E164,
+      token: '123456',
+      flow: 'login-set-pin',
+    }))).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(redirect).toHaveBeenCalledWith('/register/player/pin')
+    expect(supabase.rpc).not.toHaveBeenCalledWith('check_account_eligibility', expect.anything())
+  })
+
+  it('verifyOtp devuelve el mensaje crudo cuando Supabase rechaza el token verificado', async () => {
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        verifyOtp: jest.fn().mockResolvedValue({
+          data: { user: null },
+          error: { message: 'Token has expired or is invalid' },
+        }),
+      },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(verifyOtp(null, formData({
+      phone: TEST_PHONE_E164,
+      token: '123456',
+      flow: 'login',
+    }))).resolves.toEqual({ error: 'Token has expired or is invalid' })
+  })
+
   it('verifyOtp en flujo legacy/default valida sanción, aplica sesión y redirige al inicio', async () => {
     const supabase = buildSupabase()
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
@@ -279,6 +339,49 @@ describe('OTP y PIN auth actions', () => {
     expect(enforceSessionPolicy).toHaveBeenCalledWith('user-123')
     expect(cookieSet).toHaveBeenCalledWith('mesa_primera_auth_bypass', '1', expect.any(Object))
     expect(redirect).toHaveBeenCalledWith('/')
+  })
+
+  it('verifyOtp bloquea login cuando la sanción no tiene fecha de expiración (permanente)', async () => {
+    const supabase = buildSupabase({
+      rpc: jest.fn().mockImplementation((name: string) => {
+        if (name === 'check_account_eligibility') {
+          return Promise.resolve({
+            data: { blocked: true, reason: 'fraude confirmado' },
+            error: null,
+          })
+        }
+        return Promise.resolve({ data: null, error: null })
+      }),
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const result = await verifyOtp(null, formData({ phone: TEST_PHONE_E164, token: '123456', flow: 'login' }))
+
+    expect(result).toEqual({ error: 'Tu cuenta ha sido suspendida permanentemente. Motivo: fraude confirmado' })
+    expect(supabase.auth.signOut).toHaveBeenCalled()
+    expect(enforceSessionPolicy).not.toHaveBeenCalled()
+  })
+
+  it('verifyOtp continua con el login cuando la RPC check_account_eligibility lanza excepción (fail-open)', async () => {
+    const supabase = buildSupabase({
+      rpc: jest.fn().mockImplementation((name: string) => {
+        if (name === 'check_account_eligibility') {
+          return Promise.reject(new Error('network down'))
+        }
+        return Promise.resolve({ data: null, error: null })
+      }),
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(verifyOtp(null, formData({
+      phone: TEST_PHONE_E164,
+      token: '123456',
+      flow: 'login',
+    }))).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(redirect).toHaveBeenCalledWith('/')
+    expect(enforceSessionPolicy).toHaveBeenCalledWith('user-123')
+    expect(supabase.auth.signOut).not.toHaveBeenCalled()
   })
 
   it('verifyOtp bloquea login cuando la cuenta tiene sanción activa', async () => {
@@ -315,6 +418,97 @@ describe('OTP y PIN auth actions', () => {
     expect(redirect).toHaveBeenCalledWith('/recovery/pin')
   })
 
+  it('loginWithPin bloquea antes de Supabase cuando el rate limit está agotado', async () => {
+    ;(enforceRateLimiting as jest.Mock).mockResolvedValueOnce({
+      success: false,
+      error: 'Demasiados intentos. Espera 60 segundos antes de volver a intentar.',
+    })
+
+    await expect(loginWithPin(null, formData({ phone: TEST_PHONE_LOCAL, pin: '123456' }))).resolves.toEqual({
+      error: 'Demasiados intentos. Espera 60 segundos antes de volver a intentar.',
+    })
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('startPinRecovery bloquea antes de Supabase cuando Turnstile falla', async () => {
+    ;(verifyTurnstile as jest.Mock).mockResolvedValueOnce({
+      success: false,
+      error: 'Verificación de seguridad fallida. Intenta de nuevo.',
+    })
+    const supabase = buildSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(startPinRecovery(null, formData({ phone: TEST_PHONE_LOCAL }))).resolves.toEqual({
+      error: 'Verificación de seguridad fallida. Intenta de nuevo.',
+    })
+    expect(supabase.rpc).not.toHaveBeenCalled()
+    expect(supabase.auth.signInWithOtp).not.toHaveBeenCalled()
+  })
+
+  it('loginWithPhone bloquea antes de Supabase cuando Turnstile falla', async () => {
+    ;(verifyTurnstile as jest.Mock).mockResolvedValueOnce({
+      success: false,
+      error: 'Verificación de seguridad fallida. Intenta de nuevo.',
+    })
+    const supabase = buildSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(loginWithPhone(null, formData({ phone: TEST_PHONE_LOCAL }))).resolves.toEqual({
+      error: 'Verificación de seguridad fallida. Intenta de nuevo.',
+    })
+    expect(supabase.auth.signInWithOtp).not.toHaveBeenCalled()
+  })
+
+  it('loginWithPin devuelve fieldErrors para phone o pin mal formateados', async () => {
+    const supabase = buildSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const phoneInvalid = await loginWithPin(null, formData({ phone: '123', pin: '123456' }))
+    expect(phoneInvalid).toHaveProperty('fieldErrors')
+    expect(phoneInvalid.fieldErrors).toEqual(
+      expect.objectContaining({ phone: expect.any(String) }),
+    )
+    expect(createClient).not.toHaveBeenCalled()
+
+    const pinInvalid = await loginWithPin(null, formData({ phone: TEST_PHONE_LOCAL, pin: '12a' }))
+    expect(pinInvalid).toHaveProperty('fieldErrors')
+    expect(pinInvalid.fieldErrors).toEqual(
+      expect.objectContaining({ pin: expect.any(String) }),
+    )
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('setPlayerPin devuelve fieldErrors cuando pin y pinConfirm no coinciden', async () => {
+    const supabase = buildSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const result = await setPlayerPin(null, formData({
+      pin: '123456',
+      pinConfirm: '654321',
+      flow: 'register',
+    }))
+
+    expect(result).toEqual({
+      fieldErrors: { pinConfirm: 'Las claves no coinciden' },
+    })
+    expect(supabase.auth.updateUser).not.toHaveBeenCalled()
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('startPinRecovery devuelve fieldErrors para teléfono inválido sin tocar Supabase', async () => {
+    const supabase = buildSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const result = await startPinRecovery(null, formData({ phone: 'no-es-colombiano' }))
+
+    expect(result).toHaveProperty('fieldErrors')
+    expect(result.fieldErrors).toEqual(
+      expect.objectContaining({ phone: expect.any(String) }),
+    )
+    expect(supabase.rpc).not.toHaveBeenCalled()
+    expect(supabase.auth.signInWithOtp).not.toHaveBeenCalled()
+  })
+
   it('loginWithPin devuelve error cuando la contraseña no entrega usuario', async () => {
     const supabase = buildSupabase({
       auth: {
@@ -328,6 +522,25 @@ describe('OTP y PIN auth actions', () => {
       phone: TEST_PHONE_LOCAL,
       pin: '123456',
     }))).resolves.toEqual({ error: 'Error al iniciar sesión. Intenta de nuevo.' })
+  })
+
+  it('loginWithPin en dispositivo desconocido reporta outage de claves legacy cuando el OTP falla con ese motivo', async () => {
+    cookieGet.mockReturnValue(undefined)
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        signInWithPassword: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+        signInWithOtp: jest.fn().mockResolvedValue({ error: { message: 'Legacy API keys are disabled' } }),
+        signOut: jest.fn().mockResolvedValue({ error: null }),
+      },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const result = await loginWithPin(null, formData({ phone: TEST_PHONE_LOCAL, pin: '123456' }))
+
+    expect(result).toHaveProperty('error')
+    expect(result.error).toEqual(expect.stringContaining('servidor de autenticación'))
+    expect(supabase.auth.signOut).toHaveBeenCalled()
   })
 
   it('loginWithPin devuelve mensaje seguro cuando falla el OTP de dispositivo desconocido', async () => {
@@ -411,6 +624,98 @@ describe('OTP y PIN auth actions', () => {
 
     await expect(loginWithPhone(null, formData({ phone: TEST_PHONE_LOCAL }))).resolves.toEqual({
       error: 'El servicio de SMS no está disponible en este momento. Por favor, inténtalo más tarde.',
+    })
+  })
+
+  it('loginWithPhone devuelve mensaje genérico cuando el error de Supabase incluye "saving new user"', async () => {
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        signInWithOtp: jest.fn().mockResolvedValue({ error: { message: 'saving new user to database failed' } }),
+      },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(loginWithPhone(null, formData({ phone: TEST_PHONE_LOCAL }))).resolves.toEqual({
+      error: 'Error interno del servidor de base de datos. Por favor contacta soporte.',
+    })
+  })
+
+  it('loginWithPhone registra un error de consola cuando la consulta admin a profiles falla durante la recuperación', async () => {
+    const consoleErrSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    const signInWithOtp = jest.fn().mockResolvedValue({ error: { message: 'User not found' } })
+    const supabase = buildSupabase({ auth: { ...buildSupabase().auth, signInWithOtp } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+    ;(createAdminClient as jest.Mock).mockResolvedValueOnce({
+      auth: { admin: { createUser: jest.fn() } },
+    }).mockResolvedValueOnce({
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'rls select denied' },
+        }),
+      })),
+    })
+
+    await expect(loginWithPhone(null, formData({ phone: TEST_PHONE_LOCAL }))).resolves.toEqual({
+      error: 'Si el número está registrado, recibirás un SMS. De lo contrario, regístrate primero.',
+    })
+    expect(consoleErrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[AUTH_RECOVERY] No fue posible consultar perfil por teléfono'),
+      TEST_PHONE_E164,
+      'rls select denied',
+    )
+  })
+
+  it('loginWithPhone considera la recuperación ya aplicada cuando Supabase indica already registered', async () => {
+    jest.spyOn(console, 'info').mockImplementation(() => undefined)
+    const signInWithOtp = jest.fn()
+      .mockResolvedValueOnce({ error: { message: 'User not found' } })
+      .mockResolvedValueOnce({ error: null })
+    const supabase = buildSupabase({ auth: { ...buildSupabase().auth, signInWithOtp } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+    ;(createAdminClient as jest.Mock).mockResolvedValueOnce({
+      auth: {
+        admin: {
+          createUser: jest.fn().mockResolvedValue({
+            data: null,
+            error: { message: 'User already registered' },
+          }),
+        },
+      },
+    }).mockResolvedValueOnce({
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: { id: 'user-123', username: 'chepe', role: 'player' },
+          error: null,
+        }),
+      })),
+    })
+
+    await expect(loginWithPhone(null, formData({ phone: TEST_PHONE_LOCAL }))).rejects.toThrow('NEXT_REDIRECT')
+    expect(signInWithOtp).toHaveBeenCalledTimes(2)
+  })
+
+  it('loginWithPhone retorna profile_not_found si el perfil admin no existe para el teléfono', async () => {
+    const signInWithOtp = jest.fn().mockResolvedValue({ error: { message: 'User not found' } })
+    const supabase = buildSupabase({ auth: { ...buildSupabase().auth, signInWithOtp } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+    ;(createAdminClient as jest.Mock).mockResolvedValueOnce({
+      auth: { admin: { createUser: jest.fn() } },
+    }).mockResolvedValueOnce({
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+      })),
+    })
+
+    await expect(loginWithPhone(null, formData({ phone: TEST_PHONE_LOCAL }))).resolves.toEqual({
+      error: 'Si el número está registrado, recibirás un SMS. De lo contrario, regístrate primero.',
     })
   })
 
@@ -631,6 +936,21 @@ describe('OTP y PIN auth actions', () => {
     })
   })
 
+  it('enrollAdminTotp devuelve el error crudo de mfa.enroll', async () => {
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        mfa: {
+          ...buildSupabase().auth.mfa,
+          enroll: jest.fn().mockResolvedValue({ data: null, error: { message: 'factor limit reached' } }),
+        },
+      },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(enrollAdminTotp()).resolves.toEqual({ error: 'factor limit reached' })
+  })
+
   it('enrollAdminTotp marca sesión expirada cuando no hay usuario', async () => {
     const supabase = buildSupabase({
       auth: {
@@ -654,6 +974,60 @@ describe('OTP y PIN auth actions', () => {
       error: 'Factor ID y código son requeridos.',
     })
     expect(supabase.auth.mfa.challenge).not.toHaveBeenCalled()
+  })
+
+  it('verifyAdminTotpSetup retorna error cuando la sesión admin ya no es válida', async () => {
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: { message: 'expired' } }),
+      },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const result = await verifyAdminTotpSetup(null, formData({ factorId: 'factor-1', code: '123456' }))
+
+    expect(result).toEqual({ error: 'Sesión expirada. Inicia sesión de nuevo.' })
+    expect(supabase.auth.mfa.challenge).not.toHaveBeenCalled()
+  })
+
+  it('verifyAdminTotpSetup devuelve el mensaje crudo cuando challenge falla', async () => {
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        mfa: {
+          ...buildSupabase().auth.mfa,
+          challenge: jest.fn().mockResolvedValue({
+            data: null,
+            error: { message: 'factor not found' },
+          }),
+        },
+      },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const result = await verifyAdminTotpSetup(null, formData({ factorId: 'factor-1', code: '123456' }))
+
+    expect(result).toEqual({ error: 'factor not found' })
+    expect(supabase.auth.mfa.verify).not.toHaveBeenCalled()
+  })
+
+  it('verifyAdminTotpSetup devuelve error amigable cuando verify rechaza el código', async () => {
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        mfa: {
+          ...buildSupabase().auth.mfa,
+          verify: jest.fn().mockResolvedValue({ error: { message: 'Invalid TOTP code' } }),
+        },
+      },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const result = await verifyAdminTotpSetup(null, formData({ factorId: 'factor-1', code: '000000' }))
+
+    expect(result).toEqual({ error: 'Código inválido. Asegúrate de ingresar el código actual de tu app.' })
+    expect(enforceSessionPolicy).not.toHaveBeenCalled()
   })
 
   it('verifyAdminTotpSetup verifica challenge, aplica sesión única y redirige al admin', async () => {

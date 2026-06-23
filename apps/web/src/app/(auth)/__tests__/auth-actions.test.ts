@@ -3,6 +3,8 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { enforceSessionPolicy } from '../auth-actions-helpers'
 
+const { enforceRateLimiting } = require('@/app/actions/anti-fraud')
+
 jest.mock('@/lib/admin-recovery-codes', () => ({
   hashAdminRecoveryCode: jest.fn((code: string) => `hash:${code}`),
 }))
@@ -190,6 +192,24 @@ describe('Auth Actions', () => {
     })
   })
 
+  describe('checkPhoneHasPin', () => {
+    it('devuelve null y usa String(e) cuando createClient lanza un valor no-Error', async () => {
+      const consoleErrSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+      ;(createClient as any).mockImplementationOnce(() => {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw 'boom from createClient'
+      })
+
+      const result = await checkPhoneHasPin(TEST_PHONE_LOCAL)
+
+      expect(result).toBeNull()
+      expect(consoleErrSpy).toHaveBeenCalledWith(
+        '[AUTH_ERROR] checkPhoneHasPin excepción: %s',
+        'boom from createClient',
+      )
+    })
+  })
+
   describe('redeemAdminRecoveryCode', () => {
     it('consumes a valid recovery code and redirects the admin back to TOTP setup', async () => {
       const updateEq = jest.fn().mockReturnValue({
@@ -280,6 +300,32 @@ describe('Auth Actions', () => {
         }),
       })
       await expect(redeemAdminRecoveryCode(null, formData)).resolves.toEqual({ error: 'Código de recuperación inválido o ya utilizado.' })
+    })
+
+    it('devuelve fieldErrors para un código de recuperación con formato inválido sin tocar Supabase', async () => {
+      const formData = new FormData()
+      formData.append('code', '12345') // muy corto y solo dígitos en zona prohibida
+
+      const result = await redeemAdminRecoveryCode(null, formData)
+
+      expect(result).toEqual({
+        fieldErrors: { '': 'El código de recuperación debe tener formato XXXX-XXXX-XXXX' },
+      })
+      expect(createClient).not.toHaveBeenCalled()
+    })
+
+    it('bloquea antes de Supabase cuando el rate limit de códigos de recuperación está agotado', async () => {
+      ;(enforceRateLimiting as jest.Mock).mockResolvedValueOnce({
+        success: false,
+        error: 'Demasiados intentos. Espera 5 minutos antes de volver a intentar.',
+      })
+      const formData = new FormData()
+      formData.append('code', 'ABCD-EFGH-JKLM')
+
+      await expect(redeemAdminRecoveryCode(null, formData)).resolves.toEqual({
+        error: 'Demasiados intentos. Espera 5 minutos antes de volver a intentar.',
+      })
+      expect(createClient).not.toHaveBeenCalled()
     })
 
     it('devuelve errores al consumir código o desenrolar factor TOTP', async () => {
