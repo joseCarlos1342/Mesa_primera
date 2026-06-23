@@ -204,6 +204,48 @@ describe('Wallet Server Actions', () => {
       expect(result.transactions!.length).toBe(1);
       expect(result.transactions![0].id).toBe('dr-pending');
     });
+
+    it('includes pending withdrawal requests in vault activity', async () => {
+      const fromCalls: Record<string, any> = {
+        wallets: createQueryBuilder({
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 'w-1', user_id: 'user-1', balance_cents: 500000 },
+            error: null,
+          }),
+        }),
+        ledger: createQueryBuilder({
+          limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+        deposit_requests: createQueryBuilder({
+          limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+        withdrawal_requests: createQueryBuilder({
+          limit: jest.fn().mockResolvedValue({
+            data: [{
+              id: 'wr-pending',
+              status: 'pending',
+              amount_cents: 80000,
+              created_at: '2026-06-22T09:00:00.000Z',
+              observations: 'Cuenta Nequi validada',
+            }],
+            error: null,
+          }),
+        }),
+      };
+      mockSupabase.from.mockImplementation((table: string) => fromCalls[table] ?? createQueryBuilder());
+
+      const result = await getWalletData();
+
+      expect(result.transactions).toEqual([
+        expect.objectContaining({
+          id: 'wr-pending',
+          type: 'withdrawal',
+          status: 'pending',
+          amount_cents: 80000,
+          observations: 'Cuenta Nequi validada',
+        }),
+      ]);
+    });
   });
 
   // ── getWalletHistory ──────────────────────────────────────
@@ -240,6 +282,38 @@ describe('Wallet Server Actions', () => {
       expect(result.transactions!.length).toBe(2);
       // Newest first
       expect(result.transactions![0].id).toBe('dr-1');
+    });
+
+    it('includes pending withdrawals and filters completed withdrawals from history', async () => {
+      const fromCalls: Record<string, any> = {
+        ledger: createQueryBuilder({
+          limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+        deposit_requests: createQueryBuilder({
+          limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+        withdrawal_requests: createQueryBuilder({
+          limit: jest.fn().mockResolvedValue({
+            data: [
+              { id: 'wr-completed', status: 'completed', amount_cents: 50000, created_at: '2026-06-22T08:00:00.000Z' },
+              { id: 'wr-rejected', status: 'rejected', amount_cents: 75000, created_at: '2026-06-22T10:00:00.000Z', observations: 'Cuenta inválida' },
+            ],
+            error: null,
+          }),
+        }),
+      };
+      mockSupabase.from.mockImplementation((table: string) => fromCalls[table] ?? createQueryBuilder());
+
+      const result = await getWalletHistory();
+
+      expect(result.transactions).toEqual([
+        expect.objectContaining({
+          id: 'wr-rejected',
+          type: 'withdrawal',
+          status: 'rejected',
+          observations: 'Cuenta inválida',
+        }),
+      ]);
     });
   });
 
@@ -295,6 +369,22 @@ describe('Wallet Server Actions', () => {
 
       const result = await createDepositRequest(10000, '/proof.jpg', 'Test observation');
       expect(result).toEqual({ success: true, proofUrl: '/proof.jpg' });
+    });
+
+    it('stores null observations when text validation fails', async () => {
+      const insert = jest.fn().mockResolvedValue({ error: null });
+      const fromCalls: Record<string, any> = {
+        wallets: createQueryBuilder({
+          single: jest.fn().mockResolvedValue({ data: { id: 'w-1' }, error: null }),
+        }),
+        deposit_requests: createQueryBuilder({ insert }),
+      };
+      mockSupabase.from.mockImplementation((table: string) => fromCalls[table] ?? createQueryBuilder());
+
+      const result = await createDepositRequest(10000, '/proof.jpg', 'x'.repeat(501));
+
+      expect(result).toEqual({ success: true, proofUrl: '/proof.jpg' });
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({ observations: null }));
     });
   });
 });
