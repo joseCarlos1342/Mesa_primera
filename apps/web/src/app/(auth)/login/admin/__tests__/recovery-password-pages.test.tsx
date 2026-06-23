@@ -118,4 +118,65 @@ describe('Admin recovery and password reset pages', () => {
       })
     })
   })
+
+  describe('AdminRecoveryPage — branches', () => {
+    it('muestra el banner de "enlace expirado" cuando el query string tiene error=invalid_or_expired_link', () => {
+      mockUseSearchParams.mockReturnValue({
+        get: jest.fn((key: string) => (key === 'error' ? 'invalid_or_expired_link' : null)),
+      })
+
+      render(<AdminRecoveryPage />)
+
+      expect(
+        screen.getByText(/El enlace ya expiró o no es válido. Solicita uno nuevo\./),
+      ).toBeInTheDocument()
+    })
+
+    it('muestra el mensaje de error de la server action cuando useActionState devuelve state.error', () => {
+      mockUseActionState.mockReturnValue([
+        { error: 'Servicio de correo no disponible.' },
+        formAction,
+        false,
+      ])
+
+      render(<AdminRecoveryPage />)
+
+      expect(screen.getByText('Servicio de correo no disponible.')).toBeInTheDocument()
+    })
+
+    it('muestra el mensaje de éxito de la server action cuando useActionState devuelve state.success', () => {
+      mockUseActionState.mockReturnValue([
+        { success: 'Revisa tu correo. Te enviamos un enlace firmado.' },
+        formAction,
+        false,
+      ])
+
+      render(<AdminRecoveryPage />)
+
+      expect(
+        screen.getByText('Revisa tu correo. Te enviamos un enlace firmado.'),
+      ).toBeInTheDocument()
+    })
+
+    it('muestra el error de validación del email cuando fieldErrors.email está presente', () => {
+      mockUseActionState.mockReturnValue([
+        { fieldErrors: { email: 'Ingresa un correo válido' } },
+        formAction,
+        false,
+      ])
+
+      render(<AdminRecoveryPage />)
+
+      expect(screen.getByText('Ingresa un correo válido')).toBeInTheDocument()
+    })
+
+    it('cambia la etiqueta del botón a "Enviando enlace..." y lo deshabilita cuando isPending=true', () => {
+      mockUseActionState.mockReturnValue([null, formAction, true])
+
+      render(<AdminRecoveryPage />)
+
+      const button = screen.getByRole('button', { name: 'Enviando enlace...' })
+      expect(button).toBeDisabled()
+    })
+  })
 })
