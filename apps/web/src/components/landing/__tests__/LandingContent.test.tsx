@@ -121,11 +121,16 @@ const originalMatchMedia = window.matchMedia
 const originalIntersectionObserver = window.IntersectionObserver
 const originalScrollIntoView = Element.prototype.scrollIntoView
 const originalScrollY = window.scrollY
+const originalAddEventListener = window.addEventListener
+const originalRemoveEventListener = window.removeEventListener
+const originalInnerWidth = window.innerWidth
 const scrollIntoViewMock = jest.fn()
 const observeMock = jest.fn()
 const disconnectMock = jest.fn()
 let intersectionCallback: ((entries: Array<{ isIntersecting: boolean }>) => void) | null = null
 let intervalCallback: (() => void) | null = null
+let resizeListener: (() => void) | null = null
+let removeResizeListenerMock: jest.Mock | null = null
 let clearIntervalMock: jest.SpyInstance
 
 type BatchOptions = {
@@ -138,6 +143,22 @@ describe('LandingContent', () => {
     jest.clearAllMocks()
     intersectionCallback = null
     intervalCallback = null
+    resizeListener = null
+    removeResizeListenerMock = jest.fn()
+
+    jest.spyOn(window, 'addEventListener').mockImplementation(((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+      if (type === 'resize' && typeof listener === 'function') {
+        resizeListener = listener as () => void
+      }
+      return originalAddEventListener.call(window, type, listener, options)
+    }) as typeof window.addEventListener)
+    jest.spyOn(window, 'removeEventListener').mockImplementation(((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions) => {
+      if (type === 'resize') {
+        removeResizeListenerMock?.(listener)
+      }
+      return originalRemoveEventListener.call(window, type, listener, options)
+    }) as typeof window.removeEventListener)
+
     jest.spyOn(window, 'setInterval').mockImplementation(((callback: TimerHandler) => {
       intervalCallback = callback as () => void
       return 1 as unknown as number
@@ -179,6 +200,7 @@ describe('LandingContent', () => {
     Object.defineProperty(window, 'IntersectionObserver', { writable: true, value: originalIntersectionObserver })
     Element.prototype.scrollIntoView = originalScrollIntoView
     Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: originalScrollY })
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth })
     document.body.innerHTML = ''
   })
 
@@ -224,6 +246,19 @@ describe('LandingContent', () => {
       [batchElement],
       expect.objectContaining({ y: 50, opacity: 0, scale: 0.92, overwrite: true }),
     )
+  })
+
+  it('omite animaciones GSAP si el usuario prefiere movimiento reducido', () => {
+    ;(window.matchMedia as jest.Mock).mockReturnValue({ matches: true })
+    render(<LandingContent />)
+
+    const animationCallback = (useGSAP as jest.Mock).mock.calls[0][0] as () => void
+    act(() => {
+      animationCallback()
+    })
+
+    expect(gsap.timeline).not.toHaveBeenCalled()
+    expect(ScrollTrigger.batch).not.toHaveBeenCalled()
   })
 
   it('abre y cierra el menú mobile', () => {
@@ -303,11 +338,13 @@ describe('LandingContent', () => {
     render(<LandingContent />)
 
     const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section')
+    const photoTrack = photoCarouselSection?.querySelector('.flex.transition-transform') as HTMLElement
     expect(photoCarouselSection).toBeTruthy()
     expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
 
     fireEvent.click(within(photoCarouselSection as HTMLElement).getAllByRole('button', { name: /siguiente/i })[0])
     expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^mesas de juego$/i, level: 3 })).toBeInTheDocument()
+    expect(photoTrack.style.transform).toBe('translateX(-100%)')
 
     fireEvent.click(within(photoCarouselSection as HTMLElement).getByRole('button', { name: /anterior/i }))
     expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
@@ -405,6 +442,28 @@ describe('LandingContent', () => {
     fireEvent.click(overlay.closest('.fixed')!)
 
     expect(screen.queryByTestId('tutorial-walkthrough-dynamic')).not.toBeInTheDocument()
+  })
+
+  it('actualiza carrusel de tutoriales ante resize e ignora touchend sin inicio', () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 })
+    const { unmount } = render(<LandingContent />)
+
+    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
+    const tutorialTrackViewport = tutorialsSection.querySelector('.overflow-hidden.flex-1') as Element
+
+    expect(within(tutorialsSection).getByText('1 / 5')).toBeInTheDocument()
+
+    fireEvent.touchEnd(tutorialTrackViewport, { changedTouches: [{ clientX: 20 }] })
+    expect(within(tutorialsSection).getByText('1 / 5')).toBeInTheDocument()
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 500 })
+    act(() => {
+      resizeListener?.()
+    })
+    expect(within(tutorialsSection).getByText('1 / 9')).toBeInTheDocument()
+
+    unmount()
+    expect(removeResizeListenerMock).toHaveBeenCalledWith(expect.any(Function))
   })
 
   it('mantiene abierto el tutorial al hacer click dentro del contenido del modal', async () => {

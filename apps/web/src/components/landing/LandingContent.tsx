@@ -163,13 +163,6 @@ function TutorialCarousel({
     [total, visible],
   )
 
-  const goTo = useCallback(
-    (i: number) => {
-      setIndex(Math.max(0, Math.min(i, total - visible)))
-    },
-    [total, visible],
-  )
-
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     setTouchStart(e.touches[0].clientX)
   }, [])
@@ -220,7 +213,7 @@ function TutorialCarousel({
             className="flex gap-6 transition-transform duration-500 ease-out"
             style={{ width: 'max-content', touchAction: 'pan-y' }}
           >
-            {tutorials.map((t, i) => (
+            {tutorials.map((t) => (
               <div
                 key={t.title}
                 id={t.title === 'Cómo instalar la app' ? 'instalar-app' : undefined}
