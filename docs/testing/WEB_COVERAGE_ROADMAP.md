@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `98.8%` |
 | Lines | `98.8%` |
 | Functions | `92.89%` |
-| Branches | `86.38%` |
+| Branches | `86.52%` |
 
 Resultado de la corrida:
 
 - `187` suites en verde.
-- `1403` tests pasando.
+- `1411` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-06-22.
 
@@ -124,7 +124,7 @@ Estado actual:
 - `app/actions/replays.ts`: `100%` statements, con branches principales cubiertos.
 - `app/actions/admin-rake.ts`: `100%` statements, con errores y mapeos cubiertos.
 - `app/actions/admin-ledger.ts`: `100%` statements, branches `84.21%`.
-- `app/actions/admin-tables.ts`: `99.77%` statements, branches `67.81%`.
+- `app/actions/admin-tables.ts`: `100%` statements, branches `79.16%`.
 - `app/(auth)/auth-actions.ts`: `95.29%` statements/lines, branches `74.8%`, functions `100%`.
 - `app/actions/support.ts`: `100%` statements, branches `86.81%`; quedan ramas de fallback y errores secundarios de menor prioridad.
 
@@ -227,7 +227,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `98.8%` statements/lines y `86.38%` branches actual | baseline real ya medido con `187` suites y `1403` tests |
+| Fase 0 | `98.8%` statements/lines y `86.52%` branches actual | baseline real ya medido con `187` suites y `1411` tests |
 | Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
 | Fase 2 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
 | Fase 3 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
@@ -2206,3 +2206,17 @@ Ese lote combina:
 - Checklist ledger/admin: `adjustUserBalance` sigue ejercitado solo contra RPC mockeada; no se modificaron RPCs, movimientos financieros ni `wallets_ledger`.
 - Riesgos abiertos: functions globales siguen en `92.89%`; deuda principal en `app/play/[id]/page.tsx`, `Card.tsx`, `TutorialWalkthrough.tsx`, `admin-tables.ts`, `wallet.ts`, `admin-broadcast.ts` y ramas residuales de `admin-security.ts`.
 - Siguiente lote: `admin-tables.ts` o `wallet.ts` para seguir elevando branches server-side con valor operativo, alternando luego con functions de UI (`Card.tsx`/`TutorialWalkthrough.tsx`).
+
+## Checkpoint 89
+
+- Fecha: 2026-06-22, hardening de acciones admin de mesas.
+- Coverage antes: `98.8%` statements/lines, `92.89%` functions, `86.38%` branches; `187` suites y `1403` tests.
+- Coverage despues: `98.8%` statements/lines, `92.89%` functions, `86.52%` branches; `187` suites y `1411` tests.
+- Archivos cubiertos: `app/actions/admin-tables.ts` mediante `admin-ledger-and-tables.test.ts` y `admin-tables.test.ts`.
+- Tests agregados: listado vacío de juegos activos, cierre admin con auditoría, update no financiero de mesa común, mesa inexistente, error de borrado sin auditoría, cleanup sin eventos stale, financials sin RPC desplegada y error del fallback de lobby.
+- Riesgos cerrados: `admin-tables.ts` sube a `100%` statements/lines/functions y `79.16%` branches; quedan protegidos flujos operativos de mesas, cleanup y fallback de lobby sin abrir sockets ni tocar estado Colyseus real.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/app/actions/__tests__/admin-ledger-and-tables.test.ts' --runInBand` verde con `23` tests; cobertura focalizada de `admin-tables.ts` en `100%` statements/lines/functions y `79.16%` branches; `pnpm --filter web test:coverage` verde con `187` suites y `1411` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef1e1cce2001YikfZuB6bneLKq`.
+- Checklist admin/realtime: pruebas limitadas a actions server-side con Supabase/auditoría mockeados; no se notificó a Colyseus ni se cambió contrato de mesas.
+- Riesgos abiertos: functions globales siguen en `92.89%`; deuda principal en `wallet.ts`, `admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts`, `Card.tsx`, `TutorialWalkthrough.tsx` y ramas residuales de `admin-security.ts`.
+- Siguiente lote: `wallet.ts` si se priorizan branches server-side con valor financiero, cargando la skill de ledger; o `Card.tsx`/`TutorialWalkthrough.tsx` si se prioriza functions globales de UI.

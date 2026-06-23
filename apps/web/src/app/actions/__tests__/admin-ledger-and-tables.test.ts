@@ -145,6 +145,16 @@ describe('admin table actions', () => {
     ])
   })
 
+  it('returns an empty active games list without querying profiles', async () => {
+    const gameOrder = jest.fn().mockResolvedValue({ data: [], error: null })
+    const gte = jest.fn().mockReturnValue({ order: gameOrder })
+    const inFilter = jest.fn().mockReturnValue({ gte })
+    const gamesSelect = jest.fn().mockReturnValue({ in: inFilter })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery()], games: [{ select: gamesSelect }] }))
+
+    await expect(getActiveGames()).resolves.toEqual([])
+  })
+
   it('updates game status, kicks players and audits both actions', async () => {
     const gameEq = jest.fn().mockResolvedValue({ error: null })
     const gameUpdate = jest.fn().mockReturnValue({ eq: gameEq })
@@ -167,6 +177,24 @@ describe('admin table actions', () => {
 
     await expect(setGameStatus('g1', 'playing')).resolves.toEqual({ success: true })
     expect(update).toHaveBeenCalledWith({ status: 'playing', paused_by: null, pause_reason: null })
+  })
+
+  it('closes a game by admin without pause metadata and still audits reason', async () => {
+    const eq = jest.fn().mockResolvedValue({ error: null })
+    const update = jest.fn().mockReturnValue({ eq })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery()], games: [{ update }] }))
+
+    await expect(setGameStatus('g1', 'closed_by_admin', 'mesa abandonada')).resolves.toEqual({ success: true })
+
+    expect(update).toHaveBeenCalledWith({ status: 'closed_by_admin' })
+    expect(logAdminAction).toHaveBeenCalledWith(
+      'admin-123',
+      'game_status_changed',
+      'game',
+      'g1',
+      { new_status: 'closed_by_admin', reason: 'mesa abandonada' },
+      { context: 'tables' }
+    )
   })
 
   it('creates common and custom tables with validation and revalidation', async () => {
@@ -215,6 +243,29 @@ describe('admin table actions', () => {
     expect(update).toHaveBeenCalledWith({ min_entry_cents: 5000, min_pique_cents: 500, disabled_chips: [100000] })
   })
 
+  it('allows non-financial updates on common tables', async () => {
+    const single = jest.fn().mockResolvedValue({ data: { id: 't1', table_category: 'common', is_active: true }, error: null })
+    const eqFetch = jest.fn().mockReturnValue({ single })
+    const select = jest.fn().mockReturnValue({ eq: eqFetch })
+    const eqUpdate = jest.fn().mockResolvedValue({ error: null })
+    const update = jest.fn().mockReturnValue({ eq: eqUpdate })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery()], tables: [{ select }, { update }] }))
+
+    await expect(updateTable('t1', { name: 'Mesa visible', sort_order: 3 })).resolves.toEqual({ success: true })
+
+    expect(update).toHaveBeenCalledWith({ name: 'Mesa visible', sort_order: 3 })
+    expect(revalidatePath).toHaveBeenCalledWith('/admin/tables')
+  })
+
+  it('reports missing tables before update', async () => {
+    const single = jest.fn().mockResolvedValue({ data: null, error: new Error('not found') })
+    const eqFetch = jest.fn().mockReturnValue({ single })
+    const select = jest.fn().mockReturnValue({ eq: eqFetch })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery()], tables: [{ select }] }))
+
+    await expect(updateTable('missing', { name: 'No existe' })).rejects.toThrow('Mesa no encontrada.')
+  })
+
   it('blocks deleting tables with active games and cleans stale games', async () => {
     const gamesIn = jest.fn().mockResolvedValue({ data: [{ id: 'g1' }], error: null })
     const gamesEq = jest.fn().mockReturnValue({ in: gamesIn })
@@ -243,6 +294,32 @@ describe('admin table actions', () => {
     expect(logAdminAction).toHaveBeenCalledWith('admin-123', 'table_deleted', 'table', 't1', {}, { context: 'tables' })
   })
 
+  it('propagates delete errors without auditing deletion', async () => {
+    const gamesIn = jest.fn().mockResolvedValue({ data: [], error: null })
+    const gamesEq = jest.fn().mockReturnValue({ in: gamesIn })
+    const gamesSelect = jest.fn().mockReturnValue({ eq: gamesEq })
+    const deleteEq = jest.fn().mockResolvedValue({ error: new Error('delete failed') })
+    const deleteFn = jest.fn().mockReturnValue({ eq: deleteEq })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery()], games: [{ select: gamesSelect }], tables: [{ delete: deleteFn }] }))
+
+    await expect(deleteTable('t1')).rejects.toThrow('delete failed')
+
+    expect(logAdminAction).not.toHaveBeenCalledWith('admin-123', 'table_deleted', expect.anything(), expect.anything(), expect.anything(), expect.anything())
+  })
+
+  it('cleans zero stale games without writing an audit event', async () => {
+    const staleSelect = jest.fn().mockResolvedValue({ data: [], error: null })
+    const staleLt = jest.fn().mockReturnValue({ select: staleSelect })
+    const staleIn = jest.fn().mockReturnValue({ lt: staleLt })
+    const staleUpdate = jest.fn().mockReturnValue({ in: staleIn })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery()], games: [{ update: staleUpdate }] }))
+
+    await expect(cleanupStaleGames()).resolves.toEqual({ success: true, cleaned: 0 })
+
+    expect(logAdminAction).not.toHaveBeenCalled()
+    expect(revalidatePath).toHaveBeenCalledWith('/admin/tables')
+  })
+
   it('returns table financials and lobby table groups with RPC fallback', async () => {
     const financials = [{ table_id: 't1', table_name: 'Mesa' }]
     const rpc = jest.fn()
@@ -255,5 +332,22 @@ describe('admin table actions', () => {
 
     await expect(getTableFinancials()).resolves.toEqual(financials)
     await expect(getLobbyTables()).resolves.toEqual({ common: [{ id: 'c1', table_category: 'common' }], custom: [{ id: 'x1', table_category: 'custom' }] })
+  })
+
+  it('returns empty financials when RPC migration is not deployed', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: null, error: { code: 'PGRST202' } })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery()] }, rpc))
+
+    await expect(getTableFinancials()).resolves.toEqual([])
+  })
+
+  it('propagates lobby fallback query errors when RPC is unavailable', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: null, error: { code: 'RPC_MISSING' } })
+    const order = jest.fn().mockResolvedValue({ data: null, error: new Error('tables failed') })
+    const eq = jest.fn().mockReturnValue({ order })
+    const select = jest.fn().mockReturnValue({ eq })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ tables: [{ select }] }, rpc))
+
+    await expect(getLobbyTables()).rejects.toThrow('tables failed')
   })
 })
