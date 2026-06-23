@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `98.8%` |
-| Lines | `98.8%` |
+| Statements | `98.83%` |
+| Lines | `98.83%` |
 | Functions | `92.89%` |
-| Branches | `86.52%` |
+| Branches | `86.55%` |
 
 Resultado de la corrida:
 
 - `187` suites en verde.
-- `1411` tests pasando.
+- `1414` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-06-22.
 
@@ -227,7 +227,7 @@ No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
 
 | Fase | Objetivo global web | Resultado esperado |
 |---|---:|---|
-| Fase 0 | `98.8%` statements/lines y `86.52%` branches actual | baseline real ya medido con `187` suites y `1411` tests |
+| Fase 0 | `98.83%` statements/lines y `86.55%` branches actual | baseline real ya medido con `187` suites y `1414` tests |
 | Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
 | Fase 2 | `93%` functions | atacar callbacks visibles en landing, game UI y paginas App Router |
 | Fase 3 | `86%` branches | cubrir ramas de auth/admin/support con valor de negocio |
@@ -2220,3 +2220,17 @@ Ese lote combina:
 - Checklist admin/realtime: pruebas limitadas a actions server-side con Supabase/auditoría mockeados; no se notificó a Colyseus ni se cambió contrato de mesas.
 - Riesgos abiertos: functions globales siguen en `92.89%`; deuda principal en `wallet.ts`, `admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts`, `Card.tsx`, `TutorialWalkthrough.tsx` y ramas residuales de `admin-security.ts`.
 - Siguiente lote: `wallet.ts` si se priorizan branches server-side con valor financiero, cargando la skill de ledger; o `Card.tsx`/`TutorialWalkthrough.tsx` si se prioriza functions globales de UI.
+
+## Checkpoint 90
+
+- Fecha: 2026-06-22, hardening de actions de wallet del jugador.
+- Coverage antes: `98.8%` statements/lines, `92.89%` functions, `86.52%` branches; `187` suites y `1411` tests.
+- Coverage despues: `98.83%` statements/lines, `92.89%` functions, `86.55%` branches; `187` suites y `1414` tests.
+- Archivos cubiertos: `app/actions/wallet.ts` mediante `wallet.test.ts`.
+- Tests agregados: retiro pendiente en resumen de wallet, historial con retiro rechazado y filtro de retiro completado, observaciones inválidas de depósito guardadas como `null`.
+- Riesgos cerrados: `wallet.ts` sube a `100%` statements/lines/functions y `84.44%` branches; se cubre la mezcla de actividad de bóveda sin modificar escritura financiera ni RPCs.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/__tests__/actions/wallet.test.ts' --runInBand` verde con `16` tests; cobertura focalizada de `wallet.ts` en `100%` statements/lines/functions y `84.44%` branches; `pnpm --filter web test:coverage` verde con `187` suites y `1414` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef1e988ef001JTmI35SPwPDOVu`.
+- Checklist ledger: sin cambios productivos; sin `UPDATE`/`DELETE` sobre `wallets_ledger`; pruebas limitadas a lectura de ledger y creación de solicitud de depósito con Supabase mockeado.
+- Riesgos abiertos: functions globales siguen en `92.89%`; deuda principal en `Card.tsx`, `TutorialWalkthrough.tsx`, `admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts`, `TransactionModal.tsx` y ramas residuales de auth/security.
+- Siguiente lote: priorizar `Card.tsx`/`TutorialWalkthrough.tsx` para subir functions globales o `admin-broadcast.ts`/`admin-dashboard.ts` para seguir branches server-side/admin.
