@@ -70,6 +70,21 @@ describe('push worker', () => {
     expect(workerMock.on).toHaveBeenCalledWith('failed', expect.any(Function));
   });
 
+  it('uses Redis retry strategy only outside development', async () => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-role');
+    supabaseMock.createClient.mockReturnValue({ from: vi.fn() });
+    await import('../push.worker');
+
+    const connection = (workerMock.options as { connection: { retryStrategy: (times: number) => number | null } }).connection;
+
+    vi.stubEnv('NODE_ENV', 'development');
+    expect(connection.retryStrategy(1)).toBeNull();
+
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(connection.retryStrategy(10)).toBe(500);
+    expect(connection.retryStrategy(100)).toBe(2000);
+  });
+
   it('does not query Supabase when no key is configured', async () => {
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
