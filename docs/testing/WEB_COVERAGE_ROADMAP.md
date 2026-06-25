@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.11%` |
-| Lines | `99.11%` |
-| Functions | `93.17%` |
-| Branches | `87.84%` |
+| Statements | `99.18%` |
+| Lines | `99.18%` |
+| Functions | `93.55%` |
+| Branches | `88.34%` |
 
 Resultado de la corrida:
 
 - `188` suites en verde.
-- `1471` tests pasando.
+- `1495` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-06-22.
 

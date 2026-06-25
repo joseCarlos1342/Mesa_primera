@@ -66,4 +66,103 @@ describe('ConsultasPage', () => {
 
     expect(screen.getByText('Indice no disponible')).toBeInTheDocument()
   })
+
+  it('enlaza a /admin/deposits cuando el match es de tipo deposit', async () => {
+    mockGlobalSearch.mockResolvedValue({
+      data: {
+        query: 'dep-1',
+        detected: { raw: 'dep-1', type: 'uuid', normalized: 'dep-1' },
+        searched_at: '2026-05-25T10:00:00.000Z',
+        matches: [{ entity: 'deposit', id: 'dep-1', label: 'Depósito', detail: 'pending' }],
+      },
+    })
+
+    render(await ConsultasPage({ searchParams: Promise.resolve({ q: 'dep-1' }) }))
+
+    expect(
+      screen.getByRole('link', { name: /deposit.*dep-1/i }),
+    ).toHaveAttribute('href', '/admin/deposits')
+  })
+
+  it('enlaza a /admin/withdrawals cuando el match es de tipo withdrawal', async () => {
+    mockGlobalSearch.mockResolvedValue({
+      data: {
+        query: 'wit-1',
+        detected: { raw: 'wit-1', type: 'uuid', normalized: 'wit-1' },
+        searched_at: '2026-05-25T10:00:00.000Z',
+        matches: [{ entity: 'withdrawal', id: 'wit-1', label: 'Retiro', detail: 'completed' }],
+      },
+    })
+
+    render(await ConsultasPage({ searchParams: Promise.resolve({ q: 'wit-1' }) }))
+
+    expect(
+      screen.getByRole('link', { name: /withdrawal.*wit-1/i }),
+    ).toHaveAttribute('href', '/admin/withdrawals')
+  })
+
+  it('enlaza a /admin/users/{id} cuando el match es de tipo user', async () => {
+    mockGlobalSearch.mockResolvedValue({
+      data: {
+        query: 'user-1',
+        detected: { raw: 'user-1', type: 'uuid', normalized: 'user-1' },
+        searched_at: '2026-05-25T10:00:00.000Z',
+        matches: [{ entity: 'user', id: 'user-1', label: 'Ana', detail: '@ana' }],
+      },
+    })
+
+    render(await ConsultasPage({ searchParams: Promise.resolve({ q: 'user-1' }) }))
+
+    expect(
+      screen.getByRole('link', { name: /user.*user-1/i }),
+    ).toHaveAttribute('href', '/admin/users/user-1')
+  })
+
+  it('enlaza a /admin/soporte/{id} cuando el match es de tipo ticket', async () => {
+    mockGlobalSearch.mockResolvedValue({
+      data: {
+        query: 'tick-1',
+        detected: { raw: 'tick-1', type: 'uuid', normalized: 'tick-1' },
+        searched_at: '2026-05-25T10:00:00.000Z',
+        matches: [{ entity: 'ticket', id: 'tick-1', label: 'Ticket', detail: 'open' }],
+      },
+    })
+
+    render(await ConsultasPage({ searchParams: Promise.resolve({ q: 'tick-1' }) }))
+
+    expect(
+      screen.getByRole('link', { name: /ticket.*tick-1/i }),
+    ).toHaveAttribute('href', '/admin/soporte/tick-1')
+  })
+
+  it('renderiza el fallback "#" con color gris cuando el match es de una entidad desconocida', async () => {
+    mockGlobalSearch.mockResolvedValue({
+      data: {
+        query: 'x-1',
+        detected: { raw: 'x-1', type: 'uuid', normalized: 'x-1' },
+        searched_at: '2026-05-25T10:00:00.000Z',
+        matches: [{ entity: 'unknown_entity' as any, id: 'x-1', label: 'X', detail: 'y' }],
+      },
+    })
+
+    render(await ConsultasPage({ searchParams: Promise.resolve({ q: 'x-1' }) }))
+
+    const link = screen.getByRole('link', { name: /unknown_entity/i })
+    expect(link).toHaveAttribute('href', '#')
+  })
+
+  it('muestra "1 coincidencia encontrada" en singular cuando hay exactamente un match', async () => {
+    mockGlobalSearch.mockResolvedValue({
+      data: {
+        query: 'one-1',
+        detected: { raw: 'one-1', type: 'uuid', normalized: 'one-1' },
+        searched_at: '2026-05-25T10:00:00.000Z',
+        matches: [{ entity: 'ledger', id: 'one-1', label: 'Solo', detail: 'x' }],
+      },
+    })
+
+    render(await ConsultasPage({ searchParams: Promise.resolve({ q: 'one-1' }) }))
+
+    expect(screen.getByText('1 coincidencia encontrada')).toBeInTheDocument()
+  })
 })
