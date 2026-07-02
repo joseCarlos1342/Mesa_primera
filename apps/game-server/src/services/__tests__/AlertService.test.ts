@@ -324,5 +324,64 @@ describe('AlertService', () => {
         'persistent failure',
       );
     });
+
+    it('uses ℹ️ prefix for async info severity', async () => {
+      await AlertService.emitAsync({
+        severity: 'info',
+        category: 'test',
+        title: 'Async info',
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('ℹ️'),
+      );
+      expect(mockInsertAsync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('initialization without service role key', () => {
+    it('logs alerts but does not persist when SUPABASE_SERVICE_ROLE_KEY is absent', async () => {
+      const originalServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const originalSupabaseUrl = process.env.SUPABASE_URL;
+      vi.resetModules();
+      vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+      vi.stubEnv('SUPABASE_URL', 'http://localhost:54321');
+      mockFrom.mockClear();
+      mockInsert.mockClear();
+      mockInsertAsync.mockClear();
+
+      try {
+        const { AlertService: AlertServiceWithoutKey } = await import('../AlertService');
+
+        AlertServiceWithoutKey.emit({
+          severity: 'warning',
+          category: 'test',
+          title: 'No key sync',
+        });
+        await AlertServiceWithoutKey.emitAsync({
+          severity: 'info',
+          category: 'test',
+          title: 'No key async',
+        });
+
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('No key sync'));
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('No key async'));
+        expect(mockFrom).not.toHaveBeenCalled();
+        expect(mockInsert).not.toHaveBeenCalled();
+        expect(mockInsertAsync).not.toHaveBeenCalled();
+      } finally {
+        if (originalServiceRoleKey === undefined) {
+          delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+        } else {
+          vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', originalServiceRoleKey);
+        }
+        if (originalSupabaseUrl === undefined) {
+          delete process.env.SUPABASE_URL;
+        } else {
+          vi.stubEnv('SUPABASE_URL', originalSupabaseUrl);
+        }
+        vi.resetModules();
+      }
+    });
   });
 });

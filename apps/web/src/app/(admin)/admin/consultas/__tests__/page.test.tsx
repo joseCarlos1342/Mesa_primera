@@ -141,7 +141,7 @@ describe('ConsultasPage', () => {
         query: 'x-1',
         detected: { raw: 'x-1', type: 'uuid', normalized: 'x-1' },
         searched_at: '2026-05-25T10:00:00.000Z',
-        matches: [{ entity: 'unknown_entity' as any, id: 'x-1', label: 'X', detail: 'y' }],
+        matches: [{ entity: 'unknown_entity' as never, id: 'x-1', label: 'X', detail: 'y' }],
       },
     })
 

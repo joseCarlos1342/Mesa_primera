@@ -82,6 +82,17 @@ describe('TransactionModal', () => {
     })
   })
 
+  it('hace fallback a public URL si el signed URL viene vacío aunque no haya error', async () => {
+    mockCreateSignedUrl.mockResolvedValue({ data: {}, error: null })
+
+    render(<TransactionModal transaction={baseTx} isOpen={true} onClose={jest.fn()} />)
+
+    await waitFor(() => {
+      expect(mockGetPublicUrl).toHaveBeenCalledWith('proofs/comprobante.png')
+      expect(screen.getByRole('link', { name: /ver completo/i })).toHaveAttribute('href', 'https://public.test/proof.png')
+    })
+  })
+
   it('muestra placeholder de procesamiento cuando no hay URL resuelta aún', async () => {
     mockCreateSignedUrl.mockImplementation(() => new Promise(() => {}))
 
@@ -90,7 +101,7 @@ describe('TransactionModal', () => {
     expect(screen.getByText(/procesando imagen/i)).toBeInTheDocument()
   })
 
-  it('permite cerrar desde backdrop y botón de cierre', () => {
+  it('permite cerrar desde backdrop y botón de cierre', async () => {
     const onClose = jest.fn()
     const { container } = render(<TransactionModal transaction={baseTx} isOpen={true} onClose={onClose} />)
 
@@ -101,5 +112,100 @@ describe('TransactionModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /cerrar detalles/i }))
 
     expect(onClose).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(mockCreateSignedUrl).toHaveBeenCalledWith('proofs/comprobante.png', 3600))
+  })
+
+  it('no muestra contenido si el modal está cerrado aunque exista transacción', async () => {
+    render(<TransactionModal transaction={baseTx} isOpen={false} onClose={jest.fn()} />)
+
+    expect(screen.queryByText(/detalles de operación/i)).not.toBeInTheDocument()
+    await waitFor(() => expect(mockCreateSignedUrl).toHaveBeenCalledWith('proofs/comprobante.png', 3600))
+  })
+
+  it('representa retiros pendientes como débito sin comprobante de depósito', async () => {
+    render(
+      <TransactionModal
+        transaction={{
+          ...baseTx,
+          id: 'withdrawal-1',
+          type: 'withdrawal',
+          direction: 'debit',
+          status: 'pending',
+          amount_cents: 125000,
+          description: '',
+          observations: '',
+          proof_url: null,
+        }}
+        isOpen={true}
+        onClose={jest.fn()}
+      />
+    )
+
+    expect(screen.getByText((content) => content.includes('-$1.250'))).toBeInTheDocument()
+    expect(screen.getByText(/en proceso/i)).toBeInTheDocument()
+    expect(screen.getByText(/retiro de saldo/i)).toBeInTheDocument()
+    expect(screen.getByText(/retiro bancario/i)).toBeInTheDocument()
+    expect(screen.queryByText(/comprobante respaldado/i)).not.toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(mockCreateSignedUrl).not.toHaveBeenCalled()
+      expect(mockGetPublicUrl).not.toHaveBeenCalled()
+    })
+  })
+
+  it('usa etiquetas seguras para transferencias, ajustes y tipos desconocidos', () => {
+    const { rerender } = render(
+      <TransactionModal
+        transaction={{
+          ...baseTx,
+          id: 'transfer-1',
+          type: 'transfer',
+          direction: undefined,
+          status: 'failed',
+          proof_url: null,
+        }}
+        isOpen={true}
+        onClose={jest.fn()}
+      />
+    )
+
+    expect(screen.getByText((content) => content.includes('-$500'))).toBeInTheDocument()
+    expect(screen.getByText(/fallida/i)).toBeInTheDocument()
+    expect(screen.getByText(/transferencia entre jugadores/i)).toBeInTheDocument()
+    expect(screen.getByText('P2P')).toBeInTheDocument()
+
+    rerender(
+      <TransactionModal
+        transaction={{
+          ...baseTx,
+          id: 'adjustment-1',
+          type: 'admin_adjustment',
+          direction: 'credit',
+          status: 'completed',
+          proof_url: null,
+        }}
+        isOpen={true}
+        onClose={jest.fn()}
+      />
+    )
+
+    expect(screen.getByText(/ajuste de saldo/i)).toBeInTheDocument()
+    expect(screen.getByText(/sistema/i)).toBeInTheDocument()
+
+    rerender(
+      <TransactionModal
+        transaction={{
+          ...baseTx,
+          id: 'custom-1',
+          type: 'bonus_manual',
+          direction: undefined,
+          proof_url: null,
+        }}
+        isOpen={true}
+        onClose={jest.fn()}
+      />
+    )
+
+    expect(screen.getByText('bonus_manual')).toBeInTheDocument()
   })
 })

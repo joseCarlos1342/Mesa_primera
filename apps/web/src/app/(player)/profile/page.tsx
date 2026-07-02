@@ -85,7 +85,7 @@ export default function ProfilePage() {
       const { error } = await supabase.auth.updateUser({ phone: newPhone });
       setSaving(false);
       if (error) {
-        showToast('Error al enviar código: ' + error.message, 'error');
+        showToast('No pudimos enviar el código. Verifica el teléfono e intenta de nuevo.', 'error');
         return;
       }
       setPendingPhone(newPhone);
@@ -113,7 +113,7 @@ export default function ProfilePage() {
       .eq('id', user.id);
 
     if (error) {
-      showToast('Error al actualizar: ' + error.message, 'error');
+      showToast('No pudimos actualizar tu perfil. Intenta de nuevo.', 'error');
     } else {
       if (phoneOverride) {
         originalPhone.current = phoneOverride;
@@ -167,7 +167,7 @@ export default function ProfilePage() {
       .upload(filePath, file, { upsert: true });
 
     if (uploadError) {
-      showToast('Error al subir: ' + uploadError.message, 'error');
+      showToast('No pudimos subir la imagen. Intenta de nuevo.', 'error');
       setSaving(false);
       return;
     }
@@ -414,7 +414,7 @@ export default function ProfilePage() {
                           if (result.ok) {
                             showToast('¡Bloqueo biométrico activado!', 'success');
                           } else {
-                            showToast(result.error || 'No se pudo activar. Intenta de nuevo.', 'error');
+                            showToast('No se pudo activar el bloqueo biométrico. Intenta de nuevo.', 'error');
                           }
                         }
                       }}

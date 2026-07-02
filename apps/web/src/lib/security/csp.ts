@@ -17,7 +17,7 @@ function normalizeOrigin(value: string | undefined, fallback: string): string {
   }
 }
 
-function toWebSocketOrigin(origin: string): string {
+export function toWebSocketOrigin(origin: string): string {
   if (origin.startsWith('https://')) return `wss://${origin.slice('https://'.length)}`
   if (origin.startsWith('http://')) return `ws://${origin.slice('http://'.length)}`
   return origin
