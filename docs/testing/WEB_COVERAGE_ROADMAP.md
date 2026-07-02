@@ -8,23 +8,23 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-07-01. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-07-02. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.27%` |
-| Lines | `99.27%` |
+| Statements | `99.28%` |
+| Lines | `99.28%` |
 | Functions | `93.55%` |
-| Branches | `88.75%` |
+| Branches | `88.98%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1513` tests pasando.
+- `1522` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-01.
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
 ## Meta Final
 
@@ -2306,3 +2306,17 @@ Ese lote combina:
 - Checklist ledger: pruebas limitadas a UI y Supabase Storage mockeado; sin escrituras financieras, sin cambios a movimientos ni RPCs.
 - Riesgos abiertos: functions globales web siguen lejos de `98%`; deuda principal en paginas App Router con callbacks, `LandingContent.tsx`, `LocationMap.tsx`, `admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts` y branches residuales de wallet/admin.
 - Siguiente lote: alternar hacia branches admin (`admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts`) o funciones UI (`app/play/[id]/page.tsx`, paginas App Router, `LandingContent.tsx`) para seguir avanzando sin inflar tests de bajo valor.
+
+## Checkpoint 96
+
+- Fecha: 2026-07-02, hardening de broadcast admin server-side.
+- Coverage antes: `99.27%` statements/lines, `93.55%` functions, `88.75%` branches; `189` suites y `1513` tests.
+- Coverage despues: `99.28%` statements/lines, `93.55%` functions, `88.98%` branches; `189` suites y `1522` tests.
+- Archivos cubiertos: `app/actions/admin-broadcast.ts` mediante `admin-broadcast.test.ts`.
+- Tests agregados: errores de audiencia, insert de broadcast, insert de notificaciones, error de deliveries, deliveries sin `notification_id`, envio sin secreto interno, fetch fallido al game-server, history vacio, conteos nulos e ignorar lecturas sin `broadcast_id`.
+- Riesgos cerrados: `admin-broadcast.ts` sube a `100%` statements/lines/functions y `96.66%` branches; queda protegido el flujo de broadcast sin abrir conexiones reales ni depender del game-server.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/__tests__/actions/admin-broadcast.test.ts' --runInBand` verde con `16` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1522` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f2074c8cb001RQBZ3BnsNxtoHI`.
+- Checklist admin realtime: Supabase y `fetch` mockeados en bordes; no cambia contrato de `broadcast_messages`, `notifications`, `broadcast_deliveries` ni Socket.IO.
+- Riesgos abiertos: functions globales web siguen lejos de `98%`; deuda principal en `admin-dashboard.ts`, `admin-ledger.ts`, `admin-tables.ts`, `LocationMap.tsx`, `LandingContent.tsx` y paginas App Router con callbacks bajos.
+- Siguiente lote: `admin-dashboard.ts` o `admin-ledger.ts` para seguir subiendo branches admin, alternando luego con functions UI (`LocationMap.tsx`/páginas App Router) para no sesgar el plan solo a server actions.

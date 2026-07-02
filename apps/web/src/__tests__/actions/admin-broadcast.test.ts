@@ -17,10 +17,13 @@ global.fetch = jest.fn().mockResolvedValue({ ok: true });
 
 describe('sendBroadcast', () => {
   let mockSupabase: any;
+  let clockOffset = 0;
 
   beforeEach(() => {
     jest.resetAllMocks();
     jest.useFakeTimers();
+    clockOffset += 120_000;
+    jest.setSystemTime(new Date(1_800_000_000_000 + clockOffset));
 
     // Chain-friendly mock: from().insert().select().single() etc.
     const chainable: any = {};
@@ -65,6 +68,38 @@ describe('sendBroadcast', () => {
     mockSupabase.from.mockReturnValueOnce(adminChain);
   }
 
+  function setupAudience(users: Array<{ id: string }>, error: unknown = null) {
+    mockSupabase.from.mockReturnValueOnce({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({ data: users, error }),
+      }),
+    });
+  }
+
+  function setupBroadcastInsert(id: string | null, error: unknown = null) {
+    const insertChain: any = {};
+    insertChain.select = jest.fn().mockReturnValue(insertChain);
+    insertChain.single = jest.fn().mockResolvedValue({ data: id ? { id } : null, error });
+    insertChain.insert = jest.fn().mockReturnValue(insertChain);
+    mockSupabase.from.mockReturnValueOnce(insertChain);
+    return insertChain;
+  }
+
+  function setupNotificationsInsert(notifications: Array<{ id: string; user_id: string }> | null, error: unknown = null) {
+    const insertChain: any = {};
+    insertChain.select = jest.fn().mockResolvedValue({ data: notifications, error });
+    insertChain.insert = jest.fn().mockReturnValue(insertChain);
+    mockSupabase.from.mockReturnValueOnce(insertChain);
+    return insertChain;
+  }
+
+  function setupDeliveriesInsert(error: unknown = null) {
+    const insertChain: any = {};
+    insertChain.insert = jest.fn().mockResolvedValue({ error });
+    mockSupabase.from.mockReturnValueOnce(insertChain);
+    return insertChain;
+  }
+
   it('rejects non-admin users', async () => {
     const chain = mockSupabase._chain;
     chain.single.mockResolvedValueOnce({ data: { role: 'player' }, error: null });
@@ -95,12 +130,7 @@ describe('sendBroadcast', () => {
 
   it('returns audienceCount 0 when no players exist', async () => {
     setupAdminCalls();
-    // from('profiles').select('id').eq('role', 'player')
-    mockSupabase.from.mockReturnValueOnce({
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockResolvedValue({ data: [], error: null }),
-      }),
-    });
+    setupAudience([]);
 
     const result = await sendBroadcast({
       type: 'system_announcement',
@@ -110,6 +140,108 @@ describe('sendBroadcast', () => {
 
     expect(result.success).toBe(true);
     expect(result.audienceCount).toBe(0);
+  });
+
+  it('propaga errores al cargar la audiencia y no crea registros parciales', async () => {
+    setupAdminCalls();
+    setupAudience([], { message: 'profiles down' });
+
+    await expect(
+      sendBroadcast({ type: 'security', title: 'Alerta', body: 'Revisa tu sesión' })
+    ).rejects.toMatchObject({ message: 'profiles down' });
+
+    expect(mockSupabase.from).toHaveBeenCalledTimes(2);
+  });
+
+  it('propaga errores al crear el broadcast antes de crear notificaciones', async () => {
+    setupAdminCalls();
+    setupAudience([{ id: 'user-1' }]);
+    setupBroadcastInsert(null, { message: 'insert broadcast failed' });
+
+    await expect(
+      sendBroadcast({ type: 'maintenance', title: 'Mantenimiento', body: 'Ventana programada' })
+    ).rejects.toMatchObject({ message: 'insert broadcast failed' });
+
+    expect(mockSupabase.from).toHaveBeenCalledTimes(3);
+  });
+
+  it('propaga errores al insertar notificaciones sin registrar deliveries', async () => {
+    setupAdminCalls();
+    setupAudience([{ id: 'user-1' }]);
+    setupBroadcastInsert('broadcast-1');
+    setupNotificationsInsert(null, { message: 'notifications failed' });
+
+    await expect(
+      sendBroadcast({ type: 'promo', title: 'Promo', body: 'Bono activo' })
+    ).rejects.toMatchObject({ message: 'notifications failed' });
+
+    expect(mockSupabase.from).toHaveBeenCalledTimes(4);
+  });
+
+  it('crea deliveries con notification_id null cuando Supabase no devuelve filas insertadas', async () => {
+    const users = [{ id: 'user-1' }, { id: 'user-2' }];
+    setupAdminCalls();
+    setupAudience(users);
+    setupBroadcastInsert('broadcast-without-notifications');
+    setupNotificationsInsert(null);
+    const deliveriesChain = setupDeliveriesInsert();
+
+    const result = await sendBroadcast({
+      type: 'system_announcement',
+      title: 'Aviso',
+      body: 'Mensaje para todos',
+    });
+
+    expect(result).toEqual({ success: true, broadcastId: 'broadcast-without-notifications', audienceCount: 2 });
+    expect(deliveriesChain.insert).toHaveBeenCalledWith([
+      expect.objectContaining({ user_id: 'user-1', notification_id: null }),
+      expect.objectContaining({ user_id: 'user-2', notification_id: null }),
+    ]);
+  });
+
+  it('propaga errores al crear deliveries y evita auditoría/revalidación', async () => {
+    setupAdminCalls();
+    setupAudience([{ id: 'user-1' }]);
+    setupBroadcastInsert('broadcast-1');
+    setupNotificationsInsert([{ id: 'notif-1', user_id: 'user-1' }]);
+    setupDeliveriesInsert({ message: 'deliveries failed' });
+
+    await expect(
+      sendBroadcast({ type: 'security', title: 'Seguridad', body: 'Actualiza tu PIN' })
+    ).rejects.toMatchObject({ message: 'deliveries failed' });
+  });
+
+  it('no bloquea el broadcast si no hay secreto interno o si falla fetch al game-server', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    delete process.env.INTERNAL_API_SECRET;
+    setupAdminCalls();
+    setupAudience([{ id: 'user-1' }]);
+    setupBroadcastInsert('broadcast-no-secret');
+    setupNotificationsInsert([{ id: 'notif-1', user_id: 'user-1' }]);
+    setupDeliveriesInsert();
+
+    await expect(
+      sendBroadcast({ type: 'maintenance', title: 'Sin push', body: 'Solo in-app' })
+    ).resolves.toMatchObject({ success: true, audienceCount: 1 });
+    expect(fetch).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(31_000);
+    process.env.INTERNAL_API_SECRET = 'test-secret';
+    (fetch as jest.Mock).mockRejectedValueOnce(new Error('game-server down'));
+    setupAdminCalls();
+    setupAudience([{ id: 'user-2' }]);
+    setupBroadcastInsert('broadcast-fetch-fails');
+    setupNotificationsInsert([{ id: 'notif-2', user_id: 'user-2' }]);
+    setupDeliveriesInsert();
+
+    await expect(
+      sendBroadcast({ type: 'maintenance', title: 'Con push', body: 'Best effort' })
+    ).resolves.toMatchObject({ success: true, audienceCount: 1 });
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[sendBroadcast] Failed to notify game server:',
+      expect.any(Error)
+    );
+    consoleSpy.mockRestore();
   });
 
   it('enforces cooldown between broadcasts', async () => {
@@ -275,5 +407,49 @@ describe('getBroadcastHistory', () => {
 
     const result = await getBroadcastHistory();
     expect(result).toEqual([]);
+  });
+
+  it('returns empty array when there are no broadcasts', async () => {
+    setupAdminAndHistory([], [], []);
+
+    const result = await getBroadcastHistory(10);
+
+    expect(result).toEqual([]);
+    expect(mockSupabase.from).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses zero counts when delivery and read queries return null data', async () => {
+    const broadcasts = [
+      { id: 'b1', admin_id: 'admin-1', type: 'promo', title: 'Bono', body: 'Activo', audience_count: 2, created_at: '2026-01-01' },
+      { id: 'b2', admin_id: 'admin-1', type: 'security', title: 'PIN', body: 'Revisa', audience_count: 1, created_at: '2026-01-02' },
+    ];
+
+    setupAdminAndHistory(broadcasts, null as any, null as any);
+
+    const result = await getBroadcastHistory(25);
+
+    expect(result).toEqual([
+      expect.objectContaining({ id: 'b1', read_count: 0, push_sent_count: 0, push_failed_count: 0 }),
+      expect.objectContaining({ id: 'b2', read_count: 0, push_sent_count: 0, push_failed_count: 0 }),
+    ]);
+  });
+
+  it('ignora notificaciones leídas sin broadcast_id al calcular lecturas', async () => {
+    const broadcasts = [
+      { id: 'b1', admin_id: 'admin-1', type: 'system_announcement', title: 'Aviso', body: 'Hola', audience_count: 2, created_at: '2026-01-01' },
+    ];
+
+    setupAdminAndHistory(
+      broadcasts,
+      [],
+      [
+        { broadcast_id: null, read_at: '2026-01-01T01:00:00Z' },
+        { broadcast_id: 'b1', read_at: '2026-01-01T01:05:00Z' },
+      ]
+    );
+
+    const result = await getBroadcastHistory();
+
+    expect(result[0].read_count).toBe(1);
   });
 });
