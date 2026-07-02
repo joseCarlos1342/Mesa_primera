@@ -26,6 +26,14 @@ const mockGetPlayerMesaReplays = getPlayerMesaReplays as jest.MockedFunction<typ
 const mockGetPlayerReplaysForRoom = getPlayerReplaysForRoom as jest.MockedFunction<typeof getPlayerReplaysForRoom>
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>
 
+function restoreOptionalEnv(key: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[key]
+    return
+  }
+  process.env[key] = value
+}
+
 function supabaseClient({ role = 'player', replay, replayError = null }: {
   role?: 'player' | 'admin'
   replay?: Record<string, unknown> | null
@@ -229,16 +237,79 @@ describe('player replay pages', () => {
       json: jest.fn().mockResolvedValue({ ok: true, data: { version: 2, frames: [{ players: [] }, { players: [] }] } }),
     })
     const originalUrl = process.env.NEXT_PUBLIC_GAME_SERVER_URL
-    process.env.NEXT_PUBLIC_GAME_SERVER_URL = 'https://game.example.test'
+    try {
+      process.env.NEXT_PUBLIC_GAME_SERVER_URL = 'https://game.example.test'
+      mockCreateClient.mockReturnValue(supabaseClient({
+        replay: { ...fullReplay, frames: [], version: 1 },
+      }) as never)
+
+      render(<ReplayViewer params={Promise.resolve({ gameId: 'game-alpha-123456' })} />)
+
+      expect(await screen.findByTestId('replay-controller')).toHaveTextContent('Frames: 2')
+      expect(global.fetch).toHaveBeenCalledWith('https://game.example.test/api/replays/game-alpha-123456')
+    } finally {
+      restoreOptionalEnv('NEXT_PUBLIC_GAME_SERVER_URL', originalUrl)
+    }
+  })
+
+  it('visor mantiene el replay local cuando falla la hidratación remota de frames', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const originalUrl = process.env.NEXT_PUBLIC_GAME_SERVER_URL
+    try {
+      process.env.NEXT_PUBLIC_GAME_SERVER_URL = 'https://game.example.test'
+      ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('network down'))
+      mockCreateClient.mockReturnValue(supabaseClient({ replay: { ...fullReplay } }) as never)
+
+      render(<ReplayViewer params={Promise.resolve({ gameId: 'game-alpha-123456' })} />)
+
+      expect(await screen.findByTestId('replay-controller')).toHaveTextContent('Frames: 1')
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[replay] frames hydration fallback failed',
+        expect.any(Error),
+      )
+    } finally {
+      restoreOptionalEnv('NEXT_PUBLIC_GAME_SERVER_URL', originalUrl)
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('visor muestra detalle de cartas descartadas en la línea de tiempo', async () => {
     mockCreateClient.mockReturnValue(supabaseClient({
-      replay: { ...fullReplay, frames: [], version: 1 },
+      replay: {
+        ...fullReplay,
+        timeline: [{ event: 'action', action: 'descartar', player: 'session-1', droppedCards: ['1O', '7E'] }],
+      },
     }) as never)
 
     render(<ReplayViewer params={Promise.resolve({ gameId: 'game-alpha-123456' })} />)
 
-    expect(await screen.findByTestId('replay-controller')).toHaveTextContent('Frames: 2')
-    expect(global.fetch).toHaveBeenCalledWith('https://game.example.test/api/replays/game-alpha-123456')
-    process.env.NEXT_PUBLIC_GAME_SERVER_URL = originalUrl
+    expect(await screen.findAllByText('Descarta')).toHaveLength(2)
+    expect(screen.getByText('Descarta 1O, 7E')).toBeInTheDocument()
+  })
+
+  it.each([
+    [2, 'grid-cols-1 sm:grid-cols-2'],
+    [3, 'grid-cols-1 sm:grid-cols-3'],
+    [4, 'grid-cols-2 lg:grid-cols-4'],
+    [5, 'grid-cols-2 sm:grid-cols-3'],
+    [7, 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'],
+  ])('visor usa clase de grid correcta para %i manos finales', async (handsCount, expectedClass) => {
+    const finalHands = Object.fromEntries(
+      Array.from({ length: handsCount }, (_, index) => [
+        `user-${index + 1}`,
+        { nickname: `Jugador ${index + 1}`, handType: 'Primera', cards: '1O,7E' },
+      ]),
+    )
+    mockCreateClient.mockReturnValue(supabaseClient({ replay: { ...fullReplay, final_hands: finalHands } }) as never)
+    render(
+      <ReplayViewer params={Promise.resolve({ gameId: `game-hands-${handsCount}` })} />,
+    )
+
+    const finalHandsTitle = await screen.findByText('Manos Finales')
+    const finalHandsGrid = finalHandsTitle.parentElement?.querySelector('.grid')
+    for (const className of expectedClass.split(' ')) {
+      expect(finalHandsGrid).toHaveClass(className)
+    }
   })
 
   it('visor admin usa timeline completa y muestra insignias de supervision', async () => {

@@ -171,7 +171,8 @@ describe('ProfilePage', () => {
     fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
     fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
 
-    expect(await screen.findByText('Error al enviar código: SMS apagado')).toBeInTheDocument()
+    expect(await screen.findByText('No pudimos enviar el código. Verifica el teléfono e intenta de nuevo.')).toBeInTheDocument()
+    expect(screen.queryByText(/SMS apagado/)).not.toBeInTheDocument()
   })
 
   it('muestra error cuando el codigo OTP es incorrecto', async () => {
@@ -220,7 +221,8 @@ describe('ProfilePage', () => {
       fireEvent.change(fileInput, { target: { files: [new File(['ok'], 'avatar.png', { type: 'image/png' })] } })
     })
 
-    expect(await screen.findByText('Error al subir: bucket offline')).toBeInTheDocument()
+    expect(await screen.findByText('No pudimos subir la imagen. Intenta de nuevo.')).toBeInTheDocument()
+    expect(screen.queryByText(/bucket offline/)).not.toBeInTheDocument()
   })
 
   it('activa y desactiva bloqueo biometrico segun estado actual', async () => {
@@ -253,7 +255,27 @@ describe('ProfilePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Activar bloqueo biométrico' }))
 
-    expect(await screen.findByText('Sensor bloqueado')).toBeInTheDocument()
+    expect(await screen.findByText('No se pudo activar el bloqueo biométrico. Intenta de nuevo.')).toBeInTheDocument()
+    expect(screen.queryByText('Sensor bloqueado')).not.toBeInTheDocument()
+  })
+
+  it('muestra error y no refresca cuando falla la actualización de profiles', async () => {
+    updateEq.mockResolvedValueOnce({ error: { message: 'RLS bloquea update' } })
+    await renderLoadedProfile()
+
+    fireEvent.change(screen.getByDisplayValue('chepe'), { target: { value: 'aliasFallido' } })
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(await screen.findByText('No pudimos actualizar tu perfil. Intenta de nuevo.')).toBeInTheDocument()
+    expect(screen.queryByText(/RLS bloquea update/)).not.toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('renderiza avatar SVG cuando avatar_url es un id reconocido del catálogo', async () => {
+    await renderLoadedProfile({ avatar_url: 'avatar-ok' })
+
+    expect(screen.getByTestId('profile-avatar-svg')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Avatar' })).not.toBeInTheDocument()
   })
 
   it('cierra sesion solo cuando el usuario confirma', async () => {

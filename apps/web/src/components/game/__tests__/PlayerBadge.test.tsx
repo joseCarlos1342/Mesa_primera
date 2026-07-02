@@ -51,4 +51,30 @@ describe('PlayerBadge', () => {
     expect(screen.getByText('VACÍO')).toBeInTheDocument()
     expect(document.querySelector('.bg-red-600')).toBeInTheDocument()
   })
+
+  it('renderiza una imagen cuando avatarUrl es URL externa y no un id SVG', () => {
+    render(
+      <PlayerBadge
+        player={{ nickname: 'URL Player', chips: 1000, avatarUrl: 'https://cdn.test/avatar.png', connected: true }}
+        isActive={false}
+        isMe={false}
+      />,
+    )
+
+    const image = screen.getByRole('img', { name: 'URL Player' })
+    expect(image).toHaveAttribute('src', 'https://cdn.test/avatar.png')
+    expect(screen.queryByTestId('avatar-svg')).not.toBeInTheDocument()
+  })
+
+  it('usa alt="Avatar" cuando hay URL externa pero no nickname', () => {
+    render(
+      <PlayerBadge
+        player={{ nickname: '', chips: 1000, avatarUrl: 'https://cdn.test/avatar.png', connected: true }}
+        isActive={false}
+        isMe={false}
+      />,
+    )
+
+    expect(screen.getByRole('img', { name: 'Avatar' })).toHaveAttribute('src', 'https://cdn.test/avatar.png')
+  })
 })

@@ -8,23 +8,23 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-06-22. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-07-01. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.18%` |
-| Lines | `99.18%` |
+| Statements | `99.27%` |
+| Lines | `99.27%` |
 | Functions | `93.55%` |
-| Branches | `88.34%` |
+| Branches | `88.75%` |
 
 Resultado de la corrida:
 
-- `188` suites en verde.
-- `1495` tests pasando.
+- `189` suites en verde.
+- `1513` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-06-22.
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-01.
 
 ## Meta Final
 
@@ -198,7 +198,7 @@ Riesgo:
 Estado actual:
 
 - `utils/supabase/middleware.ts`: `99.16%`, branches `96.55%`.
-- `utils/supabase/client.ts`: `79.16%`.
+- `utils/supabase/client.ts`: `100%`.
 - `utils/supabase/server.ts`: `93.54%`.
 - `lib/app-lock-session.ts`: `100%` statements/lines/functions, `93.75%` branches tras caracterizar session markers, bypass one-shot, cookie de redirect y fallbacks seguros ante storage bloqueado.
 - Hooks globales: `96.69%`, con branches `87%`.
@@ -581,7 +581,7 @@ Esta seccion convierte el roadmap en trabajo operable. Cada lote debe poder toma
 | L3 | Auth player register | Alta | Completado | L2 opcional | cubrir flujo visual de registro player |
 | L4 | Auth verify + pin + recovery | Alta | Completado | L2 y L3 | cerrar journey auth player completo |
 | L5 | Dashboard + wallet shell | Alta | Completado | L2 | cubrir post-login de jugador |
-| L6 | Wallet modals + transferencias | Media | En progreso | L5 | cubrir interacciones financieras UI |
+| L6 | Wallet modals + transferencias | Media | Completado | L5 | cubrir interacciones financieras UI |
 | L7 | Shell transversal + providers | Media | En progreso | ninguna | cubrir componentes compartidos de alto impacto |
 | L8 | Game lobby + overlays criticos | Alta | En progreso | L2 | cubrir game UI con mayor retorno |
 | L9 | Board hardening | Alta | Pendiente | L8 | subir ramas y funciones de `Board.tsx` |
@@ -873,11 +873,17 @@ Criterio de salida:
 
 Checklist:
 
-- [ ] open/close modal;
-- [ ] invalid amount;
-- [ ] valid amount;
-- [ ] action disabled when pending;
-- [ ] visible error handling.
+- [x] open/close modal;
+- [x] invalid amount;
+- [x] valid amount;
+- [x] action disabled when pending;
+- [x] visible error handling.
+
+Estado real registrado:
+
+- `components/wallet/TransferModal.tsx`: `100%` statements, `97.91%` branches, `93.33%` functions, `100%` lines.
+- `components/wallet/TransactionModal.tsx`: `100%` statements, `91.66%` branches, `100%` functions, `100%` lines.
+- El bloque queda cubierto como UI financiera: server actions, RPCs y `wallets_ledger` permanecen fuera del alcance de estos tests y se mockean en bordes.
 
 ### Lote L7: Shell transversal + providers
 
@@ -1172,8 +1178,8 @@ Mientras el repo no este cerca del objetivo final, el equipo debe operar con dos
 
 Gate operativo vigente hoy en CI:
 
-- Web: `86%` statements, `79%` branches, `81%` functions, `86%` lines.
-- Game server: `87%` statements, `77%` branches, `87%` functions, `88%` lines.
+- Web: `90%` statements, `84%` branches, `86%` functions, `90%` lines.
+- Game server: `89%` statements, `80%` branches, `89%` functions, `90%` lines.
 
 Justificacion:
 
@@ -2273,3 +2279,30 @@ Ese lote combina:
 - Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_ef222d58d001ojkfZrLOjxo1Os`.
 - Riesgos abiertos: functions globales siguen por debajo de `98%`; deuda principal en paginas App Router con callbacks, `TransactionModal.tsx`, `admin-broadcast.ts`, `admin-dashboard.ts`, `LocationMap.tsx` y branches server-side residuales.
 - Siguiente lote: atacar paginas App Router para subir functions de UI o `admin-broadcast.ts`/`admin-dashboard.ts` para branches admin.
+
+## Checkpoint 94
+
+- Fecha: 2026-06-24, Fase 3 de hardening sobre ramas defensivas e infraestructura.
+- Coverage antes: `99.18%` statements/lines, `93.55%` functions, `88.34%` branches; `188` suites y `1495` tests.
+- Coverage despues: `99.26%` statements/lines, `93.55%` functions, `88.55%` branches; `189` suites y `1509` tests.
+- Archivos cubiertos: `app/(player)/replays/page.tsx`, `app/(player)/profile/page.tsx`, `lib/security/csp.ts`, `utils/supabase/client.ts`, `components/game/PlayerBadge.tsx` y `game-server/src/services/AlertService.ts`.
+- Tests agregados: fallback de hidratacion remota de replays, timeline con descartes, variantes de grid por cantidad de manos, error de update en perfil, avatar SVG existente, origen WebSocket invalido/valido para CSP, cliente Supabase SSR sin singleton, avatar remoto en `PlayerBadge`, alt fallback sin nickname, `AlertService.emitAsync(info)` y no persistencia sin service role key.
+- Riesgos cerrados: `app/(player)/replays/page.tsx` queda en `100%`, `utils/supabase/client.ts` queda en `100%`, `PlayerBadge.tsx` sube branches a `96.87%` y `AlertService.ts` queda en `100%` statements/lines/functions con `96.07%` branches.
+- Resultado de verificacion: suites focalizadas web (`47` tests) y `AlertService` (`19` tests) verdes; `pnpm --filter web test` verde con `189` suites y `1509` tests; `pnpm --filter game-server test` verde con `27` suites y `766` tests; coverage completo verde en ambos workspaces.
+- Gate operativo subido gradualmente: web a `90/84/86/90`; game-server a `89/80/89/90`.
+- Riesgos abiertos: functions globales web siguen lejos de `98%`; deuda principal en paginas App Router con callbacks, landing, `TransactionModal.tsx`, `LocationMap.tsx` y branches server-side admin.
+- Siguiente lote: atacar functions de UI (`app/play/[id]/page.tsx`, paginas App Router, `LandingContent.tsx`) o branches admin (`admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts`).
+
+## Checkpoint 95
+
+- Fecha: 2026-07-01, hardening de modal financiero del jugador.
+- Coverage antes: `99.26%` statements/lines, `93.55%` functions, `88.56%` branches; `189` suites y `1509` tests.
+- Coverage despues: `99.27%` statements/lines, `93.55%` functions, `88.75%` branches; `189` suites y `1513` tests.
+- Archivos cubiertos: `components/wallet/TransactionModal.tsx` mediante `TransactionModal.test.tsx`.
+- Tests agregados: fallback a URL publica cuando `createSignedUrl` no devuelve `signedUrl`, modal cerrado con transaccion cargada, retiro pendiente sin comprobante, transferencia fallida, ajuste administrativo y tipo desconocido.
+- Riesgos cerrados: `TransactionModal.tsx` sube a `100%` statements/lines/functions y `91.66%` branches; quedan protegidos los detalles visibles de operaciones de boveda sin tocar server actions, RPCs ni `wallets_ledger`.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/components/wallet/__tests__/TransactionModal.test.tsx' --runInBand` verde con `9` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1513` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f205f3bbe001rT4VJPAXewukJu`.
+- Checklist ledger: pruebas limitadas a UI y Supabase Storage mockeado; sin escrituras financieras, sin cambios a movimientos ni RPCs.
+- Riesgos abiertos: functions globales web siguen lejos de `98%`; deuda principal en paginas App Router con callbacks, `LandingContent.tsx`, `LocationMap.tsx`, `admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts` y branches residuales de wallet/admin.
+- Siguiente lote: alternar hacia branches admin (`admin-broadcast.ts`, `admin-dashboard.ts`, `admin-ledger.ts`) o funciones UI (`app/play/[id]/page.tsx`, paginas App Router, `LandingContent.tsx`) para seguir avanzando sin inflar tests de bajo valor.

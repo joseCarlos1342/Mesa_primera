@@ -1,4 +1,4 @@
-import { buildContentSecurityPolicy } from '@/lib/security/csp'
+import { buildContentSecurityPolicy, toWebSocketOrigin } from '@/lib/security/csp'
 
 describe('buildContentSecurityPolicy', () => {
   const originalGameServerUrl = process.env.GAME_SERVER_URL
@@ -84,5 +84,24 @@ describe('buildContentSecurityPolicy', () => {
     expect(csp).toContain('ws://127.0.0.1:2567')
     expect(csp).toContain('http://127.0.0.1:2568')
     expect(csp).toContain('ws://127.0.0.1:2568')
+  })
+
+  it('falls back to the default production origins when env URLs are invalid', () => {
+    process.env.GAME_SERVER_URL = 'not-a-valid-url'
+    process.env.SOCKET_URL = 'http://'
+
+    const csp = buildContentSecurityPolicy({
+      nonce: 'test-nonce',
+      isDevelopment: false,
+    })
+
+    expect(csp).toContain('https://vps24726.cubepath.net')
+    expect(csp).toContain('wss://vps24726.cubepath.net')
+    expect(csp).not.toContain('not-a-valid-url')
+  })
+
+  it('keeps non-http websocket origins unchanged', () => {
+    expect(toWebSocketOrigin('wss://socket.example.test')).toBe('wss://socket.example.test')
+    expect(toWebSocketOrigin('ws://localhost:2568')).toBe('ws://localhost:2568')
   })
 })
