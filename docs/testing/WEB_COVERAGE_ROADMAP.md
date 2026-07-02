@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.36%` |
 | Lines | `99.36%` |
 | Functions | `93.55%` |
-| Branches | `89.81%` |
+| Branches | `89.83%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1566` tests pasando.
+- `1569` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -2391,3 +2391,17 @@ Ese lote combina:
 - Checklist soporte: Supabase/Storage mockeados en bordes; sin llamadas reales, sin escrituras a `support_tickets`/`support_messages`/`support_attachments`, sin cambios de RPCs.
 - Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `wallet.ts` (filter branches), `admin-rake.ts` (rakeEntries null), `LocationMap.tsx`/`SupportChat.tsx` y functions de `LandingContent.tsx`/`app/play/[id]/page.tsx`.
 - Siguiente lote: `wallet.ts` para cerrar filter branches financieras, o `admin-rake.ts` para reporting con datos nulos; si se busca UI, `TableActiveToggle.tsx` (25% branches, sin tests propios).
+
+## Checkpoint 102
+
+- Fecha: 2026-07-02, hardening de wallet jugador server-side.
+- Coverage antes: `99.36%` statements/lines, `93.55%` functions, `89.81%` branches; `189` suites y `1566` tests.
+- Coverage despues: `99.36%` statements/lines, `93.55%` functions, `89.83%` branches; `189` suites y `1569` tests.
+- Archivos cubiertos: `app/actions/wallet.ts` mediante `wallet.test.ts`.
+- Tests agregados: retiro completado filtrado de la actividad de boveda en `getWalletData`; deposito completado filtrado del historial en `getWalletHistory`; fallback `?? 'Monto inválido'` cuando la validacion no devuelve `issues` en `createDepositRequest`.
+- Riesgos cerrados: `wallet.ts` sube de `84.44%` a `86.95%` branches; quedan cubiertas las ramas de filtrado de solicitudes completadas y el fallback defensivo de validación.
+- Resultado de verificacion: `pnpm --filter web exec jest src/__tests__/actions/wallet.test.ts --runInBand` verde con `19` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1569` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f20b1f119001nXggURxUNaXEs4`.
+- Checklist wallet: pruebas de solo lectura con Supabase mockeado; sin `UPDATE`/`DELETE` a `wallets`/`deposit_requests`/`withdrawal_requests`/`ledger` ni escrituras de balance.
+- Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `admin-rake.ts` (rakeEntries null), `LocationMap.tsx`/`SupportChat.tsx`, `TableActiveToggle.tsx` (25% branches, sin tests propios) y functions de `LandingContent.tsx`/`app/play/[id]/page.tsx`.
+- Siguiente lote: `admin-rake.ts` para reporting financiero con datos nulos, o `TableActiveToggle.tsx`/`DashboardWarnings.tsx` para subir branches de UI admin.
