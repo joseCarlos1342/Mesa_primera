@@ -42,6 +42,12 @@ function buildHeaders(host = 'localhost:3000', proto = 'http') {
   }
 }
 
+function buildEmptyHeaders() {
+  return {
+    get: jest.fn(() => null),
+  }
+}
+
 function buildAdminSupabase(overrides: Record<string, unknown> = {}) {
   const user = {
     id: 'admin-123',
@@ -136,6 +142,14 @@ describe('Admin Security Actions', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it('rejects missing admin password reset emails before reading request headers', async () => {
+    const formData = new FormData()
+
+    await expect(requestAdminPasswordReset(null, formData)).resolves.toHaveProperty('fieldErrors.email')
+    expect(createClient).not.toHaveBeenCalled()
+    expect(headers).not.toHaveBeenCalled()
+  })
+
   it('returns provider errors from admin password reset requests', async () => {
     const supabase = buildAdminSupabase({
       auth: {
@@ -163,6 +177,21 @@ describe('Admin Security Actions', () => {
 
     expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('admin@mesa.test', {
       redirectTo: 'https://admin.mesa.test/login/admin/password',
+    })
+  })
+
+  it('falls back to localhost when recovery headers do not expose a host', async () => {
+    ;(headers as any).mockResolvedValue(buildEmptyHeaders())
+    const supabase = buildAdminSupabase()
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('email', 'admin@mesa.test')
+
+    await requestAdminPasswordReset(null, formData)
+
+    expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('admin@mesa.test', {
+      redirectTo: 'http://localhost:3000/login/admin/password',
     })
   })
 
@@ -227,10 +256,45 @@ describe('Admin Security Actions', () => {
     )
   })
 
+  it('records completed password resets even when the admin email is absent', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-123', email: null } }, error: null }),
+      },
+    })
+    const adminSupabase = buildAdminServiceSupabase()
+    ;(createClient as any).mockResolvedValue(supabase)
+    ;(createAdminClient as any).mockResolvedValue(adminSupabase)
+
+    const formData = new FormData()
+    formData.append('password', 'NuevaClave123')
+    formData.append('passwordConfirm', 'NuevaClave123')
+
+    await expect(completeAdminPasswordReset(null, formData)).resolves.toEqual({
+      success: 'Contraseña actualizada. Ya puedes volver al panel.',
+    })
+    expect(logAdminAction).toHaveBeenCalledWith(
+      'admin-123',
+      'admin_password_reset_completed',
+      'admin_security',
+      'admin-123',
+      expect.objectContaining({ email: null }),
+      expect.objectContaining({ context: 'security' })
+    )
+  })
+
   it('returns field errors when password confirmation does not match', async () => {
     const formData = new FormData()
     formData.append('password', 'NuevaClave123')
     formData.append('passwordConfirm', 'OtraClave123')
+
+    await expect(completeAdminPasswordReset(null, formData)).resolves.toHaveProperty('fieldErrors')
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('returns field errors when password reset fields are missing', async () => {
+    const formData = new FormData()
 
     await expect(completeAdminPasswordReset(null, formData)).resolves.toHaveProperty('fieldErrors')
     expect(createClient).not.toHaveBeenCalled()
@@ -314,6 +378,32 @@ describe('Admin Security Actions', () => {
     )
   })
 
+  it('audits email change requests with null current email when auth metadata is incomplete', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-123', email: null } }, error: null }),
+      },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('email', 'nuevo-admin@mesa.test')
+    formData.append('code', '123456')
+
+    await expect(requestAdminEmailChange(null, formData)).resolves.toEqual({
+      success: 'Confirma el cambio desde el correo para completar la actualización.',
+    })
+    expect(logAdminAction).toHaveBeenCalledWith(
+      'admin-123',
+      'admin_email_change_requested',
+      'admin_security',
+      'admin-123',
+      expect.objectContaining({ current_email: null, requested_email: 'nuevo-admin@mesa.test' }),
+      expect.objectContaining({ context: 'security' })
+    )
+  })
+
   it('returns field errors for invalid admin email change input', async () => {
     const supabase = buildAdminSupabase()
     ;(createClient as any).mockResolvedValue(supabase)
@@ -323,6 +413,14 @@ describe('Admin Security Actions', () => {
     formData.append('code', '12')
 
     await expect(requestAdminEmailChange(null, formData)).resolves.toHaveProperty('fieldErrors')
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('returns field errors when the admin email change code is missing', async () => {
+    const formData = new FormData()
+    formData.append('email', 'nuevo-admin@mesa.test')
+
+    await expect(requestAdminEmailChange(null, formData)).resolves.toHaveProperty('fieldErrors.code')
     expect(createClient).not.toHaveBeenCalled()
   })
 
@@ -427,6 +525,24 @@ describe('Admin Security Actions', () => {
     expect(logAdminAction).not.toHaveBeenCalled()
   })
 
+  it('does not request admin email changes without an authenticated admin', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('email', 'nuevo-admin@mesa.test')
+    formData.append('code', '123456')
+
+    await expect(requestAdminEmailChange(null, formData)).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.auth.mfa.challenge).not.toHaveBeenCalled()
+    expect(supabase.auth.updateUser).not.toHaveBeenCalled()
+  })
+
   it('prefers APP_URL over forwarded headers for admin email change links', async () => {
     process.env.APP_URL = 'https://primerariveradalos4ases.com'
     ;(headers as any).mockResolvedValue(buildHeaders('staging.mesa.test', 'https'))
@@ -492,6 +608,13 @@ describe('Admin Security Actions', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it('returns field errors when resetting TOTP without a code', async () => {
+    const formData = new FormData()
+
+    await expect(resetAdminTotpFactor(null, formData)).resolves.toHaveProperty('fieldErrors.code')
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
   it('propagates unenroll errors when resetting the current TOTP factor', async () => {
     const supabase = buildAdminSupabase({
       auth: {
@@ -508,6 +631,27 @@ describe('Admin Security Actions', () => {
     formData.append('code', '654321')
 
     await expect(resetAdminTotpFactor(null, formData)).resolves.toEqual({ error: 'No se pudo remover' })
+  })
+
+  it('does not reset the TOTP factor when the current code is rejected', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        mfa: {
+          ...buildAdminSupabase().auth.mfa,
+          verify: jest.fn().mockResolvedValue({ error: { message: 'Invalid code' } }),
+        },
+      },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('code', '654321')
+
+    await expect(resetAdminTotpFactor(null, formData)).resolves.toEqual({
+      error: 'Código TOTP inválido. Intenta de nuevo.',
+    })
+    expect(supabase.auth.mfa.unenroll).not.toHaveBeenCalled()
   })
 
   it('does not reset TOTP factor without an authenticated admin', async () => {
@@ -655,6 +799,13 @@ describe('Admin Security Actions', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it('returns field errors when rotating recovery codes without a TOTP code', async () => {
+    const formData = new FormData()
+
+    await expect(rotateAdminRecoveryCodes(null, formData)).resolves.toHaveProperty('fieldErrors.code')
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
   it('returns insert errors when rotating admin recovery codes cannot store new codes', async () => {
     const deleteEq = jest.fn().mockResolvedValue({ error: null })
     const insert = jest.fn().mockResolvedValue({ error: { message: 'No se pudo guardar' } })
@@ -685,6 +836,65 @@ describe('Admin Security Actions', () => {
 
     await expect(rotateAdminRecoveryCodes(null, formData)).resolves.toEqual({ error: 'No se pudo guardar' })
     expect(logAdminAction).not.toHaveBeenCalled()
+  })
+
+  it('does not rotate recovery codes without an authenticated admin', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('code', '111222')
+
+    await expect(rotateAdminRecoveryCodes(null, formData)).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.auth.mfa.challenge).not.toHaveBeenCalled()
+  })
+
+  it('does not delete recovery codes when the current TOTP code is rejected', async () => {
+    const recoveryCodesTable = {
+      delete: jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({ error: null }),
+      }),
+      insert: jest.fn().mockResolvedValue({ error: null }),
+    }
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        mfa: {
+          ...buildAdminSupabase().auth.mfa,
+          verify: jest.fn().mockResolvedValue({ error: { message: 'Invalid code' } }),
+        },
+      },
+      from: jest.fn((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+          }
+        }
+
+        if (table === 'admin_mfa_recovery_codes') {
+          return recoveryCodesTable
+        }
+
+        throw new Error(`Unexpected table ${table}`)
+      }),
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('code', '111222')
+
+    await expect(rotateAdminRecoveryCodes(null, formData)).resolves.toEqual({
+      error: 'Código TOTP inválido. Intenta de nuevo.',
+    })
+    expect(recoveryCodesTable.delete).not.toHaveBeenCalled()
+    expect(recoveryCodesTable.insert).not.toHaveBeenCalled()
   })
 
   it('builds a security snapshot for authenticated admins', async () => {
@@ -752,6 +962,28 @@ describe('Admin Security Actions', () => {
     })
   })
 
+  it('builds snapshot with zero active recovery codes when Supabase returns a null count', async () => {
+    const selectResult = {
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockResolvedValue({ count: null, error: null }),
+      single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+    }
+    const supabase = buildAdminSupabase({
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnValue(selectResult),
+      })),
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    await expect(getAdminSecuritySnapshot()).resolves.toEqual({
+      email: 'admin@mesa.test',
+      hasTotpFactor: true,
+      currentAal: 'aal2',
+      nextAal: 'aal2',
+      activeRecoveryCodes: 0,
+    })
+  })
+
   it('propagates errors when revoking all sessions fails after audit', async () => {
     const supabase = buildAdminSupabase({
       auth: {
@@ -770,5 +1002,33 @@ describe('Admin Security Actions', () => {
       { scope: 'global' },
       { context: 'security' },
     )
+  })
+
+  it('does not revoke other sessions without an authenticated admin', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    await expect(revokeOtherAdminSessions()).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.auth.signOut).not.toHaveBeenCalled()
+    expect(logAdminAction).not.toHaveBeenCalled()
+  })
+
+  it('does not revoke all sessions without an authenticated admin', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    await expect(signOutAllAdminSessions()).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.auth.signOut).not.toHaveBeenCalled()
+    expect(logAdminAction).not.toHaveBeenCalled()
   })
 })

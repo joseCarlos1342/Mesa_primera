@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.32%` |
-| Lines | `99.32%` |
+| Statements | `99.36%` |
+| Lines | `99.36%` |
 | Functions | `93.55%` |
-| Branches | `89.44%` |
+| Branches | `89.73%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1541` tests pasando.
+- `1556` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -123,9 +123,10 @@ Estado actual:
 
 - `app/actions/replays.ts`: `100%` statements, con branches principales cubiertos.
 - `app/actions/admin-rake.ts`: `100%` statements, con errores y mapeos cubiertos.
-- `app/actions/admin-ledger.ts`: `100%` statements, branches `84.21%`.
-- `app/actions/admin-tables.ts`: `100%` statements, branches `79.16%`.
+- `app/actions/admin-ledger.ts`: `100%` statements/lines/functions/branches.
+- `app/actions/admin-tables.ts`: `100%` statements/lines/functions, branches `95.04%`.
 - `app/(auth)/auth-actions.ts`: `99.54%` statements/lines, branches `85.71%`, functions `100%` (Fase 1 del plan de hardening cubrió fieldErrors faltantes, verifyOtp edge cases, checkAccountSanction edge, phone recovery, completeGoogleRegistration rollback/duplicate/otp errors, admin TOTP setup edge, redeemAdminRecoveryCode sin TOTP, enrollAdminTotp error, checkPhoneHasPin catch no-Error, getGoogleUserData metadata vacía, rate limit + turnstile bloqueado).
+- `app/actions/admin-security.ts`: `100%` statements/lines/functions, branches `97.27%`; quedan solo ramas defensivas menores de defaults/nullish.
 - `app/actions/support.ts`: `100%` statements, branches `86.81%`; quedan ramas de fallback y errores secundarios de menor prioridad.
 
 Riesgo:
@@ -2362,3 +2363,17 @@ Ese lote combina:
 - Checklist admin/realtime: Supabase mockeado en bordes; sin llamadas Colyseus reales, sin cambios de persistencia y sin escrituras financieras nuevas.
 - Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `admin-security.ts`, `support.ts`, `wallet.ts`, `admin-rake.ts`, `LocationMap.tsx`, `SupportChat.tsx` y componentes admin con branches bajos.
 - Siguiente lote: `admin-security.ts` por riesgo operativo/MFA o `support.ts` por soporte realtime; si se busca alternar UI, `LocationMap.tsx`/`SupportChat.tsx`.
+
+## Checkpoint 100
+
+- Fecha: 2026-07-02, hardening de seguridad admin server-side.
+- Coverage antes: `99.32%` statements/lines, `93.55%` functions, `89.44%` branches; `189` suites y `1541` tests.
+- Coverage despues: `99.36%` statements/lines, `93.55%` functions, `89.73%` branches; `189` suites y `1556` tests.
+- Archivos cubiertos: `app/actions/admin-security.ts` mediante `admin-security.test.ts`.
+- Tests agregados: admin no autenticado en cambio de email, rotacion de recovery codes y cierre de sesiones; TOTP rechazado antes de `unenroll`/delete; headers ausentes con fallback localhost; formularios incompletos; email nulo en auditoria; conteo nulo de recovery codes.
+- Riesgos cerrados: `admin-security.ts` sube a `100%` statements/lines/functions y `97.27%` branches; quedan protegidos MFA, sesiones y recovery codes sin tocar flujos productivos ni Supabase real.
+- Resultado de verificacion: `pnpm --filter web exec jest src/app/actions/__tests__/admin-security.test.ts --runInBand` verde con `50` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1556` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f20b1f119001nXggURxUNaXEs4`.
+- Checklist seguridad admin: Supabase/Auth/MFA mockeados en bordes; sin llamadas reales, sin cambios de persistencia, sin alterar auditoria productiva.
+- Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `support.ts`, `wallet.ts`, `admin-rake.ts`, `LocationMap.tsx`, `SupportChat.tsx`, `TableActiveToggle.tsx` y functions de `LandingContent.tsx`/`app/play/[id]/page.tsx`.
+- Siguiente lote: `support.ts` por soporte realtime y permisos, o alternar a UI compartida (`LocationMap.tsx`/`SupportChat.tsx`) para subir branches/functions fuera de server actions.
