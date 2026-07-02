@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.36%` |
 | Lines | `99.36%` |
 | Functions | `93.55%` |
-| Branches | `89.73%` |
+| Branches | `89.81%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1556` tests pasando.
+- `1566` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -127,7 +127,7 @@ Estado actual:
 - `app/actions/admin-tables.ts`: `100%` statements/lines/functions, branches `95.04%`.
 - `app/(auth)/auth-actions.ts`: `99.54%` statements/lines, branches `85.71%`, functions `100%` (Fase 1 del plan de hardening cubrió fieldErrors faltantes, verifyOtp edge cases, checkAccountSanction edge, phone recovery, completeGoogleRegistration rollback/duplicate/otp errors, admin TOTP setup edge, redeemAdminRecoveryCode sin TOTP, enrollAdminTotp error, checkPhoneHasPin catch no-Error, getGoogleUserData metadata vacía, rate limit + turnstile bloqueado).
 - `app/actions/admin-security.ts`: `100%` statements/lines/functions, branches `97.27%`; quedan solo ramas defensivas menores de defaults/nullish.
-- `app/actions/support.ts`: `100%` statements, branches `86.81%`; quedan ramas de fallback y errores secundarios de menor prioridad.
+- `app/actions/support.ts`: `100%` statements/lines/functions, branches `91.86%`; quedan solo ramas defensivas `||` que son inaccesibles con la implementación actual de `getAuthenticatedUser()`.
 
 Riesgo:
 
@@ -2377,3 +2377,17 @@ Ese lote combina:
 - Checklist seguridad admin: Supabase/Auth/MFA mockeados en bordes; sin llamadas reales, sin cambios de persistencia, sin alterar auditoria productiva.
 - Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `support.ts`, `wallet.ts`, `admin-rake.ts`, `LocationMap.tsx`, `SupportChat.tsx`, `TableActiveToggle.tsx` y functions de `LandingContent.tsx`/`app/play/[id]/page.tsx`.
 - Siguiente lote: `support.ts` por soporte realtime y permisos, o alternar a UI compartida (`LocationMap.tsx`/`SupportChat.tsx`) para subir branches/functions fuera de server actions.
+
+## Checkpoint 101
+
+- Fecha: 2026-07-02, hardening de soporte server-side.
+- Coverage antes: `99.36%` statements/lines, `93.55%` functions, `89.73%` branches; `189` suites y `1556` tests.
+- Coverage despues: `99.36%` statements/lines, `93.55%` functions, `89.81%` branches; `189` suites y `1566` tests.
+- Archivos cubiertos: `app/actions/support.ts` mediante `support-actions.test.ts`.
+- Tests agregados: auth guards para `appendSupportMessage`, `closeSupportTicket`, `getSupportTicket`, `getSupportTicketHistory`, `listUserTickets`, `listAllTickets`, `uploadSupportAttachment` y `getSupportAttachmentUrl`; fallback de rol `player` cuando la RPC omite `from` y caller no es admin; fallback de extensión `bin` cuando el archivo adjunto no tiene extensión.
+- Riesgos cerrados: `support.ts` sube de `86.81%` a `91.86%` branches; quedan protegidas las 8 funciones contra acceso no autenticado y los fallbacks de `from`/extensión. Las 10 ramas restantes son `||` defensivos estructuralmente inaccesibles con la implementación actual de `getAuthenticatedUser()`.
+- Resultado de verificacion: `pnpm --filter web exec jest src/app/actions/__tests__/support-actions.test.ts --runInBand` verde con `51` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1566` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f20b1f119001nXggURxUNaXEs4`.
+- Checklist soporte: Supabase/Storage mockeados en bordes; sin llamadas reales, sin escrituras a `support_tickets`/`support_messages`/`support_attachments`, sin cambios de RPCs.
+- Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `wallet.ts` (filter branches), `admin-rake.ts` (rakeEntries null), `LocationMap.tsx`/`SupportChat.tsx` y functions de `LandingContent.tsx`/`app/play/[id]/page.tsx`.
+- Siguiente lote: `wallet.ts` para cerrar filter branches financieras, o `admin-rake.ts` para reporting con datos nulos; si se busca UI, `TableActiveToggle.tsx` (25% branches, sin tests propios).
