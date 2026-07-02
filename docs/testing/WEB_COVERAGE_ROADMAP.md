@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.32%` |
 | Lines | `99.32%` |
 | Functions | `93.55%` |
-| Branches | `89.07%` |
+| Branches | `89.17%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1525` tests pasando.
+- `1531` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -2334,3 +2334,17 @@ Ese lote combina:
 - Checklist ledger/admin: pruebas solo de lectura y agregacion con Supabase mockeado; sin escrituras financieras, sin cambios a `wallets_ledger`, RPCs ni actions productivas.
 - Riesgos abiertos: functions globales web siguen lejos de `98%`; deuda principal en `admin-ledger.ts`, `admin-tables.ts`, `admin-security.ts`, `LocationMap.tsx`, `LandingContent.tsx`, `SupportChat.tsx` y callbacks de App Router.
 - Siguiente lote: `admin-ledger.ts` para continuar branches financieras de lectura, o `LocationMap.tsx`/`LandingContent.tsx` si se prioriza functions/branches de UI publica.
+
+## Checkpoint 98
+
+- Fecha: 2026-07-02, cierre de ramas de ledger admin de solo lectura.
+- Coverage antes: `99.32%` statements/lines, `93.55%` functions, `89.07%` branches; `189` suites y `1525` tests.
+- Coverage despues: `99.32%` statements/lines, `93.55%` functions, `89.17%` branches; `189` suites y `1531` tests.
+- Archivos cubiertos: `app/actions/admin-ledger.ts` mediante `admin-ledger.test.ts`.
+- Tests agregados: errores de query en ledger global y por usuario, usuario relacionado sin nombre, relacion de perfil vacia, referencias vacias normalizadas a `null`, ledger de usuario sin datos y perfil con wallet faltante.
+- Riesgos cerrados: `admin-ledger.ts` queda en `100%` statements/lines/functions/branches; se fija el contrato de lectura admin sin cambiar RPCs ni movimientos financieros.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/__tests__/actions/admin-ledger.test.ts' --runInBand` verde con `12` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1531` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f2092d330001OCCYmhYSUUw2xY`.
+- Checklist ledger: pruebas solo de lectura; sin `UPDATE`/`DELETE`, sin cambios a `wallets_ledger`, sin RPCs nuevas y sin escrituras de balance.
+- Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `admin-tables.ts`, `admin-security.ts`, `support.ts`, `wallet.ts`, `LocationMap.tsx`, `SupportChat.tsx` y componentes admin con branches bajos.
+- Siguiente lote: continuar branches con `admin-tables.ts`/`admin-security.ts`, o alternar a UI compartida (`SupportChat.tsx`, `LocationMap.tsx`) para evitar sesgo exclusivo a server actions.
