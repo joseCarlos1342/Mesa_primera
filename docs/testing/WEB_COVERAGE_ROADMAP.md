@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.28%` |
-| Lines | `99.28%` |
+| Statements | `99.32%` |
+| Lines | `99.32%` |
 | Functions | `93.55%` |
-| Branches | `88.98%` |
+| Branches | `89.07%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1522` tests pasando.
+- `1525` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -2320,3 +2320,17 @@ Ese lote combina:
 - Checklist admin realtime: Supabase y `fetch` mockeados en bordes; no cambia contrato de `broadcast_messages`, `notifications`, `broadcast_deliveries` ni Socket.IO.
 - Riesgos abiertos: functions globales web siguen lejos de `98%`; deuda principal en `admin-dashboard.ts`, `admin-ledger.ts`, `admin-tables.ts`, `LocationMap.tsx`, `LandingContent.tsx` y paginas App Router con callbacks bajos.
 - Siguiente lote: `admin-dashboard.ts` o `admin-ledger.ts` para seguir subiendo branches admin, alternando luego con functions UI (`LocationMap.tsx`/páginas App Router) para no sesgar el plan solo a server actions.
+
+## Checkpoint 97
+
+- Fecha: 2026-07-02, hardening de dashboard admin server-side.
+- Coverage antes: `99.28%` statements/lines, `93.55%` functions, `88.98%` branches; `189` suites y `1522` tests.
+- Coverage despues: `99.32%` statements/lines, `93.55%` functions, `89.07%` branches; `189` suites y `1525` tests.
+- Archivos cubiertos: `app/actions/admin-dashboard.ts` mediante `admin-dashboard.test.ts`.
+- Tests agregados: fallback de `get_total_users_balance` contra `wallets`, fallback de `get_ledger_net_balance` contra `ledger`, conteo de rooms activos desde matchmake, diff `ALERTA`, deteccion de usuarios con fingerprint compartido, total de rake y estados de boveda `ALERTA`/`CRÍTICO`.
+- Riesgos cerrados: `admin-dashboard.ts` sube a `100%` statements/lines/functions y `89.04%` branches; quedan protegidos calculos financieros de lectura y señales operativas sin modificar RPCs, ledger ni UI.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/__tests__/actions/admin-dashboard.test.ts' --runInBand` verde con `13` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1525` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f2081ab710018XULg7OpEclZRv`.
+- Checklist ledger/admin: pruebas solo de lectura y agregacion con Supabase mockeado; sin escrituras financieras, sin cambios a `wallets_ledger`, RPCs ni actions productivas.
+- Riesgos abiertos: functions globales web siguen lejos de `98%`; deuda principal en `admin-ledger.ts`, `admin-tables.ts`, `admin-security.ts`, `LocationMap.tsx`, `LandingContent.tsx`, `SupportChat.tsx` y callbacks de App Router.
+- Siguiente lote: `admin-ledger.ts` para continuar branches financieras de lectura, o `LocationMap.tsx`/`LandingContent.tsx` si se prioriza functions/branches de UI publica.

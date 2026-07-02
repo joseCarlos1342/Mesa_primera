@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.28%` statements, `88.98%` branches, `93.55%` functions, `99.28%` lines con `189` suites y `1522` tests pasando (`2026-07-02`).
+- Medicion web vigente: `99.32%` statements, `89.07%` branches, `93.55%` functions, `99.32%` lines con `189` suites y `1525` tests pasando (`2026-07-02`).
 - Medicion game-server vigente: `95.36%` statements, `86.01%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `766` tests pasando (`2026-07-01`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -58,6 +58,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de cobertura Fase 3 (2026-06-24): 14 tests web y 2 tests game-server adicionales sobre replays, perfil, CSP, cliente Supabase SSR, `PlayerBadge` y `AlertService`. Subidas clave: `app/(player)/replays/page.tsx` queda en `100%`, `utils/supabase/client.ts` queda en `100%`, `PlayerBadge.tsx` sube branches a `96.87%` y `AlertService.ts` queda en `100%` statements/lines/functions con `96.07%` branches.
 - Hardening de wallet UI (2026-07-01): 4 tests web adicionales sobre `TransactionModal.tsx` cubren fallback sin `signedUrl`, modal cerrado, retiro pendiente sin comprobante, transferencias/ajustes/tipos desconocidos y mantienen el bloque financiero solo en UI con Supabase storage mockeado.
 - Hardening de broadcast admin (2026-07-02): 9 tests web adicionales sobre `admin-broadcast.ts` cubren errores de audiencia/insert/deliveries, deliveries sin `notification_id`, best-effort del game-server sin secreto o con fetch fallido, history vacio y conteos nulos/lecturas sin `broadcast_id`.
+- Hardening de dashboard admin (2026-07-02): 3 tests web adicionales sobre `admin-dashboard.ts` cubren fallbacks financieros de solo lectura, diff `ALERTA`, deteccion de fingerprints compartidos y estados de boveda `ALERTA`/`CRÍTICO`.
 
 ## Roadmap de Cobertura Web
 
