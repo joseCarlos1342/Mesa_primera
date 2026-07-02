@@ -657,4 +657,125 @@ describe('support actions', () => {
       error: 'URL no disponible',
     })
   })
+
+  it('rechaza appendSupportMessage cuando no hay usuario autenticado', async () => {
+    const supabase = queuedSupabase({ authUser: null })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(appendSupportMessage('ticket-1', 'Hola soporte')).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('rechaza closeSupportTicket cuando no hay usuario autenticado', async () => {
+    const supabase = queuedSupabase({ authUser: null })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(closeSupportTicket('ticket-1')).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('rechaza getSupportTicket cuando no hay usuario autenticado', async () => {
+    const supabase = queuedSupabase({ authUser: null })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getSupportTicket('ticket-1')).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('rechaza getSupportTicketHistory cuando no hay usuario autenticado', async () => {
+    const supabase = queuedSupabase({ authUser: null })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getSupportTicketHistory('ticket-1')).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('rechaza listUserTickets cuando no hay usuario autenticado', async () => {
+    const supabase = queuedSupabase({ authUser: null })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(listUserTickets()).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('rechaza listAllTickets cuando no hay usuario autenticado', async () => {
+    const supabase = queuedSupabase({ authUser: null })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(listAllTickets('pending')).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('rechaza uploadSupportAttachment cuando no hay usuario autenticado', async () => {
+    const supabase = queuedSupabase({ authUser: null })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('file', new File(['image'], 'proof.png', { type: 'image/png' }))
+
+    await expect(uploadSupportAttachment('ticket-1', formData)).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.from).not.toHaveBeenCalled()
+    expect(supabase.storage).toBeUndefined()
+  })
+
+  it('rechaza getSupportAttachmentUrl cuando no hay usuario autenticado', async () => {
+    const supabase = queuedSupabase({ authUser: null })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getSupportAttachmentUrl('user-123/ticket-1/proof.png')).resolves.toEqual({ error: 'No autenticado' })
+    expect(supabase.storage).toBeUndefined()
+  })
+
+  it('asigna rol player por defecto cuando appendSupportMessage omite from y el caller no es admin', async () => {
+    const rpc = jest.fn()
+      .mockResolvedValueOnce({ data: false, error: null })
+      .mockResolvedValueOnce({ data: { success: true, message_id: 'message-player' }, error: null })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
+
+    await expect(appendSupportMessage('ticket-1', 'Mensaje del jugador')).resolves.toEqual({
+      data: { message_id: 'message-player', from: 'player' },
+    })
+    expect(rpc).toHaveBeenNthCalledWith(2, 'append_support_message', {
+      p_ticket_id: 'ticket-1',
+      p_message: 'Mensaje del jugador',
+      p_from_admin: false,
+    })
+  })
+
+  it('usa extension bin cuando el archivo adjunto no tiene extension', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1700000000002)
+    const ticketSingle = jest.fn().mockResolvedValue({
+      data: { id: 'ticket-1', status: 'pending', user_id: 'user-123', attachment_count: 0 },
+      error: null,
+    })
+    const ticketEq = jest.fn().mockReturnValue({ single: ticketSingle })
+    const ticketSelect = jest.fn().mockReturnValue({ eq: ticketEq })
+    const attachmentSingle = jest.fn().mockResolvedValue({
+      data: { id: 'attachment-bin', storage_path: 'user-123/ticket-1/1700000000002.bin' },
+      error: null,
+    })
+    const attachmentSelect = jest.fn().mockReturnValue({ single: attachmentSingle })
+    const attachmentInsert = jest.fn().mockReturnValue({ select: attachmentSelect })
+    const updateEq = jest.fn().mockResolvedValue({ error: null })
+    const update = jest.fn().mockReturnValue({ eq: updateEq })
+    const upload = jest.fn().mockResolvedValue({ error: null })
+    const storageFrom = jest.fn().mockReturnValue({ upload })
+    const rpc = jest.fn().mockResolvedValue({ data: false, error: null })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+      rpc,
+      storage: { from: storageFrom },
+      tables: {
+        support_tickets: [{ select: ticketSelect }, { update }],
+        support_attachments: [{ insert: attachmentInsert }],
+      },
+    }))
+    const formData = new FormData()
+    formData.append('file', new File(['x'], '', { type: 'image/png' }))
+
+    await expect(uploadSupportAttachment('ticket-1', formData)).resolves.toEqual({
+      data: { id: 'attachment-bin', storage_path: 'user-123/ticket-1/1700000000002.bin' },
+    })
+    expect(upload).toHaveBeenCalledWith('user-123/ticket-1/1700000000002.bin', expect.any(File))
+    ;(Date.now as jest.Mock).mockRestore()
+  })
 })
