@@ -387,4 +387,85 @@ describe('Wallet Server Actions', () => {
       expect(insert).toHaveBeenCalledWith(expect.objectContaining({ observations: null }));
     });
   });
+
+  // ── Branch coverage: filter branches and validation fallback ──
+
+  it('getWalletData filtra retiros completados de la actividad de boveda', async () => {
+    const fromCalls: Record<string, any> = {
+      wallets: createQueryBuilder({
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: { id: 'w-1', user_id: 'user-1', balance_cents: 500000 },
+          error: null,
+        }),
+      }),
+      ledger: createQueryBuilder({
+        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+      deposit_requests: createQueryBuilder({
+        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+      withdrawal_requests: createQueryBuilder({
+        limit: jest.fn().mockResolvedValue({
+          data: [
+            { id: 'wr-completed', status: 'completed', amount_cents: 50000, created_at: '2026-06-22T08:00:00.000Z' },
+            { id: 'wr-pending', status: 'pending', amount_cents: 30000, created_at: '2026-06-22T10:00:00.000Z' },
+          ],
+          error: null,
+        }),
+      }),
+    };
+    mockSupabase.from.mockImplementation((table: string) => fromCalls[table] ?? createQueryBuilder());
+
+    const result = await getWalletData();
+
+    // Solo el retiro pendiente debe aparecer (completed filtrado)
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].id).toBe('wr-pending');
+    expect(result.transactions![0].type).toBe('withdrawal');
+    expect(result.transactions![0].status).toBe('pending');
+  });
+
+  it('getWalletHistory filtra depositos completados del historial', async () => {
+    const fromCalls: Record<string, any> = {
+      ledger: createQueryBuilder({
+        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+      deposit_requests: createQueryBuilder({
+        limit: jest.fn().mockResolvedValue({
+          data: [
+            { id: 'dr-completed', status: 'completed', amount_cents: 50000, created_at: '2026-06-22T09:00:00.000Z' },
+            { id: 'dr-rejected', status: 'rejected', amount_cents: 75000, created_at: '2026-06-22T11:00:00.000Z' },
+          ],
+          error: null,
+        }),
+      }),
+      withdrawal_requests: createQueryBuilder({
+        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    };
+    mockSupabase.from.mockImplementation((table: string) => fromCalls[table] ?? createQueryBuilder());
+
+    const result = await getWalletHistory();
+
+    // Solo el deposito rechazado debe aparecer (completed filtrado)
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].id).toBe('dr-rejected');
+    expect(result.transactions![0].type).toBe('deposit');
+    expect(result.transactions![0].status).toBe('rejected');
+  });
+
+  it('createDepositRequest usa mensaje por defecto cuando la validacion no devuelve issues', async () => {
+    // Sobrescribir el mock de validations para este test especifico
+    const validations = jest.requireMock('@/lib/validations') as {
+      depositAmountSchema: { safeParse: jest.Mock }
+    }
+    validations.depositAmountSchema.safeParse = jest.fn().mockReturnValue({
+      success: false,
+      error: {}, // sin issues
+    })
+
+    const result = await createDepositRequest(10000, '/proof.jpg')
+
+    expect(result).toEqual({ error: 'Monto inválido' })
+  });
 });
