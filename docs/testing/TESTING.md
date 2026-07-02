@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.32%` statements, `89.17%` branches, `93.55%` functions, `99.32%` lines con `189` suites y `1531` tests pasando (`2026-07-02`).
+- Medicion web vigente: `99.32%` statements, `89.44%` branches, `93.55%` functions, `99.32%` lines con `189` suites y `1541` tests pasando (`2026-07-02`).
 - Medicion game-server vigente: `95.36%` statements, `86.01%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `766` tests pasando (`2026-07-01`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -60,6 +60,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de broadcast admin (2026-07-02): 9 tests web adicionales sobre `admin-broadcast.ts` cubren errores de audiencia/insert/deliveries, deliveries sin `notification_id`, best-effort del game-server sin secreto o con fetch fallido, history vacio y conteos nulos/lecturas sin `broadcast_id`.
 - Hardening de dashboard admin (2026-07-02): 3 tests web adicionales sobre `admin-dashboard.ts` cubren fallbacks financieros de solo lectura, diff `ALERTA`, deteccion de fingerprints compartidos y estados de boveda `ALERTA`/`CRÍTICO`.
 - Hardening de ledger admin (2026-07-02): 6 tests web adicionales sobre `admin-ledger.ts` cubren errores de lectura, perfiles ausentes, referencias vacias, ledger de usuario sin datos y perfil con wallet faltante sin escrituras financieras.
+- Hardening de mesas admin (2026-07-02): 10 tests web adicionales sobre `admin-tables.ts` cubren errores de queries/updates/inserts, defaults de juegos activos, fallback de lobby/financials y cleanup fallido sin sockets reales.
 
 ## Roadmap de Cobertura Web
 

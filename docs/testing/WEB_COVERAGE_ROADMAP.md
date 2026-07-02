@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.32%` |
 | Lines | `99.32%` |
 | Functions | `93.55%` |
-| Branches | `89.17%` |
+| Branches | `89.44%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1531` tests pasando.
+- `1541` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -2348,3 +2348,17 @@ Ese lote combina:
 - Checklist ledger: pruebas solo de lectura; sin `UPDATE`/`DELETE`, sin cambios a `wallets_ledger`, sin RPCs nuevas y sin escrituras de balance.
 - Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `admin-tables.ts`, `admin-security.ts`, `support.ts`, `wallet.ts`, `LocationMap.tsx`, `SupportChat.tsx` y componentes admin con branches bajos.
 - Siguiente lote: continuar branches con `admin-tables.ts`/`admin-security.ts`, o alternar a UI compartida (`SupportChat.tsx`, `LocationMap.tsx`) para evitar sesgo exclusivo a server actions.
+
+## Checkpoint 99
+
+- Fecha: 2026-07-02, hardening de acciones admin de mesas.
+- Coverage antes: `99.32%` statements/lines, `93.55%` functions, `89.17%` branches; `189` suites y `1531` tests.
+- Coverage despues: `99.32%` statements/lines, `93.55%` functions, `89.44%` branches; `189` suites y `1541` tests.
+- Archivos cubiertos: `app/actions/admin-tables.ts` mediante `admin-tables.test.ts`.
+- Tests agregados: error de listado de mesas, conteo `games` como objeto, errores de juegos activos, defaults sin tabla/perfil, errores de insert common/custom, update de mesa inexistente/fallido, fallos de pausa/kick/toggle, fallback de lobby por query directa, financials sin RPC/error generico y cleanup fallido.
+- Riesgos cerrados: `admin-tables.ts` sube a `100%` statements/lines/functions y `95.04%` branches; se cubren ramas operativas sin abrir sockets reales ni tocar contratos Colyseus.
+- Resultado de verificacion: `pnpm --filter web exec jest --runTestsByPath 'src/__tests__/actions/admin-tables.test.ts' --runInBand` verde con `24` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1541` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f20a0f5d1001xMQ0TkQi3xRbrQ`.
+- Checklist admin/realtime: Supabase mockeado en bordes; sin llamadas Colyseus reales, sin cambios de persistencia y sin escrituras financieras nuevas.
+- Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `admin-security.ts`, `support.ts`, `wallet.ts`, `admin-rake.ts`, `LocationMap.tsx`, `SupportChat.tsx` y componentes admin con branches bajos.
+- Siguiente lote: `admin-security.ts` por riesgo operativo/MFA o `support.ts` por soporte realtime; si se busca alternar UI, `LocationMap.tsx`/`SupportChat.tsx`.
