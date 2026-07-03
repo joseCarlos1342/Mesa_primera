@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.36%` |
 | Lines | `99.36%` |
 | Functions | `93.55%` |
-| Branches | `89.83%` |
+| Branches | `90.04%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1569` tests pasando.
+- `1575` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -122,7 +122,7 @@ Esto es correcto para medir superficie real. El problema no es configuracion inc
 Estado actual:
 
 - `app/actions/replays.ts`: `100%` statements, con branches principales cubiertos.
-- `app/actions/admin-rake.ts`: `100%` statements, con errores y mapeos cubiertos.
+- `app/actions/admin-rake.ts`: `100%` statements/lines/functions, branches `96.96%`; quedan ramas defensivas menores de `rakeEntries || []`.
 - `app/actions/admin-ledger.ts`: `100%` statements/lines/functions/branches.
 - `app/actions/admin-tables.ts`: `100%` statements/lines/functions, branches `95.04%`.
 - `app/(auth)/auth-actions.ts`: `99.54%` statements/lines, branches `85.71%`, functions `100%` (Fase 1 del plan de hardening cubrió fieldErrors faltantes, verifyOtp edge cases, checkAccountSanction edge, phone recovery, completeGoogleRegistration rollback/duplicate/otp errors, admin TOTP setup edge, redeemAdminRecoveryCode sin TOTP, enrollAdminTotp error, checkPhoneHasPin catch no-Error, getGoogleUserData metadata vacía, rate limit + turnstile bloqueado).
@@ -2405,3 +2405,17 @@ Ese lote combina:
 - Checklist wallet: pruebas de solo lectura con Supabase mockeado; sin `UPDATE`/`DELETE` a `wallets`/`deposit_requests`/`withdrawal_requests`/`ledger` ni escrituras de balance.
 - Riesgos abiertos: branches globales siguen bajo `98%`; deuda principal en `admin-rake.ts` (rakeEntries null), `LocationMap.tsx`/`SupportChat.tsx`, `TableActiveToggle.tsx` (25% branches, sin tests propios) y functions de `LandingContent.tsx`/`app/play/[id]/page.tsx`.
 - Siguiente lote: `admin-rake.ts` para reporting financiero con datos nulos, o `TableActiveToggle.tsx`/`DashboardWarnings.tsx` para subir branches de UI admin.
+
+## Checkpoint 103
+
+- Fecha: 2026-07-02, hardening de rake admin y UI admin (Lotes 3-4 combinados).
+- Coverage antes: `99.36%` statements/lines, `93.55%` functions, `89.83%` branches; `189` suites y `1569` tests.
+- Coverage despues: `99.36%` statements/lines, `93.55%` functions, `90.04%` branches; `189` suites y `1575` tests.
+- Archivos cubiertos: `app/actions/admin-rake.ts` mediante `admin-rake.test.ts`; `components/admin/TableActiveToggle.tsx` y `components/admin/DashboardWarnings.tsx` mediante `AdminSmallControls.test.tsx`.
+- Tests agregados: `rakeEntries` null sin romper agregados ni consultas secundarias; rake entry con `game_id` sin win entry correspondiente (fallback `|| 0`); DashboardWarnings en singular (1 fuente degradada); TableActiveToggle con `isActive=true` (desactivar mesa); TableActiveToggle con `toggleTableActive` fallido (alert de error); TableActiveToggle con confirmación cancelada (no togglea ni refresca).
+- Riesgos cerrados: `admin-rake.ts` sube de `84.84%` a `96.96%` branches; `TableActiveToggle.tsx` sube de `25%` a `100%` branches; `DashboardWarnings.tsx` sube de `66.66%` a `100%` branches. **Web branches cruzan `90%` por primera vez.**
+- Resultado de verificacion: `pnpm --filter web exec jest src/app/actions/__tests__/admin-rake.test.ts src/components/admin/__tests__/AdminSmallControls.test.tsx --runInBand` verde con `15` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1575` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f20b1f119001nXggURxUNaXEs4`.
+- Checklist admin/UI: Supabase mockeado en bordes; sin llamadas reales, sin cambios de persistencia, sin escrituras a `ledger` ni `wallets`.
+- Riesgos abiertos: branches globales en `90.04%`, aún lejos de `98%`; deuda principal en `LocationMap.tsx` (66.66% branches, guards null defensivos), `SupportChat.tsx` (83.44% branches), `auth-actions.ts` (87.18% branches), `passkey-actions.ts` (87.5% branches) y functions de `LandingContent.tsx` (72.97%)/`app/play/[id]/page.tsx` (78.26%).
+- Siguiente lote: `auth-actions.ts`/`passkey-actions.ts` para subir branches de auth, o `LandingContent.tsx`/`app/play/[id]/page.tsx` para subir functions globales.
