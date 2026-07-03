@@ -122,4 +122,45 @@ describe('admin small controls', () => {
     await screen.findByRole('button')
     expect(window.alert).toHaveBeenCalledWith('Error: No permitido')
   })
+
+  it('rendera DashboardWarnings en singular cuando hay una sola fuente degradada', () => {
+    render(<DashboardWarnings warnings={['redis down']} />)
+
+    expect(screen.getByText('1 fuente degradada')).toBeInTheDocument()
+    expect(screen.queryByText('1 fuentes degradadas')).not.toBeInTheDocument()
+  })
+
+  it('desactiva mesa activa con confirmacion y refresca', async () => {
+    render(<TableActiveToggle tableId="table-1" isActive={true} />)
+
+    fireEvent.click(screen.getByTitle('Desactivar mesa'))
+
+    expect(window.confirm).toHaveBeenCalledWith('¿Desactivar esta mesa?')
+    await screen.findByTitle('Desactivar mesa')
+    expect(mockToggleTableActive).toHaveBeenCalledWith('table-1', false)
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('muestra alert de error cuando toggleTableActive falla', async () => {
+    mockToggleTableActive.mockRejectedValueOnce(new Error('Servidor caído'))
+
+    render(<TableActiveToggle tableId="table-1" isActive={false} />)
+
+    fireEvent.click(screen.getByTitle('Activar mesa'))
+
+    await screen.findByTitle('Activar mesa')
+    expect(window.alert).toHaveBeenCalledWith('Error al activar: Servidor caído')
+  })
+
+  it('no togglea la mesa cuando el usuario cancela la confirmacion', () => {
+    window.confirm = jest.fn(() => false)
+
+    render(<TableActiveToggle tableId="table-1" isActive={true} />)
+
+    fireEvent.click(screen.getByTitle('Desactivar mesa'))
+
+    expect(window.confirm).toHaveBeenCalledWith('¿Desactivar esta mesa?')
+    expect(mockToggleTableActive).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+  })
 })

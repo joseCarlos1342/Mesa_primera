@@ -181,4 +181,75 @@ describe('getAdminRakeData', () => {
     })
     expect(supabase.from).toHaveBeenCalledTimes(5)
   })
+
+  it('maneja rakeEntries null sin romper agregados ni consultas secundarias', async () => {
+    const role = roleQuery('admin')
+    const rakeQuery = rakeEntriesQuery(null as any, 0)
+    const allRake = amountListQueryWithEq([])
+    const rake24h = amountListQueryWithGte([])
+    const rake7d = amountListQueryWithGte([])
+    const supabase = queuedSupabase({
+      profiles: [{ select: role.select }],
+      ledger: [
+        { select: rakeQuery.select },
+        { select: allRake.select },
+        { select: rake24h.select },
+        { select: rake7d.select },
+      ],
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getAdminRakeData()).resolves.toEqual({
+      entries: [],
+      totalCount: 0,
+      stats: { totalRake: 0, totalRake24h: 0, totalRake7d: 0, rakeCount: 0 },
+    })
+  })
+
+  it('usa win_amount cero cuando el game_id del rake no tiene win entry correspondiente', async () => {
+    const role = roleQuery('admin')
+    const rakeRows = [
+      {
+        id: 'rake-1',
+        user_id: 'winner-1',
+        game_id: 'game-with-win',
+        table_id: 'table-1',
+        amount_cents: 500,
+        metadata: null,
+        created_at: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'rake-2',
+        user_id: 'winner-1',
+        game_id: 'game-no-win',
+        table_id: 'table-2',
+        amount_cents: 300,
+        metadata: null,
+        created_at: '2026-01-02T00:00:00.000Z',
+      },
+    ]
+    const rakeQuery = rakeEntriesQuery(rakeRows, 2)
+    const winQuery = winsQuery([{ game_id: 'game-with-win', amount_cents: 10000 }])
+    const profileQuery = profilesQuery([{ id: 'winner-1', username: 'Ana' }])
+    const allRake = amountListQueryWithEq([{ amount_cents: 500 }, { amount_cents: 300 }])
+    const rake24h = amountListQueryWithGte([{ amount_cents: 500 }])
+    const rake7d = amountListQueryWithGte([{ amount_cents: 500 }, { amount_cents: 300 }])
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+      profiles: [{ select: role.select }, { select: profileQuery.select }],
+      ledger: [
+        { select: rakeQuery.select },
+        { select: winQuery.select },
+        { select: allRake.select },
+        { select: rake24h.select },
+        { select: rake7d.select },
+      ],
+    }))
+
+    const result = await getAdminRakeData()
+
+    expect(result.entries).toEqual([
+      expect.objectContaining({ id: 'rake-1', win_amount: 10000 }),
+      expect.objectContaining({ id: 'rake-2', win_amount: 0 }),
+    ])
+  })
 })
