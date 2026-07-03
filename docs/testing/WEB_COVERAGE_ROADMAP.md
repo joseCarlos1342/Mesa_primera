@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.36%` |
 | Lines | `99.36%` |
 | Functions | `93.55%` |
-| Branches | `90.16%` |
+| Branches | `90.32%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1583` tests pasando.
+- `1592` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -170,7 +170,7 @@ Riesgo:
 Estado actual:
 
 - `NotificationCenter.tsx`: `100%`, ramas `97.18%`, funciones `100%`.
-- `SupportChat.tsx`: `100%` statements/lines, ramas `83.44%`, funciones `86.66%`.
+- `SupportChat.tsx`: `100%` statements/lines, ramas `90.18%`, funciones `86.66%`; quedan guards defensivos de socketUrl y ramas de audio legacy.
 - `components/providers/AppLockProvider.tsx`: `95.92%`, con ramas de browser/session aun pendientes.
 - Varios hooks estan sobre `88%`, pero branches siguen bajos.
 
@@ -2433,3 +2433,17 @@ Ese lote combina:
 - Checklist auth: Supabase/Auth/WebAuthn mockeados en bordes; sin llamadas reales, sin cambios de persistencia, sin alterar flujo productivo de auth.
 - Riesgos abiertos: branches globales en `90.16%`, aún lejos de `98%`; deuda principal en `auth-actions.ts` (87.09% branches dispersos), `LocationMap.tsx` (66.66%), `SupportChat.tsx` (83.44%) y functions de `LandingContent.tsx` (72.97%)/`app/play/[id]/page.tsx` (78.26%).
 - Siguiente lote: `SupportChat.tsx` por branches/functions de UI transversal, o `LandingContent.tsx` para subir functions globales hacia `95%`.
+
+## Checkpoint 105
+
+- Fecha: 2026-07-02, hardening de SupportChat UI transversal.
+- Coverage antes: `99.36%` statements/lines, `93.55%` functions, `90.16%` branches; `189` suites y `1583` tests.
+- Coverage despues: `99.36%` statements/lines, `93.55%` functions, `90.32%` branches; `189` suites y `1592` tests.
+- Archivos cubiertos: `components/SupportChat.tsx` mediante `SupportChat.test.tsx`.
+- Tests agregados: error de `createSupportTicket` sin emitir `ticket-created`; error de `appendSupportMessage` sin emitir `message-created`; mensaje socket de otro ticket ignorado; fallback de `uuidv4`/`Date.now` cuando socket omite `messageId`/`timestamp`; notificacion legacy `support:message` cuando chat flotante cerrado; guard de `handleFileSelect` sin archivo/ticketId; ticket finalizado no muestra boton de cerrar; submit deshabilitado cuando input vacio; preview largo con elipsis y preview nulo con fallback "Consulta".
+- Riesgos cerrados: `SupportChat.tsx` sube de `83.44%` a `90.18%` branches; quedan protegidos errores de envio, eventos socket de otros tickets, guards de adjuntos y estados de UI.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='SupportChat.*test' --runInBand` verde con `28` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1592` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f20b1f119001nXggURxUNaXEs4`.
+- Checklist soporte UI: socket mockeado con handlers reales; server actions mockeadas; sin llamadas reales ni sockets productivos.
+- Riesgos abiertos: branches globales en `90.32%`, functions en `93.55%`; deuda principal en `LandingContent.tsx` (functions 72.97%), `app/play/[id]/page.tsx` (functions 78.26%), `auth-actions.ts` (branches 87.09%), `LocationMap.tsx` (branches 66.66% defensivos) y ramas residuales de `SupportChat.tsx` (guards de socketUrl).
+- Siguiente lote: `LandingContent.tsx` para subir functions globales hacia `95%`, o `app/play/[id]/page.tsx` para callbacks de juego.

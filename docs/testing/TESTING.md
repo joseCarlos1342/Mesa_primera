@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.36%` statements, `90.16%` branches, `93.55%` functions, `99.36%` lines con `189` suites y `1583` tests pasando (`2026-07-02`).
+- Medicion web vigente: `99.36%` statements, `90.32%` branches, `93.55%` functions, `99.36%` lines con `189` suites y `1592` tests pasando (`2026-07-02`).
 - Medicion game-server vigente: `95.36%` statements, `86.01%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `766` tests pasando (`2026-07-01`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -66,6 +66,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de wallet jugador (2026-07-02): 3 tests web adicionales sobre `wallet.ts` cubren filter branches de retiros completados en `getWalletData`, depositos completados en `getWalletHistory` y fallback `?? 'Monto inválido'` cuando la validación no devuelve `issues`.
 - Hardening de rake admin y UI admin (2026-07-02): 6 tests web adicionales sobre `admin-rake.ts` (rakeEntries null, win entry sin match), `TableActiveToggle.tsx` (desactivar mesa, error en toggle, cancelar confirmación) y `DashboardWarnings.tsx` (singular vs plural).
 - Hardening de auth server-side (2026-07-02): 8 tests web adicionales sobre `passkey-actions.ts` (env vars, fallbacks de userName/transports/sign_count, auth guard de verificación) y `auth-actions.ts` (redirect a device-verify tras OTP exitoso en dispositivo desconocido).
+- Hardening de SupportChat UI (2026-07-02): 9 tests web adicionales sobre `SupportChat.tsx` cubren errores de creación/envío de ticket, mensajes socket de otros tickets, fallback de uuid/timestamp, notificación legacy cuando chat cerrado, guards de adjuntos/sending/finalized y preview largo/nulo en lista de tickets.
 
 ## Roadmap de Cobertura Web
 
