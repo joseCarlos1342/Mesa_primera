@@ -605,6 +605,23 @@ describe('OTP y PIN auth actions', () => {
     await expect(loginWithPin(null, formData({ phone: TEST_PHONE_LOCAL, pin: '123456' }))).resolves.toEqual({ error: 'No pudimos enviar el código de verificación. Inténtalo de nuevo.' })
   })
 
+  it('loginWithPin redirige a verificacion de dispositivo cuando el OTP se envia correctamente en dispositivo desconocido', async () => {
+    cookieGet.mockReturnValue(undefined)
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        signInWithPassword: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+      },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(loginWithPin(null, formData({ phone: TEST_PHONE_LOCAL, pin: '123456' }))).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(supabase.auth.signOut).toHaveBeenCalled()
+    expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({ phone: TEST_PHONE_E164, options: { shouldCreateUser: false } })
+    expect(redirect).toHaveBeenCalledWith(`/login/player/device-verify?phone=${TEST_PHONE_QUERY}`)
+  })
+
   it('loginWithPhone devuelve fieldErrors para teléfonos inválidos', async () => {
     const supabase = buildSupabase()
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
