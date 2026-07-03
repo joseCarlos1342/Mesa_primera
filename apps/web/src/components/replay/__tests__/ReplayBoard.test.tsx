@@ -93,6 +93,11 @@ describe('ReplayBoard', () => {
     expect(screen.getByTestId('replay-phase')).toHaveTextContent(/descarte/i);
   });
 
+  it('muestra la fase cruda cuando no existe traducción conocida', () => {
+    render(<ReplayBoard frame={makeFrame({ phase: 'FASE_CUSTOM' })} />);
+    expect(screen.getByTestId('replay-phase')).toHaveTextContent('FASE_CUSTOM');
+  });
+
   it('marca al jugador de la mano (dealer) con indicador Mano', () => {
     render(<ReplayBoard frame={makeFrame()} />);
     const aliceCard = screen.getByTestId('replay-player-p1');
@@ -110,6 +115,70 @@ describe('ReplayBoard', () => {
     const aliceCards = screen.getByTestId('replay-player-p1-cards');
     expect(aliceCards.querySelectorAll('[data-card-hidden="true"]').length).toBe(4);
     expect(aliceCards.querySelectorAll('[data-card-hidden="false"]').length).toBe(0);
+  });
+
+  it('usa memoria de cartas por playerId cuando el frame actual no trae cartas visibles', () => {
+    const frame = makeFrame({
+      players: [
+        { ...makeFrame().players[0], privateCards: undefined, revealedCards: [], cardCount: 4 },
+        makeFrame().players[1],
+      ],
+    });
+    const fallback = new Map<string, string[]>([['p1', ['1-O', '2-C', '3-E', '4-B']]]);
+
+    render(<ReplayBoard frame={frame} cardFallbackByPlayerId={fallback} />);
+
+    const aliceCards = screen.getByTestId('replay-player-p1-cards');
+    expect(aliceCards.querySelectorAll('[data-card-hidden="false"]').length).toBe(4);
+    expect(aliceCards.querySelectorAll('[data-card-hidden="true"]').length).toBe(0);
+  });
+
+  it('usa memoria de cartas por userId cuando no hay fallback por playerId', () => {
+    const frame = makeFrame({
+      players: [
+        { ...makeFrame().players[0], privateCards: undefined, revealedCards: [], cardCount: 4 },
+        makeFrame().players[1],
+      ],
+    });
+    const fallbackByUser = new Map<string, string[]>([['u1', ['5-O', '6-C', '7-E', '8-B']]]);
+
+    render(<ReplayBoard frame={frame} cardFallbackByUserId={fallbackByUser} />);
+
+    const aliceCards = screen.getByTestId('replay-player-p1-cards');
+    expect(aliceCards.querySelectorAll('[data-card-hidden="false"]').length).toBe(4);
+  });
+
+  it('no renderiza cartas cuando no hay visibles ni cardCount', () => {
+    const frame = makeFrame({
+      players: [
+        { ...makeFrame().players[0], privateCards: undefined, revealedCards: [], cardCount: 0 },
+        makeFrame().players[1],
+      ],
+    });
+
+    render(<ReplayBoard frame={frame} />);
+
+    const aliceCards = screen.getByTestId('replay-player-p1-cards');
+    expect(aliceCards.querySelectorAll('[data-card-hidden="true"]').length).toBe(0);
+    expect(aliceCards.querySelectorAll('[data-card-hidden="false"]').length).toBe(0);
+  });
+
+  it('trata cardCount ausente como cero cartas ocultas', () => {
+    const playerWithoutCardCount = { ...makeFrame().players[0] } as any;
+    delete playerWithoutCardCount.cardCount;
+    const frame = makeFrame({ players: [playerWithoutCardCount, makeFrame().players[1]] });
+
+    render(<ReplayBoard frame={frame} />);
+
+    const aliceCards = screen.getByTestId('replay-player-p1-cards');
+    expect(aliceCards.querySelectorAll('[data-card-hidden="true"]').length).toBe(0);
+    expect(aliceCards.querySelectorAll('[data-card-hidden="false"]').length).toBe(0);
+  });
+
+  it('oculta visualmente el bote de pique cuando es cero', () => {
+    render(<ReplayBoard frame={makeFrame({ piquePot: 0 })} />);
+
+    expect(screen.getByTestId('replay-pot-pique').closest('div')).toHaveClass('sr-only');
   });
 
   it('revela cartas privadas en SHOWDOWN', () => {
@@ -261,6 +330,27 @@ describe('ReplayBoard', () => {
       render(<ReplayBoard frame={frame} />);
       const seat = screen.getByTestId('replay-player-p1');
       expect(seat).toHaveAttribute('data-folded', 'true');
+    });
+
+    it('jugador foldeado antes de showdown atenúa cartas visibles recuperadas', () => {
+      const base = makeFrame();
+      const frame = makeFrame({
+        phase: 'PIQUE',
+        players: [
+          { ...base.players[0], isFolded: true, privateCards: undefined, revealedCards: [], cardCount: 4 },
+          base.players[1],
+        ],
+      });
+      const fallback = new Map<string, string[]>([['p1', ['1-O', '2-C', '3-E', '4-B']]]);
+
+      render(<ReplayBoard frame={frame} cardFallbackByPlayerId={fallback} />);
+
+      const aliceCards = screen.getByTestId('replay-player-p1-cards');
+      const cardWrappers = aliceCards.querySelectorAll('[data-card-hidden="false"]');
+      expect(cardWrappers.length).toBe(4);
+      cardWrappers.forEach(el => {
+        expect(el.className).toMatch(/grayscale/);
+      });
     });
   });
 
