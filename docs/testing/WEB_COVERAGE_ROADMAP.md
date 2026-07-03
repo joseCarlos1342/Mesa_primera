@@ -17,12 +17,13 @@ Cobertura actual de `apps/web`:
 | Statements | `99.36%` |
 | Lines | `99.36%` |
 | Functions | `93.55%` |
-| Branches | `90.32%` |
+| Branches | `90.38%` |
+| Functions | `94.5%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1592` tests pasando.
+- `1603` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -184,7 +185,7 @@ Riesgo:
 
 Estado actual:
 
-- `components/landing/LandingContent.tsx`: `99.86%`, funciones `72.97%`.
+- `components/landing/LandingContent.tsx`: `100%` statements/lines/functions, `96.15%` branches; quedan fallbacks `||` de helpers de tutorial y guards de refs null.
 - `components/landing/LandingAnimations.tsx`: `100%`, funciones `100%`.
 - Tutoriales de landing tienen cobertura alta en lineas, con algunos branches pendientes.
 
@@ -2447,3 +2448,15 @@ Ese lote combina:
 - Checklist soporte UI: socket mockeado con handlers reales; server actions mockeadas; sin llamadas reales ni sockets productivos.
 - Riesgos abiertos: branches globales en `90.32%`, functions en `93.55%`; deuda principal en `LandingContent.tsx` (functions 72.97%), `app/play/[id]/page.tsx` (functions 78.26%), `auth-actions.ts` (branches 87.09%), `LocationMap.tsx` (branches 66.66% defensivos) y ramas residuales de `SupportChat.tsx` (guards de socketUrl).
 - Siguiente lote: `LandingContent.tsx` para subir functions globales hacia `95%`, o `app/play/[id]/page.tsx` para callbacks de juego.
+
+## Checkpoint 106
+
+- Fecha: 2026-07-02, hardening de LandingContent functions.
+- Coverage antes: `99.36%` statements/lines, `93.55%` functions, `90.32%` branches; `189` suites y `1592` tests.
+- Coverage despues: `99.36%` statements/lines, `94.5%` functions, `90.38%` branches; `189` suites y `1603` tests.
+- Archivos cubiertos: `components/landing/LandingContent.tsx` mediante `LandingContent.test.tsx`.
+- Tests agregados: carga dinamica de pasos de 7 tutoriales restantes ("Cómo iniciar sesión", "Cómo cargar saldo", "Cómo retirar saldo", "Cómo transferir saldo", "Cómo jugar tu primera partida", "Funciones del menú de mesa", "Amigos"); click en boton de seccion del nav desktop; cierre de menu mobile al click en "Iniciar sesión" y "Crear cuenta"; guard de touchEnd sin touchStart previo en carrusel de fotos.
+- Riesgos cerrados: `LandingContent.tsx` sube functions de `72.97%` a `100%` y branches de `94.61%` a `96.15%`; las 10 funciones no cubiertas (8 dynamic imports de tutoriales + 2 onClick de mobile menu + 1 onClick de nav desktop) quedan ejercitadas; branch L580 (guard de touchEnd sin touchStart) cubierta.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='LandingContent.*test' --runInBand` verde con `33` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1603` tests.
+- Riesgos abiertos: functions globales en `94.5%`, branches en `90.38%`; deuda principal en `app/play/[id]/page.tsx` (functions 78.26%), `auth-actions.ts` (branches 87.09%), `LocationMap.tsx` (branches 66.66% defensivos), ramas residuales de `SupportChat.tsx` (guards de socketUrl) y fallbacks `||` defensivos de `LandingContent.tsx` (helpers de tutorial con titulos no mapeados).
+- Siguiente lote: `app/play/[id]/page.tsx` para subir functions globales, o `auth-actions.ts` para branches de seguridad.
