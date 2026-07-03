@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.38%` |
 | Lines | `99.38%` |
 | Functions | `94.97%` |
-| Branches | `90.69%` |
+| Branches | `90.8%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1626` tests pasando.
+- `1633` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -2495,3 +2495,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='(auth-actions|otp-and-pin-actions|google-auth-actions).*test' --runInBand` verde con `111` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1626` tests.
 - Riesgos abiertos: branches globales en `90.69%`; deuda principal en ramas defensivas de `LocationMap.tsx`, `SupportChat.tsx`, fallbacks de `LandingContent.tsx`, catch/reload de `app/play/[id]/page.tsx` y rate/fallback branches menores restantes de `auth-actions.ts`.
 - Siguiente lote: UI selectivos restantes o una pasada final sobre branches defensivas de auth si se justifica el valor.
+
+## Checkpoint 110
+
+- Fecha: 2026-07-02, hardening de ReplayBoard UI.
+- Coverage antes: `99.38%` statements/lines, `94.97%` functions, `90.69%` branches; `189` suites y `1626` tests.
+- Coverage despues: `99.38%` statements/lines, `94.97%` functions, `90.8%` branches; `189` suites y `1633` tests.
+- Archivos cubiertos: `components/replay/ReplayBoard.tsx` mediante `ReplayBoard.test.tsx`.
+- Tests agregados: fase desconocida usa label crudo; memoria progresiva de cartas por `playerId`; memoria progresiva por `userId`; frame sin cartas ni `cardCount`; `cardCount` ausente tratado como cero; bote de pique cero oculto visualmente; jugador foldeado antes de showdown atenúa cartas recuperadas.
+- Riesgos cerrados: `ReplayBoard.tsx` sube branches de `65.71%` a `95.45%` en cobertura global; quedan cubiertos replays retrocompatibles sin ghosting de cartas y sin pintar slots/cartas artificiales.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='ReplayBoard.*test' --runInBand` verde con `27` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1633` tests.
+- Riesgos abiertos: branches globales en `90.8%`; quedan sobre todo guards defensivos difíciles de activar sin tests artificiales (`LocationMap`, fallbacks internos de landing/play/support) y branches menores de auth/server actions.
+- Siguiente lote: medir otro componente UI con branches reales o detener antes de entrar en guards artificiales.
