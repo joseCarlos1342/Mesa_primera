@@ -252,6 +252,20 @@ describe('OTP y PIN auth actions', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it('verifyOtp bloquea antes de Supabase cuando el rate limit está agotado', async () => {
+    ;(enforceRateLimiting as jest.Mock).mockResolvedValueOnce({
+      success: false,
+      error: 'Demasiados códigos enviados.',
+    })
+
+    await expect(verifyOtp(null, formData({
+      phone: TEST_PHONE_E164,
+      token: '123456',
+      flow: 'login',
+    }))).resolves.toEqual({ error: 'Demasiados códigos enviados.' })
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
   it('verifyOtp devuelve error cuando Supabase verifica OTP sin usuario', async () => {
     const supabase = buildSupabase({
       auth: {
@@ -495,6 +509,20 @@ describe('OTP y PIN auth actions', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it('setPlayerPin bloquea antes de Supabase cuando el rate limit está agotado', async () => {
+    ;(enforceRateLimiting as jest.Mock).mockResolvedValueOnce({
+      success: false,
+      error: 'Demasiados cambios de PIN.',
+    })
+
+    await expect(setPlayerPin(null, formData({
+      pin: '123456',
+      pinConfirm: '123456',
+      flow: 'register',
+    }))).resolves.toEqual({ error: 'Demasiados cambios de PIN.' })
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
   it('startPinRecovery devuelve fieldErrors para teléfono inválido sin tocar Supabase', async () => {
     const supabase = buildSupabase()
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
@@ -507,6 +535,18 @@ describe('OTP y PIN auth actions', () => {
     )
     expect(supabase.rpc).not.toHaveBeenCalled()
     expect(supabase.auth.signInWithOtp).not.toHaveBeenCalled()
+  })
+
+  it('startPinRecovery bloquea antes de Supabase cuando el rate limit está agotado', async () => {
+    ;(enforceRateLimiting as jest.Mock).mockResolvedValueOnce({
+      success: false,
+      error: 'Demasiadas recuperaciones.',
+    })
+
+    await expect(startPinRecovery(null, formData({ phone: TEST_PHONE_LOCAL }))).resolves.toEqual({
+      error: 'Demasiadas recuperaciones.',
+    })
+    expect(createClient).not.toHaveBeenCalled()
   })
 
   it('loginWithPin devuelve error cuando la contraseña no entrega usuario', async () => {

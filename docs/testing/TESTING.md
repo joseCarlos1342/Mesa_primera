@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.38%` statements, `90.54%` branches, `94.97%` functions, `99.38%` lines con `189` suites y `1616` tests pasando (`2026-07-02`).
+- Medicion web vigente: `99.38%` statements, `90.69%` branches, `94.97%` functions, `99.38%` lines con `189` suites y `1626` tests pasando (`2026-07-02`).
 - Medicion game-server vigente: `95.36%` statements, `86.01%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `766` tests pasando (`2026-07-01`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -70,6 +70,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de LandingContent UI (2026-07-02): 11 tests web adicionales sobre `LandingContent.tsx` cubren carga dinámica de 7 tutoriales restantes, click en nav desktop, cierre de menú mobile con links de sesión y guard de touchEnd sin touchStart.
 - Hardening de play page callbacks (2026-07-02): 6 tests web adicionales sobre `app/play/[id]/page.tsx` cubren cierre de 4 modales (reglas, depósito, transferencia, ayuda), cambio de orientación vía matchMedia y banda sin details con pique mínimo alto.
 - Hardening de VoiceChat UI (2026-07-02): 7 tests web adicionales sobre `VoiceChat.tsx` cubren error de token LiveKit, error al togglear micrófono, micrófono activo, speakers con nombre genérico y ramas de mute remoto sin elementos adjuntos o sin nombre.
+- Hardening de auth-actions seguridad (2026-07-02): 10 tests web adicionales sobre `auth-actions.ts` cubren rate limits de registro/admin/OTP/PIN/recovery/Google, fallbacks TOTP no verificados, recovery admin sin factor y fallback de email vacío en Google data.
 
 ## Roadmap de Cobertura Web
 

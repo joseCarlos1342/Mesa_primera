@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.38%` |
 | Lines | `99.38%` |
 | Functions | `94.97%` |
-| Branches | `90.54%` |
+| Branches | `90.69%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1616` tests pasando.
+- `1626` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -2483,3 +2483,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='VoiceChat.*test' --runInBand` verde con `17` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1616` tests.
 - Riesgos abiertos: branches globales en `90.54%`; deuda principal en `auth-actions.ts`, `LocationMap.tsx` guards defensivos, ramas residuales de `SupportChat.tsx`, fallbacks de `LandingContent.tsx` y catch/reload de `app/play/[id]/page.tsx`.
 - Siguiente lote: `auth-actions.ts` para branches de seguridad si se acepta más mocking de Supabase, o cerrar UI selectivos restantes.
+
+## Checkpoint 109
+
+- Fecha: 2026-07-02, hardening de auth-actions seguridad.
+- Coverage antes: `99.38%` statements/lines, `94.97%` functions, `90.54%` branches; `189` suites y `1616` tests.
+- Coverage despues: `99.38%` statements/lines, `94.97%` functions, `90.69%` branches; `189` suites y `1626` tests.
+- Archivos cubiertos: `app/(auth)/auth-actions.ts` mediante `auth-actions.test.ts`, `otp-and-pin-actions.test.ts` y `google-auth-actions.test.ts`.
+- Tests agregados: rate limit de `registerPlayer`; rate limit de `loginAdmin`; recovery admin sin factor TOTP; login admin con factor TOTP no verificado; verificación admin usando primer factor TOTP no verificado; rate limit de `verifyOtp`; rate limit de `setPlayerPin`; rate limit de `startPinRecovery`; fallback de email vacío en `getGoogleUserData`; rate limit de `completeGoogleRegistration`.
+- Riesgos cerrados: `auth-actions.ts` sube branches de `87.05%` a `90.52%` en cobertura global; quedan cubiertos límites anti-abuso y fallbacks MFA/recovery sin mutaciones reales ni llamadas Supabase productivas.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='(auth-actions|otp-and-pin-actions|google-auth-actions).*test' --runInBand` verde con `111` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1626` tests.
+- Riesgos abiertos: branches globales en `90.69%`; deuda principal en ramas defensivas de `LocationMap.tsx`, `SupportChat.tsx`, fallbacks de `LandingContent.tsx`, catch/reload de `app/play/[id]/page.tsx` y rate/fallback branches menores restantes de `auth-actions.ts`.
+- Siguiente lote: UI selectivos restantes o una pasada final sobre branches defensivas de auth si se justifica el valor.

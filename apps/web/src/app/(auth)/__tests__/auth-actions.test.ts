@@ -68,6 +68,21 @@ describe('Auth Actions', () => {
   })
 
   describe('registerPlayer', () => {
+    it('bloquea registro antes de Supabase cuando el rate limit está agotado', async () => {
+      ;(enforceRateLimiting as jest.Mock).mockResolvedValueOnce({
+        success: false,
+        error: 'Demasiados intentos de registro.',
+      })
+      const formData = new FormData()
+      formData.append('phone', TEST_PHONE_LOCAL)
+      formData.append('fullName', 'Jose Carlos')
+      formData.append('nickname', 'Chepe')
+      formData.append('avatarId', 'as-oros')
+
+      await expect(registerPlayer({}, formData)).resolves.toEqual({ error: 'Demasiados intentos de registro.' })
+      expect(createClient).not.toHaveBeenCalled()
+    })
+
     it('debe llamar a signInWithOtp con la metadata correcta y redirigir', async () => {
       const formData = new FormData()
       formData.append('phone', TEST_PHONE_LOCAL)
@@ -357,6 +372,43 @@ describe('Auth Actions', () => {
       ;(createClient as any).mockResolvedValueOnce(buildRecoverySupabase(null, { message: 'unenroll failed' }))
       await expect(redeemAdminRecoveryCode(null, formData)).resolves.toEqual({ error: 'unenroll failed' })
     })
+
+    it('canjea código de recuperación aunque no exista factor TOTP activo', async () => {
+      const formData = new FormData()
+      formData.append('code', 'ABCD-EFGH-JKLM')
+
+      const updateEq = jest.fn().mockResolvedValue({ error: null })
+      const recoveryCodeQuery = {
+        eq: jest.fn().mockReturnThis(),
+        is: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'recovery-1' }, error: null }),
+      }
+      const supabase = {
+        auth: {
+          getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-123' } }, error: null }),
+          mfa: {
+            listFactors: jest.fn().mockResolvedValue({ data: { totp: [], phone: [] }, error: null }),
+            unenroll: jest.fn(),
+          },
+        },
+        from: jest.fn((table: string) => {
+          if (table === 'profiles') return { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }) }
+          if (table === 'admin_mfa_recovery_codes') {
+            return {
+              select: jest.fn().mockReturnValue(recoveryCodeQuery),
+              update: jest.fn().mockReturnValue({ eq: updateEq }),
+            }
+          }
+          throw new Error(`Unexpected table ${table}`)
+        }),
+      }
+      ;(createClient as any).mockResolvedValue(supabase)
+
+      await redeemAdminRecoveryCode(null, formData)
+
+      expect(supabase.auth.mfa.unenroll).not.toHaveBeenCalled()
+      expect(redirect).toHaveBeenCalledWith('/login/admin/mfa/setup?recovery=1')
+    })
   })
 
   describe('registerAdmin', () => {
@@ -452,6 +504,24 @@ describe('Auth Actions', () => {
       expect(redirect).toHaveBeenCalledWith('/login/admin/mfa')
     })
 
+    it('redirects to MFA setup flow using first TOTP factor when none is verified', async () => {
+      const supabase = buildAdminSupabase()
+      supabase.auth.mfa.listFactors.mockResolvedValue({
+        data: { totp: [{ id: 'totp-unverified', factor_type: 'totp', status: 'unverified' }], phone: [] },
+        error: null,
+      })
+      ;(createClient as any).mockResolvedValue(supabase)
+
+      const formData = new FormData()
+      formData.append('email', 'admin@mesa.test')
+      formData.append('password', 'SecureP4ss!')
+
+      await loginAdmin(null, formData)
+
+      expect(redirect).toHaveBeenCalledWith('/login/admin/mfa')
+      expect(enforceSessionPolicy).not.toHaveBeenCalled()
+    })
+
     it('does NOT call enforceSessionPolicy before MFA is completed (deferred to verifyAdminTotp)', async () => {
       const supabase = buildAdminSupabase()
       ;(createClient as any).mockResolvedValue(supabase)
@@ -542,6 +612,19 @@ describe('Auth Actions', () => {
       formData.append('password', 'SecureP4ss!')
 
       await expect(loginAdmin(null, formData)).resolves.toEqual({ error: expect.stringContaining('servidor de autenticación') })
+    })
+
+    it('bloquea login admin antes de Supabase cuando el rate limit está agotado', async () => {
+      ;(enforceRateLimiting as jest.Mock).mockResolvedValueOnce({
+        success: false,
+        error: 'Demasiados intentos de admin.',
+      })
+      const formData = new FormData()
+      formData.append('email', 'admin@mesa.test')
+      formData.append('password', 'SecureP4ss!')
+
+      await expect(loginAdmin(null, formData)).resolves.toEqual({ error: 'Demasiados intentos de admin.' })
+      expect(createClient).not.toHaveBeenCalled()
     })
   })
 
@@ -678,6 +761,25 @@ describe('Auth Actions', () => {
       await verifyAdminTotp(null, formData)
 
       expect(supabase.auth.mfa.challenge).toHaveBeenCalledWith({ factorId: 'totp-verified' })
+    })
+
+    it('usa el primer factor TOTP cuando ninguno está verificado', async () => {
+      const supabase = buildMfaSupabase()
+      supabase.auth.mfa.listFactors.mockResolvedValue({
+        data: {
+          totp: [{ id: 'totp-unverified', factor_type: 'totp', status: 'unverified' }],
+          phone: [],
+        },
+        error: null,
+      })
+      ;(createClient as any).mockResolvedValue(supabase)
+
+      const formData = new FormData()
+      formData.append('code', '123456')
+
+      await verifyAdminTotp(null, formData)
+
+      expect(supabase.auth.mfa.challenge).toHaveBeenCalledWith({ factorId: 'totp-unverified' })
     })
   })
 })
