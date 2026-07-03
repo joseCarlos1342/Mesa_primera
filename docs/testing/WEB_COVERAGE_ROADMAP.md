@@ -14,16 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.36%` |
-| Lines | `99.36%` |
-| Functions | `93.55%` |
-| Branches | `90.42%` |
+| Statements | `99.38%` |
+| Lines | `99.38%` |
 | Functions | `94.97%` |
+| Branches | `90.54%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1609` tests pasando.
+- `1616` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -2472,3 +2471,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='play.*page.*test' --runInBand` verde con `133` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1609` tests.
 - Riesgos abiertos: functions globales en `94.97%`, branches en `90.42%`; deuda principal en `auth-actions.ts` (branches 87.09%), `LocationMap.tsx` (branches 66.66% defensivos), ramas residuales de `SupportChat.tsx` (guards de socketUrl), fallbacks `||` defensivos de `LandingContent.tsx` y catch de audio/reload de `app/play/[id]/page.tsx`.
 - Siguiente lote: `auth-actions.ts` para branches de seguridad, o UI selectivos (`DepositForm.tsx`, `VoiceChat.tsx`, `ReplayBoard.tsx`).
+
+## Checkpoint 108
+
+- Fecha: 2026-07-02, hardening de VoiceChat UI.
+- Coverage antes: `99.36%` statements/lines, `94.97%` functions, `90.42%` branches; `189` suites y `1609` tests.
+- Coverage despues: `99.38%` statements/lines, `94.97%` functions, `90.54%` branches; `189` suites y `1616` tests.
+- Archivos cubiertos: `components/VoiceChat.tsx` mediante `VoiceChat.test.tsx`.
+- Tests agregados: error al solicitar token LiveKit; error al togglear micrófono; UI de micrófono activo; speaker con nombre genérico `Jugador`; guard de mute cuando el track es null; mute remoto via `track.enabled` sin elementos de audio adjuntos; fallback de identity cuando nombre remoto es `Jugador` o está ausente.
+- Riesgos cerrados: `VoiceChat.tsx` sube branches de `80%` a `93.22%`; quedan cubiertos los errores visibles de LiveKit/micrófono y ramas de audio remoto sin depender de LiveKit real.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='VoiceChat.*test' --runInBand` verde con `17` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1616` tests.
+- Riesgos abiertos: branches globales en `90.54%`; deuda principal en `auth-actions.ts`, `LocationMap.tsx` guards defensivos, ramas residuales de `SupportChat.tsx`, fallbacks de `LandingContent.tsx` y catch/reload de `app/play/[id]/page.tsx`.
+- Siguiente lote: `auth-actions.ts` para branches de seguridad si se acepta más mocking de Supabase, o cerrar UI selectivos restantes.
