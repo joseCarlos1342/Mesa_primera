@@ -177,4 +177,105 @@ describe('PlayerAudioModal', () => {
 
     expect(screen.getByRole('button', { name: 'Silenciar' })).toBeDisabled()
   })
+
+  it('no hace nada al silenciar si el track existe pero es null', () => {
+    participants = [
+      { identity: 'local-user', name: 'Yo' },
+      { identity: 'remote-1', name: 'Ana', getTrackPublication: () => ({ track: null }) },
+    ]
+
+    render(<PlayerAudioModal isOpen onClose={jest.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Silenciar' }))
+    expect(screen.getByRole('button', { name: 'Silenciar' })).toBeInTheDocument()
+  })
+
+  it('silencia via track.enabled cuando no hay elementos adjuntos', () => {
+    const mockTrack = { attachedElements: [] as HTMLMediaElement[], enabled: true }
+    participants = [
+      { identity: 'local-user', name: 'Yo' },
+      { identity: 'remote-1', name: 'Ana', isSpeaking: true, getTrackPublication: () => ({ track: mockTrack }) },
+    ]
+
+    render(<PlayerAudioModal isOpen onClose={jest.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Silenciar' }))
+    expect(mockTrack.enabled).toBe(false)
+    expect(screen.getByText('Silenciado')).toBeInTheDocument()
+  })
+
+  it('muestra identity cuando el nombre es "Jugador" o esta ausente en el modal', () => {
+    const audioEl = document.createElement('audio')
+    participants = [
+      { identity: 'local-user', name: 'Yo' },
+      { identity: 'jug-1', name: 'Jugador', isSpeaking: false, getTrackPublication: () => ({ track: { attachedElements: [audioEl], enabled: true } }) },
+      { identity: 'jug-2', name: undefined, isSpeaking: false, getTrackPublication: () => ({ track: { attachedElements: [audioEl], enabled: true } }) },
+    ]
+
+    render(<PlayerAudioModal isOpen onClose={jest.fn()} />)
+
+    expect(screen.getByText('jug-1')).toBeInTheDocument()
+    expect(screen.getByText('jug-2')).toBeInTheDocument()
+  })
+})
+
+describe('VoiceChat (branches adicionales)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    microphoneEnabled = false
+    connectionState = 'connected'
+    microphonePermission = 'granted'
+    participants = []
+    localParticipant = { identity: 'local-user', setMicrophoneEnabled }
+    global.fetch = jest.fn(async () =>
+      ({ json: async () => ({ token: 'voice-token', url: 'wss://voice.test' }) })
+    ) as jest.Mock
+  })
+
+  it('maneja error al solicitar token de LiveKit', async () => {
+    global.fetch = jest.fn(() => Promise.reject(new Error('network error')))
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(<VoiceChat roomName="mesa-1" username="Jose" />)
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith('Failed to fetch LiveKit token', expect.any(Error))
+    })
+    expect(screen.getByText('Conectando canal de voz...')).toBeInTheDocument()
+  })
+
+  it('maneja error al togglear microfono', async () => {
+    setMicrophoneEnabled.mockRejectedValue(new Error('hardware error'))
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    window.alert = jest.fn()
+
+    render(<VoiceChat roomName="mesa-1" username="Jose" />)
+
+    const micButton = await screen.findByTitle('Activar o desactivar micrófono')
+    await act(async () => {
+      fireEvent.click(micButton)
+    })
+
+    expect(consoleError).toHaveBeenCalledWith('Failed to toggle mic', expect.any(Error))
+    expect(window.alert).toHaveBeenCalledWith('Error al intentar activar el micrófono. Verifica tus permisos o hardware.')
+  })
+
+  it('muestra icono de microfono activo cuando esta habilitado', async () => {
+    microphoneEnabled = true
+
+    render(<VoiceChat roomName="mesa-1" username="Jose" />)
+
+    const micButton = await screen.findByTitle('Activar o desactivar micrófono')
+    expect(micButton).toHaveClass('from-[#4ade80]')
+    expect(micButton.querySelector('.animate-ping')).toBeInTheDocument()
+  })
+
+  it('oculta nombre cuando el participante se llama "Jugador" en speakers activos', async () => {
+    participants = [{ identity: 'p1', name: 'Jugador', isSpeaking: false }]
+
+    render(<VoiceChat roomName="mesa-1" username="Jose" showSpeakers />)
+
+    await screen.findByTestId('livekit-room')
+    expect(screen.queryByText('Jugador')).not.toBeInTheDocument()
+  })
 })
