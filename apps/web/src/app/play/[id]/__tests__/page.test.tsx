@@ -689,4 +689,98 @@ describe('GameRoomPage', () => {
     expect(await screen.findByText('servidor caido')).toBeInTheDocument()
     expect(consoleError).toHaveBeenCalledWith('Join Error:', joinError)
   })
+
+  it('cierra el modal de reglas desde el botón onClose', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState()
+
+    act(() => {
+      window.dispatchEvent(new Event('open-rules-modal'))
+    })
+    expect(screen.getByText('Reglas abiertas')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Reglas abiertas'))
+    expect(screen.queryByText('Reglas abiertas')).not.toBeInTheDocument()
+  })
+
+  it('cierra el modal de depósito desde el botón onClose', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState()
+
+    act(() => {
+      window.dispatchEvent(new Event('open-recharge-modal'))
+    })
+    expect(screen.getByText('Deposito abierto')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Deposito abierto'))
+    expect(screen.queryByText('Deposito abierto')).not.toBeInTheDocument()
+  })
+
+  it('cierra el modal de transferencia desde el botón onClose', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState()
+
+    act(() => {
+      window.dispatchEvent(new Event('open-transfer-modal'))
+    })
+    expect(screen.getByText('Transferir 6000000')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Transferir 6000000'))
+    expect(screen.queryByText('Transferir 6000000')).not.toBeInTheDocument()
+  })
+
+  it('cierra el modal de ayuda de mesa desde el botón onClose', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState()
+
+    act(() => {
+      window.dispatchEvent(new Event('open-table-help'))
+    })
+    expect(screen.getByText('Ayuda room-123 user-1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Ayuda room-123 user-1'))
+    expect(screen.queryByText('Ayuda room-123 user-1')).not.toBeInTheDocument()
+  })
+
+  it('actualiza orientación cuando cambia el evento de media query', async () => {
+    let orientationHandler: ((e: { matches: boolean }) => void) | undefined
+    window.matchMedia = jest.fn(() => ({
+      matches: false,
+      addEventListener: jest.fn((type: string, handler: (e: { matches: boolean }) => void) => {
+        if (type === 'change') orientationHandler = handler
+      }),
+      removeEventListener: jest.fn(),
+    })) as unknown as typeof window.matchMedia
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState()
+
+    expect(screen.queryByText('Gira tu Dispositivo')).not.toBeInTheDocument()
+
+    act(() => {
+      orientationHandler?.({ matches: true })
+    })
+
+    expect(await screen.findByText('Gira tu Dispositivo')).toBeInTheDocument()
+  })
+
+  it('muestra banda con details nulo y calcula banda de 5000 con pique mínimo alto', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState({ minPique: 1_000_000 })
+
+    expect(screen.getByText('Banda: $5,000 por jugador')).toBeInTheDocument()
+
+    act(() => {
+      messageHandlers.get('banda')?.({ winnerNickname: 'Ana', totalBanda: 5000, bandaPerPlayer: 5000 })
+    })
+
+    expect(screen.getByText(/Ana \+\$/)).toBeInTheDocument()
+    expect(screen.getByText(/0 jugador/i)).toBeInTheDocument()
+  })
 })

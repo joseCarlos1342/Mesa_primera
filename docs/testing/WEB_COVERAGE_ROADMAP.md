@@ -17,13 +17,13 @@ Cobertura actual de `apps/web`:
 | Statements | `99.36%` |
 | Lines | `99.36%` |
 | Functions | `93.55%` |
-| Branches | `90.38%` |
-| Functions | `94.5%` |
+| Branches | `90.42%` |
+| Functions | `94.97%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1603` tests pasando.
+- `1609` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -157,7 +157,7 @@ Estado actual:
 
 - `components/game/Lobby.tsx`: `99.71%`, branches `80.51%`, functions `93.33%`.
 - `components/game/Board.tsx`: `100%` statements/lines, ramas `89.78%`, funciones `92.85%`.
-- `app/play/[id]/page.tsx`: `99.68%`, ramas `86.29%`, funciones `78.26%`; queda deuda menor en callback de reload y catch defensivo de audio.
+- `app/play/[id]/page.tsx`: `99.68%` statements/lines, `87.74%` branches, `100%` functions; quedan callback de `window.location.reload` y catch defensivo de audio.
 
 Riesgo:
 
@@ -2460,3 +2460,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='LandingContent.*test' --runInBand` verde con `33` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1603` tests.
 - Riesgos abiertos: functions globales en `94.5%`, branches en `90.38%`; deuda principal en `app/play/[id]/page.tsx` (functions 78.26%), `auth-actions.ts` (branches 87.09%), `LocationMap.tsx` (branches 66.66% defensivos), ramas residuales de `SupportChat.tsx` (guards de socketUrl) y fallbacks `||` defensivos de `LandingContent.tsx` (helpers de tutorial con titulos no mapeados).
 - Siguiente lote: `app/play/[id]/page.tsx` para subir functions globales, o `auth-actions.ts` para branches de seguridad.
+
+## Checkpoint 107
+
+- Fecha: 2026-07-02, hardening de play page callbacks.
+- Coverage antes: `99.36%` statements/lines, `94.5%` functions, `90.38%` branches; `189` suites y `1603` tests.
+- Coverage despues: `99.36%` statements/lines, `94.97%` functions, `90.42%` branches; `189` suites y `1609` tests.
+- Archivos cubiertos: `app/play/[id]/page.tsx` mediante `page.test.tsx`.
+- Tests agregados: cierre de modal de reglas desde `onClose`; cierre de modal de deposito desde `onClose`; cierre de modal de transferencia desde `onClose`; cierre de modal de ayuda de mesa desde `onClose`; cambio de orientacion portrait/landscape via evento de `matchMedia`; banda sin `details` con fallback `0` jugador(es); banda con `minPique >= 1_000_000` mostrando `$5,000 por jugador`.
+- Riesgos cerrados: `app/play/[id]/page.tsx` sube functions de `78.26%` a `100%` y branches de `86.29%` a `87.74%`; las 5 funciones no cubiertas (handler de orientation change + 4 callbacks `onClose` de modales) quedan ejercitadas; branches L620 (banda sin details) y L660 (banda 5000 vs 2000) cubiertas.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='play.*page.*test' --runInBand` verde con `133` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1609` tests.
+- Riesgos abiertos: functions globales en `94.97%`, branches en `90.42%`; deuda principal en `auth-actions.ts` (branches 87.09%), `LocationMap.tsx` (branches 66.66% defensivos), ramas residuales de `SupportChat.tsx` (guards de socketUrl), fallbacks `||` defensivos de `LandingContent.tsx` y catch de audio/reload de `app/play/[id]/page.tsx`.
+- Siguiente lote: `auth-actions.ts` para branches de seguridad, o UI selectivos (`DepositForm.tsx`, `VoiceChat.tsx`, `ReplayBoard.tsx`).
