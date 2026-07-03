@@ -2,6 +2,8 @@ import { completeGoogleRegistration, getGoogleUserData } from '../auth-actions'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
+const { enforceRateLimiting } = require('@/app/actions/anti-fraud')
+
 const TEST_PHONE_LOCAL = '3000000000'
 const TEST_PHONE_E164 = '+573000000000'
 const TEST_PHONE_QUERY = '%2B573000000000'
@@ -139,6 +141,24 @@ describe('Google Auth Actions', () => {
         avatarUrl: '',
       })
     })
+
+    it('debe usar email vacío cuando Supabase no lo entrega', async () => {
+      mockSupabase.auth.getUser.mockResolvedValueOnce({
+        data: {
+          user: {
+            id: 'u1',
+            email: null,
+            user_metadata: {},
+          },
+        },
+      })
+
+      await expect(getGoogleUserData()).resolves.toEqual({
+        fullName: '',
+        email: '',
+        avatarUrl: '',
+      })
+    })
   })
 
   describe('completeGoogleRegistration', () => {
@@ -186,6 +206,18 @@ describe('Google Auth Actions', () => {
       expect(redirect).toHaveBeenCalledWith(
         `/register/player/verify?phone=${TEST_PHONE_QUERY}&flow=register`,
       )
+    })
+
+    it('bloquea completar registro Google antes de Supabase cuando rate limit está agotado', async () => {
+      ;(enforceRateLimiting as jest.Mock).mockResolvedValueOnce({
+        success: false,
+        error: 'Demasiados intentos de completar registro.',
+      })
+
+      await expect(completeGoogleRegistration({}, buildFormData())).resolves.toEqual({
+        error: 'Demasiados intentos de completar registro.',
+      })
+      expect(mockSupabase.auth.getUser).not.toHaveBeenCalled()
     })
 
     it('debe rechazar si el teléfono ya existe en otra cuenta', async () => {
