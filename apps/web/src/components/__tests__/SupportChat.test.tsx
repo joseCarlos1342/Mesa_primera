@@ -423,4 +423,160 @@ describe('SupportChat', () => {
       ticketId: 'ticket-1',
     })
   })
+
+  it('no envia createSupportTicket cuando falla y no emite ticket-created', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    ;(getSupportTicketHistory as jest.Mock).mockResolvedValue({ data: { messages: [], attachments: [] } })
+    ;(createSupportTicket as jest.Mock).mockResolvedValueOnce({ error: 'DB caída' })
+
+    render(<SupportChat userId="user-1" embedded />)
+    fireEvent.change(screen.getByPlaceholderText('Escribe tu consulta...'), {
+      target: { value: 'Tengo un problema' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '' }))
+
+    await waitFor(() => expect(createSupportTicket).toHaveBeenCalledWith('user-1', 'Tengo un problema'))
+    expect(consoleError).toHaveBeenCalledWith('Failed to create ticket:', 'DB caída')
+    expect(socket.emit).not.toHaveBeenCalledWith('support:ticket-created', expect.anything())
+    consoleError.mockRestore()
+  })
+
+  it('no emite message-created cuando appendSupportMessage falla en mensaje posterior', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    ;(appendSupportMessage as jest.Mock).mockResolvedValueOnce({ error: 'RPC caída' })
+
+    render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
+    await screen.findByText('Necesito ayuda con mi mesa')
+    fireEvent.change(screen.getByPlaceholderText('Escribe tu consulta...'), {
+      target: { value: 'Segundo mensaje' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '' }))
+
+    await waitFor(() => expect(appendSupportMessage).toHaveBeenCalledWith('ticket-1', 'Segundo mensaje'))
+    expect(socket.emit).not.toHaveBeenCalledWith('support:message-created', expect.objectContaining({ message: 'Segundo mensaje' }))
+    expect(consoleError).toHaveBeenCalledWith('Failed to send message:', 'RPC caída')
+    consoleError.mockRestore()
+  })
+
+  it('ignora mensajes socket de otros tickets', async () => {
+    render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
+    await screen.findByText('Necesito ayuda con mi mesa')
+
+    await act(async () => {
+      socketHandlers.get('support:message-created')?.({
+        ticketId: 'other-ticket',
+        messageId: 'msg-other',
+        message: 'Mensaje de otro ticket',
+        from: 'admin',
+        timestamp: '2026-05-24T10:12:00.000Z',
+      })
+    })
+
+    expect(screen.queryByText('Mensaje de otro ticket')).not.toBeInTheDocument()
+  })
+
+  it('usa fallback de uuid y Date.now cuando el socket no envia messageId ni timestamp', async () => {
+    const { v4 } = require('uuid')
+    ;(v4 as jest.Mock).mockReturnValueOnce('fallback-uuid')
+
+    render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
+    await screen.findByText('Necesito ayuda con mi mesa')
+
+    await act(async () => {
+      socketHandlers.get('support:message-created')?.({
+        ticketId: 'ticket-1',
+        message: 'Sin IDs',
+        from: 'admin',
+      })
+    })
+
+    expect(screen.getByText('Sin IDs')).toBeInTheDocument()
+    expect(screen.getByText('Sin IDs').closest('div')?.parentElement).toBeInTheDocument()
+  })
+
+  it('reproduce audio de notificacion legacy cuando el chat flotante esta cerrado', async () => {
+    const play = jest.fn(() => Promise.resolve())
+    const audioMock = jest.fn(() => ({ volume: 0.5, play }))
+    Object.defineProperty(window, 'Audio', { configurable: true, value: audioMock })
+
+    render(<SupportChat userId="user-1" ticketId="ticket-1" />)
+    await waitFor(() => expect(socketHandlers.has('support:message')).toBe(true))
+
+    await act(async () => {
+      socketHandlers.get('support:message')?.({
+        userId: 'user-1',
+        ticketId: 'ticket-1',
+        message: 'Legacy notificacion',
+      })
+    })
+
+    expect(audioMock).toHaveBeenCalledWith('/sounds/notification.mp3')
+    expect(play).toHaveBeenCalled()
+  })
+
+  it('no procesa adjuntos sin archivo o sin ticketId activo', async () => {
+    ;(getSupportTicketHistory as jest.Mock).mockResolvedValue({ data: { messages: [], attachments: [] } })
+    ;(getSupportTicket as jest.Mock).mockResolvedValue({ data: { status: 'pending' } })
+
+    render(<SupportChat userId="user-1" embedded />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [] } })
+
+    await waitFor(() => {
+      expect(uploadSupportAttachment).not.toHaveBeenCalled()
+    })
+  })
+
+  it('no cierra un ticket finalizado', async () => {
+    ;(getSupportTicket as jest.Mock).mockResolvedValue({ data: { status: 'finalized' } })
+
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    render(<SupportChat userId="user-1" ticketId="ticket-1" />)
+    await act(async () => {
+      window.dispatchEvent(new Event('open-support-chat'))
+    })
+
+    await screen.findByText('Consulta Finalizada')
+    // No hay botón de cerrar visible porque está finalizado
+    expect(screen.queryByTitle('Cerrar consulta')).not.toBeInTheDocument()
+    expect(closeSupportTicket).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('no envia mensaje cuando input esta vacio o esta enviando', async () => {
+    ;(getSupportTicketHistory as jest.Mock).mockResolvedValue({ data: { messages: [], attachments: [] } })
+
+    render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
+    const submitBtn = screen.getByRole('button', { name: '' })
+    expect(submitBtn).toBeDisabled()
+  })
+
+  it('maneja preview de ticket largo con elipsis y preview nulo con fallback', async () => {
+    ;(listUserTickets as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'ticket-long',
+          last_message_preview: 'x'.repeat(50),
+          created_at: '2026-05-24T10:00:00.000Z',
+          status: 'pending',
+        },
+        {
+          id: 'ticket-null',
+          last_message_preview: null,
+          created_at: '2026-06-01T10:00:00.000Z',
+          status: 'attended',
+        },
+      ],
+    })
+
+    render(<SupportChat userId="user-1" />)
+    await act(async () => {
+      window.dispatchEvent(new Event('open-support-chat'))
+    })
+
+    // Ticket con preview largo (>30 chars) muestra elipsis
+    expect(await screen.findByText(/x{30}\.\.\./i)).toBeInTheDocument()
+    // Ticket con preview nulo usa fallback "Consulta" y muestra su fecha
+    expect(screen.getByText('6/1/2026')).toBeInTheDocument()
+  })
 })
