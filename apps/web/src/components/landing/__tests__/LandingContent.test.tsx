@@ -529,4 +529,68 @@ describe('LandingContent', () => {
     expect(screen.getByRole('link', { name: /desarrollado por gnesis\.group/i })).toHaveAttribute('href', 'https://gnesis.group')
     expect(screen.getByAltText('Gnesis.group')).toBeInTheDocument()
   })
+
+  const remainingTutorials = [
+    'Cómo iniciar sesión',
+    'Cómo cargar saldo',
+    'Cómo retirar saldo',
+    'Cómo transferir saldo',
+    'Cómo jugar tu primera partida',
+    'Funciones del menú de mesa',
+    'Amigos',
+  ]
+
+  remainingTutorials.forEach((title) => {
+    it(`carga dinámicamente los pasos del tutorial "${title}"`, async () => {
+      render(<LandingContent />)
+
+      const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
+      fireEvent.click(within(tutorialsSection).getByText(title))
+
+      expect(await screen.findByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
+    })
+  })
+
+  it('navega al hacer click en botón de sección del nav desktop', () => {
+    render(<LandingContent />)
+
+    const nav = screen.getByRole('button', { name: /abrir menú/i }).closest('nav')!
+    const desktopButtons = within(nav).getAllByRole('button', { name: 'Nosotros' })
+    fireEvent.click(desktopButtons[0])
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
+  })
+
+  it('cierra el menú mobile al hacer click en "Iniciar sesión"', () => {
+    render(<LandingContent />)
+
+    fireEvent.click(screen.getByRole('button', { name: /abrir menú/i }))
+    const nav = screen.getByRole('button', { name: /cerrar menú/i }).closest('nav')!
+    const loginLinks = within(nav).getAllByRole('link', { name: /^iniciar sesión$/i })
+    fireEvent.click(loginLinks[1])
+
+    expect(screen.getByRole('button', { name: /abrir menú/i })).toBeInTheDocument()
+  })
+
+  it('cierra el menú mobile al hacer click en "Crear cuenta"', () => {
+    render(<LandingContent />)
+
+    fireEvent.click(screen.getByRole('button', { name: /abrir menú/i }))
+    const nav = screen.getByRole('button', { name: /cerrar menú/i }).closest('nav')!
+    const registerLinks = within(nav).getAllByRole('link', { name: /crear cuenta/i })
+    fireEvent.click(registerLinks[1])
+
+    expect(screen.getByRole('button', { name: /abrir menú/i })).toBeInTheDocument()
+  })
+
+  it('ignora touchEnd en el carrusel de fotos sin touchStart previo', () => {
+    render(<LandingContent />)
+
+    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section') as HTMLElement
+    const carousel = photoCarouselSection.querySelector('.relative.overflow-hidden') as Element
+
+    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 20 }] })
+
+    expect(within(photoCarouselSection).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
+  })
 })
