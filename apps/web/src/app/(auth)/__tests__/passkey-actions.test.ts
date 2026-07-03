@@ -281,4 +281,112 @@ describe('passkey-actions', () => {
 
     await expect(verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)).resolves.toEqual({ error: 'Challenge expirado. Intenta de nuevo.' })
   })
+
+  it('usa WEBAUTHN_ORIGINS y WEBAUTHN_RP_ID cuando estan configurados', async () => {
+    process.env.WEBAUTHN_RP_ID = 'mesa.test'
+    process.env.WEBAUTHN_ORIGINS = 'https://mesa.test,https://staging.mesa.test'
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    createAdminClient.mockResolvedValue(adminClientWithFrom(jest.fn(() => query({ error: null }))))
+    const { verifyPasskeyRegistration } = await import('../passkey-actions')
+
+    await verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')
+
+    expect(verifyRegistrationResponse).toHaveBeenCalledWith(expect.objectContaining({
+      expectedOrigin: ['https://mesa.test', 'https://staging.mesa.test'],
+      expectedRPID: 'mesa.test',
+    }))
+    delete process.env.WEBAUTHN_RP_ID
+    delete process.env.WEBAUTHN_ORIGINS
+  })
+
+  it('usa phone como userName cuando user_metadata no tiene username', async () => {
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    const { getPasskeyRegistrationOptions } = await import('../passkey-actions')
+
+    await getPasskeyRegistrationOptions()
+
+    expect(generateRegistrationOptions).toHaveBeenCalledWith(expect.objectContaining({
+      userName: '3001234567',
+    }))
+  })
+
+  it('usa user.id como userName cuando no hay username ni phone', async () => {
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', user_metadata: {} }))
+    const { getPasskeyRegistrationOptions } = await import('../passkey-actions')
+
+    await getPasskeyRegistrationOptions()
+
+    expect(generateRegistrationOptions).toHaveBeenCalledWith(expect.objectContaining({
+      userName: 'user-1',
+    }))
+  })
+
+  it('rechaza verificacion de registro sin usuario autenticado', async () => {
+    createClient.mockResolvedValue(clientWithUser(null))
+    const { verifyPasskeyRegistration } = await import('../passkey-actions')
+
+    await expect(verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')).resolves.toEqual({ error: 'No autenticado' })
+    expect(verifyRegistrationResponse).not.toHaveBeenCalled()
+  })
+
+  it('usa transports internos por defecto cuando credential no incluye transports', async () => {
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    const testChain = query({ error: null })
+    const from = jest.fn(() => testChain)
+    createAdminClient.mockResolvedValue(adminClientWithFrom(from))
+    verifyRegistrationResponse.mockResolvedValueOnce({
+      verified: true,
+      registrationInfo: {
+        credential: {
+          id: 'credential-1',
+          publicKey: new Uint8Array([1, 2, 3]),
+          counter: 7,
+          transports: undefined,
+        },
+        credentialBackedUp: false,
+      },
+    })
+    const { verifyPasskeyRegistration } = await import('../passkey-actions')
+
+    await verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')
+
+    expect((testChain.upsert as jest.Mock)).toHaveBeenCalledWith(
+      expect.objectContaining({ transports: ['internal'] }),
+      { onConflict: 'user_id,device_id' },
+    )
+  })
+
+  it('usa transports internos por defecto cuando el dispositivo no incluye transports en opciones de login', async () => {
+    const from = jest.fn((table: string) => {
+      if (table === 'profiles') return query({ data: { id: 'user-1' }, error: null })
+      return query({ data: [{ credential_id: 'credential-1', transports: null }], error: null })
+    })
+    createAdminClient.mockResolvedValue(adminClientWithFrom(from))
+    const { getPasskeyLoginOptions } = await import('../passkey-actions')
+
+    await getPasskeyLoginOptions('3001234567')
+
+    expect(generateAuthenticationOptions).toHaveBeenCalledWith(expect.objectContaining({
+      allowCredentials: [{ id: 'credential-1', transports: ['internal'] }],
+    }))
+  })
+
+  it('usa sign_count cero cuando el dispositivo no tiene counter definido', async () => {
+    const verifyOtp = jest.fn(async () => ({ error: null }))
+    createClient.mockResolvedValue(clientWithUser(null, verifyOtp))
+    const from = jest.fn((table: string) => {
+      if (table === 'user_devices') {
+        return query({ data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: null }, error: null })
+      }
+      return query({ data: { id: 'user-1', phone: '+573001234567' }, error: null })
+    })
+    createAdminClient.mockResolvedValue(adminClientWithFrom(from))
+    const { verifyPasskeyLogin } = await import('../passkey-actions')
+
+    await verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)
+
+    expect(verifyAuthenticationResponse).toHaveBeenCalledWith(expect.objectContaining({
+      credential: expect.objectContaining({ counter: 0 }),
+    }))
+  })
 })

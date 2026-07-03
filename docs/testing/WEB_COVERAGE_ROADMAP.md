@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.36%` |
 | Lines | `99.36%` |
 | Functions | `93.55%` |
-| Branches | `90.04%` |
+| Branches | `90.16%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1575` tests pasando.
+- `1583` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
 
@@ -142,7 +142,7 @@ Estado actual:
 
 - `app/(auth)/auth-actions.ts`: `99.54%` statements/lines, `85.71%` branches, `100%` functions tras Fase 1 del plan de hardening (jun 2026). Quedan 2 branches menores en `verifyOtp` (rama de éxito sin error).
 - `app/(auth)/auth-actions-helpers.ts`: `100%`.
-- `passkey-actions.ts`: `100%` statements/lines/functions, branches `87.5%`.
+- `passkey-actions.ts`: `100%` statements/lines/functions/branches tras hardening de env vars, fallbacks de userName/transports/sign_count y auth guard de verificacion.
 - Las paginas de login/registro tienen buena base, pero quedan ramas de error y variantes de recovery/admin.
 
 Riesgo:
@@ -2419,3 +2419,17 @@ Ese lote combina:
 - Checklist admin/UI: Supabase mockeado en bordes; sin llamadas reales, sin cambios de persistencia, sin escrituras a `ledger` ni `wallets`.
 - Riesgos abiertos: branches globales en `90.04%`, aún lejos de `98%`; deuda principal en `LocationMap.tsx` (66.66% branches, guards null defensivos), `SupportChat.tsx` (83.44% branches), `auth-actions.ts` (87.18% branches), `passkey-actions.ts` (87.5% branches) y functions de `LandingContent.tsx` (72.97%)/`app/play/[id]/page.tsx` (78.26%).
 - Siguiente lote: `auth-actions.ts`/`passkey-actions.ts` para subir branches de auth, o `LandingContent.tsx`/`app/play/[id]/page.tsx` para subir functions globales.
+
+## Checkpoint 104
+
+- Fecha: 2026-07-02, hardening de auth server-side (passkey + loginWithPin).
+- Coverage antes: `99.36%` statements/lines, `93.55%` functions, `90.04%` branches; `189` suites y `1575` tests.
+- Coverage despues: `99.36%` statements/lines, `93.55%` functions, `90.16%` branches; `189` suites y `1583` tests.
+- Archivos cubiertos: `app/(auth)/passkey-actions.ts` mediante `passkey-actions.test.ts`; `app/(auth)/auth-actions.ts` mediante `otp-and-pin-actions.test.ts`.
+- Tests agregados: WEBAUTHN_ORIGINS/RP_ID env vars; fallback de `userName` a `phone` y `user.id`; auth guard de `verifyPasskeyRegistration`; fallback de `transports` a `['internal']` en registro y login; fallback de `sign_count` a `0`; redirect a `device-verify` tras OTP exitoso en dispositivo desconocido.
+- Riesgos cerrados: `passkey-actions.ts` queda en `100%` statements/lines/functions/branches; `auth-actions.ts` sube de `86.64%` a `87.09%` branches (linea 396-398 cubierta).
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='auth.*actions.*test' --runInBand` verde con `121` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1583` tests.
+- Reporte completo: `/home/jose/.local/share/opencode/tool-output/tool_f20b1f119001nXggURxUNaXEs4`.
+- Checklist auth: Supabase/Auth/WebAuthn mockeados en bordes; sin llamadas reales, sin cambios de persistencia, sin alterar flujo productivo de auth.
+- Riesgos abiertos: branches globales en `90.16%`, aún lejos de `98%`; deuda principal en `auth-actions.ts` (87.09% branches dispersos), `LocationMap.tsx` (66.66%), `SupportChat.tsx` (83.44%) y functions de `LandingContent.tsx` (72.97%)/`app/play/[id]/page.tsx` (78.26%).
+- Siguiente lote: `SupportChat.tsx` por branches/functions de UI transversal, o `LandingContent.tsx` para subir functions globales hacia `95%`.
