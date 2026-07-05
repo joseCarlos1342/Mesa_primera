@@ -1,19 +1,49 @@
 import { AccessToken } from 'livekit-server-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { createClient } from '@/utils/supabase/server';
+
+type LiveKitRequestBody = {
+  room?: unknown;
+};
+
+const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,80}$/;
+
+function sanitizeParticipantName(value: unknown, fallback: string) {
+  if (typeof value !== 'string') return fallback;
+  const cleaned = Array.from(value.trim())
+    .filter((char) => {
+      const codePoint = char.codePointAt(0) ?? 0;
+      return codePoint > 31 && codePoint !== 127;
+    })
+    .join('');
+  return cleaned ? cleaned.slice(0, 80) : fallback;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    let body: any = {};
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
+    let body: LiveKitRequestBody = {};
     try {
       body = await request.json();
     } catch {
       // Ignore JSON parse errors for empty bodies
     }
 
-    // In a real scenario we would check the session using Supabase auth to get user identity.
-    const roomName = body.room || 'general-lobby';
-    const participantName = body.username || `User-${Math.floor(Math.random() * 10000)}`;
-    const participantIdentity = body.userId || participantName;
+    const roomName = typeof body.room === 'string' ? body.room.trim() : 'general-lobby';
+    if (!ROOM_NAME_PATTERN.test(roomName)) {
+      return NextResponse.json({ error: 'Sala inválida' }, { status: 400 });
+    }
+
+    const participantName = sanitizeParticipantName(
+      user.user_metadata?.username ?? user.user_metadata?.full_name,
+      user.email?.split('@')[0] ?? user.id
+    );
 
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
@@ -27,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const at = new AccessToken(apiKey, apiSecret, {
-      identity: participantIdentity,
+      identity: user.id,
       name: participantName,
       // TTL set to 2 hours
       ttl: '2h',
@@ -38,7 +68,7 @@ export async function POST(request: NextRequest) {
     const token = await at.toJwt();
 
     return NextResponse.json({ token, url: wsUrl });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Error generating LiveKit token:', e);
     return NextResponse.json({ error: 'Failed to generate token' }, { status: 500 });
   }
