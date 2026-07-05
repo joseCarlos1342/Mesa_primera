@@ -8,13 +8,20 @@ type MockTimeline = {
   set: () => MockTimeline
 }
 
+let completeTimelineImmediately = true
+let pendingTimelineComplete: (() => void) | undefined
+
 jest.mock('gsap', () => ({
   __esModule: true,
   default: {
     timeline: jest.fn((config?: { onComplete?: () => void }) => {
       const api: MockTimeline = {
         to: jest.fn((): MockTimeline => {
-          config?.onComplete?.()
+          if (completeTimelineImmediately) {
+            config?.onComplete?.()
+          } else {
+            pendingTimelineComplete = config?.onComplete
+          }
           return api
         }),
         call: jest.fn((fn: () => void): MockTimeline => {
@@ -54,6 +61,11 @@ describe('TutorialWalkthrough', () => {
     { label: 'Paso 2', screen: <div>Pantalla 2</div>, landscape: true },
   ]
 
+  beforeEach(() => {
+    completeTimelineImmediately = true
+    pendingTimelineComplete = undefined
+  })
+
   it('renderiza el primer paso dentro del frame y el player', () => {
     render(<TutorialWalkthrough steps={steps} />)
 
@@ -83,6 +95,21 @@ describe('TutorialWalkthrough', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /ir fuera de rango/i }))
 
+    expect(screen.getByText('Pantalla 1')).toBeInTheDocument()
+  })
+
+  it('ignora cambios de paso mientras una animación sigue pendiente', () => {
+    completeTimelineImmediately = false
+    render(<TutorialWalkthrough steps={steps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /ir al paso 2/i }))
+    expect(screen.getByText('Pantalla 2')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /ir al paso 1/i }))
+    expect(screen.getByText('Pantalla 2')).toBeInTheDocument()
+
+    pendingTimelineComplete?.()
+    fireEvent.click(screen.getByRole('button', { name: /ir al paso 1/i }))
     expect(screen.getByText('Pantalla 1')).toBeInTheDocument()
   })
 
