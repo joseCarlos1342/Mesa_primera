@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.38%` |
-| Lines | `99.38%` |
+| Statements | `99.37%` |
+| Lines | `99.37%` |
 | Functions | `94.97%` |
-| Branches | `90.82%` |
+| Branches | `90.89%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1634` tests pasando.
+- `1639` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-05.
 
@@ -2519,3 +2519,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='TutorialWalkthrough.*test' --runInBand --coverage --collectCoverageFrom='src/components/landing/tutorials/TutorialWalkthrough.tsx'` verde con `5` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1634` tests; `pnpm --filter web lint` verde con `64` warnings existentes; `pnpm exec tsc --noEmit -p apps/web/tsconfig.json` verde.
 - Riesgos abiertos: branches globales en `90.82%`; el siguiente salto relevante exige `Board.tsx` en micro-lotes o UI/admin con branches reales. Evitar `LocationMap.tsx` salvo que cambie el código, porque sus ramas pendientes son guards null defensivos.
 - Siguiente lote recomendado: `Board.tsx` para turno/acciones bloqueadas/prompts/pique, o `LedgerFilters`/`UserLedgerTable` si se prefiere admin UI.
+
+## Checkpoint 112
+
+- Fecha: 2026-07-05, hardening de Board UI y LiveKit route.
+- Coverage antes: `99.38%` statements/lines, `94.97%` functions, `90.82%` branches; `189` suites y `1634` tests.
+- Coverage despues: `99.37%` statements/lines, `94.97%` functions, `90.89%` branches; `189` suites y `1639` tests.
+- Archivos cubiertos: `components/game/Board.tsx` mediante `Board.misc.test.tsx`; `app/api/livekit/route.ts` endurecido para alinear la implementación con sus tests de seguridad existentes.
+- Tests agregados: fallback de carta inferior cuando el palo no está mapeado; HUD propio con saldo/puntos por defecto y ordinal cuando el jugador local no es la mano; quitar chip sin conteo previo; click de carta ignorado fuera de turno/fase de descarte; `/api/livekit` rechaza requests no autenticados antes de generar tokens.
+- Riesgos cerrados: `Board.tsx` sube de `89.78%` a `93.61%` branches en cobertura focalizada; quedan protegidos estados visibles de mesa sin tocar lógica de juego servidor. `/api/livekit` deja de aceptar identidad/nombre desde el cliente, valida nombres de sala y rechaza usuarios no autenticados antes de generar tokens.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='Board.*test' --runInBand --coverage --collectCoverageFrom='src/components/game/Board.tsx'` verde con `78` tests; `pnpm --filter web exec jest --testPathPatterns='livekit.*route.*test' --runInBand` verde con `5` tests; `pnpm --filter web test:coverage` verde localmente con `189` suites y `1643` tests incluyendo cambios no relacionados ya presentes en el workspace; `pnpm --filter web lint` verde con `64` warnings existentes; `pnpm exec tsc --noEmit -p apps/web/tsconfig.json` verde.
+- Riesgos abiertos: branches globales en `90.89%`; `Board.tsx` conserva ramas residuales de hidratación/viewport/showdown difíciles de activar sin tests más intrusivos. Siguiente valor probable: `DepositForm.tsx`, `ShowdownCinematic.tsx`, `TableHelpModal.tsx`, `LedgerFilters` o `UserLedgerTable`.
+- Siguiente lote recomendado: UI de juego con errores visibles (`DepositForm.tsx`/`ShowdownCinematic.tsx`) o admin UI (`UserLedgerTable`) antes de seguir con ramas defensivas de `Board.tsx`.

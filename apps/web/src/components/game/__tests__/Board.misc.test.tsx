@@ -11,9 +11,10 @@ jest.mock('framer-motion', () => ({
 
 jest.mock('../PlayerBadge', () => ({ PlayerBadge: ({ player }: { player: { nickname?: string } }) => <div data-testid="player-badge">{player?.nickname ?? 'VACÍO'}</div> }))
 jest.mock('../ActionControls', () => ({
-  ActionControls: ({ onBetConfirm, onBetClear, onClearSelection, totalBet, pasoJuegoChoice, onPasoJuegoResolved }: any) => (
+  ActionControls: ({ onBetConfirm, onBetClear, onClearSelection, selectedCards, totalBet, pasoJuegoChoice, onPasoJuegoResolved }: any) => (
     <div data-testid="action-controls">
       <span data-testid="total-bet">{totalBet}</span>
+      <span data-testid="selected-count">{selectedCards.length}</span>
       <button type="button" onClick={onBetConfirm}>Confirmar apuesta</button>
       <button type="button" onClick={onBetClear}>Limpiar apuesta</button>
       <button type="button" onClick={onClearSelection}>Limpiar selección</button>
@@ -93,6 +94,28 @@ describe('Board misc guards and banners', () => {
     expect(screen.getByText(/esperando próxima partida/i)).toBeInTheDocument()
     expect(screen.getByText('$1000')).toBeInTheDocument()
     expect(screen.getByText('$500')).toBeInTheDocument()
+  })
+
+  it('usa fallback de palo para la carta inferior del mazo si el palo es desconocido', () => {
+    const room = createRoom()
+    room.state.bottomCard = '12-X'
+
+    const { container } = render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} />)
+
+    const bottomCardImage = container.querySelector('img[src="/cards/12-x.png?v=3"]')
+    expect(bottomCardImage).toBeInTheDocument()
+  })
+
+  it('muestra defaults del HUD y ordinal cuando el jugador local no es la mano', () => {
+    const room = createRoom()
+    room.state.dealerId = 'player-2'
+    const playersWithoutChips = [{ ...players[0], chips: undefined, turnOrder: 2 }, players[1]]
+
+    render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={playersWithoutChips} myCards="01-O" />)
+
+    expect(screen.getAllByText('$0').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('0').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('2ª')).toBeInTheDocument()
   })
 
   it('muestra intro, shuffle y overlays de reveal/showdown según fase', () => {
@@ -178,6 +201,17 @@ describe('Board misc guards and banners', () => {
     await waitFor(() => expect(screen.getByTestId('chip-total')).toHaveTextContent('0'))
   })
 
+  it('ignora quitar fichas cuando no hay conteo previo', () => {
+    const room = createRoom()
+    room.state.phase = 'PIQUE'
+    room.state.turnPlayerId = 'player-1'
+
+    render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /quitar chip/i }))
+    expect(screen.getByTestId('chip-total')).toHaveTextContent('0')
+  })
+
   it('no permite agregar fichas por encima del saldo disponible', () => {
     const room = createRoom()
     room.state.phase = 'PIQUE'
@@ -208,6 +242,18 @@ describe('Board misc guards and banners', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /resolver paso juego/i }))
     expect(onPasoJuegoResolved).toHaveBeenCalled()
+  })
+
+  it('no selecciona cartas si no es turno de descarte', () => {
+    const room = createRoom()
+    room.state.phase = 'PIQUE'
+    room.state.turnPlayerId = 'player-1'
+
+    render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} myCards="01-O" />)
+
+    fireEvent.click(screen.getByText('1-O').closest('div')!)
+
+    expect(screen.getByTestId('selected-count')).toHaveTextContent('0')
   })
 
   it('dispara animación de reparto para cartas privadas nuevas sin tratar hidratación inicial como deal', async () => {
