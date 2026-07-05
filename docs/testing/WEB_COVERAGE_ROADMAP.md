@@ -17,14 +17,14 @@ Cobertura actual de `apps/web`:
 | Statements | `99.38%` |
 | Lines | `99.38%` |
 | Functions | `94.97%` |
-| Branches | `90.8%` |
+| Branches | `90.82%` |
 
 Resultado de la corrida:
 
 - `189` suites en verde.
-- `1633` tests pasando.
+- `1634` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-02.
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-05.
 
 ## Meta Final
 
@@ -2507,3 +2507,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='ReplayBoard.*test' --runInBand` verde con `27` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1633` tests.
 - Riesgos abiertos: branches globales en `90.8%`; quedan sobre todo guards defensivos difíciles de activar sin tests artificiales (`LocationMap`, fallbacks internos de landing/play/support) y branches menores de auth/server actions.
 - Siguiente lote: medir otro componente UI con branches reales o detener antes de entrar en guards artificiales.
+
+## Checkpoint 111
+
+- Fecha: 2026-07-05, hardening de TutorialWalkthrough UI.
+- Coverage antes: `99.38%` statements/lines, `94.97%` functions, `90.8%` branches; `189` suites y `1633` tests.
+- Coverage despues: `99.38%` statements/lines, `94.97%` functions, `90.82%` branches; `189` suites y `1634` tests.
+- Archivos cubiertos: `components/landing/tutorials/TutorialWalkthrough.tsx` mediante `TutorialWalkthrough.test.tsx`.
+- Tests agregados: doble cambio de paso mientras la timeline de GSAP queda pendiente; el segundo cambio se ignora hasta completar la animación y luego se permite volver al paso anterior.
+- Riesgos cerrados: `TutorialWalkthrough.tsx` sube de `95.65%` a `100%` branches; queda protegido el guard `isAnimating` contra cambios simultáneos de paso sin depender de GSAP real.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='TutorialWalkthrough.*test' --runInBand --coverage --collectCoverageFrom='src/components/landing/tutorials/TutorialWalkthrough.tsx'` verde con `5` tests; `pnpm --filter web test:coverage` verde con `189` suites y `1634` tests; `pnpm --filter web lint` verde con `64` warnings existentes; `pnpm exec tsc --noEmit -p apps/web/tsconfig.json` verde.
+- Riesgos abiertos: branches globales en `90.82%`; el siguiente salto relevante exige `Board.tsx` en micro-lotes o UI/admin con branches reales. Evitar `LocationMap.tsx` salvo que cambie el código, porque sus ramas pendientes son guards null defensivos.
+- Siguiente lote recomendado: `Board.tsx` para turno/acciones bloqueadas/prompts/pique, o `LedgerFilters`/`UserLedgerTable` si se prefiere admin UI.
