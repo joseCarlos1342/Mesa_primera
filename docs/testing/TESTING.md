@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.37%` statements, `90.89%` branches, `94.97%` functions, `99.37%` lines con `189` suites y `1639` tests pasando (`2026-07-05`).
+- Medicion web vigente: `99.4%` statements, `90.91%` branches, `95.09%` functions, `99.4%` lines con `195` suites y `1675` tests pasando (`2026-07-05`).
 - Medicion game-server vigente: `95.36%` statements, `86.01%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `766` tests pasando (`2026-07-01`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -74,6 +74,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de ReplayBoard UI (2026-07-02): 7 tests web adicionales sobre `ReplayBoard.tsx` cubren memoria progresiva de cartas por player/user, ausencia de cartas, fase desconocida, pique en cero y atenuación de foldeados antes de showdown.
 - Hardening de TutorialWalkthrough UI (2026-07-05): 1 test web adicional sobre `TutorialWalkthrough.tsx` cubre el guard de animación pendiente para ignorar cambios de paso simultáneos y deja el componente en `100%` branches/functions/statements/lines.
 - Hardening de Board y LiveKit (2026-07-05): 5 tests web netos cubren fallback de carta inferior con palo desconocido, HUD propio con saldo/puntos por defecto, remove chip sin conteo previo, guard de selección fuera de descarte y seguridad de `/api/livekit`. El endpoint queda endurecido para validar sala y derivar identidad desde Supabase Auth, sin confiar en `userId`/`username` enviados por el cliente.
+- Hardening de DepositForm UI (2026-07-05): 4 tests web adicionales sobre `DepositForm.tsx` cubren error de archivo inválido, limpieza de preview al quitar archivo, alert sin onSuccess y prevención de caracteres inválidos en monto.
 
 ## Roadmap de Cobertura Web
 

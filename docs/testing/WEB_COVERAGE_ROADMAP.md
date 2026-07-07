@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.37%` |
-| Lines | `99.37%` |
-| Functions | `94.97%` |
-| Branches | `90.89%` |
+| Statements | `99.4%` |
+| Lines | `99.4%` |
+| Functions | `95.09%` |
+| Branches | `90.91%` |
 
 Resultado de la corrida:
 
-- `189` suites en verde.
-- `1639` tests pasando.
+- `195` suites en verde.
+- `1675` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-05.
 
@@ -2531,3 +2531,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='Board.*test' --runInBand --coverage --collectCoverageFrom='src/components/game/Board.tsx'` verde con `78` tests; `pnpm --filter web exec jest --testPathPatterns='livekit.*route.*test' --runInBand` verde con `5` tests; `pnpm --filter web test:coverage` verde localmente con `189` suites y `1643` tests incluyendo cambios no relacionados ya presentes en el workspace; `pnpm --filter web lint` verde con `64` warnings existentes; `pnpm exec tsc --noEmit -p apps/web/tsconfig.json` verde.
 - Riesgos abiertos: branches globales en `90.89%`; `Board.tsx` conserva ramas residuales de hidratación/viewport/showdown difíciles de activar sin tests más intrusivos. Siguiente valor probable: `DepositForm.tsx`, `ShowdownCinematic.tsx`, `TableHelpModal.tsx`, `LedgerFilters` o `UserLedgerTable`.
 - Siguiente lote recomendado: UI de juego con errores visibles (`DepositForm.tsx`/`ShowdownCinematic.tsx`) o admin UI (`UserLedgerTable`) antes de seguir con ramas defensivas de `Board.tsx`.
+
+## Checkpoint 113
+
+- Fecha: 2026-07-05, hardening de DepositForm UI.
+- Coverage antes: `99.37%` statements/lines, `94.97%` functions, `90.89%` branches; `189` suites y `1639` tests.
+- Coverage despues: `99.4%` statements/lines, `95.09%` functions, `90.91%` branches; `195` suites y `1675` tests.
+- Archivos cubiertos: `components/game/DepositForm.tsx` mediante `DepositForm.test.tsx`.
+- Tests agregados: error de archivo inválido (PDF rechazado); limpieza de preview al quitar archivo; alert sin onSuccess cuando depósito es exitoso; prevención de caracteres inválidos en input de monto.
+- Riesgos cerrados: `DepositForm.tsx` sube de `77.35%` a `85.96%` branches en cobertura focalizada; quedan protegidos errores visibles de validación de archivo, preview y alert sin callback.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='DepositForm.*test' --runInBand --coverage --collectCoverageFrom='src/components/game/DepositForm.tsx'` verde con `8` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1675` tests.
+- Riesgos abiertos: branches globales en `90.91%`; `DepositForm.tsx` conserva ramas defensivas de validación de monto/observaciones. Siguiente valor probable: `ShowdownCinematic.tsx`, `TableHelpModal.tsx` o `UserLedgerTable.tsx`.
+- Siguiente lote recomendado: `ShowdownCinematic.tsx` para cierre visual de mano, o `UserLedgerTable.tsx` para admin UI de finanzas.

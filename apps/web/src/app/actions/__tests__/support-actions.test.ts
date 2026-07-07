@@ -658,6 +658,19 @@ describe('support actions', () => {
     })
   })
 
+  it('rechaza rutas con path traversal antes de llamar a storage', async () => {
+    const createSignedUrl = jest.fn()
+    const storageFrom = jest.fn().mockReturnValue({ createSignedUrl })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+      storage: { from: storageFrom },
+    }))
+
+    await expect(getSupportAttachmentUrl('../../etc/passwd')).resolves.toEqual({
+      error: 'Ruta de adjunto inválida',
+    })
+    expect(createSignedUrl).not.toHaveBeenCalled()
+  })
+
   it('rechaza appendSupportMessage cuando no hay usuario autenticado', async () => {
     const supabase = queuedSupabase({ authUser: null })
     ;(createClient as jest.Mock).mockResolvedValue(supabase)

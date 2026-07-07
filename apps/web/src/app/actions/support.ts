@@ -321,6 +321,15 @@ export async function getSupportAttachmentUrl(storagePath: string): Promise<Acti
   const { supabase, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase) return { error: authError || 'No autenticado' }
 
+  const hasControlChars = Array.from(storagePath).some((c) => {
+    const codePoint = c.codePointAt(0) ?? 0;
+    return codePoint <= 31;
+  });
+
+  if (!storagePath || typeof storagePath !== 'string' || storagePath.includes('..') || hasControlChars) {
+    return { error: 'Ruta de adjunto inválida' }
+  }
+
   const { data, error } = await supabase.storage
     .from('support-attachments')
     .createSignedUrl(storagePath, 3600)

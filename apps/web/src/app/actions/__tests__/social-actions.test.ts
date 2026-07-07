@@ -68,6 +68,22 @@ describe('social actions', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it('rechaza queries con caracteres de filtro PostgREST antes de llamar a .or()', async () => {
+    const supabase = queuedSupabase({})
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(searchUsers('ana),profiles(*)')).resolves.toEqual([])
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('rechaza queries demasiado largas antes de llamar a .or', async () => {
+    const supabase = queuedSupabase({})
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(searchUsers('x'.repeat(120))).resolves.toEqual([])
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
   it('obtiene leaderboard por periodo/categoría y devuelve vacío si RPC falla', async () => {
     const rpc = jest.fn()
       .mockResolvedValueOnce({ data: [{ user_id: 'user-1', score: 120 }], error: null })
@@ -327,6 +343,24 @@ describe('social actions', () => {
     }))
   })
 
+  it('rechaza mensaje directo vacío antes de insertar', async () => {
+    const supabase = queuedSupabase({})
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(sendDirectMessage('friend-1', '   ')).resolves.toEqual({ error: 'El mensaje no puede estar vacío' })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('rechaza mensaje directo demasiado largo antes de insertar', async () => {
+    const supabase = queuedSupabase({})
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(sendDirectMessage('friend-1', 'x'.repeat(1001))).resolves.toEqual({
+      error: 'El mensaje es demasiado largo',
+    })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
   it('maneja mensaje directo sin sesión, error de insert y notificación sin truncar', async () => {
     const unauthSupabase = queuedSupabase({}, null)
     ;(createClient as jest.Mock).mockResolvedValueOnce(unauthSupabase)
@@ -417,6 +451,15 @@ describe('social actions', () => {
     ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({ notifications: [{ delete: deleteFn }] }))
     await expect(deleteNotification('n1')).resolves.toEqual({ success: false })
     expect(revalidatePath).toHaveBeenCalledWith('/')
+  })
+
+  it('rechaza actualizar apodo vacío o demasiado largo', async () => {
+    const supabase = queuedSupabase({})
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(updateFriendNickname('friendship-1', '   ')).resolves.toEqual({ error: 'Apodo inválido' })
+    await expect(updateFriendNickname('friendship-1', 'x'.repeat(31))).resolves.toEqual({ error: 'Apodo inválido' })
+    expect(supabase.from).not.toHaveBeenCalled()
   })
 
   it('actualiza el apodo correcto cuando el usuario inició la amistad', async () => {
