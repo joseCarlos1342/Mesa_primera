@@ -101,27 +101,55 @@ export default function ProfilePage() {
   const saveProfile = async (phoneOverride?: string) => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        username: formData.username,
-        full_name: formData.full_name,
-        phone: phoneOverride ?? formData.phone,
-        avatar_url: formData.avatar_url,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
 
-    if (error) {
-      showToast('No pudimos actualizar tu perfil. Intenta de nuevo.', 'error');
-    } else {
-      if (phoneOverride) {
-        originalPhone.current = phoneOverride;
-        setFormData((prev) => ({ ...prev, phone: phoneOverride }));
-      }
-      showToast('¡Perfil actualizado con éxito!', 'success');
-      router.refresh();
+    const { updateMyProfile } = await import('@/app/actions/profile');
+    const result = await updateMyProfile({
+      username: formData.username,
+      full_name: formData.full_name,
+    });
+
+    if (result.error) {
+      showToast(result.error, 'error');
+      setSaving(false);
+      return;
     }
+
+    if (phoneOverride) {
+      const { error: phoneError } = await supabase
+        .from('profiles')
+        .update({
+          phone: phoneOverride,
+          avatar_url: formData.avatar_url,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (phoneError) {
+        showToast('No pudimos actualizar el teléfono. Intenta de nuevo.', 'error');
+        setSaving(false);
+        return;
+      }
+      originalPhone.current = phoneOverride;
+      setFormData((prev) => ({ ...prev, phone: phoneOverride }));
+    } else {
+      const { error: avatarError } = await supabase
+        .from('profiles')
+        .update({
+          phone: formData.phone,
+          avatar_url: formData.avatar_url,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (avatarError) {
+        showToast('No pudimos actualizar el perfil. Intenta de nuevo.', 'error');
+        setSaving(false);
+        return;
+      }
+    }
+
+    showToast('¡Perfil actualizado con éxito!', 'success');
+    router.refresh();
     setSaving(false);
   };
 
@@ -148,8 +176,15 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    if (!file.type.startsWith('image/')) {
-      showToast('Selecciona solo archivos de imagen', 'error');
+    const ALLOWED_MIME: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    };
+
+    const ext = ALLOWED_MIME[file.type];
+    if (!ext) {
+      showToast('Solo se aceptan imágenes JPG, PNG o WebP', 'error');
       return;
     }
 
@@ -159,8 +194,7 @@ export default function ProfilePage() {
     }
 
     setSaving(true);
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${user.id}/avatar-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `${user.id}/avatar-${Math.random().toString(36).substring(2)}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
