@@ -449,6 +449,27 @@ describe('Auth Actions', () => {
       }))
       expect(redirect).toHaveBeenCalledWith('/login/admin')
     })
+
+    it('valida email, contraseña y nombre antes de crear admin', async () => {
+      process.env.ADMIN_INVITE_TOKEN = 'secret-token'
+      const signUp = jest.fn().mockResolvedValue({ error: null })
+      ;(createClient as any).mockResolvedValue({ auth: { signUp } })
+      const formData = new FormData()
+      formData.append('inviteToken', 'secret-token')
+      formData.append('email', 'no-es-email')
+      formData.append('password', 'short')
+      formData.append('fullName', '<script>alert(1)</script>')
+
+      await expect(registerAdmin(null, formData)).resolves.toEqual({
+        fieldErrors: expect.objectContaining({
+          email: 'Correo electrónico inválido',
+          password: 'La contraseña debe tener al menos 8 caracteres',
+          fullName: 'Solo letras, espacios y guiones. Entre 2 y 80 caracteres',
+        }),
+      })
+
+      expect(signUp).not.toHaveBeenCalled()
+    })
   })
 
   describe('loginAdmin', () => {

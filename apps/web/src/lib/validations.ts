@@ -180,6 +180,12 @@ export const loginAdminSchema = z.object({
   password: adminPasswordSchema,
 })
 
+export const registerAdminSchema = z.object({
+  email: adminEmailSchema,
+  password: adminPasswordSchema,
+  fullName: fullNameSchema,
+})
+
 export const depositSchema = z.object({
   amount: depositAmountSchema,
   observations: observationsSchema,
@@ -192,6 +198,7 @@ export type LoginPlayerInput = z.infer<typeof loginPlayerSchema>
 export type LoginPlayerWithPinInput = z.infer<typeof loginPlayerWithPinSchema>
 export type SetPinInput = z.infer<typeof setPinSchema>
 export type LoginAdminInput = z.infer<typeof loginAdminSchema>
+export type RegisterAdminInput = z.infer<typeof registerAdminSchema>
 export type AdminPasswordResetInput = z.infer<typeof adminPasswordResetSchema>
 export type AdminEmailChangeInput = z.infer<typeof adminEmailChangeSchema>
 export type DepositInput = z.infer<typeof depositSchema>
