@@ -4,6 +4,7 @@ import { getMyStats } from '@/app/actions/stats'
 import { useAppLock } from '@/components/providers/AppLockProvider'
 import { clearSessionValidated } from '@/lib/app-lock-session'
 
+const updateMyProfile = jest.fn()
 const push = jest.fn()
 const refresh = jest.fn()
 const router = { push, refresh }
@@ -15,6 +16,10 @@ const maybeSingle = jest.fn()
 const updateEq = jest.fn()
 const upload = jest.fn()
 const getPublicUrl = jest.fn()
+
+jest.mock('@/app/actions/profile', () => ({
+  updateMyProfile: (...args: unknown[]) => updateMyProfile(...args),
+}))
 
 const supabase = {
   auth: { getUser, updateUser, verifyOtp, signOut },
@@ -98,6 +103,7 @@ describe('ProfilePage', () => {
     getUser.mockResolvedValue({ data: { user: { id: 'user-1', email: 'jugador@mesa.test' } } })
     maybeSingle.mockResolvedValue({ data: profile, error: null })
     updateEq.mockResolvedValue({ error: null })
+    updateMyProfile.mockResolvedValue({ success: true })
     updateUser.mockResolvedValue({ error: null })
     verifyOtp.mockResolvedValue({ error: null })
     signOut.mockResolvedValue({ error: null })
@@ -195,7 +201,7 @@ describe('ProfilePage', () => {
     await act(async () => {
       fireEvent.change(fileInput, { target: { files: [new File(['x'], 'archivo.txt', { type: 'text/plain' })] } })
     })
-    expect(await screen.findByText('Selecciona solo archivos de imagen')).toBeInTheDocument()
+    expect(await screen.findByText('Solo se aceptan imágenes JPG, PNG o WebP')).toBeInTheDocument()
 
     const largeImage = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'grande.png', { type: 'image/png' })
     await act(async () => {
@@ -260,14 +266,14 @@ describe('ProfilePage', () => {
   })
 
   it('muestra error y no refresca cuando falla la actualización de profiles', async () => {
-    updateEq.mockResolvedValueOnce({ error: { message: 'RLS bloquea update' } })
+    updateMyProfile.mockResolvedValueOnce({ error: 'No pudimos actualizar tu perfil. Intenta de nuevo.' })
     await renderLoadedProfile()
 
     fireEvent.change(screen.getByDisplayValue('chepe'), { target: { value: 'aliasFallido' } })
     fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
 
     expect(await screen.findByText('No pudimos actualizar tu perfil. Intenta de nuevo.')).toBeInTheDocument()
-    expect(screen.queryByText(/RLS bloquea update/)).not.toBeInTheDocument()
+    expect(updateEq).not.toHaveBeenCalled()
     expect(refresh).not.toHaveBeenCalled()
   })
 
