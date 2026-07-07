@@ -8,16 +8,20 @@ export async function requestWithdrawal(amount: number, bankDetails: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No authenticated' }
 
+  const amount_cents = Math.round(amount * 100)
+  if (amount_cents <= 0 || amount_cents % 100000 !== 0) return { error: 'El monto debe ser múltiplo de $1.000 COP' }
+
+  const trimmedBankDetails = (bankDetails ?? '').trim()
+  if (!trimmedBankDetails) return { error: 'Los detalles bancarios son obligatorios' }
+  if (trimmedBankDetails.length > 1000) return { error: 'Los detalles bancarios son demasiado largos' }
+
   const { data: wallet } = await supabase
     .from('wallets')
     .select('id, balance_cents')
     .eq('user_id', user.id)
     .single()
 
-  const amount_cents = Math.round(amount * 100)
-
   if (!wallet) return { error: 'Wallet not found' }
-  if (amount_cents <= 0 || amount_cents % 100000 !== 0) return { error: 'El monto debe ser múltiplo de $1.000 COP' }
   if (Number(wallet.balance_cents) < amount_cents) return { error: 'Saldo insuficiente' }
 
   // 1. Create PENDING withdrawal request
@@ -26,7 +30,7 @@ export async function requestWithdrawal(amount: number, bankDetails: string) {
     .insert({
       user_id: user.id,
       amount_cents: amount_cents,
-      bank_info: bankDetails,
+      bank_info: trimmedBankDetails,
       status: 'pending'
     })
 
