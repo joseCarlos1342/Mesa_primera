@@ -101,6 +101,39 @@ describe('MesaRoom via Colyseus Testing', () => {
     expect(room.state.players.get(client1.sessionId)?.isReady).toBe(false);
   });
 
+  it('rejects join with non-numeric chips before adding a player', async () => {
+    const room = await colyseus.createRoom('mesa_primera', {
+      tableId: 'test-table-invalid-chips'
+    });
+
+    await expect(colyseus.connectTo(room, {
+      userId: 'u-invalid-chips',
+      nickname: 'Atacante',
+      avatarUrl: 'as-oros',
+      chips: '999999999' as never,
+    })).rejects.toThrow('Saldo inválido');
+
+    expect(room.state.players.size).toBe(0);
+  });
+
+  it('sanitizes public nickname and avatar from join payload', async () => {
+    const room = await colyseus.createRoom('mesa_primera', {
+      tableId: 'test-table-sanitize-join'
+    });
+
+    const client = await colyseus.connectTo(room, {
+      userId: 'u-safe-join',
+      nickname: '<script>alert(1)</script>JugadorConNombreExtremadamenteLargo',
+      avatarUrl: 'javascript:alert(1)',
+      chips: 10_000_000,
+    });
+
+    const player = room.state.players.get(client.sessionId);
+    expect(player?.nickname).not.toContain('<');
+    expect(player?.nickname.length).toBeLessThanOrEqual(30);
+    expect(player?.avatarUrl).toBe('default');
+  });
+
   it('fisher-yates shuffle functionality generates 28 unique combinations', async () => {
     const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-table' });
     
@@ -4790,7 +4823,7 @@ describe('MesaRoom via Colyseus Testing', () => {
   // ───────────────────────────────────────────────────────────
 
   describe('delete-room', () => {
-    it('calls disconnect when delete-room message is received', async () => {
+    it('ignora delete-room enviado por un jugador normal', async () => {
       const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-delete-1' });
 
       const p1 = await colyseus.connectTo(room, { nickname: 'P1', deviceId: 'dev-d1', userId: 'supa-d1', chips: 10_000_000 });
@@ -4804,7 +4837,25 @@ describe('MesaRoom via Colyseus Testing', () => {
       p1.send('delete-room', { adminToken: 'test-token' });
       await new Promise(r => setTimeout(r, 200));
 
-      expect(disconnectSpy).toHaveBeenCalled();
+      expect(disconnectSpy).not.toHaveBeenCalled();
+      disconnectSpy.mockRestore();
+    });
+
+    it('permite delete-room solo a un spectator admin validado', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-delete-admin' });
+
+      await colyseus.connectTo(room, { nickname: 'P1', deviceId: 'dev-d2', userId: 'supa-d2', chips: 10_000_000 });
+      const admin = await colyseus.connectTo(room, { spectator: true, supervisionToken: 'valid-token' });
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const internalRoom = colyseus.getRoomById(room.roomId) as any;
+      const disconnectSpy = vi.spyOn(internalRoom, 'disconnect').mockImplementation(async () => {});
+
+      admin.send('delete-room', { adminToken: 'test-token' });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
       disconnectSpy.mockRestore();
     });
   });

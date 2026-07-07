@@ -21,6 +21,35 @@ interface MesaMetadataLike {
   isCustom?: boolean;
 }
 
+const NICKNAME_MAX_LENGTH = 30;
+const AVATAR_ID_MAX_LENGTH = 40;
+
+function normalizeNickname(value: unknown, fallback: string) {
+  const raw = typeof value === "string" ? value : "";
+  const sanitized = raw
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}_\- ]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, NICKNAME_MAX_LENGTH);
+
+  return sanitized || fallback;
+}
+
+function normalizeAvatarUrl(value: unknown) {
+  if (typeof value !== "string") return "default";
+  const avatar = value.trim();
+  if (!avatar || avatar.length > AVATAR_ID_MAX_LENGTH) return "default";
+  return /^[a-z0-9_-]+$/i.test(avatar) ? avatar : "default";
+}
+
+function normalizeJoinChips(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
+    throw new Error("Saldo inválido");
+  }
+  return value;
+}
+
 export async function handleConnectionJoin(room: MesaRoom, client: Client, options: any): Promise<void> {
   const r: RoomCtx = room;
 
@@ -43,7 +72,9 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
     return;
   }
 
-  const requestedNickname = options.nickname || `Jugador_${client.sessionId}`;
+  const requestedNickname = normalizeNickname(options.nickname, `Jugador_${client.sessionId}`);
+  const avatarUrl = normalizeAvatarUrl(options.avatarUrl);
+  const chips = normalizeJoinChips(options.chips ?? 0);
   const deviceId = options.deviceId;
 
   // ── Sanction enforcement: block players with active game/full/permanent sanctions ──
@@ -104,8 +135,8 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
     }
 
     // Si reconecta en LOBBY, actualizar chips con el saldo actual de opciones
-    if (r.state.phase === "LOBBY" && options.chips) {
-      newPlayer.chips = options.chips;
+    if (r.state.phase === "LOBBY") {
+      newPlayer.chips = chips;
     }
 
     r.state.players.delete(oldSessionId);
@@ -153,7 +184,6 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
   }
 
   // ── Validación de saldo mínimo (usa minEntry personalizado si existe) ──
-  const chips = options.chips || 0;
   const roomMinEntry = (r.metadata as MesaMetadataLike)?.minEntry || MIN_BALANCE_CENTS;
   if (chips < roomMinEntry) {
     const formatted = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(roomMinEntry / 100);
@@ -165,7 +195,7 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
   const newPlayer = new Player();
   newPlayer.id = client.sessionId;
   newPlayer.nickname = requestedNickname;
-  newPlayer.avatarUrl = options.avatarUrl || "default";
+  newPlayer.avatarUrl = avatarUrl;
   newPlayer.chips = chips;
   newPlayer.connected = true;
   newPlayer.deviceId = deviceId;
