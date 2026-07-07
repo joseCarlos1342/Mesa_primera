@@ -6,6 +6,7 @@ import { logAdminAction } from "./admin-audit";
 
 // ── Valid chip denominations (in centavos) ──
 const VALID_CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as const;
+const TABLE_NAME_MAX_LENGTH = 80;
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -74,6 +75,21 @@ async function ensureAdmin(supabase: any) {
 
   if (userRecord?.role !== "admin") throw new Error("Acceso denegado");
   return userData.user.id;
+}
+
+function normalizeTableName(name: string) {
+  const normalizedName = name.trim();
+  if (!normalizedName) throw new Error("El nombre de la mesa es requerido.");
+  if (normalizedName.length > TABLE_NAME_MAX_LENGTH) throw new Error("El nombre de la mesa es demasiado largo.");
+  return normalizedName;
+}
+
+function normalizeMaxPlayers(maxPlayers: number | undefined, defaultValue = 7) {
+  const normalizedMaxPlayers = maxPlayers ?? defaultValue;
+  if (normalizedMaxPlayers < 3 || normalizedMaxPlayers > 7) {
+    throw new Error("La capacidad debe estar entre 3 y 7 jugadores.");
+  }
+  return normalizedMaxPlayers;
 }
 
 export async function getTablesList(category?: TableCategory) {
@@ -213,14 +229,17 @@ export async function kickPlayer(gameId: string, playerId: string) {
 }
 
 export async function createTable(data: { name: string, max_players?: number, game_type?: string, lobby_slot?: number }) {
+  const name = normalizeTableName(data.name);
+  const maxPlayers = normalizeMaxPlayers(data.max_players);
+
   const supabase = await createClient();
   const adminId = await ensureAdmin(supabase);
 
   const { error } = await supabase
     .from("tables")
     .insert({
-      name: data.name,
-      max_players: data.max_players || 7,
+      name,
+      max_players: maxPlayers,
       game_type: data.game_type || 'primera_28',
       min_bet: 1,
       created_by: adminId,
@@ -233,9 +252,9 @@ export async function createTable(data: { name: string, max_players?: number, ga
 
   if (error) throw error;
 
-  await logAdminAction(adminId, 'table_created', 'table', data.name, {
-    name: data.name,
-    max_players: data.max_players || 7,
+  await logAdminAction(adminId, 'table_created', 'table', name, {
+    name,
+    max_players: maxPlayers,
     game_type: data.game_type || 'primera_28',
     table_category: 'common',
   }, { context: 'tables' });

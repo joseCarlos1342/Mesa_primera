@@ -10,6 +10,14 @@ import type {
   ActionResult,
 } from '@/types/admin-search'
 
+const DISPUTE_PRIORITIES = ['low', 'medium', 'high', 'critical'] as const
+const DISPUTE_TITLE_MAX_LENGTH = 120
+const DISPUTE_DESCRIPTION_MAX_LENGTH = 5000
+
+function isDisputePriority(priority: string): priority is DisputePriority {
+  return DISPUTE_PRIORITIES.includes(priority as DisputePriority)
+}
+
 // ─── Auth ───────────────────────────────────────────────────
 
 async function verifyAdmin() {
@@ -36,7 +44,13 @@ export async function createDispute(input: {
   evidence_snapshot: EvidenceLink[]
   support_ticket_id?: string
 }): Promise<ActionResult<{ id: string }>> {
-  if (!input.title.trim()) return { error: 'El título es obligatorio' }
+  const title = input.title.trim()
+  const description = input.description.trim()
+
+  if (!title) return { error: 'El título es obligatorio' }
+  if (title.length > DISPUTE_TITLE_MAX_LENGTH) return { error: 'El título es demasiado largo' }
+  if (description.length > DISPUTE_DESCRIPTION_MAX_LENGTH) return { error: 'La descripción es demasiado larga' }
+  if (!isDisputePriority(input.priority)) return { error: 'Prioridad inválida' }
 
   const { supabase, adminId, error: authError } = await verifyAdmin()
   if (authError || !supabase || !adminId) return { error: authError || 'No autenticado' }
@@ -44,8 +58,8 @@ export async function createDispute(input: {
   const { data, error } = await supabase
     .from('admin_dispute_cases')
     .insert({
-      title: input.title.trim(),
-      description: input.description.trim(),
+      title,
+      description,
       priority: input.priority,
       opened_by: adminId,
       evidence_snapshot: input.evidence_snapshot,
@@ -57,7 +71,7 @@ export async function createDispute(input: {
   if (error) return { error: error.message }
 
   await logAdminAction(adminId, 'dispute_created', 'dispute', data.id, {
-    title: input.title,
+    title,
     priority: input.priority,
     evidence_count: input.evidence_snapshot.length,
     support_ticket_id: input.support_ticket_id || null,
