@@ -73,9 +73,9 @@ export function handleAdminBan(room: MesaRoom, _client: Client, message: AdminPa
 
 export function handleDeleteRoom(room: MesaRoom, _client: Client, message: DeleteRoomPayload): void {
   const r: RoomCtx = room;
+  if (!r.spectators.has(_client.sessionId)) return;
+
   const { adminToken } = message;
-  // In a real scenario, we'd verify the adminToken against Supabase
-  // For now, if the client sends this and the room is empty or it's an admin, we allow it
   console.log(`[MesaRoom] Petición de eliminación de sala por: ${adminToken}`);
   r.disconnect();
 }
