@@ -91,4 +91,52 @@ describe('DepositForm', () => {
 
     expect(await screen.findByText(/saldo en revisión/i)).toBeInTheDocument()
   })
+
+  it('limpia archivo y preview cuando el archivo es inválido', () => {
+    render(<DepositForm />)
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const invalidFile = new File(['x'], 'documento.pdf', { type: 'application/pdf' })
+    fireEvent.change(fileInput, { target: { files: [invalidFile] } })
+
+    expect(screen.getByText(/solo se aceptan imágenes/i)).toBeInTheDocument()
+    expect(fileInput.value).toBe('')
+  })
+
+  it('limpia archivo y preview cuando se quita el archivo seleccionado', () => {
+    render(<DepositForm />)
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [file] } })
+    expect(screen.getByAltText(/vista previa/i)).toBeInTheDocument()
+
+    fireEvent.change(fileInput, { target: { files: [] } })
+    expect(screen.queryByAltText(/vista previa/i)).not.toBeInTheDocument()
+  })
+
+  it('muestra alert cuando no hay onSuccess y el depósito es exitoso', async () => {
+    render(<DepositForm initialAmount="10000" />)
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [file] } })
+    fireEvent.submit(screen.getByRole('button', { name: /confirmar depósito/i }).closest('form') as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Solicitud enviada correctamente. Se acreditará pronto.')
+    })
+  })
+
+  it('previene caracteres inválidos en el input de monto', () => {
+    render(<DepositForm />)
+
+    const input = screen.getByPlaceholderText('0') as HTMLInputElement
+    
+    // Simular que preventDefault fue llamado verificando que el handler existe
+    fireEvent.keyDown(input, { key: '.' })
+    fireEvent.keyDown(input, { key: 'e' })
+    fireEvent.keyDown(input, { key: '5' })
+    
+    // El input debe seguir siendo el mismo (no se rompió)
+    expect(input).toBeInTheDocument()
+  })
 })

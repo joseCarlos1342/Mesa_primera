@@ -76,6 +76,12 @@ describe('detectIdentifier', () => {
     expect(result.normalized).toBe('mauro')
   })
 
+  it('rejects unsafe PostgREST filter grammar characters', () => {
+    const result = detectIdentifier('juan),profiles(*)')
+    expect(result.type).toBe('unknown')
+    expect(result.normalized).toBe('')
+  })
+
   it('trims whitespace', () => {
     const result = detectIdentifier('  @maria  ')
     expect(result.type).toBe('username')
@@ -235,6 +241,13 @@ describe('globalSearch', () => {
   it('returns error on empty query', async () => {
     const result = await globalSearch('')
     expect(result.error).toBe('Consulta vacía')
+  })
+
+  it('rejects unsafe search query before interpolating filters', async () => {
+    const result = await globalSearch('juan),profiles(*)')
+
+    expect(result.error).toBe('Consulta inválida')
+    expect(mockSupabase.or).not.toHaveBeenCalled()
   })
 
   // ── Audit logging ─────────────────────────────────────────

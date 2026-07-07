@@ -24,17 +24,21 @@ export async function getLeaderboard(period: string, category: string) {
 /**
  * Search users by name, username or phone
  */
+const SAFE_SEARCH_RE = /^[\p{L}\p{N}\s._@-]{3,80}$/u
+
 export async function searchUsers(query: string) {
-  if (!query || query.length < 3) return [];
+  if (!query || query.length < 3 || query.length > 80 || !SAFE_SEARCH_RE.test(query)) return [];
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
+  const safeQuery = query.replace(/[%_\\]/g, '\\$&');
+
   const { data, error } = await supabase
     .from("profiles")
     .select("id, username, full_name, avatar_url, level, phone")
-    .or(`username.ilike.%${query}%,full_name.ilike.%${query}%,phone.ilike.%${query}%`)
+    .or(`username.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%,phone.ilike.%${safeQuery}%`)
     .neq("id", user.id)
     .limit(10);
 
@@ -245,6 +249,10 @@ export async function deleteNotification(id: string) {
  * DIRECT MESSAGING
  */
 export async function sendDirectMessage(receiverId: string, content: string) {
+  const trimmed = content?.trim() ?? '';
+  if (!trimmed) return { error: "El mensaje no puede estar vacío" };
+  if (trimmed.length > 1000) return { error: "El mensaje es demasiado largo" };
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
@@ -254,7 +262,7 @@ export async function sendDirectMessage(receiverId: string, content: string) {
     .insert({
       sender_id: user.id,
       receiver_id: receiverId,
-      content
+      content: trimmed
     })
     .select()
     .single();
@@ -263,7 +271,7 @@ export async function sendDirectMessage(receiverId: string, content: string) {
 
   // Create notification for receiver
   const myName = user.user_metadata?.username || user.email?.split('@')[0] || "Alguien";
-  await createNotification(receiverId, 'direct_message', 'Mensaje Nuevo', `${myName}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`, { senderId: user.id });
+  await createNotification(receiverId, 'direct_message', 'Mensaje Nuevo', `${myName}: ${trimmed.substring(0, 50)}${trimmed.length > 50 ? '...' : ''}`, { senderId: user.id });
 
   return { success: true, message: data };
 }
@@ -290,6 +298,9 @@ export async function getDirectMessages(otherUserId: string) {
  * Update friend nickname
  */
 export async function updateFriendNickname(friendshipId: string, nickname: string) {
+  const trimmed = nickname?.trim() ?? '';
+  if (!trimmed || trimmed.length > 30) return { error: "Apodo inválido" };
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
@@ -305,8 +316,8 @@ export async function updateFriendNickname(friendshipId: string, nickname: strin
 
   const isInitiator = friendship.user_id === user.id;
   const updateData = isInitiator 
-    ? { nickname_for_friend: nickname } 
-    : { nickname_for_user: nickname };
+    ? { nickname_for_friend: trimmed } 
+    : { nickname_for_user: trimmed };
 
   const { error } = await supabase
     .from("friendships")

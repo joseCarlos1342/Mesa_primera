@@ -172,6 +172,7 @@ export async function globalSearch(query: string): Promise<ActionResult<AdminSea
   if (authError || !supabase || !adminId) return { error: authError || 'No autenticado' }
 
   const detected = detectIdentifier(query)
+  if (!detected.normalized) return { error: 'Consulta inválida' }
 
   let matches: SearchMatch[] = []
 
