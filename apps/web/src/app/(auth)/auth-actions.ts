@@ -10,6 +10,7 @@ import {
   loginPlayerSchema,
   loginPlayerWithPinSchema,
   loginAdminSchema,
+  registerAdminSchema,
   adminRecoveryCodeSchema,
   otpTokenSchema,
   setPinSchema,
@@ -614,17 +615,23 @@ export async function registerAdmin(prevState: unknown, formData: FormData) {
     return { error: 'Token de invitación inválido o no configurado.' }
   }
 
+  const email = (formData.get('email') as string ?? '').trim()
+  const password = formData.get('password') as string ?? ''
+  const fullName = (formData.get('fullName') as string ?? '').trim()
+
+  const parsed = registerAdminSchema.safeParse({ email, password, fullName })
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) }
+  }
+
   const supabase = await createClient()
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-  const fullName = formData.get('fullName') as string
 
   const { error } = await supabase.auth.signUp({
-    email,
-    password,
+    email: parsed.data.email,
+    password: parsed.data.password,
     options: {
       data: {
-        full_name: fullName,
+        full_name: parsed.data.fullName,
         role: 'admin'
       }
     }
