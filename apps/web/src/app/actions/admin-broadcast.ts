@@ -20,11 +20,25 @@ export type BroadcastHistoryRow = {
 type BroadcastHistorySourceRow = Omit<BroadcastHistoryRow, "read_count" | "push_sent_count" | "push_failed_count">;
 
 const BROADCAST_COOLDOWN_MS = 30_000;
+const BROADCAST_TITLE_MAX_LENGTH = 120;
+const BROADCAST_BODY_MAX_LENGTH = 5000;
 
 let lastBroadcastAt = 0;
 
 function isBroadcastType(type: string): type is BroadcastInput["type"] {
   return BROADCAST_TYPES.includes(type as BroadcastInput["type"]);
+}
+
+function normalizeBroadcastInput(data: BroadcastInput): BroadcastInput {
+  const title = data.title.trim();
+  const body = data.body.trim();
+
+  if (!title) throw new Error("El título es obligatorio");
+  if (!body) throw new Error("El mensaje es obligatorio");
+  if (title.length > BROADCAST_TITLE_MAX_LENGTH) throw new Error("El título es demasiado largo");
+  if (body.length > BROADCAST_BODY_MAX_LENGTH) throw new Error("El mensaje es demasiado largo");
+
+  return { ...data, title, body };
 }
 
 async function ensureAdmin(supabase: any) {
@@ -45,6 +59,8 @@ export async function sendBroadcast(data: BroadcastInput): Promise<BroadcastResu
   if (!isBroadcastType(data.type)) {
     throw new Error("Tipo inválido");
   }
+
+  const input = normalizeBroadcastInput(data);
 
   if (lastBroadcastAt > 0 && Date.now() - lastBroadcastAt < BROADCAST_COOLDOWN_MS) {
     throw new Error("Debes esperar antes de enviar otro broadcast");
@@ -70,9 +86,9 @@ export async function sendBroadcast(data: BroadcastInput): Promise<BroadcastResu
     .from("broadcast_messages")
     .insert({
       admin_id: adminId,
-      type: data.type,
-      title: data.title,
-      body: data.body,
+      type: input.type,
+      title: input.title,
+      body: input.body,
       audience_count: users.length,
       created_at: createdAt,
     })
@@ -85,9 +101,9 @@ export async function sendBroadcast(data: BroadcastInput): Promise<BroadcastResu
 
   const notifications = users.map(u => ({
     user_id: u.id,
-    type: data.type,
-    title: data.title,
-    body: data.body,
+    type: input.type,
+    title: input.title,
+    body: input.body,
     broadcast_id: broadcastId,
     created_at: createdAt,
   }));
@@ -123,9 +139,9 @@ export async function sendBroadcast(data: BroadcastInput): Promise<BroadcastResu
 
   if (deliveriesError) throw deliveriesError;
 
-  await logAdminAction(adminId, 'broadcast_sent', 'broadcast', data.type, {
-    body: data.body,
-    title: data.title,
+  await logAdminAction(adminId, 'broadcast_sent', 'broadcast', input.type, {
+    body: input.body,
+    title: input.title,
     audience_count: users.length,
     broadcast_id: broadcastId,
   }, { context: 'communications' });
@@ -143,9 +159,9 @@ export async function sendBroadcast(data: BroadcastInput): Promise<BroadcastResu
         },
         body: JSON.stringify({
           broadcastId,
-          type: data.type,
-          title: data.title,
-          body: data.body,
+          type: input.type,
+          title: input.title,
+          body: input.body,
           createdAt,
         }),
       });
