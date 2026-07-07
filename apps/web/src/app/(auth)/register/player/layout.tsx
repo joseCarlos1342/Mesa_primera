@@ -23,7 +23,16 @@ export const metadata: Metadata = {
     locale: "es_CO",
     images: [{ url: "/og-image", width: 1200, height: 630, alt: "Crear Cuenta — Primera Riverada los 4 Ases" }],
   },
-  robots: { index: false, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 const breadcrumbJsonLd = {

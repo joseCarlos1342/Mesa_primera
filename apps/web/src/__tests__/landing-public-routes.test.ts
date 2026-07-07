@@ -74,6 +74,7 @@ describe('Public landing page', () => {
     __dirname,
     '../components/landing/LandingContent.tsx',
   )
+  const rootLayoutPath = path.resolve(__dirname, '../app/layout.tsx')
 
   it('exists at app/page.tsx (root level)', () => {
     const landingPath = path.resolve(__dirname, '../app/page.tsx')
@@ -97,6 +98,50 @@ describe('Public landing page', () => {
     const source = fs.readFileSync(landingContentPath, 'utf-8')
     expect(source).toContain('facebook')
     expect(source).toContain('instagram')
+  })
+
+  it('does not advertise a fake site search URL in structured data', () => {
+    const source = fs.readFileSync(rootLayoutPath, 'utf-8')
+    expect(source).not.toContain('SearchAction')
+    expect(source).not.toContain('search_term_string')
+  })
+})
+
+describe('Public auth SEO metadata', () => {
+  it('keeps player login indexable for Google', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(auth)/login/player/layout.tsx'),
+      'utf-8',
+    )
+
+    expect(source).toContain('index: true')
+    expect(source).toContain('follow: true')
+    expect(source).toContain('https://primerariveradalos4ases.com/login/player')
+  })
+
+  it('keeps player registration indexable for Google', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../app/(auth)/register/player/layout.tsx'),
+      'utf-8',
+    )
+
+    expect(source).toContain('index: true')
+    expect(source).toContain('follow: true')
+    expect(source).toContain('https://primerariveradalos4ases.com/register/player')
+  })
+
+  it('keeps admin and authenticated player areas explicitly non-indexable', () => {
+    const adminLayout = fs.readFileSync(
+      path.resolve(__dirname, '../app/(admin)/admin/layout.tsx'),
+      'utf-8',
+    )
+    const playerLayout = fs.readFileSync(
+      path.resolve(__dirname, '../app/(player)/layout.tsx'),
+      'utf-8',
+    )
+
+    expect(adminLayout).toContain('robots: { index: false, follow: false }')
+    expect(playerLayout).toContain('robots: { index: false, follow: false }')
   })
 })
 
@@ -125,12 +170,12 @@ describe('Sitemap contains only public URLs', () => {
     expect(sitemapSource).toContain('/terms')
   })
 
-  it('does NOT include /login/player because it is noindex', () => {
-    expect(sitemapSource).not.toContain('/login/player')
+  it('includes /login/player because it is public and indexable', () => {
+    expect(sitemapSource).toContain('/login/player')
   })
 
-  it('does NOT include /register/player because it is noindex', () => {
-    expect(sitemapSource).not.toContain('/register/player')
+  it('includes /register/player because it is public and indexable', () => {
+    expect(sitemapSource).toContain('/register/player')
   })
 
   it('does NOT include /replays', () => {
