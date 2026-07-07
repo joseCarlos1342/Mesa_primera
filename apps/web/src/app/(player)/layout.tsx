@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import "./player.css";
 import Link from 'next/link';
 import { SupportTrigger } from "@/components/SupportTrigger";
@@ -13,6 +14,10 @@ import { BroadcastBanner } from "@/components/BroadcastBanner";
 import { OrientationPortrait } from "@/components/OrientationPortrait";
 import { createClient } from "@/utils/supabase/server";
 import { getAvatarSvg } from "@/utils/avatars";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function PlayerLayout({
   children,

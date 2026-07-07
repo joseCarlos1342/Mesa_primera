@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import "./admin.css";
 import Link from "next/link";
 import { AdminHeaderActions } from "@/components/admin/AdminHeaderActions";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default function AdminLayout({
   children,

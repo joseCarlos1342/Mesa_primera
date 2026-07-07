@@ -195,11 +195,6 @@ export default async function RootLayout({
     "name": "Primera Riverada los 4 Ases",
     "alternateName": ["Los 4 Ases", "Primera Riverada", "Mesa Primera", "Primera Riverda", "Primera Riverada Neiva", "Primera Riverada Dario", "Juego de Primera Online"],
     "url": "https://primerariveradalos4ases.com",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": "https://primerariveradalos4ases.com/?q={search_term_string}",
-      "query-input": "required name=search_term_string",
-    },
   };
 
   const faqPageJsonLd = {

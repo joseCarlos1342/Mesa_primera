@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://primerariveradalos4ases.com/register/player/biometric",
   },
+  robots: { index: false, follow: false },
 };
 
 export default function BiometricLayout({

@@ -6,17 +6,19 @@ describe('sitemap metadata', () => {
 
     expect(entries[0]).toEqual({
       url: 'https://primerariveradalos4ases.com',
-      lastModified: '2025-04-01',
+      lastModified: '2026-07-05',
       changeFrequency: 'weekly',
       priority: 1,
     })
   })
 
-  it('incluye solo rutas publicas legales y de reglas', () => {
+  it('incluye solo rutas publicas indexables', () => {
     const entries = sitemap()
 
     expect(entries.map((entry) => entry.url)).toEqual([
       'https://primerariveradalos4ases.com',
+      'https://primerariveradalos4ases.com/login/player',
+      'https://primerariveradalos4ases.com/register/player',
       'https://primerariveradalos4ases.com/rules',
       'https://primerariveradalos4ases.com/privacy',
       'https://primerariveradalos4ases.com/terms',
