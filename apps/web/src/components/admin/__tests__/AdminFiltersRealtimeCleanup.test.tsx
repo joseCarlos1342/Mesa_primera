@@ -125,6 +125,41 @@ describe('admin filters, realtime and cleanup', () => {
     await waitFor(() => expect(mockExportAuditLog).toHaveBeenCalledWith(expect.any(Object), 'json'))
   })
 
+  it('oculta limpiar sin filtros y exporta auditoria sin parametros opcionales', async () => {
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('') as unknown as ReturnType<typeof useSearchParams>)
+
+    render(<AuditFilters />)
+
+    expect(screen.queryByRole('button', { name: /limpiar/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+
+    await waitFor(() => expect(mockExportAuditLog).toHaveBeenCalledWith({ limit: 5000 }, 'json'))
+    expect(clickSpy).toHaveBeenCalled()
+  })
+
+  it('elimina parametros cuando los filtros de auditoria quedan vacios', () => {
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams('action=login&context=wallet&dateFrom=2026-05-01T00%3A00%3A00Z&dateTo=2026-05-20T23%3A59%3A59Z') as unknown as ReturnType<typeof useSearchParams>,
+    )
+
+    render(<AuditFilters />)
+
+    fireEvent.change(screen.getByPlaceholderText('ej: broadcast_sent'), { target: { value: '' } })
+    expect(push).toHaveBeenCalledWith('?context=wallet&dateFrom=2026-05-01T00%3A00%3A00Z&dateTo=2026-05-20T23%3A59%3A59Z')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } })
+    expect(push).toHaveBeenCalledWith('?action=login&dateFrom=2026-05-01T00%3A00%3A00Z&dateTo=2026-05-20T23%3A59%3A59Z')
+
+    const dateInputs = document.querySelectorAll('input[type="date"]')
+    fireEvent.change(dateInputs[0], { target: { value: '' } })
+    expect(push).toHaveBeenCalledWith('?action=login&context=wallet&dateTo=2026-05-20T23%3A59%3A59Z')
+
+    fireEvent.change(dateInputs[1], { target: { value: '' } })
+    expect(push).toHaveBeenCalledWith('?action=login&context=wallet&dateFrom=2026-05-01T00%3A00%3A00Z')
+  })
+
   it('suscribe realtime ledger, debouncea refresh y limpia channel/timer', () => {
     jest.useFakeTimers()
     const { unmount } = render(<LedgerRealtimeRefresh />)

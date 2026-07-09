@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.42%` |
-| Lines | `99.42%` |
-| Functions | `95.1%` |
-| Branches | `91.26%` |
+| Statements | `99.43%` |
+| Lines | `99.43%` |
+| Functions | `95.19%` |
+| Branches | `91.38%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1685` tests pasando.
+- `1687` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2594,3 +2594,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='LedgerFilters.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/LedgerFilters.tsx'` verde con `4` tests y `100%` focalizado; `pnpm --filter web test:coverage` verde con `195` suites y `1685` tests.
 - Riesgos abiertos: próximos candidatos admin visibles son `UserBalanceControl.tsx`, `AuditFilters.tsx`, `UserBanControl.tsx` y páginas admin con functions bajas; evitar operaciones de ledger reales sin cobertura de dominio.
 - Siguiente lote recomendado: `UserBalanceControl.tsx` si se mantiene en UI/mocks seguros, o `AuditFilters.tsx` para ramas de filtros sin mutaciones.
+
+## Checkpoint 118
+
+- Fecha: 2026-07-08, hardening de AuditFilters UI admin.
+- Coverage global despues: `99.43%` statements/lines, `95.19%` functions, `91.38%` branches; `195` suites y `1687` tests.
+- Coverage focalizado antes: `98.82%` statements/lines, `90%` functions, `60.86%` branches.
+- Coverage focalizado despues: `100%` statements/lines/functions, `93.54%` branches.
+- Archivos cubiertos: `components/admin/AuditFilters.tsx` mediante `AdminFiltersRealtimeCleanup.test.tsx`.
+- Tests agregados: exportación JSON sin filtros activos; eliminación de `action`, `context`, `dateFrom` y `dateTo` cuando los inputs quedan vacíos.
+- Riesgos cerrados: quedan protegidos los filtros de auditoría sin tocar datos reales ni mutaciones financieras.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminFiltersRealtimeCleanup.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/AuditFilters.tsx'` verde con `6` tests y `93.54%` branches focalizadas; `pnpm --filter web test:coverage` verde con `195` suites y `1687` tests.
+- Riesgos abiertos: branches residuales de `AuditFilters.tsx` son fecha `dateTo` ausente y `dateFrom` con valor; ya están cubiertos los caminos funcionales principales.
+- Siguiente lote recomendado: `UserBalanceControl.tsx` solo con mocks de UI seguros, o `UserBanControl.tsx` para ramas visibles de sanciones.
