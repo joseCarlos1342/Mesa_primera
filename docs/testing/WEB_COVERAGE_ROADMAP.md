@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.48%` |
 | Lines | `99.48%` |
 | Functions | `95.66%` |
-| Branches | `91.48%` |
+| Branches | `91.51%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1696` tests pasando.
+- `1698` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2672,3 +2672,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminStatusCard.test' --runInBand --coverage --collectCoverageFrom='src/components/admin/AdminStatusCard.tsx'` verde con `3` tests; `pnpm --filter web exec jest --testPathPatterns='AdminFiltersRealtimeCleanup.test' --runInBand --coverage --collectCoverageFrom='src/components/admin/CleanupStaleGamesButton.tsx'` verde con `7` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1696` tests.
 - Riesgos abiertos: ninguno crítico; ambos componentes quedan en `100%` focalizado.
 - Siguiente lote recomendado: páginas admin con functions bajas (`app/(admin)/admin/alerts/page.tsx`, `app/(admin)/admin/audit/page.tsx`) o componentes con branches residuales (`DeleteTableButton.tsx`, `PlayerControls.tsx`).
+
+## Checkpoint 124
+
+- Fecha: 2026-07-08, hardening de DeleteTableButton y PlayerControls UI admin.
+- Coverage global despues: `99.48%` statements/lines, `95.66%` functions, `91.51%` branches; `195` suites y `1698` tests.
+- Coverage focalizado antes: `100%` statements/lines/functions, `87.5%` branches (DeleteTableButton); `100%` statements/lines/functions, `75%` branches (PlayerControls).
+- Coverage focalizado despues: `100%` statements/lines/functions/branches (ambos componentes).
+- Archivos cubiertos: `components/admin/DeleteTableButton.tsx` mediante `AdminSmallControls.test.tsx`; `components/admin/PlayerControls.tsx` mediante `AdminControlsAndDataView.test.tsx`.
+- Tests agregados: cancelación de confirmación en eliminación de mesa; cancelación de confirmación en expulsión de jugador.
+- Riesgos cerrados: quedan cubiertas las ramas de cancelación de confirmación en ambos componentes, visibles en UI admin.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminSmallControls.test' --runInBand --coverage --collectCoverageFrom='src/components/admin/DeleteTableButton.tsx'` verde con `11` tests; `pnpm --filter web exec jest --testPathPatterns='AdminControlsAndDataView.test' --runInBand --coverage --collectCoverageFrom='src/components/admin/PlayerControls.tsx'` verde con `8` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1698` tests.
+- Riesgos abiertos: ninguno crítico; ambos componentes quedan en `100%` focalizado.
+- Siguiente lote recomendado: páginas admin con functions bajas (`app/(admin)/admin/alerts/page.tsx`, `app/(admin)/admin/audit/page.tsx`) o componentes con branches residuales (`UserBalanceControl.tsx`, `UserBanControl.tsx`).

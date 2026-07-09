@@ -109,6 +109,17 @@ describe('admin controls and data view', () => {
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Error al expulsar: Room cerrada'))
   })
 
+  it('no expulsa jugador cuando el usuario cancela la confirmacion', async () => {
+    ;(window.confirm as jest.Mock).mockReturnValueOnce(false)
+    render(<PlayerControls gameId="game-1" playerId="player-1" />)
+
+    fireEvent.click(screen.getByTitle('Expulsar jugador'))
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('expulsar'))
+    expect(mockKickPlayer).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
   it('pausa, reanuda y cierra sala con los argumentos correctos', async () => {
     const { rerender } = render(<TableControls gameId="game-1" currentStatus="playing" />)
 
