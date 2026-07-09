@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.47%` |
 | Lines | `99.47%` |
 | Functions | `95.57%` |
-| Branches | `91.41%` |
+| Branches | `91.42%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1691` tests pasando.
+- `1692` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2633,3 +2633,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminUserModeration.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/UserBalanceControl.tsx'` verde con `9` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1691` tests.
 - Riesgos abiertos: ramas residuales son formato de signo, error no-`Error`, guard de cierre durante loading y click de backdrop; no justifican forzar mutaciones reales.
 - Siguiente lote recomendado: páginas admin con functions bajas o componentes UI sin operaciones financieras.
+
+## Checkpoint 121
+
+- Fecha: 2026-07-08, hardening de UserSearch UI admin.
+- Coverage global despues: `99.47%` statements/lines, `95.57%` functions, `91.42%` branches; `195` suites y `1692` tests.
+- Coverage focalizado antes: `95.55%` statements/lines, `100%` functions, `80%` branches.
+- Coverage focalizado despues: `100%` statements/lines/functions, `90%` branches.
+- Archivos cubiertos: `components/admin/UserSearch.tsx` mediante `AdminSmallControls.test.tsx`.
+- Tests agregados: limpieza de búsqueda elimina `q` tras debounce y preserva `page` en la URL.
+- Riesgos cerrados: queda cubierto el branch de eliminación de query string, no solo el seteo de búsqueda.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminSmallControls.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/UserSearch.tsx'` verde con `10` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1692` tests.
+- Riesgos abiertos: rama residual de inicialización con `q` ausente; bajo riesgo y no requiere test artificial en este lote.
+- Siguiente lote recomendado: páginas admin con functions bajas o componentes sin mutaciones (`CreateTableModal.tsx`, `AdminStatusCard.tsx`, `CleanupStaleGamesButton.tsx`).
