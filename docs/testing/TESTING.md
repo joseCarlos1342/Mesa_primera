@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.48%` statements, `91.44%` branches, `95.66%` functions, `99.48%` lines con `195` suites y `1694` tests pasando (`2026-07-08`).
+- Medicion web vigente: `99.48%` statements, `91.48%` branches, `95.66%` functions, `99.48%` lines con `195` suites y `1696` tests pasando (`2026-07-08`).
 - Medicion game-server vigente: `95.36%` statements, `86.01%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `766` tests pasando (`2026-07-01`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -84,6 +84,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de UserBalanceControl UI (2026-07-08): 2 tests web adicionales sobre `UserBalanceControl.tsx` cubren auto-cierre post ajuste exitoso y cierre manual con reset de errores, con `adjustUserBalance` mockeado y sin tocar ledger real.
 - Hardening de UserSearch UI (2026-07-08): 1 test web adicional sobre `UserSearch.tsx` cubre limpieza del parámetro `q` preservando otros filtros de la URL.
 - Hardening de CreateTableModal UI (2026-07-08): 2 tests web adicionales sobre `CreateTableModal.tsx` cubren cierre sin crear mesa y re-habilitación de fichas, dejando branches focalizadas en `100%`.
+- Hardening de AdminStatusCard y CleanupStaleGamesButton UI (2026-07-08): 2 tests web adicionales cubren render sin `detail` y cancelación de confirmación, dejando ambos componentes en `100%` focalizado.
 
 ## Roadmap de Cobertura Web
 

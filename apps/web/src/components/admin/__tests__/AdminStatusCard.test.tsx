@@ -51,4 +51,19 @@ describe('AdminStatusCard', () => {
     expect(mobilePanel.className).toContain('sm:hidden')
     expect(mobilePanel.className).not.toContain('absolute')
   })
+
+  it('renders without detail when not provided', () => {
+    render(
+      <AdminStatusCard
+        label="Servidor"
+        tone="neutral"
+        title="ACTIVO"
+        icon={<Info className="h-4 w-4" />}
+        tooltip={<p>Estado del servidor</p>}
+      />
+    )
+
+    expect(screen.getByText('ACTIVO')).toBeInTheDocument()
+    expect(screen.queryByText('Cobertura 122.5%')).not.toBeInTheDocument()
+  })
 })
