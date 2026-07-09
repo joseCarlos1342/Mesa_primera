@@ -8,23 +8,23 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-07-02. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-07-08. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.4%` |
-| Lines | `99.4%` |
-| Functions | `95.09%` |
-| Branches | `90.91%` |
+| Statements | `99.42%` |
+| Lines | `99.42%` |
+| Functions | `95.1%` |
+| Branches | `90.95%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1675` tests pasando.
+- `1681` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-05.
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
 ## Meta Final
 
@@ -2555,3 +2555,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='ShowdownCinematic.*test' --runInBand --coverage --collectCoverageFrom='src/components/game/ShowdownCinematic.tsx'` verde con `5` tests; `pnpm --filter web test:coverage` verde localmente con `195` suites y `1679` tests, incluyendo cambios pendientes ajenos en el workspace; `pnpm --filter web lint` verde con `64` warnings existentes; `pnpm exec tsc --noEmit -p apps/web/tsconfig.json` verde.
 - Riesgos abiertos: las ramas residuales son fallbacks de parseo/sort/reduced-motion y no justifican tests artificiales en este lote.
 - Siguiente lote recomendado: `TableHelpModal.tsx` para UI de ayuda o `UserLedgerTable.tsx` para admin UI financiera de solo lectura.
+
+## Checkpoint 115
+
+- Fecha: 2026-07-08, hardening de TableHelpModal UI.
+- Coverage global despues: `99.42%` statements/lines, `95.1%` functions, `90.95%` branches; `195` suites y `1681` tests.
+- Coverage focalizado antes: `97.4%` statements/lines, `100%` functions, `80.55%` branches.
+- Coverage focalizado despues: `100%` statements/lines/functions, `92.85%` branches.
+- Archivos cubiertos: `components/game/TableHelpModal.tsx` mediante `TableHelpModal.test.tsx`.
+- Tests agregados: solicitud con estado `attending` muestra “Admin en camino”; cerrar y reabrir el modal resetea motivo, mensaje de estado y error visible.
+- Riesgos cerrados: quedan protegidas las ramas visibles de seguimiento de ayuda y limpieza de estado local entre aperturas del modal.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='TableHelpModal.*test' --runInBand --coverage --collectCoverageFrom='src/components/game/TableHelpModal.tsx'` verde con `5` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1681` tests; `pnpm --filter web lint` verde con warnings existentes; `pnpm exec tsc --noEmit -p apps/web/tsconfig.json` verde.
+- Riesgos abiertos: quedan branches defensivos menores del modal que no justifican tests artificiales en este lote.
+- Siguiente lote recomendado: `UserLedgerTable.tsx` para admin UI financiera de solo lectura, o medir ramas reales restantes de UI de juego antes de tocar guards defensivos.

@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.4%` statements, `90.91%` branches, `95.09%` functions, `99.4%` lines con `195` suites y `1675` tests pasando (`2026-07-05`).
+- Medicion web vigente: `99.42%` statements, `90.95%` branches, `95.1%` functions, `99.42%` lines con `195` suites y `1681` tests pasando (`2026-07-08`).
 - Medicion game-server vigente: `95.36%` statements, `86.01%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `766` tests pasando (`2026-07-01`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -76,6 +76,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de Board y LiveKit (2026-07-05): 5 tests web netos cubren fallback de carta inferior con palo desconocido, HUD propio con saldo/puntos por defecto, remove chip sin conteo previo, guard de selección fuera de descarte y seguridad de `/api/livekit`. El endpoint queda endurecido para validar sala y derivar identidad desde Supabase Auth, sin confiar en `userId`/`username` enviados por el cliente.
 - Hardening de DepositForm UI (2026-07-05): 4 tests web adicionales sobre `DepositForm.tsx` cubren error de archivo inválido, limpieza de preview al quitar archivo, alert sin onSuccess y prevención de caracteres inválidos en monto.
 - Hardening de ShowdownCinematic UI (2026-07-05): 1 test web adicional sobre `ShowdownCinematic.tsx` cubre el caso en que un jugador posterior gana por mejor ranking de mano, dejando el componente por encima del threshold focalizado de branches.
+- Hardening de TableHelpModal UI (2026-07-08): 2 tests web adicionales sobre `TableHelpModal.tsx` cubren solicitud marcada como `attending` y reset de motivo/mensaje/error al cerrar y reabrir el modal, subiendo branches focalizadas de `80.55%` a `92.85%`.
 
 ## Roadmap de Cobertura Web
 

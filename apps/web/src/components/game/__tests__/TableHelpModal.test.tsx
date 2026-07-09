@@ -56,6 +56,45 @@ describe('TableHelpModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('muestra estado de atención cuando un admin ya tomó la solicitud', async () => {
+    setupSupabase({
+      pendingRequest: {
+        id: 'req-2',
+        reason: 'other',
+        status: 'attending',
+        created_at: '2025-01-01T10:00:00.000Z',
+      },
+    })
+    render(<TableHelpModal isOpen={true} onClose={jest.fn()} roomId="room-1" userId="user-1" />)
+
+    expect(await screen.findByText(/admin en camino/i)).toBeInTheDocument()
+    expect(screen.getByText(/un administrador está revisando tu mesa/i)).toBeInTheDocument()
+    expect(screen.getByText(/motivo: otro motivo/i)).toBeInTheDocument()
+  })
+
+  it('resetea motivo, mensaje y errores cuando el modal se cierra', async () => {
+    setupSupabase({ insertError: { message: 'insert failed' } })
+    const { rerender } = render(
+      <TableHelpModal isOpen={true} onClose={jest.fn()} roomId="room-1" userId="user-1" />,
+    )
+
+    expect(await screen.findByText(/disputa en la mesa/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByText(/disputa en la mesa/i))
+    fireEvent.change(screen.getByPlaceholderText(/describe brevemente la situación/i), {
+      target: { value: 'Texto temporal' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /enviar solicitud/i }))
+    expect(await screen.findByText(/no se pudo enviar la solicitud/i)).toBeInTheDocument()
+
+    rerender(<TableHelpModal isOpen={false} onClose={jest.fn()} roomId="room-1" userId="user-1" />)
+    rerender(<TableHelpModal isOpen={true} onClose={jest.fn()} roomId="room-1" userId="user-1" />)
+
+    expect(await screen.findByText(/disputa en la mesa/i)).toBeInTheDocument()
+    expect(screen.queryByText(/no se pudo enviar la solicitud/i)).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/describe brevemente la situación/i)).toHaveValue('')
+    expect(screen.getByRole('button', { name: /enviar solicitud/i })).toBeDisabled()
+  })
+
   it('permite crear una nueva solicitud y mostrar estado exitoso', async () => {
     setupSupabase()
     const onClose = jest.fn()
