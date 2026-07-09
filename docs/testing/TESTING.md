@@ -75,6 +75,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de TutorialWalkthrough UI (2026-07-05): 1 test web adicional sobre `TutorialWalkthrough.tsx` cubre el guard de animación pendiente para ignorar cambios de paso simultáneos y deja el componente en `100%` branches/functions/statements/lines.
 - Hardening de Board y LiveKit (2026-07-05): 5 tests web netos cubren fallback de carta inferior con palo desconocido, HUD propio con saldo/puntos por defecto, remove chip sin conteo previo, guard de selección fuera de descarte y seguridad de `/api/livekit`. El endpoint queda endurecido para validar sala y derivar identidad desde Supabase Auth, sin confiar en `userId`/`username` enviados por el cliente.
 - Hardening de DepositForm UI (2026-07-05): 4 tests web adicionales sobre `DepositForm.tsx` cubren error de archivo inválido, limpieza de preview al quitar archivo, alert sin onSuccess y prevención de caracteres inválidos en monto.
+- Hardening de ShowdownCinematic UI (2026-07-05): 1 test web adicional sobre `ShowdownCinematic.tsx` cubre el caso en que un jugador posterior gana por mejor ranking de mano, dejando el componente por encima del threshold focalizado de branches.
 
 ## Roadmap de Cobertura Web
 
