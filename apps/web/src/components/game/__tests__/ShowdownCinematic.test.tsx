@@ -106,6 +106,23 @@ describe('ShowdownCinematic', () => {
     expect(screen.queryByText('Cerrar')).not.toBeInTheDocument()
   })
 
+  it('elige como ganador al jugador posterior con mejor ranking de mano', () => {
+    render(
+      <ShowdownCinematic
+        players={[
+          { id: 'p1', nickname: 'Ana', revealedCards: '1-Copas,2-Copas', isFolded: false, turnOrder: 1 },
+          { id: 'p2', nickname: 'Luis', revealedCards: '12-Espadas,3-Bastos', isFolded: false, turnOrder: 2 },
+        ]}
+        pot={300000}
+        piquePot={0}
+        dealerId="p1"
+      />
+    )
+
+    expect(screen.getByText(/CHIVO · 2 pts/)).toBeInTheDocument()
+    expect(screen.getByText(/GANADOR/).closest('.showdown-label')).toHaveTextContent('Luis')
+  })
+
   it('configura animaciones normal y reduced-motion cuando el contenedor existe', () => {
     render(
       <ShowdownCinematic

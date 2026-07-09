@@ -2543,3 +2543,15 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='DepositForm.*test' --runInBand --coverage --collectCoverageFrom='src/components/game/DepositForm.tsx'` verde con `8` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1675` tests.
 - Riesgos abiertos: branches globales en `90.91%`; `DepositForm.tsx` conserva ramas defensivas de validación de monto/observaciones. Siguiente valor probable: `ShowdownCinematic.tsx`, `TableHelpModal.tsx` o `UserLedgerTable.tsx`.
 - Siguiente lote recomendado: `ShowdownCinematic.tsx` para cierre visual de mano, o `UserLedgerTable.tsx` para admin UI de finanzas.
+
+## Checkpoint 114
+
+- Fecha: 2026-07-05, hardening de ShowdownCinematic UI.
+- Coverage focalizado antes: `99.09%` statements/lines, `100%` functions, `81.81%` branches.
+- Coverage focalizado despues: `100%` statements/lines/functions, `84.44%` branches.
+- Archivos cubiertos: `components/game/ShowdownCinematic.tsx` mediante `ShowdownCinematic.test.tsx`.
+- Tests agregados: jugador posterior gana por mejor ranking de mano (`CHIVO` sobre `NINGUNA`) y se muestra como ganador aunque el primer jugador activo aparezca antes por orden de turno.
+- Riesgos cerrados: queda cubierta la rama de reemplazo de ganador dentro del loop de evaluación por ranking de mano, no solo por desempate de puntos.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='ShowdownCinematic.*test' --runInBand --coverage --collectCoverageFrom='src/components/game/ShowdownCinematic.tsx'` verde con `5` tests; `pnpm --filter web test:coverage` verde localmente con `195` suites y `1679` tests, incluyendo cambios pendientes ajenos en el workspace; `pnpm --filter web lint` verde con `64` warnings existentes; `pnpm exec tsc --noEmit -p apps/web/tsconfig.json` verde.
+- Riesgos abiertos: las ramas residuales son fallbacks de parseo/sort/reduced-motion y no justifican tests artificiales en este lote.
+- Siguiente lote recomendado: `TableHelpModal.tsx` para UI de ayuda o `UserLedgerTable.tsx` para admin UI financiera de solo lectura.
