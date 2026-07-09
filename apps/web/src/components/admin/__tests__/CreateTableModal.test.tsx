@@ -45,6 +45,19 @@ describe('CreateTableModal', () => {
     expect(screen.queryByText('NUEVA MESA')).not.toBeInTheDocument()
   })
 
+  it('cierra el modal desde el botón de cierre sin crear mesa', () => {
+    render(<CreateTableModal />)
+
+    fireEvent.click(screen.getByRole('button', { name: /crear mesa/i }))
+    expect(screen.getByText('NUEVA MESA')).toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByRole('button')[0])
+
+    expect(screen.queryByText('NUEVA MESA')).not.toBeInTheDocument()
+    expect(mockCreateTable).not.toHaveBeenCalled()
+    expect(mockCreateCustomTable).not.toHaveBeenCalled()
+  })
+
   it('crea mesa personalizada con entrada, pique y fichas deshabilitadas', async () => {
     render(<CreateTableModal />)
 
@@ -84,6 +97,20 @@ describe('CreateTableModal', () => {
     expect(screen.getByText('(1/6)')).toBeInTheDocument()
     expect(screen.getByText('Debe haber al menos 1 ficha habilitada.')).toBeInTheDocument()
     expect(getChipButton('$50K')).toBeDisabled()
+  })
+
+  it('permite volver a habilitar una ficha deshabilitada', () => {
+    render(<CreateTableModal />)
+
+    fireEvent.click(screen.getByRole('button', { name: /crear mesa/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Personalizada' }))
+
+    fireEvent.click(getChipButton('$1K'))
+    expect(screen.getByText('(5/6)')).toBeInTheDocument()
+
+    fireEvent.click(getChipButton('$1K'))
+    expect(screen.getByText('(6/6)')).toBeInTheDocument()
+    expect(screen.queryByText('Debe haber al menos 1 ficha habilitada.')).not.toBeInTheDocument()
   })
 
   it('muestra error de creacion y mantiene modal abierto', async () => {
