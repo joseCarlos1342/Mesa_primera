@@ -22,6 +22,19 @@ const users = [
   },
 ]
 
+const usersWithZeroBalance = [
+  ...users,
+  {
+    id: 'user-cero-1234567890',
+    display_name: 'Cero Saldo',
+    username: null,
+    balance: 0,
+    total_credits: 0,
+    total_debits: 0,
+    last_activity: null,
+  },
+]
+
 const entries = [
   {
     id: 'entry-1',
@@ -67,6 +80,24 @@ const entries = [
   },
 ]
 
+const entriesWithUnknowns = [
+  ...entries,
+  {
+    id: 'entry-4',
+    user_id: 'user-unknown-1234567890',
+    amount_cents: 12000,
+    direction: 'credit' as const,
+    balance_after_cents: 12000,
+    type: 'manual_bonus',
+    status: 'reversed',
+    reference_id: null,
+    description: null,
+    metadata: {},
+    created_at: '2026-05-25T13:00:00.000Z',
+    user: null,
+  },
+]
+
 describe('Ledger filters', () => {
   it('filtra usuarios por nombre, username e id y recalcula total visible', () => {
     render(<LedgerUsersFilter users={users} />)
@@ -85,6 +116,22 @@ describe('Ledger filters', () => {
     fireEvent.change(screen.getByPlaceholderText('Buscar jugador...'), { target: { value: 'sin-match' } })
 
     expect(screen.getAllByText('No se encontraron jugadores.')).toHaveLength(2)
+  })
+
+  it('muestra saldo cero y fallback de actividad en usuarios sin movimientos', () => {
+    render(<LedgerUsersFilter users={usersWithZeroBalance} />)
+
+    expect(screen.getByText('(3)')).toBeInTheDocument()
+    expect(screen.getAllByText('Cero Saldo').length).toBeGreaterThan(0)
+    expect(screen.getAllByText((text) => text.replace(/[\s\u00a0]/g, '') === '$0').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Sin actividad').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar jugador...'), {
+      target: { value: 'user-cero' },
+    })
+
+    expect(screen.getByText('(1)')).toBeInTheDocument()
+    expect(screen.getAllByText('Cero Saldo').length).toBeGreaterThan(0)
   })
 
   it('filtra transacciones por tipo, direccion y busqueda textual', () => {
@@ -116,5 +163,29 @@ describe('Ledger filters', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'no existe' } })
     expect(screen.getAllByText('No hay registros que coincidan con los filtros.')).toHaveLength(2)
+  })
+
+  it('mantiene fallbacks de transacciones con tipo, estado o usuario desconocido', () => {
+    render(<LedgerTransactionsFilter entries={entriesWithUnknowns} />)
+
+    expect(screen.getByText('Transacciones (4)')).toBeInTheDocument()
+    expect(screen.getAllByText('manual_bonus').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('reversed').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Desconocido').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByDisplayValue('Todos los tipos'), {
+      target: { value: 'manual_bonus' },
+    })
+
+    expect(screen.getByText('Transacciones (1)')).toBeInTheDocument()
+    expect(screen.getAllByText('manual_bonus').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByDisplayValue('manual_bonus'), { target: { value: 'all' } })
+    fireEvent.change(screen.getByPlaceholderText('Buscar...'), {
+      target: { value: 'user-unknown' },
+    })
+
+    expect(screen.getByText('Transacciones (1)')).toBeInTheDocument()
+    expect(screen.getAllByText('Desconocido').length).toBeGreaterThan(0)
   })
 })

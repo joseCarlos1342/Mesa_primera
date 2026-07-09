@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.42%` |
 | Lines | `99.42%` |
 | Functions | `95.1%` |
-| Branches | `91.13%` |
+| Branches | `91.26%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1683` tests pasando.
+- `1685` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2581,3 +2581,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='UserLedgerTable.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/UserLedgerTable.tsx'` verde con `4` tests y `100%` focalizado; `pnpm --filter web test:coverage` verde con `195` suites y `1683` tests.
 - Riesgos abiertos: el siguiente valor probable en admin UI está en `LedgerFilters.tsx`, `UserBalanceControl.tsx` o `AuditFilters.tsx`; priorizar solo ramas visibles y no mutaciones financieras sin tests de dominio.
 - Siguiente lote recomendado: medir `LedgerFilters.tsx` o `UserBalanceControl.tsx`, manteniendo el trabajo en UI de solo lectura salvo que se active la skill de ledger para mutaciones.
+
+## Checkpoint 117
+
+- Fecha: 2026-07-08, hardening de LedgerFilters UI admin.
+- Coverage global despues: `99.42%` statements/lines, `95.1%` functions, `91.26%` branches; `195` suites y `1685` tests.
+- Coverage focalizado antes: `100%` statements/lines/functions, `90.36%` branches.
+- Coverage focalizado despues: `100%` statements/lines/functions/branches.
+- Archivos cubiertos: `components/admin/LedgerFilters.tsx` mediante `LedgerFilters.test.tsx`.
+- Tests agregados: usuarios con saldo cero y sin actividad; transacciones con tipo/status desconocidos, usuario sin perfil y búsqueda por `user_id` cuando faltan descripción/usuario.
+- Riesgos cerrados: quedan protegidos fallbacks visibles de filtros admin sin tocar movimientos financieros ni RPCs de ledger.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='LedgerFilters.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/LedgerFilters.tsx'` verde con `4` tests y `100%` focalizado; `pnpm --filter web test:coverage` verde con `195` suites y `1685` tests.
+- Riesgos abiertos: próximos candidatos admin visibles son `UserBalanceControl.tsx`, `AuditFilters.tsx`, `UserBanControl.tsx` y páginas admin con functions bajas; evitar operaciones de ledger reales sin cobertura de dominio.
+- Siguiente lote recomendado: `UserBalanceControl.tsx` si se mantiene en UI/mocks seguros, o `AuditFilters.tsx` para ramas de filtros sin mutaciones.
