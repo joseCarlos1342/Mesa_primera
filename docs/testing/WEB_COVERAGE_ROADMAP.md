@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.48%` |
 | Lines | `99.48%` |
 | Functions | `95.66%` |
-| Branches | `91.44%` |
+| Branches | `91.48%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1694` tests pasando.
+- `1696` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2659,3 +2659,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='CreateTableModal.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/CreateTableModal.tsx'` verde con `6` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1694` tests.
 - Riesgos abiertos: queda una función inline menor sin cubrir; el comportamiento principal de creación común/personalizada y error ya está protegido.
 - Siguiente lote recomendado: `AdminStatusCard.tsx` o `CleanupStaleGamesButton.tsx` para ramas pequeñas de UI admin.
+
+## Checkpoint 123
+
+- Fecha: 2026-07-08, hardening de AdminStatusCard y CleanupStaleGamesButton UI admin.
+- Coverage global despues: `99.48%` statements/lines, `95.66%` functions, `91.48%` branches; `195` suites y `1696` tests.
+- Coverage focalizado antes: `100%` statements/lines/functions, `83.33%` branches (ambos componentes).
+- Coverage focalizado despues: `100%` statements/lines/functions/branches (ambos componentes).
+- Archivos cubiertos: `components/admin/AdminStatusCard.tsx` mediante `AdminStatusCard.test.tsx`; `components/admin/CleanupStaleGamesButton.tsx` mediante `AdminFiltersRealtimeCleanup.test.tsx`.
+- Tests agregados: render de AdminStatusCard sin `detail`; cancelación de confirmación en CleanupStaleGamesButton.
+- Riesgos cerrados: quedan cubiertos el branch de `detail` opcional y la rama de confirmación cancelada, ambos visibles en UI admin.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminStatusCard.test' --runInBand --coverage --collectCoverageFrom='src/components/admin/AdminStatusCard.tsx'` verde con `3` tests; `pnpm --filter web exec jest --testPathPatterns='AdminFiltersRealtimeCleanup.test' --runInBand --coverage --collectCoverageFrom='src/components/admin/CleanupStaleGamesButton.tsx'` verde con `7` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1696` tests.
+- Riesgos abiertos: ninguno crítico; ambos componentes quedan en `100%` focalizado.
+- Siguiente lote recomendado: páginas admin con functions bajas (`app/(admin)/admin/alerts/page.tsx`, `app/(admin)/admin/audit/page.tsx`) o componentes con branches residuales (`DeleteTableButton.tsx`, `PlayerControls.tsx`).

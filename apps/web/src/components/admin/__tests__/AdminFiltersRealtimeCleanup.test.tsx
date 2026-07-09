@@ -91,6 +91,17 @@ describe('admin filters, realtime and cleanup', () => {
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Error: Sin permisos'))
   })
 
+  it('no limpia partidas cuando el usuario cancela la confirmacion', async () => {
+    window.confirm = jest.fn(() => false)
+    render(<CleanupStaleGamesButton />)
+
+    fireEvent.click(screen.getByRole('button', { name: /limpiar huérfanas/i }))
+
+    expect(window.confirm).toHaveBeenCalledWith('¿Limpiar partidas huérfanas (más de 2h sin actividad)?')
+    expect(mockCleanupStaleGames).not.toHaveBeenCalled()
+    expect(window.alert).not.toHaveBeenCalled()
+  })
+
   it('aplica filtros de auditoria, limpia y exporta CSV/JSON', async () => {
     const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     render(<AuditFilters />)
