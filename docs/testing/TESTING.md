@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.42%` statements, `91.26%` branches, `95.1%` functions, `99.42%` lines con `195` suites y `1685` tests pasando (`2026-07-08`).
+- Medicion web vigente: `99.43%` statements, `91.38%` branches, `95.19%` functions, `99.43%` lines con `195` suites y `1687` tests pasando (`2026-07-08`).
 - Medicion game-server vigente: `95.36%` statements, `86.01%` branches, `97.75%` functions, `96.53%` lines con `27` suites y `766` tests pasando (`2026-07-01`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -79,6 +79,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de TableHelpModal UI (2026-07-08): 2 tests web adicionales sobre `TableHelpModal.tsx` cubren solicitud marcada como `attending` y reset de motivo/mensaje/error al cerrar y reabrir el modal, subiendo branches focalizadas de `80.55%` a `92.85%`.
 - Hardening de UserLedgerTable UI (2026-07-08): 2 tests web adicionales sobre `UserLedgerTable.tsx` cubren fallbacks de solo lectura para movimientos sin metadata, etiquetas desconocidas y sala sin nombre, dejando el componente en `100%` focalizado.
 - Hardening de LedgerFilters UI (2026-07-08): 2 tests web adicionales sobre `LedgerFilters.tsx` cubren saldo cero, usuario desconocido, tipo/status no mapeados y búsqueda por `user_id`, dejando el componente en `100%` focalizado.
+- Hardening de AuditFilters UI (2026-07-08): 2 tests web adicionales sobre `AuditFilters.tsx` cubren export sin filtros y eliminación de parámetros vacíos, subiendo branches focalizadas de `60.86%` a `93.54%`.
 
 ## Roadmap de Cobertura Web
 
