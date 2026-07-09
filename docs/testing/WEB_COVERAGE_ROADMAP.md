@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.47%` |
-| Lines | `99.47%` |
-| Functions | `95.57%` |
-| Branches | `91.42%` |
+| Statements | `99.48%` |
+| Lines | `99.48%` |
+| Functions | `95.66%` |
+| Branches | `91.44%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1692` tests pasando.
+- `1694` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2646,3 +2646,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminSmallControls.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/UserSearch.tsx'` verde con `10` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1692` tests.
 - Riesgos abiertos: rama residual de inicialización con `q` ausente; bajo riesgo y no requiere test artificial en este lote.
 - Siguiente lote recomendado: páginas admin con functions bajas o componentes sin mutaciones (`CreateTableModal.tsx`, `AdminStatusCard.tsx`, `CleanupStaleGamesButton.tsx`).
+
+## Checkpoint 122
+
+- Fecha: 2026-07-08, hardening de CreateTableModal UI admin.
+- Coverage global despues: `99.48%` statements/lines, `95.66%` functions, `91.44%` branches; `195` suites y `1694` tests.
+- Coverage focalizado antes: `99.64%` statements/lines, `83.33%` functions, `97.95%` branches.
+- Coverage focalizado despues: `100%` statements/lines/branches, `91.66%` functions.
+- Archivos cubiertos: `components/admin/CreateTableModal.tsx` mediante `CreateTableModal.test.tsx`.
+- Tests agregados: cierre del modal por botón X sin crear mesa; re-habilitación de ficha deshabilitada en mesa personalizada.
+- Riesgos cerrados: quedan cubiertos los caminos visibles de cierre y toggle reversible de fichas, además del límite de al menos una ficha habilitada.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='CreateTableModal.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/CreateTableModal.tsx'` verde con `6` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1694` tests.
+- Riesgos abiertos: queda una función inline menor sin cubrir; el comportamiento principal de creación común/personalizada y error ya está protegido.
+- Siguiente lote recomendado: `AdminStatusCard.tsx` o `CleanupStaleGamesButton.tsx` para ramas pequeñas de UI admin.
