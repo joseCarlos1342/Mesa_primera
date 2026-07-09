@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.42%` |
 | Lines | `99.42%` |
 | Functions | `95.1%` |
-| Branches | `90.95%` |
+| Branches | `91.13%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1681` tests pasando.
+- `1683` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2568,3 +2568,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='TableHelpModal.*test' --runInBand --coverage --collectCoverageFrom='src/components/game/TableHelpModal.tsx'` verde con `5` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1681` tests; `pnpm --filter web lint` verde con warnings existentes; `pnpm exec tsc --noEmit -p apps/web/tsconfig.json` verde.
 - Riesgos abiertos: quedan branches defensivos menores del modal que no justifican tests artificiales en este lote.
 - Siguiente lote recomendado: `UserLedgerTable.tsx` para admin UI financiera de solo lectura, o medir ramas reales restantes de UI de juego antes de tocar guards defensivos.
+
+## Checkpoint 116
+
+- Fecha: 2026-07-08, hardening de UserLedgerTable UI financiera de solo lectura.
+- Coverage global despues: `99.42%` statements/lines, `95.1%` functions, `91.13%` branches; `195` suites y `1683` tests.
+- Coverage focalizado antes: `100%` statements/lines/functions, `85.71%` branches.
+- Coverage focalizado despues: `100%` statements/lines/functions/branches.
+- Archivos cubiertos: `components/admin/UserLedgerTable.tsx` mediante `UserLedgerTable.test.tsx`.
+- Tests agregados: fallbacks para movimientos sin metadata o etiquetas conocidas; búsqueda por referencia cuando faltan descripción y metadata.
+- Riesgos cerrados: quedan protegidos estados de lectura de ledger con tipo/status desconocidos, descripción nula, sala sin nombre y metadata ausente sin tocar escrituras financieras.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='UserLedgerTable.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/UserLedgerTable.tsx'` verde con `4` tests y `100%` focalizado; `pnpm --filter web test:coverage` verde con `195` suites y `1683` tests.
+- Riesgos abiertos: el siguiente valor probable en admin UI está en `LedgerFilters.tsx`, `UserBalanceControl.tsx` o `AuditFilters.tsx`; priorizar solo ramas visibles y no mutaciones financieras sin tests de dominio.
+- Siguiente lote recomendado: medir `LedgerFilters.tsx` o `UserBalanceControl.tsx`, manteniendo el trabajo en UI de solo lectura salvo que se active la skill de ledger para mutaciones.

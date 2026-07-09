@@ -47,6 +47,36 @@ const entries = [
   },
 ]
 
+const edgeEntries = [
+  ...entries,
+  {
+    id: 'entry-4',
+    user_id: 'user-1',
+    amount_cents: 12500,
+    direction: 'credit' as const,
+    balance_after_cents: 287500,
+    type: 'manual_bonus',
+    status: 'reversed',
+    reference_id: null,
+    description: null,
+    metadata: null,
+    created_at: '2026-05-25T13:00:00.000Z',
+  },
+  {
+    id: 'entry-5',
+    user_id: 'user-1',
+    amount_cents: 30000,
+    direction: 'debit' as const,
+    balance_after_cents: 257500,
+    type: 'bet',
+    status: 'completed',
+    reference_id: null,
+    description: 'Apuesta sin nombre de mesa',
+    metadata: { room_id: 'room-without-table-name' },
+    created_at: '2026-05-25T14:00:00.000Z',
+  },
+]
+
 describe('UserLedgerTable', () => {
   it('renderiza historial con conceptos, sala/ref y jugadores presentes', () => {
     render(<UserLedgerTable entries={entries} />)
@@ -84,5 +114,34 @@ describe('UserLedgerTable', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Buscar en descripción...'), { target: { value: 'sin match' } })
     expect(screen.getAllByText('No hay registros que coincidan con los filtros.')).toHaveLength(2)
+  })
+
+  it('mantiene fallbacks legibles para movimientos sin metadata o etiquetas conocidas', () => {
+    render(<UserLedgerTable entries={edgeEntries} />)
+
+    expect(screen.getByText('Historial (5 de 5)')).toBeInTheDocument()
+    expect(screen.getAllByText('manual_bonus').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('reversed').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/room-wit/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Mesa sin nombre')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByDisplayValue('Todos los tipos'), {
+      target: { value: 'manual_bonus' },
+    })
+
+    expect(screen.getByText('Historial (1 de 5)')).toBeInTheDocument()
+    expect(screen.getAllByText('manual_bonus').length).toBeGreaterThan(0)
+  })
+
+  it('busca por referencia aunque falten descripcion y metadata', () => {
+    render(<UserLedgerTable entries={edgeEntries} />)
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar en descripción...'), {
+      target: { value: 'deposit-reference' },
+    })
+
+    expect(screen.getByText('Historial (1 de 5)')).toBeInTheDocument()
+    expect(screen.getAllByText(/deposit-refe/).length).toBeGreaterThan(0)
   })
 })
