@@ -137,6 +137,17 @@ describe('admin small controls', () => {
     expect(window.alert).toHaveBeenCalledWith('Error: No permitido')
   })
 
+  it('no elimina mesa cuando el usuario cancela la confirmacion', async () => {
+    ;(window.confirm as jest.Mock).mockReturnValueOnce(false)
+    render(<DeleteTableButton tableId="table-1" size="sm" />)
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(window.confirm).toHaveBeenCalledWith('¿Eliminar configuración de mesa?')
+    expect(mockDeleteTable).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
   it('rendera DashboardWarnings en singular cuando hay una sola fuente degradada', () => {
     render(<DashboardWarnings warnings={['redis down']} />)
 
