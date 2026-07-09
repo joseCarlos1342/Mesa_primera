@@ -143,6 +143,56 @@ describe('admin user moderation controls', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
+  it('permite cerrar el panel y crear sancion temporal por dias', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(new Date('2026-05-25T00:00:00.000Z').getTime())
+    mockGetActiveSanctions
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([sanction])
+
+    render(<UserBanControl userId="user-1" userName="Ana" isBanned={false} />)
+
+    fireEvent.click(screen.getAllByRole('button', { name: /^Sancionar$/i })[0])
+    expect(await screen.findByText('Tipo de sanción')).toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByRole('button', { name: /^Sanciones$/i })[1])
+    expect(await screen.findByText('Sin sanciones activas')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: /^Sancionar$/i })[1])
+    expect(await screen.findByText('Tipo de sanción')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
+    expect(screen.queryByText('Tipo de sanción')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByRole('button', { name: /^Sancionar$/i })[0])
+    expect(await screen.findByText('Tipo de sanción')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByDisplayValue('7'), { target: { value: '3' } })
+    fireEvent.change(screen.getByPlaceholderText('Describe el motivo de la sanción...'), {
+      target: { value: 'Abandono reiterado' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /aplicar/i }))
+
+    await waitFor(() => expect(mockCreateSanction).toHaveBeenCalledWith(expect.objectContaining({
+      sanctionType: 'game_suspension',
+      reason: 'Abandono reiterado',
+      expiresAt: '2026-05-28T00:00:00.000Z',
+    })))
+    expect(await screen.findByText('Sanción aplicada exitosamente')).toBeInTheDocument()
+  })
+
+  it('muestra error visible cuando falla revocar una sancion', async () => {
+    mockRevokeSanction.mockRejectedValueOnce(new Error('No autorizada'))
+    render(<UserBanControl userId="user-1" userName="Ana" isBanned={false} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /sanciones/i }))
+
+    expect(await screen.findByText('Abuso de chat')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /revocar/i }))
+
+    await waitFor(() => expect(mockRevokeSanction).toHaveBeenCalledWith('sanction-1'))
+    expect(await screen.findByText('Error: No autorizada')).toBeInTheDocument()
+    expect(screen.getByText('Abuso de chat')).toBeInTheDocument()
+  })
+
   it('crea veto permanente sin expiracion y muestra errores', async () => {
     mockCreateSanction.mockRejectedValueOnce(new Error('Duplicada'))
     render(<UserBanControl userId="user-1" userName="Ana" isBanned={false} />)
