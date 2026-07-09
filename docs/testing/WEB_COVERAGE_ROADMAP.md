@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.44%` |
-| Lines | `99.44%` |
-| Functions | `95.48%` |
-| Branches | `91.4%` |
+| Statements | `99.47%` |
+| Lines | `99.47%` |
+| Functions | `95.57%` |
+| Branches | `91.41%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1689` tests pasando.
+- `1691` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2620,3 +2620,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminUserModeration.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/UserBanControl.tsx'` verde con `7` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1689` tests.
 - Riesgos abiertos: la rama residual de motivo vacío es defensiva e inaccesible desde UI porque el botón Aplicar queda deshabilitado sin `sanctionReason.trim()`.
 - Siguiente lote recomendado: `UserBalanceControl.tsx` solo con mocks de UI seguros y sin tocar `wallets_ledger`, o páginas admin con functions bajas.
+
+## Checkpoint 120
+
+- Fecha: 2026-07-08, hardening de UserBalanceControl UI admin.
+- Coverage global despues: `99.47%` statements/lines, `95.57%` functions, `91.41%` branches; `195` suites y `1691` tests.
+- Coverage focalizado antes: `95.07%` statements/lines, `88.88%` functions, `88.09%` branches.
+- Coverage focalizado despues: `100%` statements/lines/functions, `88.88%` branches.
+- Archivos cubiertos: `components/admin/UserBalanceControl.tsx` mediante `AdminUserModeration.test.tsx`.
+- Tests agregados: auto-cierre y limpieza del formulario tras ajuste exitoso; cierre manual del modal y reset de error visible.
+- Riesgos cerrados: quedan cubiertos estados visibles del ajuste de saldo con `adjustUserBalance` mockeado, sin tocar RPCs ni `wallets_ledger`.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminUserModeration.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/UserBalanceControl.tsx'` verde con `9` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1691` tests.
+- Riesgos abiertos: ramas residuales son formato de signo, error no-`Error`, guard de cierre durante loading y click de backdrop; no justifican forzar mutaciones reales.
+- Siguiente lote recomendado: páginas admin con functions bajas o componentes UI sin operaciones financieras.

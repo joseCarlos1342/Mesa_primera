@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import { UserBalanceControl } from '../UserBalanceControl'
 import { UserBanControl } from '../UserBanControl'
@@ -98,6 +98,46 @@ describe('admin user moderation controls', () => {
 
     await waitFor(() => expect(mockAdjustUserBalance).toHaveBeenCalledWith('user-1', -100000, 'Debito manual'))
     expect(screen.getByText('Saldo insuficiente')).toBeInTheDocument()
+  })
+
+  it('cierra automaticamente tras ajuste exitoso y limpia el formulario', async () => {
+    jest.useFakeTimers()
+    render(<UserBalanceControl userId="user-1" userName="Ana" currentBalance={150000} />)
+
+    fireEvent.click(screen.getByTitle('Ajustar Saldo'))
+    fireEvent.change(await screen.findByPlaceholderText('0'), { target: { value: '1500' } })
+    fireEvent.change(screen.getByPlaceholderText('Ej: Corrección por error en mesa #42'), {
+      target: { value: 'Bono manual autorizado' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /sumar/i }))
+
+    await waitFor(() => expect(mockAdjustUserBalance).toHaveBeenCalledWith('user-1', 150000, 'Bono manual autorizado'))
+    expect(await screen.findByText(/Ajuste de \+.*1.500 aplicado correctamente/)).toBeInTheDocument()
+
+    act(() => {
+      jest.advanceTimersByTime(1500)
+    })
+
+    expect(screen.queryByText('Ajustar Saldo')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTitle('Ajustar Saldo'))
+    expect(await screen.findByPlaceholderText('0')).toHaveValue(null)
+    expect(screen.getByPlaceholderText('Ej: Corrección por error en mesa #42')).toHaveValue('')
+  })
+
+  it('permite cerrar manualmente el ajuste y resetear errores visibles', async () => {
+    render(<UserBalanceControl userId="user-1" userName="Ana" currentBalance={150000} />)
+
+    fireEvent.click(screen.getByTitle('Ajustar Saldo'))
+    fireEvent.click(await screen.findByRole('button', { name: /sumar/i }))
+    expect(screen.getByText('Ingresa un monto válido mayor a $0')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '' }))
+    expect(screen.queryByText('Ingresa un monto válido mayor a $0')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTitle('Ajustar Saldo'))
+    expect(await screen.findByText('Ajustar Saldo')).toBeInTheDocument()
+    expect(screen.queryByText('Ingresa un monto válido mayor a $0')).not.toBeInTheDocument()
   })
 
   it('lista sanciones activas y permite revocar una sancion', async () => {
