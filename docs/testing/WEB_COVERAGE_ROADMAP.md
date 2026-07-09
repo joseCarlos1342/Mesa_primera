@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.43%` |
-| Lines | `99.43%` |
-| Functions | `95.19%` |
-| Branches | `91.38%` |
+| Statements | `99.44%` |
+| Lines | `99.44%` |
+| Functions | `95.48%` |
+| Branches | `91.4%` |
 
 Resultado de la corrida:
 
 - `195` suites en verde.
-- `1687` tests pasando.
+- `1689` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
 
@@ -2607,3 +2607,16 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminFiltersRealtimeCleanup.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/AuditFilters.tsx'` verde con `6` tests y `93.54%` branches focalizadas; `pnpm --filter web test:coverage` verde con `195` suites y `1687` tests.
 - Riesgos abiertos: branches residuales de `AuditFilters.tsx` son fecha `dateTo` ausente y `dateFrom` con valor; ya están cubiertos los caminos funcionales principales.
 - Siguiente lote recomendado: `UserBalanceControl.tsx` solo con mocks de UI seguros, o `UserBanControl.tsx` para ramas visibles de sanciones.
+
+## Checkpoint 119
+
+- Fecha: 2026-07-08, hardening de UserBanControl UI admin.
+- Coverage global despues: `99.44%` statements/lines, `95.48%` functions, `91.4%` branches; `195` suites y `1689` tests.
+- Coverage focalizado antes: `97.21%` statements/lines, `78.57%` functions, `87.93%` branches.
+- Coverage focalizado despues: `99.07%` statements/lines, `100%` functions, `90.62%` branches.
+- Archivos cubiertos: `components/admin/UserBanControl.tsx` mediante `AdminUserModeration.test.tsx`.
+- Tests agregados: cierre/reapertura del panel de sanciones y sanción temporal por días; error visible al fallar la revocación de una sanción activa.
+- Riesgos cerrados: quedan cubiertos flujos visibles de moderación sin tocar datos reales ni permisos externos.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminUserModeration.*test' --runInBand --coverage --collectCoverageFrom='src/components/admin/UserBanControl.tsx'` verde con `7` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1689` tests.
+- Riesgos abiertos: la rama residual de motivo vacío es defensiva e inaccesible desde UI porque el botón Aplicar queda deshabilitado sin `sanctionReason.trim()`.
+- Siguiente lote recomendado: `UserBalanceControl.tsx` solo con mocks de UI seguros y sin tocar `wallets_ledger`, o páginas admin con functions bajas.
