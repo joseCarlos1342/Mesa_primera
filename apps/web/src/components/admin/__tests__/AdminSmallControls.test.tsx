@@ -94,6 +94,20 @@ describe('admin small controls', () => {
     expect(replace).toHaveBeenLastCalledWith('/admin/users?page=2&q=carlos')
   })
 
+  it('elimina el parametro q cuando se limpia la busqueda de usuarios', () => {
+    jest.useFakeTimers()
+    render(<UserSearch />)
+
+    const input = screen.getByPlaceholderText('Buscar nombre o teléfono...')
+    fireEvent.change(input, { target: { value: '' } })
+
+    act(() => {
+      jest.advanceTimersByTime(300)
+    })
+
+    expect(replace).toHaveBeenLastCalledWith('/admin/users?page=2')
+  })
+
   it('activa y desactiva mesa con confirmacion', async () => {
     render(<TableActiveToggle tableId="table-1" isActive={false} />)
 
