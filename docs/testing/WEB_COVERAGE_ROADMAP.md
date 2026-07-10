@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.48%` |
-| Lines | `99.48%` |
-| Functions | `96.42%` |
-| Branches | `92.04%` |
+| Statements | `99.52%` |
+| Lines | `99.52%` |
+| Functions | `96.61%` |
+| Branches | `92.13%` |
 
 Resultado de la corrida:
 
-- `196` suites en verde.
-- `1705` tests pasando.
+- `199` suites en verde.
+- `1734` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f49a97526001RfcYf616Gfle6t`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f49f95408001stlUhokXY72cRG`).
 
 ## Meta Final
 
@@ -2746,3 +2746,15 @@ Ese lote combina:
 - Resultado de verificacion: suites focalizadas verdes con `28` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1728` tests; lint verde con warnings preexistentes; typecheck verde.
 - Riesgos abiertos: `profile/page.tsx` conserva ramas de formulario poco relevantes para tests unitarios; `replays/[gameId]/page.tsx` mantiene ramas defensivas de render/hidratacion que no justifican mocks mas fragiles.
 - Siguiente lote recomendado: atacar paginas admin de replays con `75%` functions o providers/hooks con functions bajas si se prioriza el siguiente salto global.
+
+## Checkpoint 130
+
+- Fecha: 2026-07-09, hardening de paginas admin de replays (Lote 4 del plan).
+- Coverage antes: `99.51%` statements/lines, `96.42%` functions, `92.04%` branches; `199` suites y `1728` tests.
+- Coverage despues: `99.52%` statements/lines, `96.61%` functions, `92.13%` branches; `199` suites y `1734` tests.
+- Archivos cubiertos: `app/(admin)/admin/replays/page.tsx` y `app/(admin)/admin/replays/[gameId]/page.tsx`.
+- Tests agregados: replay sin lista de jugadores, `keyExtractor` real en los mocks de `ResponsiveDataView`, movimiento ledger con tipo desconocido y usuario no mapeado, y variantes de grilla de manos finales para 1, 3, 4, 6 y 7 jugadores.
+- Riesgos cerrados: ambas paginas admin de replays suben de `75%` a `100%` functions en la medicion focalizada; `replays/page.tsx` queda en `100%` branches y `replays/[gameId]/page.tsx` sube a `93.75%` branches focalizadas.
+- Resultado de verificacion: suites focalizadas verdes con `12` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1734` tests.
+- Riesgos abiertos: `replays/[gameId]/page.tsx` conserva ramas de fallback de datos nulos (`players`, `pot_breakdown`, `final_hands`, `timeline`) ya cubiertas parcialmente por el caso legacy; perseguir el resto puede requerir tests redundantes.
+- Siguiente lote recomendado: providers/hooks con functions bajas (`AppLockProvider`, contextos de stats) o ramas auth criticas si se prioriza riesgo funcional.

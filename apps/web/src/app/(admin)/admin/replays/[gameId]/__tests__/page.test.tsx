@@ -12,18 +12,19 @@ jest.mock('@/components/replay/ReplayController', () => ({
 }))
 
 jest.mock('@/components/admin/ResponsiveDataView', () => ({
-  ResponsiveDataView: ({ columns, data, emptyMessage, header, renderCard }: {
+  ResponsiveDataView: ({ columns, data, emptyMessage, header, keyExtractor, renderCard }: {
     columns: Array<{ key: string; header: string; render?: (entry: ReplayLedgerEntry) => React.ReactNode }>
     data: ReplayLedgerEntry[]
     emptyMessage: string
     header: React.ReactNode
+    keyExtractor: (entry: ReplayLedgerEntry) => string
     renderCard: (entry: ReplayLedgerEntry) => React.ReactNode
   }) => (
     <div data-testid="replay-ledger-view">
       {header}
       {data.length === 0 ? <p>{emptyMessage}</p> : null}
       {data.map((entry) => (
-        <article key={entry.id}>
+        <article key={keyExtractor(entry)}>
           {columns.map((column) => (
             <section key={column.key} aria-label={column.header}>{column.render?.(entry)}</section>
           ))}
@@ -57,6 +58,7 @@ const ledger: ReplayLedgerEntry[] = [
   { id: 'entry-1', user_id: 'u1', type: 'win', direction: 'credit', amount_cents: 200000, balance_after_cents: 6000000, description: null, metadata: {}, created_at: '2026-05-25T10:01:00.000Z' },
   { id: 'entry-2', user_id: 'u2', type: 'bet', direction: 'debit', amount_cents: 100000, balance_after_cents: 4900000, description: null, metadata: {}, created_at: '2026-05-25T10:02:00.000Z' },
   { id: 'entry-3', user_id: 'vault', type: 'rake', direction: 'credit', amount_cents: 50000, balance_after_cents: 50000, description: null, metadata: {}, created_at: '2026-05-25T10:03:00.000Z' },
+  { id: 'entry-4', user_id: 'unknown-user-123456', type: 'refund', direction: 'debit', amount_cents: 25000, balance_after_cents: 25000, description: null, metadata: {}, created_at: '2026-05-25T10:04:00.000Z' },
 ]
 
 describe('AdminReplayDetailPage', () => {
@@ -78,11 +80,38 @@ describe('AdminReplayDetailPage', () => {
     expect(screen.getByText('Primera')).toBeInTheDocument()
     expect(screen.getByText('1O')).toBeInTheDocument()
     expect(screen.getByTestId('replay-controller')).toHaveTextContent('frames=2')
-    expect(screen.getByText('Registros del Ledger (3)')).toBeInTheDocument()
+    expect(screen.getByText('Registros del Ledger (4)')).toBeInTheDocument()
     expect(screen.getAllByText('win')).toHaveLength(2)
     expect(screen.getAllByText('bet')).toHaveLength(2)
     expect(screen.getAllByText('rake')).toHaveLength(2)
+    expect(screen.getAllByText('refund')).toHaveLength(2)
     expect(screen.getAllByText('vault')).toHaveLength(2)
+    expect(screen.getAllByText('unknown-')).toHaveLength(2)
+  })
+
+  it.each([
+    [1, 'grid-cols-1'],
+    [3, 'grid-cols-1 sm:grid-cols-3'],
+    [4, 'grid-cols-2 lg:grid-cols-4'],
+    [6, 'grid-cols-2 sm:grid-cols-3'],
+    [7, 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'],
+  ])('ajusta la grilla de manos finales para %i jugadores', async (count, expectedClass) => {
+    const finalHands = Object.fromEntries(
+      Array.from({ length: count }, (_, index) => [
+        `u${index + 1}`,
+        { nickname: `Jugador ${index + 1}`, handType: 'Alta', cards: '1O' },
+      ]),
+    )
+
+    mockGetAdminReplayDetail.mockResolvedValue({
+      replay: { ...replay, final_hands: finalHands },
+      ledger: [],
+    })
+
+    render(await AdminReplayDetailPage({ params: Promise.resolve({ gameId: replay.game_id }) }))
+
+    const grid = screen.getByText('Manos Finales').nextElementSibling
+    expect(grid).toHaveClass(...expectedClass.split(' '))
   })
 
   it('muestra legacy y empty state de ledger cuando no hay frames ni movimientos', async () => {
