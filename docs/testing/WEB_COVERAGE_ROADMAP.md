@@ -8,7 +8,7 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-07-08. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-07-09. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
@@ -16,15 +16,15 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.48%` |
 | Lines | `99.48%` |
-| Functions | `95.66%` |
-| Branches | `91.51%` |
+| Functions | `95.85%` |
+| Branches | `91.65%` |
 
 Resultado de la corrida:
 
-- `195` suites en verde.
-- `1698` tests pasando.
+- `196` suites en verde.
+- `1705` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-08.
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f49a97526001RfcYf616Gfle6t`).
 
 ## Meta Final
 
@@ -2685,3 +2685,28 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='AdminSmallControls.test' --runInBand --coverage --collectCoverageFrom='src/components/admin/DeleteTableButton.tsx'` verde con `11` tests; `pnpm --filter web exec jest --testPathPatterns='AdminControlsAndDataView.test' --runInBand --coverage --collectCoverageFrom='src/components/admin/PlayerControls.tsx'` verde con `8` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1698` tests.
 - Riesgos abiertos: ninguno crítico; ambos componentes quedan en `100%` focalizado.
 - Siguiente lote recomendado: páginas admin con functions bajas (`app/(admin)/admin/alerts/page.tsx`, `app/(admin)/admin/audit/page.tsx`) o componentes con branches residuales (`UserBalanceControl.tsx`, `UserBanControl.tsx`).
+
+## Checkpoint 125
+
+- Fecha: 2026-07-09, hardening de AdminAuditPage.
+- Coverage global despues: `99.48%` statements/lines, `95.76%` functions, `91.61%` branches; `195` suites y `1700` tests.
+- Coverage focalizado antes: `100%` statements/lines, `83.33%` functions, `81.25%` branches.
+- Coverage focalizado despues: `100%` statements/lines/functions/branches.
+- Archivos cubiertos: `app/(admin)/admin/audit/page.tsx` mediante `app/(admin)/admin/audit/__tests__/page.test.tsx`.
+- Tests agregados: fallbacks de actor/admin sin nombre, sistema sin etiqueta, detalles nulos y error de carga no estándar.
+- Riesgos cerrados: quedan protegidos los caminos visibles de auditoría cuando llegan registros incompletos y cuando `getAuditLog` rechaza con un valor no `Error`.
+- Resultado de verificacion: `pnpm --filter web exec jest --testPathPatterns='audit/__tests__/page\\.test' --runInBand --coverage --collectCoverageFrom='src/app/(admin)/admin/audit/page.tsx'` verde con `6` tests; `pnpm --filter web test:coverage` verde con `195` suites y `1700` tests.
+- Riesgos abiertos: ninguno crítico; la página de auditoría queda en `100%` focalizado.
+- Siguiente lote recomendado: `app/(admin)/admin/alerts/page.tsx` o `app/(admin)/admin/replays/[gameId]/page.tsx`, priorizando ramas visibles sobre guards defensivos.
+
+## Checkpoint 126
+
+- Fecha: 2026-07-09, hardening de utilidades compartidas y contexto de stats.
+- Coverage antes: `99.48%` statements/lines, `95.76%` functions, `91.61%` branches; `195` suites y `1700` tests.
+- Coverage despues: `99.48%` statements/lines, `95.85%` functions, `91.65%` branches; `196` suites y `1705` tests.
+- Archivos cubiertos: `utils/avatars.tsx`, `utils/format.ts` y `app/(player)/stats/_components/stats-tab-context.tsx` mediante `utils/__tests__/format-and-avatars.test.tsx` y `stats-components.test.tsx`.
+- Tests agregados: formato COP desde centavos, fallback seguro de montos nulos/indefinidos, resolucion de avatar por id, ausencia de avatar desconocido y consumo de `useStatsTab` desde proveedor real.
+- Riesgos cerrados: las utilidades visibles de saldo/avatar quedan en `100%` focalizado y el hook publico de stats queda caracterizado sin acoplarse a implementacion interna.
+- Resultado de verificacion: suites focalizadas verdes con `16` tests; `pnpm --filter web test:coverage` verde con `196` suites y `1705` tests.
+- Riesgos abiertos: objetivo estrategico de `98%` en functions/branches sigue pendiente; deuda principal actual en ramas de paginas admin/player con callbacks bajos, providers con branches defensivos y UI de soporte/juego ya identificada por el reporte.
+- Siguiente lote recomendado: `app/(admin)/admin/alerts/page.tsx`, `app/(admin)/admin/replays/[gameId]/page.tsx` o una pasada focalizada en providers (`AppLockProvider.tsx`) si se busca subir branches con comportamiento real.
