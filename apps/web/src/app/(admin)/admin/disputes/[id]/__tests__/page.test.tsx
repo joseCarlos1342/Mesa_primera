@@ -103,6 +103,63 @@ describe('DisputeDetailPage', () => {
     await expect(DisputeDetailPage({ params: Promise.resolve({ id: 'missing' }) })).rejects.toThrow('NEXT_NOT_FOUND')
     expect(notFound).toHaveBeenCalled()
   })
+
+  it('renderiza evidencia con entidades deposit, withdrawal, user, ticket y desconocida', async () => {
+    mockGetDispute.mockResolvedValue({
+      data: makeDispute({
+        evidence_snapshot: [
+          { entity: 'deposit', entity_id: 'dep-1', label: 'Deposito sospechoso' },
+          { entity: 'withdrawal', entity_id: 'wd-1', label: 'Retiro investigado' },
+          { entity: 'user', entity_id: 'user-1', label: 'Perfil del jugador' },
+          { entity: 'ticket', entity_id: 'ticket-2', label: 'Ticket relacionado' },
+          { entity: 'unknown_entity' as any, entity_id: 'x-1', label: 'Entidad desconocida' },
+        ],
+        support_ticket_id: null,
+      }),
+    })
+
+    render(await DisputeDetailPage({ params: Promise.resolve({ id: 'dispute-1' }) }))
+
+    expect(screen.getByRole('link', { name: /deposit deposito sospechoso dep-1/i })).toHaveAttribute('href', '/admin/deposits')
+    expect(screen.getByRole('link', { name: /withdrawal retiro investigado wd-1/i })).toHaveAttribute('href', '/admin/withdrawals')
+    expect(screen.getByRole('link', { name: /user perfil del jugador user-1/i })).toHaveAttribute('href', '/admin/users/user-1')
+    expect(screen.getByRole('link', { name: /ticket ticket relacionado ticket-2/i })).toHaveAttribute('href', '/admin/soporte/ticket-2')
+    expect(screen.getByRole('link', { name: /unknown_entity entidad desconocida x-1/i })).toHaveAttribute('href', '#')
+  })
+
+  it('usa fallback de colores para status y priority desconocidos', async () => {
+    mockGetDispute.mockResolvedValue({
+      data: makeDispute({
+        status: 'unknown_status' as unknown as AdminDisputeCase['status'],
+        priority: 'unknown_priority' as unknown as AdminDisputeCase['priority'],
+        evidence_snapshot: [],
+        support_ticket_id: null,
+      }),
+    })
+
+    render(await DisputeDetailPage({ params: Promise.resolve({ id: 'dispute-1' }) }))
+
+    expect(screen.getByText('unknown_status')).toBeInTheDocument()
+    expect(screen.getByText('unknown_priority')).toBeInTheDocument()
+  })
+
+  it('muestra notas de resolucion cuando la disputa esta resuelta', async () => {
+    mockGetDispute.mockResolvedValue({
+      data: makeDispute({
+        status: 'resolved',
+        resolution_notes: 'Se devolvio el saldo al jugador.',
+        resolved_at: '2026-05-25T14:00:00.000Z',
+        evidence_snapshot: [],
+        support_ticket_id: null,
+      }),
+    })
+
+    render(await DisputeDetailPage({ params: Promise.resolve({ id: 'dispute-1' }) }))
+
+    expect(screen.getByText('Notas de resolución')).toBeInTheDocument()
+    expect(screen.getByText('Se devolvio el saldo al jugador.')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Acciones' })).not.toBeInTheDocument()
+  })
 })
 
 describe('DisputeActions', () => {

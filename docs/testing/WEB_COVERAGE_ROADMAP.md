@@ -16,8 +16,8 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.48%` |
 | Lines | `99.48%` |
-| Functions | `96.23%` |
-| Branches | `91.66%` |
+| Functions | `96.42%` |
+| Branches | `91.84%` |
 
 Resultado de la corrida:
 
@@ -2722,3 +2722,15 @@ Ese lote combina:
 - Resultado de verificacion: suites focalizadas verdes con `13` tests; `pnpm --filter web test:coverage` verde con `196` suites y `1705` tests; lint verde con 64 warnings preexistentes; typecheck verde.
 - Riesgos abiertos: `tables/page.tsx` conserva form actions inline sin cubrir; el siguiente salto en functions requiere atacar `app/(admin)/admin/replays/page.tsx` (75%), `app/(admin)/admin/replays/[gameId]/page.tsx` (75%) o providers con functions bajas.
 - Siguiente lote recomendado: Lote 2 del plan (ramas admin App Router) o continuar con `replays/page.tsx` si se prioriza functions.
+
+## Checkpoint 128
+
+- Fecha: 2026-07-09, hardening de paginas admin con branches bajas (Lote 2 del plan).
+- Coverage antes: `99.48%` statements/lines, `96.23%` functions, `91.66%` branches; `196` suites y `1705` tests.
+- Coverage despues: `99.49%` statements/lines, `96.42%` functions, `91.84%` branches; `196` suites y `1712` tests.
+- Archivos cubiertos: `app/(admin)/admin/support/page.tsx`, `app/(admin)/admin/disputes/[id]/page.tsx`, `app/(admin)/admin/ledger/page.tsx` y `app/(admin)/admin/spectate/[roomId]/page.tsx`.
+- Tests agregados: adminId vacio cuando getUser no devuelve usuario, evidencia con entidades deposit/withdrawal/user/ticket/desconocida, fallbacks de StatusBadge/PriorityBadge desconocidos, notas de resolucion en disputa resuelta, error sin message en ledger, sancion con duracion en meses y jugador desconectado con estilo atenuado.
+- Riesgos cerrados: `disputes/[id]/page.tsx` sube de `60%` a `100%` branches; `ledger/page.tsx` sube de `75%` a `100%` branches; `support/page.tsx` sube de `60%` a `83.33%` branches; `spectate/[roomId]/page.tsx` sube de `75%` a `78.12%` branches.
+- Resultado de verificacion: suites focalizadas verdes con `25` tests; `pnpm --filter web test:coverage` verde con `196` suites y `1712` tests; lint verde con 64 warnings preexistentes; typecheck verde.
+- Riesgos abiertos: `support/page.tsx` conserva la rama `user?.id || ''` sin cubrir (linea 50); `spectate/[roomId]/page.tsx` conserva la rama de jugador desconectado (linea 267) sin cubrir; ambas son ramas defensivas que no justifican tests artificiales adicionales.
+- Siguiente lote recomendado: Lote 3 del plan (player pages secundarias) o continuar con `app/(admin)/admin/replays/page.tsx` (75% functions) si se prioriza functions.
