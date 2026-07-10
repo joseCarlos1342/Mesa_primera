@@ -298,4 +298,29 @@ describe('ProfilePage', () => {
 
     confirmSpy.mockRestore()
   })
+
+  it('muestra error cuando falla la actualizacion de profiles sin phoneOverride', async () => {
+    updateEq.mockResolvedValueOnce({ error: { message: 'DB offline' } })
+    await renderLoadedProfile()
+
+    fireEvent.change(screen.getByDisplayValue('chepe'), { target: { value: 'aliasNuevo' } })
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(await screen.findByText('No pudimos actualizar el perfil. Intenta de nuevo.')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('muestra error cuando falla la actualizacion de profiles con phoneOverride tras OTP', async () => {
+    updateEq.mockResolvedValueOnce({ error: { message: 'DB offline' } })
+    await renderLoadedProfile()
+
+    fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+    await screen.findByText('Verificar Número')
+    fireEvent.change(screen.getByPlaceholderText('000000'), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: /verificar código/i }))
+
+    expect(await screen.findByText('No pudimos actualizar el teléfono. Intenta de nuevo.')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
 })

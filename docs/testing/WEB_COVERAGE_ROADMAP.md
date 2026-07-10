@@ -17,7 +17,7 @@ Cobertura actual de `apps/web`:
 | Statements | `99.48%` |
 | Lines | `99.48%` |
 | Functions | `96.42%` |
-| Branches | `91.84%` |
+| Branches | `92.04%` |
 
 Resultado de la corrida:
 
@@ -2734,3 +2734,15 @@ Ese lote combina:
 - Resultado de verificacion: suites focalizadas verdes con `25` tests; `pnpm --filter web test:coverage` verde con `196` suites y `1712` tests; lint verde con 64 warnings preexistentes; typecheck verde.
 - Riesgos abiertos: `support/page.tsx` conserva la rama `user?.id || ''` sin cubrir (linea 50); `spectate/[roomId]/page.tsx` conserva la rama de jugador desconectado (linea 267) sin cubrir; ambas son ramas defensivas que no justifican tests artificiales adicionales.
 - Siguiente lote recomendado: Lote 3 del plan (player pages secundarias) o continuar con `app/(admin)/admin/replays/page.tsx` (75% functions) si se prioriza functions.
+
+## Checkpoint 129
+
+- Fecha: 2026-07-09, cobertura de paginas player secundarias (Lote 3 del plan).
+- Coverage antes: `99.49%` statements/lines, `96.42%` functions, `91.84%` branches; `196` suites y `1712` tests.
+- Coverage despues: `99.51%` statements/lines, `96.42%` functions, `92.04%` branches; `199` suites y `1728` tests.
+- Archivos cubiertos: `app/(player)/profile/page.tsx`, `app/(player)/wallet/page.tsx`, `app/(player)/wallet/deposit/page.tsx` y `app/(player)/replays/[gameId]/page.tsx`.
+- Tests agregados: fallos de actualizacion del perfil, error y fallback de transacciones en wallet, monto inicial y `onSuccess` del flujo de deposito, estados de carga/no encontrado y render de replay con versiones, timeline, manos finales y modo admin.
+- Riesgos cerrados: `wallet/page.tsx` y `wallet/deposit/page.tsx` quedan en `100%` en la medicion focalizada; `replays/[gameId]/page.tsx` sube cobertura real de ramas por estados y variantes de snapshot; `profile/page.tsx` cubre fallos de acciones server sin acoplarse al formulario completo.
+- Resultado de verificacion: suites focalizadas verdes con `28` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1728` tests; lint verde con warnings preexistentes; typecheck verde.
+- Riesgos abiertos: `profile/page.tsx` conserva ramas de formulario poco relevantes para tests unitarios; `replays/[gameId]/page.tsx` mantiene ramas defensivas de render/hidratacion que no justifican mocks mas fragiles.
+- Siguiente lote recomendado: atacar paginas admin de replays con `75%` functions o providers/hooks con functions bajas si se prioriza el siguiente salto global.
