@@ -21,18 +21,20 @@ jest.mock('@/components/admin/UserBanControl', () => ({
 }))
 
 jest.mock('@/components/admin/ResponsiveDataView', () => ({
-  ResponsiveDataView: ({ columns, data, emptyMessage, renderCard, rowClassName }: {
+  ResponsiveDataView: ({ columns, data, emptyMessage, renderCard, rowClassName, cardClassName, keyExtractor }: {
     columns: Array<{ header: string; render: (row: Record<string, unknown>) => React.ReactNode }>
     data: Array<Record<string, unknown>>
     emptyMessage: string
     renderCard: (row: Record<string, unknown>) => React.ReactNode
     rowClassName: (row: Record<string, unknown>) => string
+    cardClassName: (row: Record<string, unknown>) => string
+    keyExtractor: (row: Record<string, unknown>) => string
   }) => (
     <div data-testid="responsive-data-view">
       {data.length === 0 ? <p>{emptyMessage}</p> : data.map((row) => (
-        <article key={String(row.id)} data-row-class={rowClassName(row)}>
+        <article key={keyExtractor(row)} data-row-class={rowClassName(row)} className={cardClassName(row)}>
           {columns.map((column) => <section key={column.header}>{column.render(row)}</section>)}
-          <div data-testid={`card-${String(row.id)}`}>{renderCard(row)}</div>
+          <div data-testid={`card-${keyExtractor(row)}`}>{renderCard(row)}</div>
         </article>
       ))}
     </div>

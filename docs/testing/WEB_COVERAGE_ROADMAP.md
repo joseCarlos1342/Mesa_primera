@@ -16,8 +16,8 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.48%` |
 | Lines | `99.48%` |
-| Functions | `95.85%` |
-| Branches | `91.65%` |
+| Functions | `96.23%` |
+| Branches | `91.66%` |
 
 Resultado de la corrida:
 
@@ -2710,3 +2710,15 @@ Ese lote combina:
 - Resultado de verificacion: suites focalizadas verdes con `16` tests; `pnpm --filter web test:coverage` verde con `196` suites y `1705` tests.
 - Riesgos abiertos: objetivo estrategico de `98%` en functions/branches sigue pendiente; deuda principal actual en ramas de paginas admin/player con callbacks bajos, providers con branches defensivos y UI de soporte/juego ya identificada por el reporte.
 - Siguiente lote recomendado: `app/(admin)/admin/alerts/page.tsx`, `app/(admin)/admin/replays/[gameId]/page.tsx` o una pasada focalizada en providers (`AppLockProvider.tsx`) si se busca subir branches con comportamiento real.
+
+## Checkpoint 127
+
+- Fecha: 2026-07-09, hardening de paginas admin con functions bajas (Lote 1 del plan).
+- Coverage antes: `99.48%` statements/lines, `95.85%` functions, `91.65%` branches; `196` suites y `1705` tests.
+- Coverage despues: `99.48%` statements/lines, `96.23%` functions, `91.66%` branches; `196` suites y `1705` tests.
+- Archivos cubiertos: `app/(admin)/admin/users/page.tsx`, `app/(admin)/admin/ganancias/page.tsx` y `app/(admin)/admin/tables/page.tsx` mediante actualizacion de mocks de `ResponsiveDataView`.
+- Tests modificados: los mocks de `ResponsiveDataView` ahora ejecutan `cardClassName` y `keyExtractor` ademas de los callbacks ya cubiertos, sin agregar tests nuevos pero ejercitando functions inline que antes no se invocaban.
+- Riesgos cerrados: `users/page.tsx` sube de `50%` a `100%` functions; `ganancias/page.tsx` sube de `60%` a `100%` functions; `tables/page.tsx` se mantiene en `71.42%` functions por form actions inline (server actions) que requieren refactor para ser testeables sin acoplarse a implementacion.
+- Resultado de verificacion: suites focalizadas verdes con `13` tests; `pnpm --filter web test:coverage` verde con `196` suites y `1705` tests; lint verde con 64 warnings preexistentes; typecheck verde.
+- Riesgos abiertos: `tables/page.tsx` conserva form actions inline sin cubrir; el siguiente salto en functions requiere atacar `app/(admin)/admin/replays/page.tsx` (75%), `app/(admin)/admin/replays/[gameId]/page.tsx` (75%) o providers con functions bajas.
+- Siguiente lote recomendado: Lote 2 del plan (ramas admin App Router) o continuar con `replays/page.tsx` si se prioriza functions.
