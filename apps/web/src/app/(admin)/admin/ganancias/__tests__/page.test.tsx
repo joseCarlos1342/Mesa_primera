@@ -7,19 +7,21 @@ jest.mock('@/app/actions/admin-rake', () => ({
 }))
 
 jest.mock('@/components/admin/ResponsiveDataView', () => ({
-  ResponsiveDataView: ({ columns, data, emptyMessage, header, footer, renderCard }: {
+  ResponsiveDataView: ({ columns, data, emptyMessage, header, footer, renderCard, cardClassName, keyExtractor }: {
     columns: Array<{ key: string; header: string; render?: (entry: RakeEntry) => React.ReactNode }>
     data: RakeEntry[]
     emptyMessage: string
     header: React.ReactNode
     footer?: React.ReactNode
     renderCard: (entry: RakeEntry) => React.ReactNode
+    cardClassName: (entry: RakeEntry) => string
+    keyExtractor: (entry: RakeEntry) => string
   }) => (
     <div data-testid="rake-data-view">
       {header}
       {data.length === 0 ? <p>{emptyMessage}</p> : null}
       {data.map((entry) => (
-        <article key={entry.id}>
+        <article key={keyExtractor(entry)} className={cardClassName(entry)}>
           {columns.map((column) => (
             <section key={column.key} aria-label={column.header}>{column.render?.(entry)}</section>
           ))}
