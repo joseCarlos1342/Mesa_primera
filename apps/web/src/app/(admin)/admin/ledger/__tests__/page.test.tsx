@@ -81,4 +81,14 @@ describe('AdminLedgerPage', () => {
     expect(consoleError).toHaveBeenCalledWith('[AdminLedgerPage] Error cargando datos:', expect.any(Error))
     consoleError.mockRestore()
   })
+
+  it('usa mensaje generico cuando el error no tiene message', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    mockGetLedgerEntries.mockRejectedValueOnce('error sin message')
+
+    render(await AdminLedgerPage())
+
+    expect(screen.getByText('Error desconocido al cargar el libro mayor')).toBeInTheDocument()
+    consoleError.mockRestore()
+  })
 })

@@ -139,6 +139,17 @@ describe('SpectatePage', () => {
     expect(screen.getByTestId('voice-chat')).toHaveTextContent('Voice room-123 Soporte')
   })
 
+  it('renderiza jugador desconectado con estilo atenuado', async () => {
+    render(<SpectatePage />)
+    await waitFor(() => expect(stateHandler).toBeDefined())
+    emitState()
+
+    // Beto is disconnected (connected: false, isFolded: true)
+    const betoCard = screen.getByText('Beto').closest('div[class*="backdrop-blur"]')
+    expect(betoCard).toHaveClass('bg-red-900/10')
+    expect(betoCard).toHaveClass('opacity-40')
+  })
+
   it('envia acciones de mute y kick confirmadas', async () => {
     render(<SpectatePage />)
     await waitFor(() => expect(stateHandler).toBeDefined())
@@ -178,6 +189,45 @@ describe('SpectatePage', () => {
       jest.advanceTimersByTime(1500)
     })
     await waitFor(() => expect(screen.queryByRole('heading', { name: /aplicar sanción/i })).not.toBeInTheDocument())
+    jest.useRealTimers()
+  })
+
+  it('aplica sancion con duracion en meses', async () => {
+    jest.useFakeTimers()
+    jest.spyOn(Date, 'now').mockReturnValue(new Date('2026-05-25T12:00:00.000Z').getTime())
+    render(<SpectatePage />)
+    await waitFor(() => expect(stateHandler).toBeDefined())
+    emitState()
+
+    fireEvent.click(screen.getAllByRole('button', { name: /sancionar/i })[0])
+    fireEvent.click(screen.getByRole('button', { name: /suspensión total/i }))
+    fireEvent.change(screen.getByPlaceholderText('Describe el motivo de la sanción...'), { target: { value: 'Comportamiento abusivo' } })
+    
+    // Change duration to 2 months
+    const durationInput = screen.getByDisplayValue('7')
+    fireEvent.change(durationInput, { target: { value: '2' } })
+    
+    // Change unit to months
+    const unitSelect = screen.getByRole('combobox')
+    fireEvent.change(unitSelect, { target: { value: 'months' } })
+    
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar Sanción' }))
+
+    await waitFor(() => expect(mockCreateSanction).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'user-1',
+      sanctionType: 'full_suspension',
+      reason: 'Comportamiento abusivo',
+      sourceRoomId: 'room-123',
+      expiresAt: expect.any(String),
+    })))
+    
+    // Verify the expiration date is 60 days from now (2 months * 30 days)
+    const call = mockCreateSanction.mock.calls[0][0]
+    expect(call.expiresAt).toBeDefined()
+    const expiresAt = new Date(call.expiresAt!)
+    const expectedDate = new Date('2026-07-24T12:00:00.000Z') // 60 days from May 25
+    expect(expiresAt.getTime()).toBeCloseTo(expectedDate.getTime(), -3) // within 1 second
+    
     jest.useRealTimers()
   })
 

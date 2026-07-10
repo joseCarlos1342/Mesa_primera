@@ -63,4 +63,13 @@ describe('AdminSupportPage', () => {
     expect(screen.getByText('Error al cargar soporte: Permiso denegado')).toBeInTheDocument()
     expect(supabase.auth.getUser).not.toHaveBeenCalled()
   })
+
+  it('usa string vacio como adminId cuando getUser no devuelve usuario', async () => {
+    const supabase = createSupabaseMock({ tickets: [{ id: 'ticket-1' }], userId: null })
+    mockCreateClient.mockResolvedValue(supabase as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    render(await AdminSupportPage())
+
+    expect(screen.getByTestId('support-conversation-list')).toHaveTextContent('Tickets: 1 Admin:')
+  })
 })
