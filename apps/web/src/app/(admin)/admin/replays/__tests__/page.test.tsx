@@ -16,18 +16,19 @@ type ReplayEntry = {
 }
 
 jest.mock('@/components/admin/ResponsiveDataView', () => ({
-  ResponsiveDataView: ({ columns, data, emptyMessage, header, renderCard }: {
+  ResponsiveDataView: ({ columns, data, emptyMessage, header, keyExtractor, renderCard }: {
     columns: Array<{ key: string; header: string; render?: (entry: ReplayEntry) => React.ReactNode }>
     data: ReplayEntry[]
     emptyMessage: string
     header: React.ReactNode
+    keyExtractor: (entry: ReplayEntry) => string
     renderCard: (entry: ReplayEntry) => React.ReactNode
   }) => (
     <div data-testid="replays-data-view">
       {header}
       {data.length === 0 ? <p>{emptyMessage}</p> : null}
       {data.map((entry) => (
-        <article key={entry.game_id}>
+        <article key={keyExtractor(entry)}>
           {columns.map((column) => (
             <section key={column.key} aria-label={column.header}>{column.render?.(entry)}</section>
           ))}
@@ -103,5 +104,32 @@ describe('AdminReplaysPage', () => {
 
     expect(screen.getAllByText('—')).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: /ver/i })[0]).toHaveAttribute('href', '/admin/replays/game-3')
+  })
+
+  it('calcula jugadores unicos ignorando replays sin lista de jugadores', async () => {
+    mockGetAllReplays.mockResolvedValue([
+      {
+        game_id: 'game-without-players',
+        played_at: '2026-05-25T12:00:00.000Z',
+        total_pot: 0,
+        total_rake: 0,
+        winner_id: null,
+        players: null,
+      },
+      {
+        game_id: 'game-with-players',
+        played_at: '2026-05-25T13:00:00.000Z',
+        total_pot: 0,
+        total_rake: 0,
+        winner_id: 'u1',
+        players: [{ userId: 'u1', nickname: 'Ana' }],
+      },
+    ] as Awaited<ReturnType<typeof getAllReplays>>)
+
+    render(await AdminReplaysPage())
+
+    expect(screen.getByText('Todas las partidas jugadas del sistema (2 registros)')).toBeInTheDocument()
+    expect(screen.getAllByText('1')[0]).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /ver/i })[0]).toHaveAttribute('href', '/admin/replays/game-without-players')
   })
 })
