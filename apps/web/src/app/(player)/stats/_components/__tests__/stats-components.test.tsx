@@ -3,7 +3,7 @@ import { Leaderboard } from '../Leaderboard'
 import { StatsClient } from '../StatsClient'
 import { StatsShell } from '../StatsShell'
 import { StatsTabs } from '../StatsTabs'
-import { StatsTabContext } from '../stats-tab-context'
+import { StatsTabContext, useStatsTab } from '../stats-tab-context'
 import { getLeaderboard } from '@/app/actions/stats'
 import { claimBonus } from '@/app/actions/bonus'
 import confetti from 'canvas-confetti'
@@ -119,6 +119,30 @@ describe('stats shell and client components', () => {
 
     expect(screen.getByText('Tab actual: global')).toBeInTheDocument()
     expect(screen.getByText('Los datos se actualizan en tiempo real al finalizar cada ronda')).toBeInTheDocument()
+  })
+
+  it('useStatsTab expone el valor actual del proveedor', () => {
+    function StatsTabProbe() {
+      const { activeTab, setActiveTab } = useStatsTab()
+
+      return (
+        <button type="button" onClick={() => setActiveTab('personal')}>
+          Tab hook: {activeTab}
+        </button>
+      )
+    }
+
+    const setActiveTab = jest.fn()
+
+    render(
+      <StatsTabContext.Provider value={{ activeTab: 'global', setActiveTab }}>
+        <StatsTabProbe />
+      </StatsTabContext.Provider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tab hook: global' }))
+
+    expect(setActiveTab).toHaveBeenCalledWith('personal')
   })
 
   it('StatsClient muestra dashboard personal con stats y bono inicial', () => {

@@ -20,16 +20,17 @@ type AuditEntry = {
 }
 
 jest.mock('@/components/admin/ResponsiveDataView', () => ({
-  ResponsiveDataView: ({ columns, data, emptyMessage, renderCard }: {
+  ResponsiveDataView: ({ columns, data, emptyMessage, keyExtractor, renderCard }: {
     columns: Array<{ key: string; header: string; render?: (entry: AuditEntry) => React.ReactNode }>
     data: AuditEntry[]
     emptyMessage: string
+    keyExtractor: (entry: AuditEntry) => string
     renderCard: (entry: AuditEntry) => React.ReactNode
   }) => (
     <div data-testid="audit-data-view">
       {data.length === 0 ? <p>{emptyMessage}</p> : null}
       {data.map((entry) => (
-        <article key={entry.id}>
+        <article key={keyExtractor(entry)}>
           {columns.map((column) => (
             <section key={column.key} aria-label={column.header}>{column.render?.(entry)}</section>
           ))}
@@ -110,6 +111,52 @@ describe('AdminAuditPage', () => {
     expect(screen.getByText('No hay registros de auditoría.')).toBeInTheDocument()
   })
 
+  it('muestra fallbacks para actores sin nombre, sistema sin etiqueta y detalles nulos', async () => {
+    const rawEntries = [
+      {
+        id: 'audit-admin-fallback',
+        created_at: '2026-05-25T10:15:30.000Z',
+        admin_id: null,
+        admin: null,
+        actor_kind: 'admin',
+        actor_label: null,
+        action: 'settings_changed',
+        target_type: 'config',
+        target_id: 'rules-1234567890',
+        details: null,
+        context: null,
+        before_state: null,
+        after_state: null,
+        ip_address: null,
+      },
+      {
+        id: 'audit-system-fallback',
+        created_at: '2026-05-25T11:00:00.000Z',
+        admin_id: null,
+        admin: null,
+        actor_kind: 'system',
+        actor_label: null,
+        action: 'custom_event',
+        target_type: null,
+        target_id: null,
+        details: null,
+        context: null,
+        before_state: null,
+        after_state: null,
+        ip_address: null,
+      },
+    ]
+    mockGetAuditLog.mockResolvedValue(rawEntries as unknown as Awaited<ReturnType<typeof getAuditLog>>)
+
+    render(await AdminAuditPage())
+
+    expect(screen.getAllByText('Configuración Cambiada')).toHaveLength(2)
+    expect(screen.getAllByText('Admin').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('system')).toBeInTheDocument()
+    expect(screen.getAllByText('Sin detalles')).toHaveLength(2)
+  })
+
   it('muestra error de carga de auditoria', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockGetAuditLog.mockRejectedValue(new Error('audit offline'))
@@ -119,6 +166,18 @@ describe('AdminAuditPage', () => {
     expect(screen.getByRole('heading', { name: /error al cargar auditoría/i })).toBeInTheDocument()
     expect(screen.getByText('audit offline')).toBeInTheDocument()
     expect(consoleError).toHaveBeenCalledWith('[AdminAuditPage] Error cargando audit log:', expect.any(Error))
+    consoleError.mockRestore()
+  })
+
+  it('muestra error desconocido cuando la carga rechaza sin Error', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    mockGetAuditLog.mockRejectedValue('offline')
+
+    render(await AdminAuditPage())
+
+    expect(screen.getByRole('heading', { name: /error al cargar auditoría/i })).toBeInTheDocument()
+    expect(screen.getByText('Error desconocido al cargar el registro de auditoría')).toBeInTheDocument()
+    expect(consoleError).toHaveBeenCalledWith('[AdminAuditPage] Error cargando audit log:', 'offline')
     consoleError.mockRestore()
   })
 })
