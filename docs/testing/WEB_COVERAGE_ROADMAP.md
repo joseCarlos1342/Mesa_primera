@@ -16,15 +16,15 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.52%` |
 | Lines | `99.52%` |
-| Functions | `96.61%` |
-| Branches | `92.13%` |
+| Functions | `96.79%` |
+| Branches | `92.14%` |
 
 Resultado de la corrida:
 
 - `199` suites en verde.
-- `1734` tests pasando.
+- `1736` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f49f95408001stlUhokXY72cRG`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f49ffd243002OjQkSO2zYqBbEh`).
 
 ## Meta Final
 
@@ -2758,3 +2758,15 @@ Ese lote combina:
 - Resultado de verificacion: suites focalizadas verdes con `12` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1734` tests.
 - Riesgos abiertos: `replays/[gameId]/page.tsx` conserva ramas de fallback de datos nulos (`players`, `pot_breakdown`, `final_hands`, `timeline`) ya cubiertas parcialmente por el caso legacy; perseguir el resto puede requerir tests redundantes.
 - Siguiente lote recomendado: providers/hooks con functions bajas (`AppLockProvider`, contextos de stats) o ramas auth criticas si se prioriza riesgo funcional.
+
+## Checkpoint 131
+
+- Fecha: 2026-07-09, cierre de callbacks de tabs/contexto de estadisticas.
+- Coverage antes: `99.52%` statements/lines, `96.61%` functions, `92.13%` branches; `199` suites y `1734` tests.
+- Coverage despues: `99.52%` statements/lines, `96.79%` functions, `92.14%` branches; `199` suites y `1736` tests.
+- Archivos cubiertos: `app/(player)/stats/_components/StatsTabs.tsx` y `app/(player)/stats/_components/stats-tab-context.tsx`.
+- Tests agregados: pestaña global activa con retorno a personales y uso de `useStatsTab` fuera de provider para cubrir el contexto default sin side effects.
+- Riesgos cerrados: ambos archivos quedan en `100%` statements/branches/functions/lines en la medicion focalizada; el grupo `stats/_components` sube a `100%` functions globales.
+- Resultado de verificacion: suite focalizada verde con `14` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1736` tests.
+- Riesgos abiertos: quedan ramas visuales no criticas en `Leaderboard.tsx` y `stats-dashboard.tsx`, pero no bloquean functions del grupo.
+- Siguiente lote recomendado: providers/hooks (`AppLockProvider`, `usePresence`, `useNotificationSocket`) o auth pages con branches bajas si se prioriza riesgo de producto.

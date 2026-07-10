@@ -102,6 +102,16 @@ describe('stats shell and client components', () => {
     expect(onChange).toHaveBeenCalledWith('global')
   })
 
+  it('StatsTabs marca global como activa y permite volver a personales', () => {
+    const onChange = jest.fn()
+    render(<StatsTabs activeTab="global" onChange={onChange} />)
+
+    expect(screen.getByRole('button', { name: 'Ranking Global' })).toHaveClass('text-black')
+    fireEvent.click(screen.getByRole('button', { name: 'Mis Stats' }))
+
+    expect(onChange).toHaveBeenCalledWith('personal')
+  })
+
   it('StatsShell renderiza header, tabs, children y cambia el contexto a global', () => {
     render(
       <StatsShell>
@@ -143,6 +153,24 @@ describe('stats shell and client components', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tab hook: global' }))
 
     expect(setActiveTab).toHaveBeenCalledWith('personal')
+  })
+
+  it('useStatsTab expone el contexto default fuera del proveedor', () => {
+    function DefaultStatsTabProbe() {
+      const { activeTab, setActiveTab } = useStatsTab()
+
+      return (
+        <button type="button" onClick={() => setActiveTab('global')}>
+          Tab default: {activeTab}
+        </button>
+      )
+    }
+
+    render(<DefaultStatsTabProbe />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tab default: personal' }))
+
+    expect(screen.getByRole('button', { name: 'Tab default: personal' })).toBeInTheDocument()
   })
 
   it('StatsClient muestra dashboard personal con stats y bono inicial', () => {
