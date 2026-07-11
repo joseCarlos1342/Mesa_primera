@@ -49,4 +49,22 @@ describe('AdminLoginPage', () => {
     expect(screen.getByText('Password debil')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Verificando...' })).toBeDisabled()
   })
+
+  it('revalida email y contraseña al corregirlos después de tocarlos', () => {
+    render(<AdminLoginPage />)
+
+    const email = screen.getByPlaceholderText('admin@mesa.co')
+    const password = screen.getByPlaceholderText('••••••••')
+
+    fireEvent.blur(email, { target: { value: 'correo-invalido' } })
+    fireEvent.change(email, { target: { value: 'admin@mesa.co' } })
+    fireEvent.blur(password, { target: { value: '123' } })
+    fireEvent.change(password, { target: { value: 'clave-segura' } })
+
+    expect(screen.queryByText('Correo electrónico inválido')).not.toBeInTheDocument()
+    expect(screen.queryByText('La contraseña debe tener al menos 8 caracteres')).not.toBeInTheDocument()
+    expect(email).toHaveClass('border-green-500/40')
+    expect(password).toHaveClass('border-green-500/40')
+    expect(screen.getByText('✓')).toBeInTheDocument()
+  })
 })

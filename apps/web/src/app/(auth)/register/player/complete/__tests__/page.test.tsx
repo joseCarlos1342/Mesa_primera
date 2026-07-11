@@ -73,4 +73,33 @@ describe('CompleteGoogleRegistrationPage', () => {
     expect(screen.getByText('Telefono duplicado')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /guardando/i })).toBeDisabled()
   })
+
+  it('limpia errores locales y muestra campos válidos al corregir el perfil', async () => {
+    render(<CompleteGoogleRegistrationPage />)
+
+    const fullName = screen.getByPlaceholderText('Jose Carlos')
+    const nickname = screen.getByPlaceholderText('AsDelDestino')
+    const phone = screen.getByPlaceholderText('3001234567')
+
+    fireEvent.blur(fullName, { target: { value: '' } })
+    fireEvent.change(fullName, { target: { value: 'Ana Jugadora' } })
+    fireEvent.blur(nickname, { target: { value: 'apodo invalido' } })
+    fireEvent.change(nickname, { target: { value: 'Ana_2026' } })
+    fireEvent.blur(phone, { target: { value: '301' } })
+    fireEvent.change(phone, { target: { value: '3001234567' } })
+
+    expect(screen.queryByText(/nombre.*requerido/i)).not.toBeInTheDocument()
+    expect(nickname).toHaveClass('border-green-500/40')
+    expect(screen.getAllByText('✓')).toHaveLength(3)
+  })
+
+  it('mantiene el formulario disponible cuando Google no aporta datos', async () => {
+    mockGetGoogleUserData.mockResolvedValue(null)
+
+    render(<CompleteGoogleRegistrationPage />)
+
+    await waitFor(() => expect(mockGetGoogleUserData).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText('Conectado como')).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Jose Carlos')).toHaveValue('')
+  })
 })

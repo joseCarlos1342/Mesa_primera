@@ -61,4 +61,16 @@ describe('RecoveryPage', () => {
     expect(screen.getByText(/sms no disponible/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /enviando/i })).toBeDisabled()
   })
+
+  it('muestra estado válido tras corregir un número de celular', () => {
+    render(<RecoveryPage />)
+
+    const phoneInput = screen.getByPlaceholderText('3001234567')
+    fireEvent.blur(phoneInput, { target: { value: '301' } })
+    fireEvent.change(phoneInput, { target: { value: '3001234567' } })
+
+    expect(screen.queryByText(/número inválido/i)).not.toBeInTheDocument()
+    expect(phoneInput).toHaveClass('border-green-500/40')
+    expect(screen.getByText('✓')).toBeInTheDocument()
+  })
 })
