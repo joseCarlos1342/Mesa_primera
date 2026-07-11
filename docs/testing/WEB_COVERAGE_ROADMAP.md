@@ -22,9 +22,9 @@ Cobertura actual de `apps/web`:
 Resultado de la corrida:
 
 - `202` suites en verde.
-- `1762` tests pasando.
+- `1763` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f53168221001l8cv33wtyD1iw2`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f531d6749001bKq8inCWclYn41`).
 
 ## Meta Final
 
@@ -2827,3 +2827,10 @@ Ese lote combina:
 - Riesgos cerrados: ambos archivos quedan en `100%` statements/branches/functions/lines focalizados; se protege la degradación visible de Turnstile en formularios públicos.
 - Resultado de verificacion: suites focalizadas verdes con `7` tests; `pnpm --filter web test:coverage` verde con `202` suites y `1762` tests.
 - Siguiente lote recomendado: revisar gaps finales de functions en UI sin cubrir acciones server inline.
+
+## Checkpoint 137
+
+- Fecha: 2026-07-09, regla de fichas habilitadas en mesa personalizada.
+- Coverage antes/despues: se mantienen `99.65%` statements/lines, `97.83%` functions y `92.64%` branches; `202` suites y `1763` tests.
+- Test agregado: bloquea la creación y muestra el error cuando todas las fichas están deshabilitadas.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde.

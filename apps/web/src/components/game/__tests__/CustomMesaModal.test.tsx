@@ -35,6 +35,17 @@ describe('CustomMesaModal', () => {
     expect(screen.getByText('Fichas Habilitadas (6/6)')).toBeInTheDocument()
   })
 
+  it('bloquea la creación cuando todas las fichas están deshabilitadas', () => {
+    render(<CustomMesaModal isOpen onClose={onClose} onCreateMesa={onCreateMesa} creating={false} />)
+
+    for (const chip of ['$1k ✓', '$2k ✓', '$5k ✓', '$10k ✓', '$20k ✓', '$50k ✓']) {
+      fireEvent.click(screen.getByRole('button', { name: chip }))
+    }
+
+    expect(screen.getByText('Debe haber al menos 1 ficha habilitada')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /crear mesa personalizada/i })).toBeDisabled()
+  })
+
   it('envía la configuración seleccionada y reinicia al cerrar', () => {
     render(<CustomMesaModal isOpen onClose={onClose} onCreateMesa={onCreateMesa} creating={false} />)
 
