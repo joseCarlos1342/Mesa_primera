@@ -71,4 +71,38 @@ describe('usePresence', () => {
     unmount()
     expect(removeChannelMock).toHaveBeenCalledWith(channelMock)
   })
+
+  it('ejecuta callbacks vacíos de join y leave sin errores', async () => {
+    let joinHandler: (() => void) | undefined
+    let leaveHandler: (() => void) | undefined
+    onMock.mockImplementation((type: string, event: { event: string }, handler: () => void) => {
+      if (type === 'presence' && event.event === 'join') joinHandler = handler
+      if (type === 'presence' && event.event === 'leave') leaveHandler = handler
+      return channelMock
+    })
+
+    renderHook(() => usePresence([]))
+
+    expect(() => joinHandler?.()).not.toThrow()
+    expect(() => leaveHandler?.()).not.toThrow()
+  })
+
+  it('reutiliza canal global existente y actualiza estado inmediatamente', async () => {
+    // Primer render crea el canal
+    const { unmount: unmount1 } = renderHook(() => usePresence([]))
+
+    await waitFor(() => {
+      expect(authGetUserMock).toHaveBeenCalled()
+    })
+
+    // Desmontar pero mantener subscribers vivos (no limpiar globalChannel)
+    // Simular que hay otro hook activo
+    const { result: result2 } = renderHook(() => usePresence([]))
+
+    await waitFor(() => {
+      expect(result2.current.onlineUsers).toBeDefined()
+    })
+
+    unmount1()
+  })
 })

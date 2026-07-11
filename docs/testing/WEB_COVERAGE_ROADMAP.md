@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.52%` |
-| Lines | `99.52%` |
-| Functions | `96.79%` |
-| Branches | `92.14%` |
+| Statements | `99.58%` |
+| Lines | `99.58%` |
+| Functions | `96.98%` |
+| Branches | `92.23%` |
 
 Resultado de la corrida:
 
 - `199` suites en verde.
-- `1736` tests pasando.
+- `1745` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f49ffd243002OjQkSO2zYqBbEh`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f5292c859001wJwxnoej496QAs`).
 
 ## Meta Final
 
@@ -2770,3 +2770,15 @@ Ese lote combina:
 - Resultado de verificacion: suite focalizada verde con `14` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1736` tests.
 - Riesgos abiertos: quedan ramas visuales no criticas en `Leaderboard.tsx` y `stats-dashboard.tsx`, pero no bloquean functions del grupo.
 - Siguiente lote recomendado: providers/hooks (`AppLockProvider`, `usePresence`, `useNotificationSocket`) o auth pages con branches bajas si se prioriza riesgo de producto.
+
+## Checkpoint 132
+
+- Fecha: 2026-07-09, hardening de providers y hooks transversales (Sublote 1 del plan grande).
+- Coverage antes: `99.52%` statements/lines, `96.79%` functions, `92.14%` branches; `199` suites y `1736` tests.
+- Coverage despues: `99.58%` statements/lines, `96.98%` functions, `92.23%` branches; `199` suites y `1745` tests.
+- Archivos cubiertos: `components/providers/AppLockProvider.tsx`, `hooks/usePresence.ts`, con verificacion focalizada tambien sobre `useNotificationSocket.ts` y `useCardPreloader.ts`.
+- Tests agregados: contexto default de app lock fuera del provider, navegadores sin `PublicKeyCredential`, error de disponibilidad de autenticador, fallo de verificacion local, fallo de desbloqueo, fallo opcional de registro passkey server-side, fallo inesperado de persistencia local, callbacks de presencia `join`/`leave` y reutilizacion de canal global.
+- Riesgos cerrados: `AppLockProvider.tsx` sube a `100%` statements/functions/lines y `96.49%` branches; `usePresence.ts` sube a `100%` statements/functions/lines y `94.11%` branches; `components/providers` queda en `100%` functions globales.
+- Resultado de verificacion: suites focalizadas verdes con `27` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1745` tests.
+- Riesgos abiertos: `useNotificationSocket.ts` conserva ramas SSR no rentables en jsdom sin tests fragiles; `useCardPreloader.ts` conserva una rama interna de duplicado imposible con los datos actuales; `AppLockProvider.tsx` conserva fallback de mensaje sin `e.message`.
+- Siguiente lote recomendado: auth pages criticas (`login/admin`, `register/player/complete`, `recovery`) o wallet/player residual segun prioridad de riesgo.
