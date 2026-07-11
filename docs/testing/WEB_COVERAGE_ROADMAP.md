@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.62%` |
-| Lines | `99.62%` |
-| Functions | `97.36%` |
-| Branches | `92.58%` |
+| Statements | `99.64%` |
+| Lines | `99.64%` |
+| Functions | `97.55%` |
+| Branches | `92.60%` |
 
 Resultado de la corrida:
 
-- `200` suites en verde.
-- `1753` tests pasando.
+- `201` suites en verde.
+- `1757` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f52af7151002tuUKBHAUdW9Y4z`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f52bfdaee001J9NQ5Hb1vTKcWX`).
 
 ## Meta Final
 
@@ -2805,3 +2805,14 @@ Ese lote combina:
 - Riesgos cerrados: página de historial y `WalletContent` quedan en `100%` en medición focalizada; wallet residual cubre estados financieros visibles sin tocar lógica de ledger.
 - Resultado de verificacion: suites focalizadas verdes con `9` tests; `pnpm --filter web test:coverage` verde con `200` suites y `1753` tests.
 - Siguiente lote recomendado: componentes UI con branches de alto valor o funcionalidades player secundarias restantes.
+
+## Checkpoint 135
+
+- Fecha: 2026-07-09, configuración de mesa personalizada (Sublote 4 del plan grande).
+- Coverage antes: `99.62%` statements/lines, `97.36%` functions, `92.58%` branches; `200` suites y `1753` tests.
+- Coverage despues: `99.64%` statements/lines, `97.55%` functions, `92.60%` branches; `201` suites y `1757` tests.
+- Archivo cubierto: `components/game/CustomMesaModal.tsx`.
+- Tests agregados: modal cerrado, bloqueo sin nombre, deshabilitar/reactivar fichas, configuración de jugadores/entrada/pique, creación y reset al cerrar.
+- Riesgos cerrados: `CustomMesaModal.tsx` sube de `81.81%` a `100%` functions y llega a `100%` statements/lines; protege el envío de parámetros de creación de mesa sin tocar el backend.
+- Resultado de verificacion: suite focalizada verde con `4` tests; `pnpm --filter web test:coverage` verde con `201` suites y `1757` tests.
+- Siguiente lote recomendado: componentes player/UI restantes con functions bajas, evitando refactors de server actions inline sin caso de producto.
