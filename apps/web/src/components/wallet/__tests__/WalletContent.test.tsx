@@ -90,4 +90,24 @@ describe('WalletContent', () => {
     expect(screen.getByText('Procesando')).toBeInTheDocument()
     expect(screen.getByText('Fallido')).toBeInTheDocument()
   })
+
+  it('distingue variantes restantes de movimiento y usa cero para monto ausente', () => {
+    render(
+      <WalletContent
+        wallet={wallet}
+        transactions={[
+          { id: 'refund', type: 'refund', direction: 'credit', status: 'completed', amount_cents: 2500, created_at: '2025-01-04T10:00:00.000Z' },
+          { id: 'sent-transfer', type: 'transfer', direction: 'debit', status: 'pending', amount_cents: 1000, created_at: '2025-01-05T10:00:00.000Z' },
+          { id: 'adjustment', type: 'admin_adjustment', direction: 'credit', status: 'completed', amount_cents: 0, created_at: '2025-01-06T10:00:00.000Z' },
+          { id: 'unknown', type: 'bonus', direction: 'debit', status: 'failed', amount_cents: null, created_at: '2025-01-07T10:00:00.000Z' },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Reembolso')).toBeInTheDocument()
+    expect(screen.getByText('Transferencia Enviada')).toBeInTheDocument()
+    expect(screen.getByText('Ajuste')).toBeInTheDocument()
+    expect(screen.getByText('bonus')).toBeInTheDocument()
+    expect(screen.getByText('-$0')).toBeInTheDocument()
+  })
 })

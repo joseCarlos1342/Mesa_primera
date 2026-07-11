@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.61%` |
-| Lines | `99.61%` |
+| Statements | `99.62%` |
+| Lines | `99.62%` |
 | Functions | `97.36%` |
-| Branches | `92.45%` |
+| Branches | `92.58%` |
 
 Resultado de la corrida:
 
-- `199` suites en verde.
-- `1749` tests pasando.
+- `200` suites en verde.
+- `1753` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f52a87e770014LdzDMPAPH2sUM`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f52af7151002tuUKBHAUdW9Y4z`).
 
 ## Meta Final
 
@@ -2794,3 +2794,14 @@ Ese lote combina:
 - Resultado de verificacion: suites focalizadas verdes con `11` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1749` tests.
 - Riesgos abiertos: persisten ramas de fallback de mensajes de validación en formularios, que solo aparecerían ante esquemas sin mensaje y no justifican mocks artificiales.
 - Siguiente lote recomendado: wallet/player residual o componentes UI con branches de alto valor, preservando el foco en casos visibles de usuario.
+
+## Checkpoint 134
+
+- Fecha: 2026-07-09, estados residuales de wallet (Sublote 3 del plan grande).
+- Coverage antes: `99.61%` statements/lines, `97.36%` functions, `92.45%` branches; `199` suites y `1749` tests.
+- Coverage despues: `99.62%` statements/lines, `97.36%` functions, `92.58%` branches; `200` suites y `1753` tests.
+- Archivos cubiertos: `app/(player)/wallet/history/page.tsx` y `components/wallet/WalletContent.tsx`.
+- Tests agregados: historial exitoso, fallback de transacciones ausentes, error de conexión, reembolso, transferencia enviada, ajuste, tipo desconocido y monto ausente.
+- Riesgos cerrados: página de historial y `WalletContent` quedan en `100%` en medición focalizada; wallet residual cubre estados financieros visibles sin tocar lógica de ledger.
+- Resultado de verificacion: suites focalizadas verdes con `9` tests; `pnpm --filter web test:coverage` verde con `200` suites y `1753` tests.
+- Siguiente lote recomendado: componentes UI con branches de alto valor o funcionalidades player secundarias restantes.
