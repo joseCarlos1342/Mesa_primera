@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.58%` |
-| Lines | `99.58%` |
-| Functions | `96.98%` |
-| Branches | `92.23%` |
+| Statements | `99.61%` |
+| Lines | `99.61%` |
+| Functions | `97.36%` |
+| Branches | `92.45%` |
 
 Resultado de la corrida:
 
 - `199` suites en verde.
-- `1745` tests pasando.
+- `1749` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f5292c859001wJwxnoej496QAs`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f52a87e770014LdzDMPAPH2sUM`).
 
 ## Meta Final
 
@@ -2782,3 +2782,15 @@ Ese lote combina:
 - Resultado de verificacion: suites focalizadas verdes con `27` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1745` tests.
 - Riesgos abiertos: `useNotificationSocket.ts` conserva ramas SSR no rentables en jsdom sin tests fragiles; `useCardPreloader.ts` conserva una rama interna de duplicado imposible con los datos actuales; `AppLockProvider.tsx` conserva fallback de mensaje sin `e.message`.
 - Siguiente lote recomendado: auth pages criticas (`login/admin`, `register/player/complete`, `recovery`) o wallet/player residual segun prioridad de riesgo.
+
+## Checkpoint 133
+
+- Fecha: 2026-07-09, hardening de formularios auth críticos (Sublote 2 del plan grande).
+- Coverage antes: `99.58%` statements/lines, `96.98%` functions, `92.23%` branches; `199` suites y `1745` tests.
+- Coverage despues: `99.61%` statements/lines, `97.36%` functions, `92.45%` branches; `199` suites y `1749` tests.
+- Archivos cubiertos: `app/(auth)/login/admin/page.tsx`, `app/(auth)/register/player/complete/page.tsx` y `app/(auth)/recovery/page.tsx`.
+- Tests agregados: corrección local de email/contraseña admin, corrección de perfil Google con estados válidos, ausencia de datos Google y corrección de celular en recovery.
+- Riesgos cerrados: las tres páginas alcanzan `100%` functions en medición focalizada; `login/admin` pasa de `71.42%` a `100%` functions y de `75%` a `93.33%` branches; recovery sube a `94.44%` branches.
+- Resultado de verificacion: suites focalizadas verdes con `11` tests; `pnpm --filter web test:coverage` verde con `199` suites y `1749` tests.
+- Riesgos abiertos: persisten ramas de fallback de mensajes de validación en formularios, que solo aparecerían ante esquemas sin mensaje y no justifican mocks artificiales.
+- Siguiente lote recomendado: wallet/player residual o componentes UI con branches de alto valor, preservando el foco en casos visibles de usuario.
