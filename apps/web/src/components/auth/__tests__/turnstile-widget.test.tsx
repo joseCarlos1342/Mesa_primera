@@ -57,4 +57,24 @@ describe('TurnstileWidget', () => {
       'No se pudo cargar la verificación de seguridad. Recarga la página e intenta de nuevo.',
     )
   })
+
+  it('muestra alerta cuando falla la carga del script', () => {
+    render(<TurnstileWidget />)
+
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'load-turnstile' }))
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
+
+  it('renderiza al montar con script precargado y elimina el widget al desmontar', () => {
+    const renderMock = jest.fn().mockReturnValue('widget-preloaded')
+    const removeMock = jest.fn()
+    window.turnstile = { render: renderMock, reset: jest.fn(), remove: removeMock }
+
+    const { unmount } = render(<TurnstileWidget />)
+
+    expect(renderMock).toHaveBeenCalledTimes(1)
+    unmount()
+    expect(removeMock).toHaveBeenCalledWith('widget-preloaded')
+  })
 })

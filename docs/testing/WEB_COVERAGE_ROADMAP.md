@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.64%` |
-| Lines | `99.64%` |
-| Functions | `97.55%` |
-| Branches | `92.60%` |
+| Statements | `99.65%` |
+| Lines | `99.65%` |
+| Functions | `97.83%` |
+| Branches | `92.64%` |
 
 Resultado de la corrida:
 
-- `201` suites en verde.
-- `1757` tests pasando.
+- `202` suites en verde.
+- `1762` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f52bfdaee001J9NQ5Hb1vTKcWX`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f53168221001l8cv33wtyD1iw2`).
 
 ## Meta Final
 
@@ -2816,3 +2816,14 @@ Ese lote combina:
 - Riesgos cerrados: `CustomMesaModal.tsx` sube de `81.81%` a `100%` functions y llega a `100%` statements/lines; protege el envío de parámetros de creación de mesa sin tocar el backend.
 - Resultado de verificacion: suite focalizada verde con `4` tests; `pnpm --filter web test:coverage` verde con `201` suites y `1757` tests.
 - Siguiente lote recomendado: componentes player/UI restantes con functions bajas, evitando refactors de server actions inline sin caso de producto.
+
+## Checkpoint 136
+
+- Fecha: 2026-07-09, tutorial social y widget Turnstile (Sublote 5 del plan grande).
+- Coverage antes: `99.64%` statements/lines, `97.55%` functions, `92.60%` branches; `201` suites y `1757` tests.
+- Coverage despues: `99.65%` statements/lines, `97.83%` functions, `92.64%` branches; `202` suites y `1762` tests.
+- Archivos cubiertos: `components/landing/tutorials/FriendsTutorial.tsx` y `components/auth/turnstile-widget.tsx`.
+- Tests agregados: pasos y tabs del tutorial social; carga, error de script, script precargado y limpieza del widget Turnstile.
+- Riesgos cerrados: ambos archivos quedan en `100%` statements/branches/functions/lines focalizados; se protege la degradación visible de Turnstile en formularios públicos.
+- Resultado de verificacion: suites focalizadas verdes con `7` tests; `pnpm --filter web test:coverage` verde con `202` suites y `1762` tests.
+- Siguiente lote recomendado: revisar gaps finales de functions en UI sin cubrir acciones server inline.
