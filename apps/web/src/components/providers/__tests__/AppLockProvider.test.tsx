@@ -58,6 +58,14 @@ beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   platformAuthAvailable = true
+  Object.defineProperty(window, 'PublicKeyCredential', {
+    value: {
+      isUserVerifyingPlatformAuthenticatorAvailable: () =>
+        Promise.resolve(platformAuthAvailable),
+    },
+    writable: true,
+    configurable: true,
+  })
   // Reset document visibility
   Object.defineProperty(document, 'hidden', { value: false, writable: true, configurable: true })
   Object.defineProperty(document, 'visibilityState', {
@@ -102,9 +110,37 @@ function ControlConsumer() {
   return <button data-testid="enroll-btn" onClick={() => void enroll()}>Enroll</button>
 }
 
+function DefaultControlConsumer() {
+  const { isEnabled, isLocked, isSupported, enroll, disable } = useAppLock()
+  return (
+    <div>
+      <span data-testid="default-enabled">{String(isEnabled)}</span>
+      <span data-testid="default-locked">{String(isLocked)}</span>
+      <span data-testid="default-supported">{String(isSupported)}</span>
+      <button data-testid="default-enroll" onClick={() => void enroll()}>Default enroll</button>
+      <button data-testid="default-disable" onClick={disable}>Default disable</button>
+    </div>
+  )
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('AppLockProvider — new reduced-sensitivity policy', () => {
+  it('expone valores y callbacks default fuera del provider', async () => {
+    render(<DefaultControlConsumer />)
+
+    expect(screen.getByTestId('default-enabled').textContent).toBe('false')
+    expect(screen.getByTestId('default-locked').textContent).toBe('false')
+    expect(screen.getByTestId('default-supported').textContent).toBe('false')
+
+    await act(async () => {
+      screen.getByTestId('default-enroll').click()
+      screen.getByTestId('default-disable').click()
+    })
+
+    expect(screen.getByTestId('default-enabled').textContent).toBe('false')
+  })
+
   describe('Cold open (new session)', () => {
     it('should lock on cold open when biometric lock is enabled and no session marker exists', async () => {
       // Simulate: lock enabled in localStorage, but sessionStorage is empty (new session)
@@ -386,6 +422,167 @@ describe('AppLockProvider — new reduced-sensitivity policy', () => {
 
       expect(screen.queryByTestId('lock-screen')).not.toBeInTheDocument()
       expect(screen.getByTestId('locked').textContent).toBe('false')
+    })
+
+    it('marca provider como no soportado cuando PublicKeyCredential no existe', async () => {
+      const originalPKC = window.PublicKeyCredential
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      })
+
+      await act(async () => {
+        renderProvider()
+      })
+
+      expect(screen.getByTestId('supported').textContent).toBe('false')
+
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: originalPKC,
+        writable: true,
+        configurable: true,
+      })
+    })
+
+    it('marca provider como no soportado cuando isUserVerifyingPlatformAuthenticatorAvailable lanza error', async () => {
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: {
+          isUserVerifyingPlatformAuthenticatorAvailable: () =>
+            Promise.reject(new Error('not supported')),
+        },
+        writable: true,
+        configurable: true,
+      })
+
+      await act(async () => {
+        renderProvider()
+      })
+
+      expect(screen.getByTestId('supported').textContent).toBe('false')
+    })
+
+    it('enroll falla cuando navigator.credentials.create lanza error', async () => {
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: {
+          create: jest.fn().mockRejectedValue(new Error('NotAllowedError')),
+        },
+      })
+
+      await act(async () => {
+        render(
+          <AppLockProvider userId="test-user">
+            <LockStatus />
+            <ControlConsumer />
+          </AppLockProvider>,
+        )
+      })
+
+      await act(async () => {
+        screen.getByTestId('enroll-btn').click()
+      })
+
+      expect(localStorage.getItem('mesa_primera_app_lock_enabled')).toBeNull()
+      expect(screen.getByTestId('enabled').textContent).toBe('false')
+    })
+
+    it('desbloqueo falla cuando requestDeviceVerification lanza error', async () => {
+      localStorage.setItem('mesa_primera_app_lock_enabled', 'true')
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: {
+          create: jest.fn().mockRejectedValue(new Error('UserCancelled')),
+        },
+      })
+
+      await act(async () => {
+        renderProvider()
+      })
+
+      expect(screen.getByTestId('lock-screen')).toBeInTheDocument()
+
+      await act(async () => {
+        screen.getByTestId('unlock-btn').click()
+      })
+
+      expect(screen.getByTestId('lock-screen')).toBeInTheDocument()
+      expect(screen.getByTestId('locked').textContent).toBe('true')
+    })
+
+    it('enroll continúa cuando server passkey registration falla', async () => {
+      const rawId = Uint8Array.from([1, 2, 3]).buffer
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: {
+          create: jest.fn().mockResolvedValue({ rawId }),
+        },
+      })
+
+      ;(getPasskeyRegistrationOptions as jest.Mock).mockRejectedValue(new Error('Server error'))
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+      await act(async () => {
+        render(
+          <AppLockProvider userId="test-user">
+            <LockStatus />
+            <ControlConsumer />
+          </AppLockProvider>,
+        )
+      })
+
+      await act(async () => {
+        screen.getByTestId('enroll-btn').click()
+      })
+
+      expect(localStorage.getItem('mesa_primera_app_lock_enabled')).toBe('true')
+      expect(screen.getByTestId('enabled').textContent).toBe('true')
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[AppLock] Server-side passkey registration skipped:',
+        expect.any(Error),
+      )
+
+      consoleSpy.mockRestore()
+    })
+
+    it('enroll retorna error cuando falla la persistencia local inesperadamente', async () => {
+      const unexpectedError = new Error('Unexpected error')
+      const rawId = Uint8Array.from([1, 2, 3]).buffer
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: {
+          create: jest.fn().mockResolvedValue({ rawId }),
+        },
+      })
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+      const originalSetItem = Storage.prototype.setItem
+      jest.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(this: Storage, key, value) {
+        if (key === 'mesa_primera_app_lock_enabled') throw unexpectedError
+        return originalSetItem.call(this, key, value)
+      })
+
+      await act(async () => {
+        render(
+          <AppLockProvider userId="test-user">
+            <LockStatus />
+            <ControlConsumer />
+          </AppLockProvider>,
+        )
+      })
+
+      await act(async () => {
+        screen.getByTestId('enroll-btn').click()
+      })
+
+      expect(localStorage.getItem('mesa_primera_app_lock_enabled')).toBeNull()
+      expect(screen.getByTestId('enabled').textContent).toBe('false')
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[AppLock] Unexpected enroll error:',
+        unexpectedError,
+      )
+
+      consoleSpy.mockRestore()
     })
   })
 })
