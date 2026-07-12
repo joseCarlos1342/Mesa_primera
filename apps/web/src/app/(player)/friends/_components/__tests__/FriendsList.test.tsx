@@ -55,4 +55,13 @@ describe('FriendsList', () => {
     expect(screen.getByTestId('friend-avatar')).toBeInTheDocument()
     expect(screen.getByText('En Partida')).toBeInTheDocument()
   })
+
+  it('cancela la edición sin persistir cambios', () => {
+    render(<FriendsList friends={[friend]} onChat={onChat} onRemove={onRemove} onAction={onAction} onRefresh={onRefresh} />)
+    fireEvent.click(screen.getByRole('button', { name: '' }))
+    const input = screen.getByDisplayValue('Beto VIP')
+    fireEvent.click(input.parentElement!.querySelectorAll('button')[1])
+    expect(screen.getByText('Beto VIP')).toBeInTheDocument()
+    expect(updateFriendNickname).not.toHaveBeenCalled()
+  })
 })
