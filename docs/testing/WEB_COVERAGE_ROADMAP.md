@@ -16,15 +16,15 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.67%` |
 | Lines | `99.67%` |
-| Functions | `97.83%` |
+| Functions | `97.92%` |
 | Branches | `92.76%` |
 
 Resultado de la corrida:
 
 - `203` suites en verde.
-- `1767` tests pasando.
+- `1768` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f53f6b2b2001bl9nYsFaOkf1rR`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f540d31ed001Yi0bZlncR1o9xr`).
 
 ## Meta Final
 
@@ -2839,8 +2839,8 @@ Ese lote combina:
 
 - Fecha: 2026-07-09, acciones y estados de lista de amigos.
 - Coverage antes: `99.65%` statements/lines, `97.83%` functions, `92.64%` branches; `202` suites y `1763` tests.
-- Coverage despues: `99.67%` statements/lines, `97.83%` functions, `92.76%` branches; `203` suites y `1767` tests.
+- Coverage despues: `99.67%` statements/lines, `97.92%` functions, `92.76%` branches; `203` suites y `1768` tests.
 - Archivo cubierto: `app/(player)/friends/_components/FriendsList.tsx`.
-- Tests agregados: estado vacío, chat, eliminación, invitación y apodo exitosos/fallidos, avatar y estados online/offline/en partida.
-- Riesgos cerrados: FriendsList llega a `100%` statements/lines y `97.05%` branches focalizados, protegiendo la interfaz social ante fallos de acciones.
-- Resultado de verificacion: suite focalizada verde con `4` tests; `pnpm --filter web test:coverage` verde con `203` suites y `1767` tests.
+- Tests agregados: estado vacío, chat, eliminación, invitación y apodo exitosos/fallidos, cancelación de edición, avatar y estados online/offline/en partida.
+- Riesgos cerrados: FriendsList llega a `100%` statements/functions/lines y `97.14%` branches focalizados, protegiendo la interfaz social ante fallos de acciones.
+- Resultado de verificacion: suite focalizada verde con `5` tests; `pnpm --filter web test:coverage` verde con `203` suites y `1768` tests.
