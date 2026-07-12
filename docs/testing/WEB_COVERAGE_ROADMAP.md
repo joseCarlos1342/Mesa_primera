@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.65%` |
-| Lines | `99.65%` |
+| Statements | `99.67%` |
+| Lines | `99.67%` |
 | Functions | `97.83%` |
-| Branches | `92.64%` |
+| Branches | `92.76%` |
 
 Resultado de la corrida:
 
-- `202` suites en verde.
-- `1763` tests pasando.
+- `203` suites en verde.
+- `1767` tests pasando.
 - La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f531d6749001bKq8inCWclYn41`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f53f6b2b2001bl9nYsFaOkf1rR`).
 
 ## Meta Final
 
@@ -2834,3 +2834,13 @@ Ese lote combina:
 - Coverage antes/despues: se mantienen `99.65%` statements/lines, `97.83%` functions y `92.64%` branches; `202` suites y `1763` tests.
 - Test agregado: bloquea la creación y muestra el error cuando todas las fichas están deshabilitadas.
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde.
+
+## Checkpoint 138
+
+- Fecha: 2026-07-09, acciones y estados de lista de amigos.
+- Coverage antes: `99.65%` statements/lines, `97.83%` functions, `92.64%` branches; `202` suites y `1763` tests.
+- Coverage despues: `99.67%` statements/lines, `97.83%` functions, `92.76%` branches; `203` suites y `1767` tests.
+- Archivo cubierto: `app/(player)/friends/_components/FriendsList.tsx`.
+- Tests agregados: estado vacío, chat, eliminación, invitación y apodo exitosos/fallidos, avatar y estados online/offline/en partida.
+- Riesgos cerrados: FriendsList llega a `100%` statements/lines y `97.05%` branches focalizados, protegiendo la interfaz social ante fallos de acciones.
+- Resultado de verificacion: suite focalizada verde con `4` tests; `pnpm --filter web test:coverage` verde con `203` suites y `1767` tests.
