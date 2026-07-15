@@ -27,14 +27,14 @@ const STATUS_STYLES: Record<SupportTicketStatus, string> = {
   finalized: 'bg-emerald-500/20 text-emerald-400',
 };
 
-export function SupportConversationList({ initialTickets, adminId: _adminId }: { initialTickets: TicketWithUser[]; adminId: string }) {
+export function SupportConversationList({ initialTickets, adminId: _adminId, initialTicketId }: { initialTickets: TicketWithUser[]; adminId: string; initialTicketId?: string }) {
   const [tickets, setTickets] = useState<TicketWithUser[]>(
     initialTickets.map(t => ({
       ...t,
       awaitingResponse: t.status !== 'finalized' && t.last_message_from === 'player',
     }))
   );
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(() => initialTickets.some((ticket) => ticket.id === initialTicketId) ? initialTicketId! : null);
   const [filter, setFilter] = useState<TicketFilter>('pending');
   const [isClosing, setIsClosing] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -318,7 +318,7 @@ export function SupportConversationList({ initialTickets, adminId: _adminId }: {
             </div>
             
             {/* Chat Area */}
-            <div className="flex-1 min-h-0 relative">
+             <div className="flex-1 min-h-0 relative">
                 <SupportChat 
                     userId={activeTicket.user_id} 
                     isAdmin={true} 
@@ -326,7 +326,8 @@ export function SupportConversationList({ initialTickets, adminId: _adminId }: {
                     ticketId={selectedTicketId}
                     key={selectedTicketId}
                 />
-            </div>
+             </div>
+
             
             {/* Mobile Close Button */}
             <div className="md:hidden p-4 border-t border-white/5 bg-slate-900/60 shrink-0">

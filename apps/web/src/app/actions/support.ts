@@ -1,10 +1,34 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { z } from 'zod'
 
 // ─── Types ───────────────────────────────────────────────────
 
 export type SupportTicketStatus = 'pending' | 'attended' | 'finalized'
+const supportIssueCategories = ['deposit_missing', 'transfer_missing', 'withdrawal_missing', 'table_error', 'other'] as const
+export type SupportIssueCategory = (typeof supportIssueCategories)[number]
+
+const supportIssueSchema = z.object({
+  category: z.enum(supportIssueCategories),
+  message: z.string().trim().min(1, 'La descripción es obligatoria').max(5000, 'El mensaje es demasiado largo'),
+  transactionReference: z.string().trim().max(128).optional(),
+  tableReference: z.string().trim().max(128).optional(),
+  occurredAt: z.string().datetime().optional(),
+}).superRefine((issue, context) => {
+  if (['deposit_missing', 'transfer_missing', 'withdrawal_missing'].includes(issue.category) && !issue.transactionReference) {
+    context.addIssue({ code: 'custom', message: 'El ID de transacción es obligatorio para este reclamo', path: ['transactionReference'] })
+  }
+  if (issue.category === 'table_error' && !issue.tableReference) {
+    context.addIssue({ code: 'custom', message: 'El ID de mesa es obligatorio para este reclamo', path: ['tableReference'] })
+  }
+})
+
+const supportIssueAdjustmentSchema = z.object({
+  ticketId: z.string().uuid('El ticket es inválido'),
+  deltaCents: z.number().int().refine((amount) => amount !== 0 && amount % 100000 === 0, 'El ajuste debe ser múltiplo de $1.000 COP'),
+  reason: z.string().trim().min(10, 'La justificación debe tener al menos 10 caracteres').max(500, 'La justificación es demasiado larga'),
+})
 
 export interface SupportTicket {
   id: string
@@ -59,6 +83,47 @@ async function getAuthenticatedUser() {
 async function isCallerAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data } = await supabase.rpc('is_admin' as never) as { data: boolean | null }
   return data === true
+}
+
+export async function createSupportIssue(input: z.input<typeof supportIssueSchema>): Promise<ActionResult<{ ticket_id: string; message_id: string }>> {
+  const parsed = supportIssueSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message || 'El reclamo es inválido' }
+
+  const { supabase, error: authError } = await getAuthenticatedUser()
+  if (authError || !supabase) return { error: authError || 'No autenticado' }
+
+  const issue = parsed.data
+  const { data, error } = await supabase.rpc('create_support_issue', {
+    p_category: issue.category,
+    p_message: issue.message,
+    p_transaction_reference: issue.transactionReference || null,
+    p_table_reference: issue.tableReference || null,
+    p_occurred_at: issue.occurredAt || null,
+  }) as { data: { success: boolean; error?: string; ticket_id?: string; message_id?: string } | null; error: { message: string } | null }
+
+  if (error) return { error: 'No fue posible registrar el reclamo' }
+  if (!data?.success || !data.ticket_id || !data.message_id) return { error: data?.error || 'No fue posible registrar el reclamo' }
+  return { data: { ticket_id: data.ticket_id, message_id: data.message_id } }
+}
+
+export async function resolveSupportIssueAdjustment(input: z.input<typeof supportIssueAdjustmentSchema>): Promise<ActionResult<{ ledger_id: string; balance_after: number }>> {
+  const parsed = supportIssueAdjustmentSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message || 'El ajuste es inválido' }
+
+  const { supabase, error: authError } = await getAuthenticatedUser()
+  if (authError || !supabase) return { error: authError || 'No autenticado' }
+  if (!await isCallerAdmin(supabase)) return { error: 'Acceso denegado' }
+
+  const adjustment = parsed.data
+  const { data, error } = await supabase.rpc('resolve_support_issue_adjustment', {
+    p_ticket_id: adjustment.ticketId,
+    p_delta_cents: adjustment.deltaCents,
+    p_reason: adjustment.reason,
+  }) as { data: { success: boolean; error?: string; ledger_id?: string; balance_after?: number } | null; error: { message: string } | null }
+
+  if (error) return { error: 'No fue posible aplicar el ajuste' }
+  if (!data?.success || !data.ledger_id || data.balance_after === undefined) return { error: data?.error || 'No fue posible aplicar el ajuste' }
+  return { data: { ledger_id: data.ledger_id, balance_after: data.balance_after } }
 }
 
 // ─── Create Ticket ──────────────────────────────────────────

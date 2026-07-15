@@ -1,10 +1,11 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Send, X, MessageSquare, Clock, CheckCircle2, ChevronLeft, PlusCircle, Lock, Paperclip, FileText, Image as ImageIcon } from 'lucide-react';
+import { Send, X, MessageSquare, Clock, CheckCircle2, ChevronLeft, PlusCircle, Lock, Paperclip, AlertTriangle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   createSupportTicket,
+  createSupportIssue,
   appendSupportMessage,
   closeSupportTicket,
   listUserTickets,
@@ -13,7 +14,12 @@ import {
   getSupportAttachmentUrl,
   type SupportTicket,
   type SupportTicketStatus,
+  type SupportIssueCategory,
 } from '@/app/actions/support';
+import { getPlayerIssueMessages, listPlayerIssueTickets, type AdminIssueTicket, type IssueTicketMessage } from '@/app/actions/admin-issues';
+import { closeIssueTicket } from '@/app/actions/admin-issues';
+import { IssueAttachmentComposer } from '@/components/IssueAttachmentComposer';
+import { IssueAttachmentList } from '@/components/IssueAttachmentList';
 
 interface SupportChatProps {
   userId: string;
@@ -38,9 +44,17 @@ interface TicketListItem {
   lastMessage?: string;
 }
 
+const issueCategoryOptions: ReadonlyArray<{ value: SupportIssueCategory; label: string; description: string }> = [
+  { value: 'deposit_missing', label: 'Depósito no acreditado', description: 'Fondos enviados que aún no aparecen.' },
+  { value: 'transfer_missing', label: 'Transferencia no recibida', description: 'Una transferencia pendiente de confirmar.' },
+  { value: 'withdrawal_missing', label: 'Retiro no recibido', description: 'Fondos retirados que no llegaron a destino.' },
+  { value: 'table_error', label: 'Error en mesa o partida', description: 'Una incidencia durante el juego.' },
+  { value: 'other', label: 'Otro problema', description: 'Cuéntanos qué ocurrió.' },
+];
+
 export function SupportChat({ userId, isAdmin = false, embedded = false, ticketId: initialTicketId }: SupportChatProps) {
   const [isOpen, setIsOpen] = useState(embedded);
-  const [view, setView] = useState<'list' | 'chat'>(isAdmin || initialTicketId ? 'chat' : 'list');
+  const [view, setView] = useState<'list' | 'chat' | 'issue' | 'issues'>(isAdmin || initialTicketId ? 'chat' : 'list');
   const [activeTicketId, setActiveTicketId] = useState<string | null>(initialTicketId || null);
   const [ticketStatus, setTicketStatus] = useState<SupportTicketStatus | null>(null);
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
@@ -50,10 +64,30 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
   const [isSending, setIsSending] = useState(false);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isReportingIssue, setIsReportingIssue] = useState(false);
+  const [issueCategory, setIssueCategory] = useState<SupportIssueCategory>('deposit_missing');
+  const [issueReference, setIssueReference] = useState('');
+  const [issueTableReference, setIssueTableReference] = useState('');
+  const [issueMessage, setIssueMessage] = useState('');
+  const [issueError, setIssueError] = useState<string | null>(null);
+  const [issues, setIssues] = useState<AdminIssueTicket[]>([]);
+  const [selectedIssue, setSelectedIssue] = useState<AdminIssueTicket | null>(null);
+  const [issueMessages, setIssueMessages] = useState<IssueTicketMessage[]>([]);
+  const [attachmentVersion, setAttachmentVersion] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFinalized = ticketStatus === 'finalized';
+
+  useEffect(() => {
+    if (!isOpen || isAdmin || view !== 'issues') return;
+    listPlayerIssueTickets().then((result) => { if (result.data) setIssues(result.data); });
+  }, [isOpen, isAdmin, view]);
+
+  useEffect(() => {
+    if (!selectedIssue) return;
+    getPlayerIssueMessages(selectedIssue.id).then((result) => { if (result.data) setIssueMessages(result.data); });
+  }, [selectedIssue]);
 
   useEffect(() => {
     if (embedded) setIsOpen(true);
@@ -184,6 +218,38 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
     setMessages([]);
     setTicketStatus(null); // Will be set to 'pending' on first message
     setView('chat');
+  };
+
+  const isFinancialIssue = ['deposit_missing', 'transfer_missing', 'withdrawal_missing'].includes(issueCategory);
+
+  const submitIssue = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isReportingIssue || !issueMessage.trim()) return;
+    setIsReportingIssue(true);
+    setIssueError(null);
+    try {
+      const result = await createSupportIssue({
+        category: issueCategory,
+        message: issueMessage.trim(),
+        transactionReference: isFinancialIssue ? issueReference.trim() || undefined : undefined,
+        tableReference: issueCategory === 'table_error' ? issueTableReference.trim() || undefined : undefined,
+        occurredAt: new Date().toISOString(),
+      });
+      if (result.error || !result.data) {
+        setIssueError(result.error || 'No fue posible registrar el reclamo. Inténtalo de nuevo.');
+        return;
+      }
+
+      const ticketId = result.data.ticket_id;
+      setSelectedIssue({ id: ticketId, user_id: userId, category: issueCategory, description: issueMessage.trim(), transaction_reference: isFinancialIssue ? issueReference.trim() || null : null, table_reference: issueCategory === 'table_error' ? issueTableReference.trim() || null : null, occurred_at: new Date().toISOString(), status: 'open', resolution_notes: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      setIssueMessages([{ id: result.data.message_id, ticket_id: ticketId, message: issueMessage.trim(), from_admin: false, created_at: new Date().toISOString() }]);
+      setIssueMessage('');
+      setIssueReference('');
+      setIssueTableReference('');
+      setView('issues');
+    } finally {
+      setIsReportingIssue(false);
+    }
   };
 
   const handleCloseTicket = useCallback(async () => {
@@ -370,8 +436,8 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
           {/* Header Panel */}
           <div className="bg-brand-gold/10 border-b-2 border-brand-gold/20 p-6 flex justify-between items-center text-brand-gold shrink-0">
             <div className="flex items-center gap-3">
-              {view === 'chat' && (
-                <button onClick={() => setView('list')} className="p-2 hover:bg-brand-gold/10 rounded-xl transition-colors">
+               {view !== 'list' && (
+                 <button onClick={() => setView('list')} className="p-2 hover:bg-brand-gold/10 rounded-xl transition-colors">
                   <ChevronLeft className="w-5 h-5 text-brand-gold" />
                 </button>
               )}
@@ -379,7 +445,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
               <div className="flex flex-col">
                 <span className="text-[9px] font-black uppercase tracking-[0.3em] leading-none opacity-60">Primera Riverada</span>
                 <span className="text-[13px] font-display font-black mt-1 uppercase italic tracking-wider">
-                  {view === 'list' ? 'Centro de Ayuda' : isFinalized ? 'Consulta Cerrada' : 'Consulta con el Host'}
+                   {view === 'list' ? 'Centro de Ayuda' : view === 'issue' ? 'Reportar un problema' : isFinalized ? 'Consulta Cerrada' : 'Consulta con el Host'}
                 </span>
               </div>
             </div>
@@ -405,8 +471,8 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
           
           {/* Body Content */}
           <div className="flex-1 overflow-y-auto bg-transparent custom-scrollbar flex flex-col">
-            {view === 'list' ? (
-              <div className="p-6 space-y-6">
+             {view === 'list' ? (
+               <div className="p-6 space-y-6">
                  {/* New Ticket Button - Tactile Gold Style */}
                  <button 
                    onClick={startNewTicket}
@@ -422,14 +488,30 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
                           <p className="text-[9px] text-black/60 font-black uppercase tracking-[0.2em]">Inicia un chat en vivo</p>
                        </div>
                     </div>
-                 </button>
+                  </button>
+
+                  <button
+                    onClick={() => setView('issue')}
+                    className="w-full rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-left transition-colors hover:bg-amber-400/20"
+                  >
+                    <span className="flex items-center gap-3 text-amber-300">
+                      <AlertTriangle className="h-5 w-5" />
+                      <span>
+                        <span className="block text-xs font-black uppercase tracking-widest">Reportar un problema</span>
+                        <span className="text-[10px] text-amber-100/70">Depósitos, transferencias, retiros o errores de mesa</span>
+                      </span>
+                    </span>
+                  </button>
+                  <button onClick={() => { setSelectedIssue(null); setView('issues'); }} className="w-full rounded-2xl border border-teal-400/30 bg-teal-400/10 p-4 text-left text-teal-200">
+                    <span className="text-xs font-black uppercase tracking-widest">Mis reclamos</span><span className="mt-1 block text-[10px] text-teal-100/70">Consulta el estado y las respuestas del caso</span>
+                  </button>
 
                  <div className="space-y-4">
                     <h4 className="text-[10px] font-black text-brand-gold/60 uppercase tracking-[0.3em] px-2 italic">Historial de Tickets</h4>
                     {tickets.length === 0 ? (
                       <div className="text-center py-16 opacity-30 italic text-xs text-text-secondary uppercase tracking-widest">No tienes consultas previas</div>
                     ) : (
-                      tickets.map(ticket => (
+                       tickets.map(ticket => (
                         <div 
                           key={ticket.id}
                           role="button"
@@ -460,6 +542,39 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
                       ))
                     )}
                  </div>
+              </div>
+            ) : view === 'issue' ? (
+              <form onSubmit={submitIssue} className="space-y-4 p-6">
+                <fieldset>
+                  <legend className="mb-2 block text-[10px] font-black uppercase tracking-widest text-brand-gold">Tipo de problema</legend>
+                  <div className="grid gap-2">
+                    {issueCategoryOptions.map((option, index) => {
+                      const isSelected = issueCategory === option.value;
+                      return <button key={option.value} type="button" onClick={() => setIssueCategory(option.value)} aria-pressed={isSelected} className={`group relative flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${isSelected ? 'border-brand-gold bg-brand-gold/15 shadow-[inset_3px_0_0_#e2b044]' : 'border-brand-gold/15 bg-white/[0.03] hover:border-brand-gold/50 hover:bg-brand-gold/5'}`}>
+                        <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${isSelected ? 'bg-brand-gold text-black' : 'border border-brand-gold/35 text-brand-gold'}`}>{String(index + 1).padStart(2, '0')}</span>
+                        <span className="min-w-0"><span className={`block text-xs font-bold ${isSelected ? 'text-brand-gold-light' : 'text-text-premium'}`}>{option.label}</span><span className="mt-0.5 block text-[10px] leading-snug text-text-secondary">{option.description}</span></span>
+                        {isSelected ? <CheckCircle2 aria-hidden="true" className="ml-auto size-4 shrink-0 text-brand-gold" /> : null}
+                      </button>
+                    })}
+                  </div>
+                </fieldset>
+                {isFinancialIssue ? <div><label htmlFor="issue-reference" className="mb-1 block text-[10px] font-black uppercase tracking-widest text-brand-gold">ID de transacción</label><input id="issue-reference" value={issueReference} onChange={(event) => setIssueReference(event.target.value)} required className="w-full rounded-xl border border-brand-gold/20 bg-black/40 px-3 py-3 text-xs text-white" /></div> : null}
+                {issueCategory === 'table_error' ? <div><label htmlFor="issue-table" className="mb-1 block text-[10px] font-black uppercase tracking-widest text-brand-gold">ID de mesa</label><input id="issue-table" value={issueTableReference} onChange={(event) => setIssueTableReference(event.target.value)} required className="w-full rounded-xl border border-brand-gold/20 bg-black/40 px-3 py-3 text-xs text-white" /></div> : null}
+                <div><label htmlFor="issue-message" className="mb-1 block text-[10px] font-black uppercase tracking-widest text-brand-gold">Observaciones del error</label><textarea id="issue-message" value={issueMessage} onChange={(event) => setIssueMessage(event.target.value)} required maxLength={5000} rows={5} className="w-full resize-none rounded-xl border border-brand-gold/20 bg-black/40 px-3 py-3 text-xs text-white" /></div>
+                {issueError ? <p className="text-xs text-red-300">{issueError}</p> : null}
+                <button type="submit" disabled={isReportingIssue || !issueMessage.trim()} className="w-full rounded-xl bg-brand-gold px-4 py-3 text-xs font-black uppercase tracking-widest text-black disabled:opacity-50">Enviar reporte</button>
+              </form>
+            ) : view === 'issues' ? (
+              <div className="space-y-3 p-6">
+                {selectedIssue ? <>
+                  <button onClick={() => setSelectedIssue(null)} className="text-xs text-teal-300">← Mis reclamos</button>
+                  <p className="text-xs font-black uppercase text-teal-300">{selectedIssue.category.replaceAll('_', ' ')} · {selectedIssue.status}</p>
+                  <p className="rounded-xl bg-white/5 p-3 text-xs text-white">{selectedIssue.description}</p>
+                  <IssueAttachmentList key={`${selectedIssue.id}-${attachmentVersion}`} ticketId={selectedIssue.id} />
+                  {issueMessages.map((message) => <div key={message.id} className={`rounded-xl p-3 text-xs ${message.from_admin ? 'bg-indigo-500/20 text-indigo-100' : 'bg-white/5 text-white'}`}><p className="mb-1 text-[9px] font-black uppercase">{message.from_admin ? 'Administración' : 'Tú'}</p>{message.message}</div>)}
+                  {selectedIssue.status !== 'closed' && selectedIssue.status !== 'resolved' ? <IssueAttachmentComposer ticketId={selectedIssue.id} onUploaded={() => { setAttachmentVersion((version) => version + 1); getPlayerIssueMessages(selectedIssue.id).then((result) => { if (result.data) setIssueMessages(result.data) }) }} /> : null}
+                  {selectedIssue.status !== 'closed' && selectedIssue.status !== 'resolved' ? <button onClick={async () => { const result = await closeIssueTicket(selectedIssue.id); if (!result.error) { setSelectedIssue({ ...selectedIssue, status: 'closed' }); setIssueMessages((current) => [...current, { id: crypto.randomUUID(), ticket_id: selectedIssue.id, from_admin: false, message: 'El caso fue cerrado por el jugador.', created_at: new Date().toISOString() }]); } }} className="rounded-xl border border-red-400/30 px-3 py-2 text-[10px] font-black uppercase text-red-300">Cerrar caso</button> : null}
+                </> : issues.length === 0 ? <p className="text-center text-xs text-text-secondary">No tienes reclamos registrados.</p> : issues.map((issue) => <button key={issue.id} onClick={() => setSelectedIssue(issue)} className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-left"><p className="text-xs font-black text-white">{issue.category.replaceAll('_', ' ')}</p><p className="mt-1 text-[10px] text-teal-300">{issue.status}</p></button>)}
               </div>
             ) : (
               <div className="flex-1 p-6 flex flex-col gap-4 min-h-0">

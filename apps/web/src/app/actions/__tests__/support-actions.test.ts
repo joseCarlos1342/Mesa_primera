@@ -1,6 +1,8 @@
 import {
   appendSupportMessage,
   closeSupportTicket,
+  createSupportIssue,
+  resolveSupportIssueAdjustment,
   createSupportTicket,
   getSupportAttachmentUrl,
   getSupportTicket,
@@ -62,6 +64,59 @@ describe('support actions', () => {
 
     await expect(createSupportTicket('ticket-1', '   ')).resolves.toEqual({ error: 'El mensaje no puede estar vacío' })
     expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('crea un reclamo financiero estructurado de forma atómica', async () => {
+    const rpc = jest.fn().mockResolvedValue({
+      data: { success: true, ticket_id: 'ticket-issue-1', message_id: 'message-issue-1' },
+      error: null,
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
+
+    await expect(createSupportIssue({
+      category: 'deposit_missing',
+      message: 'El depósito no se acreditó.',
+      transactionReference: 'dep-123',
+      occurredAt: '2026-07-12T12:30:00.000Z',
+    })).resolves.toEqual({ data: { ticket_id: 'ticket-issue-1', message_id: 'message-issue-1' } })
+
+    expect(rpc).toHaveBeenCalledWith('create_support_issue', {
+      p_category: 'deposit_missing',
+      p_message: 'El depósito no se acreditó.',
+      p_transaction_reference: 'dep-123',
+      p_table_reference: null,
+      p_occurred_at: '2026-07-12T12:30:00.000Z',
+    })
+  })
+
+  it('rechaza un reclamo financiero sin referencia antes de llamar la RPC', async () => {
+    const supabase = queuedSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(createSupportIssue({
+      category: 'transfer_missing',
+      message: 'No recibí la transferencia.',
+    })).resolves.toEqual({ error: 'El ID de transacción es obligatorio para este reclamo' })
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('crea un único ajuste financiero ligado al ticket', async () => {
+    const rpc = jest.fn()
+      .mockResolvedValueOnce({ data: true, error: null })
+      .mockResolvedValueOnce({ data: { success: true, ledger_id: 'ledger-adjustment-1', balance_after: 500000 }, error: null })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
+
+    await expect(resolveSupportIssueAdjustment({
+      ticketId: '123e4567-e89b-12d3-a456-426614174000',
+      deltaCents: 500000,
+      reason: 'Depósito confirmado no acreditado',
+    })).resolves.toEqual({ data: { ledger_id: 'ledger-adjustment-1', balance_after: 500000 } })
+
+    expect(rpc).toHaveBeenNthCalledWith(2, 'resolve_support_issue_adjustment', {
+      p_ticket_id: '123e4567-e89b-12d3-a456-426614174000',
+      p_delta_cents: 500000,
+      p_reason: 'Depósito confirmado no acreditado',
+    })
   })
 
   it('rechaza crear tickets con mensajes demasiado largos', async () => {

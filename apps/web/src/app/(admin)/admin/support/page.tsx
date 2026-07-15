@@ -2,7 +2,9 @@ import { createClient } from '@/utils/supabase/server';
 import { SupportConversationList } from '@/components/admin/SupportConversationList';
 import { Headphones } from 'lucide-react';
 
-export default async function AdminSupportPage() {
+export default async function AdminSupportPage({ searchParams }: { searchParams: Promise<{ ticket?: string }> } = { searchParams: Promise.resolve({}) }) {
+  const { ticket } = await searchParams;
+  const selectedTicketId = typeof ticket === 'string' ? ticket : undefined;
   const supabase = await createClient();
 
   // Fetch tickets with user profile info
@@ -47,7 +49,7 @@ export default async function AdminSupportPage() {
       </div>
 
       <div className="bg-slate-900/20 border border-white/5 rounded-[2.5rem] p-4 lg:p-6 backdrop-blur-3xl shadow-3xl">
-        <SupportConversationList initialTickets={tickets || []} adminId={user?.id || ''} />
+        <SupportConversationList initialTickets={tickets || []} adminId={user?.id || ''} initialTicketId={selectedTicketId} />
       </div>
     </div>
   );
