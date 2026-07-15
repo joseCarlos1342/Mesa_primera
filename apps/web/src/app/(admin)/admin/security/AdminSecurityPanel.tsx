@@ -118,13 +118,15 @@ export function AdminSecurityPanel({ snapshot }: Props) {
             <FieldError message={emailState?.fieldErrors?.code} />
           </div>
 
-          <button
-            type="submit"
-            disabled={emailPending}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-indigo-500 px-5 text-sm font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-indigo-400 disabled:opacity-60"
-          >
-            {emailPending ? 'Validando...' : 'Solicitar cambio'}
-          </button>
+          <div className="flex justify-center sm:justify-start">
+            <button
+              type="submit"
+              disabled={emailPending}
+              className="inline-flex h-12 w-full max-w-xs items-center justify-center rounded-2xl bg-indigo-500 px-5 text-sm font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-indigo-400 disabled:opacity-60 sm:w-auto"
+            >
+              {emailPending ? 'Validando...' : 'Solicitar cambio'}
+            </button>
+          </div>
         </form>
 
         <div className="mt-4">
@@ -151,13 +153,15 @@ export function AdminSecurityPanel({ snapshot }: Props) {
           <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-sm text-slate-300">
             El enlace se enviará a <span className="font-semibold text-white">{snapshot.email}</span>
           </div>
-          <button
-            type="submit"
-            disabled={passwordPending}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-amber-400 px-5 text-sm font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-amber-300 disabled:opacity-60"
-          >
-            {passwordPending ? 'Enviando...' : 'Enviar enlace'}
-          </button>
+          <div className="flex justify-center sm:justify-start">
+            <button
+              type="submit"
+              disabled={passwordPending}
+              className="inline-flex h-12 w-full max-w-xs items-center justify-center rounded-2xl bg-amber-400 px-5 text-sm font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-amber-300 disabled:opacity-60 sm:w-auto"
+            >
+              {passwordPending ? 'Enviando...' : 'Enviar enlace'}
+            </button>
+          </div>
         </form>
 
         <div className="mt-4">
@@ -199,13 +203,15 @@ export function AdminSecurityPanel({ snapshot }: Props) {
             <FieldError message={totpState?.fieldErrors?.code} />
           </div>
 
-          <button
-            type="submit"
-            disabled={totpPending}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-red-500 px-5 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-red-400 disabled:opacity-60"
-          >
-            {totpPending ? 'Revocando...' : 'Eliminar y volver a configurar'}
-          </button>
+          <div className="flex justify-center sm:justify-start">
+            <button
+              type="submit"
+              disabled={totpPending}
+              className="inline-flex h-12 w-full max-w-xs items-center justify-center rounded-2xl bg-red-500 px-5 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-red-400 disabled:opacity-60 sm:w-auto"
+            >
+              {totpPending ? 'Revocando...' : 'Eliminar y volver a configurar'}
+            </button>
+          </div>
         </form>
 
         <div className="mt-4">
@@ -246,13 +252,15 @@ export function AdminSecurityPanel({ snapshot }: Props) {
             <FieldError message={recoveryState?.fieldErrors?.code} />
           </div>
 
-          <button
-            type="submit"
-            disabled={recoveryPending}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-cyan-400 px-5 text-sm font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60"
-          >
-            {recoveryPending ? 'Regenerando...' : 'Regenerar códigos'}
-          </button>
+          <div className="flex justify-center sm:justify-start">
+            <button
+              type="submit"
+              disabled={recoveryPending}
+              className="inline-flex h-12 w-full max-w-xs items-center justify-center rounded-2xl bg-cyan-400 px-5 text-sm font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60 sm:w-auto"
+            >
+              {recoveryPending ? 'Regenerando...' : 'Regenerar códigos'}
+            </button>
+          </div>
         </form>
 
         <div className="mt-4 space-y-4">
@@ -299,13 +307,15 @@ export function AdminSecurityPanel({ snapshot }: Props) {
               <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">Otras sesiones</h3>
               <p className="mt-2 text-sm leading-6 text-slate-400">Mantiene esta sesión activa y cierra el resto.</p>
             </div>
-            <button
-              type="submit"
-              disabled={revokePending}
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-emerald-500 px-4 text-xs font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
-            >
-              {revokePending ? 'Cerrando...' : 'Revocar otras'}
-            </button>
+            <div className="flex justify-center sm:justify-start">
+              <button
+                type="submit"
+                disabled={revokePending}
+                className="inline-flex h-11 w-full max-w-xs items-center justify-center rounded-2xl bg-emerald-500 px-4 text-xs font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60 sm:w-auto"
+              >
+                {revokePending ? 'Cerrando...' : 'Revocar otras'}
+              </button>
+            </div>
             <ActionNotice state={revokeState} />
           </form>
 
@@ -314,13 +324,15 @@ export function AdminSecurityPanel({ snapshot }: Props) {
               <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">Cierre total</h3>
               <p className="mt-2 text-sm leading-6 text-slate-400">Revoca todo y devuelve el acceso al login administrativo.</p>
             </div>
-            <button
-              type="submit"
-              disabled={globalPending}
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-4 text-xs font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-red-100 disabled:opacity-60"
-            >
-              {globalPending ? 'Revocando...' : 'Cerrar todo'}
-            </button>
+            <div className="flex justify-center sm:justify-start">
+              <button
+                type="submit"
+                disabled={globalPending}
+                className="inline-flex h-11 w-full max-w-xs items-center justify-center rounded-2xl bg-white px-4 text-xs font-black uppercase tracking-[0.18em] text-slate-950 transition hover:bg-red-100 disabled:opacity-60 sm:w-auto"
+              >
+                {globalPending ? 'Revocando...' : 'Cerrar todo'}
+              </button>
+            </div>
             <ActionNotice state={globalState} />
           </form>
         </div>

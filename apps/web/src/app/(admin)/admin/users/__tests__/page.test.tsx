@@ -109,6 +109,22 @@ describe('AdminUsersPage', () => {
     expect(screen.getByLabelText('Buscar usuarios')).toBeInTheDocument()
     expect(screen.getByText('Multi-cuenta sospechosa')).toBeInTheDocument()
     expect(screen.getByText('Multi-cuenta')).toBeInTheDocument()
+  })
+
+  it('el titulo permite wrap para no desbordar el viewport en mobile', async () => {
+    const { container } = render(await AdminUsersPage({ searchParams: Promise.resolve({}) }))
+    const heading = container.querySelector('h1') as HTMLElement
+    expect(heading).not.toBeNull()
+    // El heading debe tener min-w-0 o flex-wrap para permitir que el texto baje
+    // de línea en lugar de sobresalir.
+    const hasMinW0 = heading.className.includes('min-w-0') ||
+      heading.parentElement?.className.includes('min-w-0')
+    const hasWrap = heading.className.includes('flex-wrap') ||
+      heading.parentElement?.className.includes('flex-wrap')
+    const hasBreak = heading.className.includes('break-words') ||
+      heading.className.includes('break-all') ||
+      heading.parentElement?.className.includes('break-words')
+    expect(hasMinW0 || hasWrap || hasBreak).toBe(true)
     expect(screen.getAllByText('BANEADO')).toHaveLength(2)
     expect(screen.getAllByText('ADMIN')).toHaveLength(2)
     expect(screen.getByRole('button', { name: /Ajustar Ana Mesa desktop/ })).toBeInTheDocument()

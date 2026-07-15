@@ -124,4 +124,21 @@ describe('CreateTableModal', () => {
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Error al crear mesa: Nombre duplicado'))
     expect(screen.getByText('NUEVA MESA')).toBeInTheDocument()
   })
+
+  it('separa el contenedor visual del scroll para que el scrollbar no rompa el border-radius', () => {
+    const { container } = render(<CreateTableModal />)
+    fireEvent.click(screen.getByRole('button', { name: /crear mesa/i }))
+
+    // El contenedor externo (con border-radius) NO debe tener overflow-y-auto.
+    const roundedContainer = container.querySelector('div.rounded-\\[2\\.5rem\\]') as HTMLElement
+    expect(roundedContainer).not.toBeNull()
+    expect(roundedContainer.className).toMatch(/overflow-hidden/)
+    expect(roundedContainer.className).not.toMatch(/overflow-y-auto/)
+
+    // Debe existir un wrapper interno con overflow-y-auto para el scroll.
+    const scrollContainer = container.querySelector('div.overflow-y-auto') as HTMLElement
+    expect(scrollContainer).not.toBeNull()
+    // El wrapper de scroll NO debe tener el border-radius del contenedor visual.
+    expect(scrollContainer.className).not.toMatch(/rounded-\\[2\\.5rem\\]/)
+  })
 })

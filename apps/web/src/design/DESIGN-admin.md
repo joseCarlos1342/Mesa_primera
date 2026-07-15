@@ -8,7 +8,7 @@ colors:
   surface-elevated: "#374151"
   surface-card: "#111827"
   surface-card-hover: "#0b0f19"
-  primary: "#6366f1"
+  primary: "#6265f1"
   primary-light: "#818cf8"
   primary-dark: "#4338ca"
   text-primary: "#ffffff"
@@ -120,6 +120,8 @@ components:
     typography: "{typography.label-md}"
   button-primary-hover:
     backgroundColor: "{colors.primary-light}"
+  button-primary-active:
+    backgroundColor: "{colors.primary-dark}"
   button-secondary:
     backgroundColor: "{colors.background}"
     textColor: "{colors.text-secondary}"
@@ -164,11 +166,26 @@ components:
     typography: "{typography.body-md}"
   input-focus:
     backgroundColor: "{colors.surface-elevated}"
+  metadata:
+    textColor: "{colors.text-tertiary}"
+    typography: "{typography.label-sm}"
+  divider-subtle:
+    backgroundColor: "{colors.border-subtle}"
+    height: 1px
+  divider-default:
+    backgroundColor: "{colors.border-default}"
+    height: 1px
+  divider-hover:
+    backgroundColor: "{colors.border-hover}"
+    height: 1px
   status-success:
     textColor: "{colors.success}"
     typography: "{typography.label-md}"
   status-warning:
     textColor: "{colors.warning}"
+    typography: "{typography.label-md}"
+  status-info:
+    textColor: "{colors.info}"
     typography: "{typography.label-md}"
   status-danger:
     textColor: "{colors.danger}"
@@ -176,6 +193,9 @@ components:
   status-neutral:
     textColor: "{colors.text-muted}"
     typography: "{typography.label-md}"
+  incident-log-marker:
+    textColor: "{colors.accent-rose}"
+    typography: "{typography.label-sm}"
 ---
 
 ## Overview

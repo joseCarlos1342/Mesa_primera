@@ -97,7 +97,8 @@ export function CreateTableModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+      <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+        <div className="overflow-y-auto flex-1">
         <div className={`p-8 bg-gradient-to-br ${accentFrom} to-transparent`}>
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -271,6 +272,7 @@ export function CreateTableModal() {
               {loading ? "PROCESANDO..." : "CONFIRMAR CREACIÓN"}
             </button>
           </form>
+        </div>
         </div>
       </div>
     </div>

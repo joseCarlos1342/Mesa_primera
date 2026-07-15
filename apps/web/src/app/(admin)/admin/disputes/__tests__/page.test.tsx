@@ -54,7 +54,7 @@ describe('DisputesListPage', () => {
     render(await DisputesListPage())
 
     expect(screen.getByRole('heading', { name: 'Disputas' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /consultas/i })).toHaveAttribute('href', '/admin/consultas')
+    expect(screen.queryByRole('link', { name: /consultas/i })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /nueva disputa/i })).toHaveAttribute('href', '/admin/disputes/new')
     expect(screen.getByRole('link', { name: /open critical .*cobro duplicado/i })).toHaveAttribute('href', '/admin/disputes/dispute-1')
     expect(screen.getByText('Asignado')).toBeInTheDocument()

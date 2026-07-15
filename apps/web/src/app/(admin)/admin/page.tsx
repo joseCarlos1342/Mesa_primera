@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film, ScrollText, Info, Search, Scale, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ShieldAlert, BarChart3, Gamepad2, AlertTriangle, CheckCircle2, MessageSquare, Bell, Film, ScrollText, Info, Search, Scale, HelpCircle, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { getAdminDashboardStats } from "@/app/actions/admin-dashboard";
 import { formatCurrency } from "@/utils/format";
@@ -420,6 +420,24 @@ export default async function AdminPage() {
           </div>
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
             <AlertTriangle className="w-20 h-20" />
+          </div>
+        </Link>
+        <Link href="/admin/recovery" className="group relative overflow-hidden bg-linear-to-br from-rose-500/10 to-transparent backdrop-blur-2xl border border-rose-500/20 p-6 rounded-4xl hover:scale-[1.02] transition-all hover:border-rose-500/40 shadow-2xl">
+          <div className="relative z-10 flex gap-4 items-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+              <RotateCcw className="w-6 h-6 text-rose-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight text-white">Recovery</h3>
+            </div>
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-end gap-2">
+              <span className="text-3xl font-black text-white">Incidentes</span>
+            </div>
+          </div>
+          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+            <RotateCcw className="w-20 h-20" />
           </div>
         </Link>
         <Link href="/admin/consultas" className="group relative overflow-hidden bg-gradient-to-br from-teal-500/10 to-transparent backdrop-blur-2xl border border-teal-500/20 p-6 rounded-[2rem] hover:scale-[1.02] transition-all hover:border-teal-500/40 shadow-2xl">

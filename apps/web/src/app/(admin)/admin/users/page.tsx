@@ -5,6 +5,7 @@ import { UserBalanceControl } from "@/components/admin/UserBalanceControl";
 import { UserSearch } from "@/components/admin/UserSearch";
 import { getUsersList } from "@/app/actions/admin-users";
 import { ResponsiveDataView, type ColumnDef } from "@/components/admin/ResponsiveDataView";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -115,6 +116,9 @@ export default async function AdminUsersPage(props: PageProps) {
       cardFullWidth: true,
       render: (user) => (
         <div className="flex justify-end gap-4 items-center">
+          <Link href={`/admin/ledger/${user.id}`} className="rounded-lg border border-indigo-400/30 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-300 hover:bg-indigo-400/10">
+            Historial
+          </Link>
           {user.role !== 'admin' && (
             <>
               <UserBalanceControl userId={user.id} userName={user.display_name} currentBalance={user.balance_cents} />
@@ -130,9 +134,9 @@ export default async function AdminUsersPage(props: PageProps) {
   return (
     <div className="min-h-full space-y-8 animate-in fade-in duration-700">
       <div className="pb-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-            <h1 className="text-4xl font-black italic tracking-tighter bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent flex items-center gap-4">
-            <Users className="w-10 h-10 text-emerald-400" />
+        <div className="min-w-0 flex-1">
+            <h1 className="text-3xl sm:text-4xl font-black italic tracking-tighter bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent flex flex-wrap items-center gap-4 break-words">
+            <Users className="w-10 h-10 text-emerald-400 shrink-0" />
             DIRECTORIO DE USUARIOS
             </h1>
             <p className="text-slate-500 font-medium mt-2">
@@ -198,6 +202,9 @@ export default async function AdminUsersPage(props: PageProps) {
                 </p>
               </div>
             </div>
+            <Link href={`/admin/ledger/${user.id}`} className="block rounded-xl border border-indigo-400/30 p-3 text-center text-[10px] font-black uppercase tracking-widest text-indigo-300">
+              Ver historial financiero
+            </Link>
             {/* Actions */}
             {user.role !== 'admin' && (
               <div className="grid grid-cols-3 items-stretch gap-3 border-t border-white/5 pt-3">
