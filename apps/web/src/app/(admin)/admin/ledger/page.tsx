@@ -6,14 +6,16 @@ import { LedgerUsersFilter, LedgerTransactionsFilter } from "@/components/admin/
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function AdminLedgerPage() {
+export default async function AdminLedgerPage({ searchParams }: { searchParams: Promise<{ q?: string }> } = { searchParams: Promise.resolve({}) }) {
+  const { q } = await searchParams;
+  const entryId = typeof q === 'string' ? q.trim() : '';
   let entries: Awaited<ReturnType<typeof getLedgerEntries>> = [];
   let users: Awaited<ReturnType<typeof getUsersWithBalances>> = [];
   let loadError: string | null = null;
 
   try {
     [entries, users] = await Promise.all([
-      getLedgerEntries(50),
+      entryId ? getLedgerEntries(50, entryId) : getLedgerEntries(50),
       getUsersWithBalances()
     ]);
   } catch (err: any) {
@@ -52,7 +54,7 @@ export default async function AdminLedgerPage() {
       <LedgerUsersFilter users={users} />
 
       {/* Recent Global Ledger - client with filters */}
-      <LedgerTransactionsFilter entries={entries} />
+      <LedgerTransactionsFilter entries={entries} initialSearch={entryId} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { getServerAlerts, resolveAlert, type ServerAlert } from "@/app/actions/admin-server-alerts";
 import { createClient } from "@/utils/supabase/client";
 import { AlertTriangle, CheckCircle2, Info, ShieldAlert, Search, Filter, Bell } from "lucide-react";
@@ -21,12 +22,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function ServerLogPage() {
+  const searchParams = useSearchParams();
   const [alerts, setAlerts] = useState<ServerAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showResolved, setShowResolved] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => searchParams?.get("q") || "");
   const [isPending, startTransition] = useTransition();
 
   const loadAlerts = useCallback(async () => {
@@ -77,9 +79,12 @@ export default function ServerLogPage() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
-        a.title.toLowerCase().includes(q) ||
-        (a.message || "").toLowerCase().includes(q) ||
-        a.category.toLowerCase().includes(q)
+          a.title.toLowerCase().includes(q) ||
+          (a.message || "").toLowerCase().includes(q) ||
+          a.category.toLowerCase().includes(q) ||
+          a.id.toLowerCase() === q ||
+          (a.game_id || "").toLowerCase() === q ||
+          (a.player_id || "").toLowerCase() === q
       );
     }
     return true;

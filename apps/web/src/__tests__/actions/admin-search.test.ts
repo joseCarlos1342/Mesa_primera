@@ -193,6 +193,7 @@ describe('globalSearch', () => {
       }
     })
 
+    mockSupabase.rpc.mockResolvedValue({ data: [{ id: 'rep-1', game_id: 'g-1', created_at: '2026-04-01' }], error: null })
     const result = await globalSearch(seed)
 
     expect(result.data).toBeDefined()
@@ -223,6 +224,9 @@ describe('globalSearch', () => {
                 : [],
               error: null,
             }),
+          }),
+          in: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue({ data: [], error: null }),
           }),
         }),
       }

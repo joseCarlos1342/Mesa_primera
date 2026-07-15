@@ -206,10 +206,10 @@ export function LedgerUsersFilter({ users }: { users: UserWithBalance[] }) {
   );
 }
 
-export function LedgerTransactionsFilter({ entries }: { entries: LedgerEntry[] }) {
+export function LedgerTransactionsFilter({ entries, initialSearch = "" }: { entries: LedgerEntry[]; initialSearch?: string }) {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [directionFilter, setDirectionFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
 
   const types = useMemo(() => [...new Set(entries.map((e) => e.type))], [entries]);
 
@@ -222,7 +222,9 @@ export function LedgerTransactionsFilter({ entries }: { entries: LedgerEntry[] }
         return (
           (e.user?.display_name || "").toLowerCase().includes(q) ||
           (e.description || "").toLowerCase().includes(q) ||
-          (e.user_id || "").toLowerCase().startsWith(q)
+          (e.user_id || "").toLowerCase().startsWith(q) ||
+          e.id.toLowerCase() === q ||
+          (e.reference_id || "").toLowerCase() === q
         );
       }
       return true;

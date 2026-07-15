@@ -34,6 +34,13 @@ function queryWithEqLimit(data: unknown[] | null) {
   return { select, eq, limit }
 }
 
+function queryWithInLimit(data: unknown[] | null) {
+  const limit = jest.fn().mockResolvedValue({ data, error: null })
+  const inQuery = jest.fn().mockReturnValue({ limit })
+  const select = jest.fn().mockReturnValue({ in: inQuery })
+  return { select, in: inQuery, limit }
+}
+
 function profileRoleQuery(role: string | null) {
   const single = jest.fn().mockResolvedValue({ data: role ? { role } : null, error: null })
   const eq = jest.fn().mockReturnValue({ single })
@@ -41,11 +48,12 @@ function profileRoleQuery(role: string | null) {
   return { select, eq, single }
 }
 
-function buildSupabase(tableQueues: Record<string, unknown[]>, user: typeof adminUser | null = adminUser) {
+function buildSupabase(tableQueues: Record<string, unknown[]>, user: typeof adminUser | null = adminUser, replayResults: unknown[] = []) {
   return {
     auth: {
       getUser: jest.fn().mockResolvedValue({ data: { user } }),
     },
+    rpc: jest.fn(() => Promise.resolve(replayResults.shift() || { data: [], error: null })),
     from: jest.fn((table: string) => {
       const query = tableQueues[table]?.shift()
       if (!query) throw new Error(`Unexpected admin-search table: ${table}`)
@@ -100,7 +108,7 @@ describe('globalSearch', () => {
       game_replays: [replayQuery],
       support_tickets: [ticketQuery],
       server_alerts: [alertQuery],
-    }))
+    }, adminUser, [{ data: [{ id: 'replay-1', game_id: 'game-1', created_at: '2026-01-04' }], error: null }]))
 
     const result = await globalSearch(uuid)
 
@@ -110,7 +118,7 @@ describe('globalSearch', () => {
       { entity: 'ledger', id: 'ledger-1', label: 'Ledger: buy_in credit $1234', detail: '2026-01-01' },
       { entity: 'deposit', id: 'deposit-1', label: 'Depósito: $50000 (approved)', detail: '2026-01-02' },
       { entity: 'withdrawal', id: 'withdrawal-1', label: 'Retiro: $25000 (pending)', detail: '2026-01-03' },
-      { entity: 'replay', id: 'replay-1', label: 'Replay: game-1', detail: '2026-01-04' },
+      { entity: 'replay', id: 'replay-1', target_id: 'game-1', label: 'Replay: game-1', detail: '2026-01-04' },
       { entity: 'ticket', id: 'ticket-1', label: 'Ticket: open', detail: '2026-01-05' },
       { entity: 'alert', id: 'alert-1', label: 'Alerta: [high] Mesa bloqueada', detail: '2026-01-06' },
     ])
@@ -126,13 +134,12 @@ describe('globalSearch', () => {
     ;(createClient as jest.Mock).mockResolvedValue(buildSupabase({
       profiles: [roleQuery],
       game_replays: [replayQuery],
-    }))
+    }, adminUser, [{ data: [{ id: 'replay-1', game_id: 'game-77', created_at: '2026-02-01' }], error: null }]))
 
     const result = await globalSearch(seed.toUpperCase())
 
     expect(result.data?.detected).toEqual({ raw: seed.toUpperCase(), type: 'seed', normalized: seed })
-    expect(result.data?.matches).toEqual([{ entity: 'replay', id: 'replay-1', label: 'Replay: game-77', detail: '2026-02-01' }])
-    expect(replayQuery.eq).toHaveBeenCalledWith('rng_seed', seed)
+    expect(result.data?.matches).toEqual([{ entity: 'replay', id: 'replay-1', target_id: 'game-77', label: 'Replay: game-77', detail: '2026-02-01' }])
     expect(logAdminAction).toHaveBeenCalledWith('admin-1', 'global_search', 'search', seed.toUpperCase(), { detected_type: 'seed', match_count: 1 })
   })
 
@@ -142,7 +149,14 @@ describe('globalSearch', () => {
       { id: 'user-1', full_name: 'Ana Mesa', username: 'ana', role: 'player' },
       { id: 'user-2', full_name: null, username: null, role: 'player' },
     ])
-    ;(createClient as jest.Mock).mockResolvedValue(buildSupabase({ profiles: [roleQuery, profileSearch] }))
+    ;(createClient as jest.Mock).mockResolvedValue(buildSupabase({
+      profiles: [roleQuery, profileSearch],
+      support_tickets: [queryWithInLimit([])],
+      server_alerts: [queryWithInLimit([])],
+    }, adminUser, [
+      { data: [], error: null },
+      { data: [{ id: 'replay-seed', game_id: 'game-seed', created_at: '2026-03-02' }], error: null },
+    ]))
 
     const result = await globalSearch('@Ana')
 
@@ -171,14 +185,14 @@ describe('globalSearch', () => {
       deposit_requests: [depositQuery],
       withdrawal_requests: [withdrawalQuery],
       game_replays: [uuidReplayQuery, seedReplayQuery],
-      support_tickets: [ticketQuery],
-      server_alerts: [alertQuery],
-    }))
+      support_tickets: [ticketQuery, queryWithInLimit([])],
+      server_alerts: [alertQuery, queryWithInLimit([])],
+    }, adminUser, [{ data: [], error: null }, { data: [], error: null }]))
 
     const result = await globalSearch('mesa rara')
 
-    expect(result.data?.matches.map((match) => match.entity)).toEqual(['ledger', 'replay', 'user'])
-    expect(logAdminAction).toHaveBeenCalledWith('admin-1', 'global_search', 'search', 'mesa rara', { detected_type: 'unknown', match_count: 3 })
+    expect(result.data?.matches.map((match) => match.entity)).toEqual(['ledger', 'user'])
+    expect(logAdminAction).toHaveBeenCalledWith('admin-1', 'global_search', 'search', 'mesa rara', { detected_type: 'unknown', match_count: 2 })
   })
 
   it('tolera respuestas null de Supabase sin romper el reporte', async () => {
@@ -190,8 +204,8 @@ describe('globalSearch', () => {
       deposit_requests: [queryWithLimit(null)],
       withdrawal_requests: [queryWithLimit(null)],
       game_replays: [queryWithLimit(null), queryWithEqLimit(null)],
-      support_tickets: [queryWithLimit(null)],
-      server_alerts: [queryWithLimit(null)],
+      support_tickets: [queryWithLimit(null), queryWithInLimit(null)],
+      server_alerts: [queryWithLimit(null), queryWithInLimit(null)],
     }))
 
     const result = await globalSearch('sin datos')

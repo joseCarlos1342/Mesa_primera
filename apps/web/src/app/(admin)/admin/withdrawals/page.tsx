@@ -2,8 +2,10 @@ import { getPendingWithdrawals } from '@/app/actions/withdrawals'
 import { formatCurrency } from '@/utils/format'
 import { User, CheckCircle2, Clock, Wallet, AlertCircle } from 'lucide-react'
 import { WithdrawalActions } from './WithdrawalActions'
-export default async function AdminWithdrawalsPage() {
-  const result = await getPendingWithdrawals()
+export default async function AdminWithdrawalsPage({ searchParams }: { searchParams: Promise<{ q?: string }> } = { searchParams: Promise.resolve({}) }) {
+  const { q } = await searchParams
+  const requestId = typeof q === 'string' ? q.trim() : ''
+  const result = await getPendingWithdrawals(requestId || undefined)
 
   if (result.error) {
     return (
@@ -24,7 +26,7 @@ export default async function AdminWithdrawalsPage() {
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <div className="space-y-2">
             <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-white drop-shadow-md">
-              RETIROS <span className="text-indigo-400">PENDIENTES</span>
+              RETIROS <span className="text-indigo-400">{requestId ? 'ENCONTRADOS' : 'PENDIENTES'}</span>
             </h1>
             <div className="flex items-center gap-3">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
@@ -177,4 +179,3 @@ function Landmark(props: any) {
     </svg>
   )
 }
-
