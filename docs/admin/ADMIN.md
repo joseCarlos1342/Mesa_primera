@@ -348,7 +348,7 @@ Desglose detallado de la comisión del 5% que la casa cobra en cada mano ganada.
 
 ## 10. Búsqueda Global
 
-**Ruta:** `/admin/consultas`
+**Ruta:** `/admin/consultas` (también disponible desde el buscador del encabezado administrativo).
 
 ### Objetivo
 
@@ -376,8 +376,8 @@ Según el tipo detectado, lanza búsquedas en paralelo sobre las tablas relevant
 
 - Localizar una transacción del ledger por su ID o por el `reference_id` de la solicitud.
 - Encontrar una partida por seed o por `game_id` y acceder directamente a su replay.
-- Buscar todos los registros asociados a un usuario por su username.
-- Vincular entidades relacionadas (ticket de soporte, alerta, replay y ledger correspondientes a un mismo incidente).
+- Buscar el perfil, tickets, alertas y disputas vinculadas a un usuario por su username.
+- Abrir cada resultado con el filtro o detalle correcto; las solicitudes históricas no se pierden al salir de las bandejas pendientes.
 
 ---
 

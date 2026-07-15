@@ -253,7 +253,7 @@ const VALID_CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as
 | Función exportada | Parámetros | Retorno | Descripción |
 |---|---|---|---|
 | `detectIdentifier(raw)` | `string` | `DetectedIdentifier` | Función pura que clasifica el input como `uuid`, `seed` o `username` mediante regex |
-| `globalSearch(query)` | `string` | `Promise<ActionResult<AdminSearchReport>>` | Detecta tipo y lanza búsquedas paralelas en todas las entidades relevantes |
+| `globalSearch(query)` | `string` | `Promise<ActionResult<AdminSearchReport>>` | Valida el identificador, detecta tipo y lanza búsquedas paralelas en entidades históricas relevantes |
 
 **Entidades que indexa `globalSearch` según tipo:**
 
@@ -261,7 +261,7 @@ const VALID_CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as
 |---|---|
 | `uuid` | `ledger`, `deposit_requests`, `withdrawal_requests`, `game_replays`, `support_tickets`, `server_alerts` |
 | `seed` | `game_replays` (campo `rng_seed`) |
-| `username` | `profiles`, `support_tickets`, `server_alerts`, `admin_dispute_cases` |
+| `username` | `profiles`, tickets y alertas del perfil; disputas vinculadas a esos tickets |
 
 ---
 

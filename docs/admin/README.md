@@ -711,6 +711,9 @@ Si hay un problema en vivo, el admin puede supervisar y decidir, pero no romper 
 - [ADMIN.md](ADMIN.md): referencia funcional extensa de módulos admin.
 - [ADMIN_SECURITY.md](ADMIN_SECURITY.md): restricciones, ceguera administrativa y superficie de seguridad.
 - [ADMIN_TECHNICAL.md](ADMIN_TECHNICAL.md): rutas, server actions, RPCs y trazabilidad técnica.
+- [mejoras_summary_cards_replays.md](mejoras_summary_cards_replays.md): roadmap para que los summary cards de `/admin/replays` muestren totales reales del sistema en vez de agregados sobre la muestra de 100 partidas.
+- [mejoras_recovery_actions.md](mejoras_recovery_actions.md): roadmap para hacer accionable `/admin/recovery` con filtros, enlaces al replay, marcaje de revisado, exportación CSV y posibles acciones de mutación (con sus riesgos sobre el ledger).
+- [mejoras_create_table_personalizados.md](mejoras_create_table_personalizados.md): roadmap para que `CreateTableModal` permita definir saldo mínimo y pique mínimo personalizados, sin restringirse a los 4 valores hardcodeados por categoría.
 
 ## Regla de mantenimiento de esta guía
 
