@@ -3,12 +3,14 @@ import { SupportChat } from '../SupportChat'
 import {
   appendSupportMessage,
   closeSupportTicket,
+  createSupportIssue,
   createSupportTicket,
   getSupportTicket,
   getSupportTicketHistory,
   listUserTickets,
   uploadSupportAttachment,
 } from '@/app/actions/support'
+import { getPlayerIssueMessages, listIssueTicketAttachments, listPlayerIssueTickets } from '@/app/actions/admin-issues'
 
 const socketHandlers = new Map<string, (payload: any) => void>()
 const socket = {
@@ -29,6 +31,7 @@ jest.mock('uuid', () => ({
 
 jest.mock('@/app/actions/support', () => ({
   createSupportTicket: jest.fn(),
+  createSupportIssue: jest.fn(),
   appendSupportMessage: jest.fn(),
   closeSupportTicket: jest.fn(),
   listUserTickets: jest.fn(),
@@ -36,6 +39,13 @@ jest.mock('@/app/actions/support', () => ({
   uploadSupportAttachment: jest.fn(),
   getSupportAttachmentUrl: jest.fn(),
   getSupportTicket: jest.fn(),
+}))
+
+jest.mock('@/app/actions/admin-issues', () => ({
+  listPlayerIssueTickets: jest.fn(),
+  getPlayerIssueMessages: jest.fn(),
+  listIssueTicketAttachments: jest.fn(),
+  closeIssueTicket: jest.fn(),
 }))
 
 const defaultHistory = {
@@ -66,14 +76,34 @@ describe('SupportChat', () => {
     socketHandlers.clear()
     Element.prototype.scrollIntoView = jest.fn()
     ;(listUserTickets as jest.Mock).mockResolvedValue({ data: [] })
+    ;(listPlayerIssueTickets as jest.Mock).mockResolvedValue({ data: [] })
+    ;(getPlayerIssueMessages as jest.Mock).mockResolvedValue({ data: [] })
+    ;(listIssueTicketAttachments as jest.Mock).mockResolvedValue({ data: [] })
     ;(getSupportTicketHistory as jest.Mock).mockResolvedValue(defaultHistory)
     ;(getSupportTicket as jest.Mock).mockResolvedValue({ data: { status: 'pending' } })
     ;(createSupportTicket as jest.Mock).mockResolvedValue({ data: { ticket_id: 'uuid-ticket', message_id: 'msg-new' } })
+    ;(createSupportIssue as jest.Mock).mockResolvedValue({ data: { ticket_id: 'issue-ticket', message_id: 'issue-message' } })
     ;(appendSupportMessage as jest.Mock).mockResolvedValue({ data: { message_id: 'msg-next', from: 'player' } })
     ;(closeSupportTicket as jest.Mock).mockResolvedValue({ data: { closed_by_role: 'player' } })
     ;(uploadSupportAttachment as jest.Mock).mockResolvedValue({
       data: { id: 'attachment-1', file_name: 'evidencia.png' },
     })
+  })
+
+  it('permite reportar un depósito no acreditado desde el centro de ayuda', async () => {
+    render(<SupportChat userId="user-1" />)
+    act(() => window.dispatchEvent(new CustomEvent('open-support-chat')))
+    fireEvent.click(screen.getByRole('button', { name: /reportar un problema/i }))
+    fireEvent.click(screen.getByRole('button', { name: /depósito no acreditado/i }))
+    fireEvent.change(screen.getByLabelText('ID de transacción'), { target: { value: 'deposit-123' } })
+    fireEvent.change(screen.getByLabelText('Observaciones del error'), { target: { value: 'El saldo no se actualizó.' } })
+    fireEvent.click(screen.getByRole('button', { name: /enviar reporte/i }))
+
+    await waitFor(() => expect(createSupportIssue).toHaveBeenCalledWith(expect.objectContaining({
+      category: 'deposit_missing',
+      transactionReference: 'deposit-123',
+      message: 'El saldo no se actualizó.',
+    })))
   })
 
   it('carga historial y estado cuando recibe un ticket embebido', async () => {

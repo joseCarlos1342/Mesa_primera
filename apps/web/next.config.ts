@@ -59,6 +59,10 @@ const nextConfig: NextConfig = {
   allowedDevOrigins,
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns', 'framer-motion', 'gsap', '@gsap/react'],
+    serverActions: {
+      // Adjuntos de consultas: máximo de archivo 10 MB más multipart.
+      bodySizeLimit: '12mb',
+    },
   },
   async redirects() {
     return [
