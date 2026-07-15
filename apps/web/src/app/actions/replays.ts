@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { sanitizeReplayFrames } from "@/lib/replay-sanitizer";
+import { z } from "zod";
 
 export type PlayerReplay = {
   game_id: string;
@@ -46,6 +48,35 @@ export type ReplayDetail = {
   frames?: any[];
 };
 
+export type PlayerReplayDetail = Omit<ReplayDetail, "admin_timeline" | "rng_seed" | "final_hands"> & {
+  final_hands: Record<string, { cards?: string; nickname?: string; handType?: string }>;
+};
+
+const replayFiltersSchema = z.object({
+  period: z.enum(["7d", "30d", "90d", "all"]).default("7d"),
+  from: z.string().date().optional(),
+  to: z.string().date().optional(),
+}).refine(({ from, to }) => !from || !to || from <= to, {
+  message: "El rango de fechas es inválido",
+});
+
+export type ReplayFilters = z.infer<typeof replayFiltersSchema>;
+
+function replayDates(filters: ReplayFilters): { from: string | null; to: string | null } {
+  if (filters.from || filters.to) {
+    return {
+      from: filters.from ? `${filters.from}T00:00:00.000Z` : null,
+      to: filters.to ? `${filters.to}T23:59:59.999Z` : null,
+    };
+  }
+  if (filters.period === "all") return { from: null, to: null };
+
+  const days = Number.parseInt(filters.period, 10);
+  const from = new Date();
+  from.setUTCDate(from.getUTCDate() - days);
+  return { from: from.toISOString(), to: null };
+}
+
 export type ReplayLedgerEntry = {
   id: string;
   user_id: string;
@@ -60,14 +91,19 @@ export type ReplayLedgerEntry = {
 
 // ─── Player Actions ─────────────────────────────────────────
 
-export async function getPlayerReplays(limit = 50): Promise<PlayerReplay[]> {
+export async function getPlayerReplays(filtersInput: ReplayFilters = { period: "7d" }): Promise<PlayerReplay[]> {
+  const parsedFilters = replayFiltersSchema.safeParse(filtersInput);
+  if (!parsedFilters.success) return [];
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
+  const dates = replayDates(parsedFilters.data);
   const { data, error } = await supabase.rpc("get_player_replays", {
     p_user_id: user.id,
-    p_limit: limit,
+    p_limit: 100,
+    p_from: dates.from,
+    p_to: dates.to,
   });
 
   if (error) {
@@ -78,14 +114,19 @@ export async function getPlayerReplays(limit = 50): Promise<PlayerReplay[]> {
   return (data || []) as PlayerReplay[];
 }
 
-export async function getPlayerMesaReplays(limit = 50): Promise<MesaReplaySummary[]> {
+export async function getPlayerMesaReplays(filtersInput: ReplayFilters = { period: "7d" }): Promise<MesaReplaySummary[]> {
+  const parsedFilters = replayFiltersSchema.safeParse(filtersInput);
+  if (!parsedFilters.success) return [];
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
+  const dates = replayDates(parsedFilters.data);
   const { data, error } = await supabase.rpc("get_player_replays_by_mesa", {
     p_user_id: user.id,
-    p_limit: limit,
+    p_limit: 100,
+    p_from: dates.from,
+    p_to: dates.to,
   });
 
   if (error) {
@@ -96,15 +137,20 @@ export async function getPlayerMesaReplays(limit = 50): Promise<MesaReplaySummar
   return (data || []) as MesaReplaySummary[];
 }
 
-export async function getPlayerReplaysForRoom(roomId: string, limit = 100): Promise<PlayerReplay[]> {
+export async function getPlayerReplaysForRoom(roomId: string, filtersInput: ReplayFilters = { period: "7d" }): Promise<PlayerReplay[]> {
+  const parsedFilters = replayFiltersSchema.safeParse(filtersInput);
+  if (!parsedFilters.success) return [];
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
+  const dates = replayDates(parsedFilters.data);
   const { data, error } = await supabase.rpc("get_player_replays_for_room", {
     p_user_id: user.id,
     p_room_id: roomId,
-    p_limit: limit,
+    p_limit: 100,
+    p_from: dates.from,
+    p_to: dates.to,
   });
 
   if (error) {
@@ -115,41 +161,41 @@ export async function getPlayerReplaysForRoom(roomId: string, limit = 100): Prom
   return (data || []) as PlayerReplay[];
 }
 
-export async function getReplayDetail(gameId: string): Promise<ReplayDetail | null> {
+export async function getPlayerReplayDetail(gameId: string): Promise<PlayerReplayDetail | null> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from("game_replays")
-    .select("id, game_id, created_at, players, timeline, admin_timeline, pot_breakdown, final_hands, rng_seed")
-    .eq("game_id", gameId)
-    .single();
+  const { data, error } = await supabase.rpc("get_player_replay_detail", { p_game_id: gameId });
+  const detail = Array.isArray(data) ? data[0] : null;
 
-  if (error || !data) {
-    console.error("[getReplayDetail] Supabase error, trying game server fallback:", error?.message);
-    return fetchReplayFromGameServer(gameId);
+  if (error || !detail) {
+    console.error("[getPlayerReplayDetail] Error:", error);
+    return null;
   }
 
-  // Supabase no almacena frames/version: pedir al game server para hidratarlos cuando exista en VPS
-  const fsDetail = await fetchReplayFromGameServer(gameId);
+  const fsDetail = await fetchReplayFromGameServer(gameId, user.id);
   if (fsDetail?.frames?.length) {
-    return { ...(data as ReplayDetail), version: fsDetail.version, frames: fsDetail.frames };
+    return { ...(detail as PlayerReplayDetail), version: fsDetail.version, frames: fsDetail.frames };
   }
-  return data as ReplayDetail;
+  return detail as PlayerReplayDetail;
 }
+
+export const getReplayDetail = getPlayerReplayDetail;
 
 /**
  * Fallback: obtener replay desde el API del game server (filesystem VPS)
  * cuando Supabase no tiene el registro.
  */
-async function fetchReplayFromGameServer(gameId: string): Promise<ReplayDetail | null> {
-  const gameServerUrl = process.env.GAME_SERVER_URL || process.env.NEXT_PUBLIC_GAME_SERVER_URL;
-  if (!gameServerUrl) return null;
+async function fetchReplayFromGameServer(gameId: string, userId?: string): Promise<ReplayDetail | null> {
+  const gameServerUrl = process.env.GAME_SERVER_URL;
+  const secret = process.env.INTERNAL_API_SECRET;
+  if (!gameServerUrl || !secret) return null;
 
   try {
     const res = await fetch(`${gameServerUrl}/api/replays/${gameId}`, {
       next: { revalidate: 60 },
+      headers: { "x-internal-secret": secret },
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -166,7 +212,7 @@ async function fetchReplayFromGameServer(gameId: string): Promise<ReplayDetail |
       final_hands: d.final_hands,
       rng_seed: d.rng_seed,
       version: d.version,
-      frames: d.frames,
+      frames: userId ? sanitizeReplayFrames(d.frames, userId) : d.frames,
     } as ReplayDetail;
   } catch (e) {
     console.error("[fetchReplayFromGameServer] Error:", e);
@@ -211,11 +257,7 @@ export async function getAdminReplayDetail(gameId: string): Promise<{ replay: Re
   const supabase = await verifyAdmin();
 
   const [replayRes, ledgerRes] = await Promise.all([
-    supabase
-      .from("game_replays")
-      .select("id, game_id, created_at, players, timeline, admin_timeline, pot_breakdown, final_hands, rng_seed")
-      .eq("game_id", gameId)
-      .single(),
+    supabase.rpc("get_admin_replay_detail", { p_game_id: gameId }),
     supabase.rpc("get_replay_ledger", { p_game_id: gameId }),
   ]);
 
@@ -227,7 +269,7 @@ export async function getAdminReplayDetail(gameId: string): Promise<{ replay: Re
   }
 
   // Hidratar frames/version desde el game server (filesystem VPS)
-  let replay: ReplayDetail | null = (replayRes.data as ReplayDetail) || null;
+  let replay: ReplayDetail | null = (Array.isArray(replayRes.data) ? replayRes.data[0] : null) as ReplayDetail | null;
   if (replay) {
     const fsDetail = await fetchReplayFromGameServer(gameId);
     if (fsDetail?.frames?.length) {

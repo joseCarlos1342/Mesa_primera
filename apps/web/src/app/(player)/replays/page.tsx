@@ -1,11 +1,31 @@
-import { getPlayerMesaReplays } from "@/app/actions/replays";
+import { getPlayerMesaReplays, type ReplayFilters } from "@/app/actions/replays";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
 import { Film, Users, Clock, ChevronRight, Hash } from "lucide-react";
 import styles from "./replays.module.css";
 
-export default async function PlayerReplaysPage() {
-  const mesas = await getPlayerMesaReplays(100);
+const periods = ["7d", "30d", "90d", "all"] as const;
+
+function replayFilters(searchParams: Record<string, string | string[] | undefined>): ReplayFilters {
+  const period = typeof searchParams.period === "string" && periods.includes(searchParams.period as typeof periods[number])
+    ? searchParams.period as ReplayFilters["period"]
+    : "7d";
+  const from = typeof searchParams.from === "string" ? searchParams.from : undefined;
+  const to = typeof searchParams.to === "string" ? searchParams.to : undefined;
+  return { period, from, to };
+}
+
+function replayQuery(filters: ReplayFilters): string {
+  if (filters.period === '7d' && !filters.from && !filters.to) return '';
+  const params = new URLSearchParams({ period: filters.period });
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
+  return `?${params.toString()}`;
+}
+
+export default async function PlayerReplaysPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const filters = replayFilters(await searchParams);
+  const mesas = await getPlayerMesaReplays(filters);
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto">
@@ -18,6 +38,22 @@ export default async function PlayerReplaysPage() {
         <p className="text-slate-500 font-medium mt-1">
           Historial de mesas jugadas ({mesas.length} {mesas.length === 1 ? 'mesa' : 'mesas'})
         </p>
+        <nav aria-label="Periodo del historial" className="mt-4 flex flex-wrap gap-2">
+          {periods.map((period) => (
+            <Link
+              key={period}
+              href={`/replays?period=${period}`}
+              className={`rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-wider transition-colors ${filters.period === period && !filters.from && !filters.to ? 'border-(--accent-gold) bg-(--accent-gold) text-black' : 'border-white/10 text-(--text-secondary) hover:border-(--accent-gold)/60'}`}
+            >
+              {period === 'all' ? 'Todo' : period}
+            </Link>
+          ))}
+        </nav>
+        <form className="mt-3 flex flex-wrap items-end gap-2" action="/replays">
+          <label className="text-xs font-bold text-(--text-secondary)">Desde<input name="from" type="date" defaultValue={filters.from} className="ml-2 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-(--text-primary)" /></label>
+          <label className="text-xs font-bold text-(--text-secondary)">Hasta<input name="to" type="date" defaultValue={filters.to} className="ml-2 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-(--text-primary)" /></label>
+          <button type="submit" className="rounded-lg bg-(--accent-gold) px-3 py-1.5 text-xs font-black text-black">Filtrar</button>
+        </form>
       </div>
 
       {/* Mesa List */}
@@ -71,7 +107,7 @@ export default async function PlayerReplaysPage() {
                     <tr key={mesa.room_id} className="group border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                       <td className="py-5 pl-4">
                         <Link
-                          href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}`}
+                          href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}${replayQuery(filters)}`}
                           className="flex flex-col gap-1"
                         >
                           <span className="font-black text-lg text-white group-hover:text-(--accent-gold) transition-colors">
@@ -119,7 +155,7 @@ export default async function PlayerReplaysPage() {
                       </td>
                       <td className="py-5 pr-2">
                         <Link
-                          href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}`}
+                          href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}${replayQuery(filters)}`}
                           className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 text-(--text-secondary) group-hover:bg-(--accent-gold) group-hover:text-black transition-all"
                         >
                           <ChevronRight className="w-5 h-5 ml-0.5" />
@@ -142,7 +178,7 @@ export default async function PlayerReplaysPage() {
               return (
                 <Link
                   key={mesa.room_id}
-                  href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}`}
+                  href={`/replays/mesa/${encodeURIComponent(mesa.room_id)}${replayQuery(filters)}`}
                   className="bg-black/20 border border-(--accent-gold)/20 rounded-4xl p-5 backdrop-blur-md active:scale-[0.98] transition-transform flex flex-col relative overflow-hidden"
                 >
                   <div className="flex justify-between items-start mb-4">

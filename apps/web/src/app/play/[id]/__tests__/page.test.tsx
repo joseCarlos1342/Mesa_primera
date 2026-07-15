@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import GameRoomPage from '../page'
 import { client } from '@/lib/colyseus'
 import { createClient } from '@/utils/supabase/client'
+import { resolveRecoveredRoom } from '@/app/actions/recovery'
 
 const push = jest.fn()
 const routerMock = { push }
@@ -70,9 +71,14 @@ jest.mock('@/utils/supabase/client', () => ({
   createClient: jest.fn(),
 }))
 
+jest.mock('@/app/actions/recovery', () => ({
+  resolveRecoveredRoom: jest.fn(),
+}))
+
 const mockJoinById = client.joinById as jest.MockedFunction<typeof client.joinById>
 const mockReconnect = client.reconnect as jest.MockedFunction<typeof client.reconnect>
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>
+const mockResolveRecoveredRoom = resolveRecoveredRoom as jest.MockedFunction<typeof resolveRecoveredRoom>
 
 const send = jest.fn()
 const leave = jest.fn()
@@ -99,6 +105,7 @@ function makeSupabase(balance = 6_000_000) {
   return {
     auth: {
       getUser: jest.fn(() => Promise.resolve({ data: { user: { id: 'user-1', user_metadata: { username: 'Ana' } } } })),
+      getSession: jest.fn(() => Promise.resolve({ data: { session: { access_token: 'access-token' } } })),
     },
     from: jest.fn((table: string) => ({
       select: jest.fn(() => ({
@@ -116,6 +123,7 @@ function makeAnonymousSupabase() {
   return {
     auth: {
       getUser: jest.fn(() => Promise.resolve({ data: { user: null } })),
+      getSession: jest.fn(() => Promise.resolve({ data: { session: null } })),
     },
     from: jest.fn(),
   }
@@ -174,6 +182,7 @@ describe('GameRoomPage', () => {
     window.alert = jest.fn()
     mockCreateClient.mockReturnValue(makeSupabase() as unknown as ReturnType<typeof createClient>)
     mockJoinById.mockResolvedValue(makeRoom() as never)
+    mockResolveRecoveredRoom.mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -227,6 +236,62 @@ describe('GameRoomPage', () => {
 
     expect(screen.getByTestId('board')).toHaveTextContent('Board APUESTA_4_CARTAS cards=1O,7C,12E,3B')
     expect(screen.queryByText('Sincronizando tu mesa...')).not.toBeInTheDocument()
+  })
+
+  it('entra a la sala recuperada si falla el token de reconexión', async () => {
+    sessionStorage.setItem('reconnectionToken_room-123', 'expired-token')
+    mockReconnect.mockRejectedValue(new Error('expired'))
+    mockResolveRecoveredRoom.mockResolvedValue({
+      status: 'resumed',
+      recoveredRoomId: 'recovered-room-456',
+      deadline: '2026-07-13T12:05:00.000Z',
+    })
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    await waitFor(() => expect(mockResolveRecoveredRoom).toHaveBeenCalledWith('room-123'))
+    expect(mockJoinById).toHaveBeenCalledWith('recovered-room-456', expect.objectContaining({
+      userId: 'user-1',
+      accessToken: expect.any(String),
+    }))
+    expect(await screen.findByText(/Recuperando tu mesa/)).toBeInTheDocument()
+    expect(screen.getByText(/La mesa se reanudó/)).toBeInTheDocument()
+  })
+
+  it('recupera el asiento aunque el saldo actual no alcance el mínimo de una mesa nueva', async () => {
+    sessionStorage.setItem('reconnectionToken_room-123', 'expired-token')
+    mockReconnect.mockRejectedValue(new Error('expired'))
+    mockCreateClient.mockReturnValue(makeSupabase(1_000) as unknown as ReturnType<typeof createClient>)
+    mockResolveRecoveredRoom.mockResolvedValue({
+      status: 'resumed',
+      recoveredRoomId: 'recovered-room-456',
+      deadline: '2026-07-13T12:05:00.000Z',
+    })
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    await waitFor(() => expect(mockJoinById).toHaveBeenCalledWith('recovered-room-456', expect.anything()))
+    expect(screen.queryByText(/Fondos insuficientes/)).not.toBeInTheDocument()
+  })
+
+  it('muestra cancelación y revisión manual si vence la recuperación pendiente', async () => {
+    sessionStorage.setItem('reconnectionToken_room-123', 'expired-token')
+    mockReconnect.mockRejectedValue(new Error('expired'))
+    mockResolveRecoveredRoom.mockResolvedValue({
+      status: 'recovery_pending',
+      recoveredRoomId: 'recovered-room-456',
+      deadline: new Date(Date.now() - 1_000).toISOString(),
+    })
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    expect(await screen.findByText(/recuperación fue cancelada/i)).toBeInTheDocument()
+    expect(screen.getByText(/revisión manual/i)).toBeInTheDocument()
+    expect(mockJoinById).not.toHaveBeenCalled()
+    expect(screen.queryByText('Error de Conexión')).not.toBeInTheDocument()
   })
 
   it('abre modales por eventos globales y envia abandono intencional desde header', async () => {
