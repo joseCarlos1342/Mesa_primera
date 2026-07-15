@@ -7,6 +7,8 @@ import { MesaRoom } from "./rooms/MesaRoom";
 import { ReplayFileService } from "./services/ReplayFileService";
 import { emitBroadcastToClients } from "./services/socket";
 import { isDraining } from "./runtime-state";
+import { isInternalRequest } from "./services/internal-api";
+import { recoveryMetrics } from "./services/RecoveryObservability";
 
 export default defineServer({
     transport: new WebSocketTransport({
@@ -59,12 +61,22 @@ export default defineServer({
                 activeRooms,
                 activePlayers,
                 activeGames,
+                recovery: recoveryMetrics.snapshot(),
             });
         });
 
-        // ── Replay API: servir grabaciones desde filesystem del VPS ──
+        // ── Replay API: el archivo crudo solo es accesible entre servicios ──
+
+        const requireInternalReplayAccess = (req: express.Request, res: express.Response): boolean => {
+            if (isInternalRequest(req.headers["x-internal-secret"], process.env.INTERNAL_API_SECRET)) {
+                return true;
+            }
+            res.status(403).json({ ok: false, error: "Forbidden" });
+            return false;
+        };
 
         app.get("/api/replays", (req, res) => {
+            if (!requireInternalReplayAccess(req, res)) return;
             const roomId = typeof req.query.roomId === 'string' ? req.query.roomId : undefined;
             const limit = parseInt(String(req.query.limit || '100'), 10);
             const replays = ReplayFileService.list({ roomId, limit: Math.min(limit, 500) });
@@ -72,6 +84,7 @@ export default defineServer({
         });
 
         app.get("/api/replays/:gameId", (req, res) => {
+            if (!requireInternalReplayAccess(req, res)) return;
             const replay = ReplayFileService.load(req.params.gameId);
             if (!replay) {
                 res.status(404).json({ ok: false, error: "Replay not found" });

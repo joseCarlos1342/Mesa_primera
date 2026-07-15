@@ -8,6 +8,8 @@ import { initializeSocketIOServer } from "./services/socket";
 import { setDraining } from "./runtime-state";
 import { pushWorker } from "./workers/push.worker";
 import { ledgerQueue, ledgerQueueEvents, ledgerWorker } from "./workers";
+import { CrashRecoveryService } from "./services/CrashRecoveryService";
+import { installCrashProcessHandlers } from "./services/CrashProcessHandlers";
 
 // Polyfill WebSocket for Node 20 compatibility with Colyseus 0.17+
 if (typeof WebSocket === "undefined") {
@@ -19,8 +21,14 @@ let socketHttpServer: HTTPServer | null = null;
 let socketIo: SocketIOServer | null = null;
 let shuttingDown = false;
 
-listen(app, 2567).then(() => {
+listen(app, 2567).then(async () => {
     console.log("⚔️  Listening on http://0.0.0.0:2567");
+
+    try {
+        await new CrashRecoveryService().start();
+    } catch (error) {
+        console.error("[recovery] No se pudieron recuperar partidas pendientes:", error);
+    }
 
     // Iniciar tareas en segundo plano (CronJobs sin costo adicional)
     startIntegrityCron();
@@ -38,7 +46,7 @@ listen(app, 2567).then(() => {
  * jugadores cuando se entra aquí; igual cerramos todo de forma ordenada con
  * un timeout de 30s como red de seguridad.
  */
-async function gracefulShutdown(signal: string): Promise<void> {
+async function gracefulShutdown(signal: string, exitCode = 0): Promise<void> {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`[shutdown] Recibido ${signal}, iniciando apagado limpio...`);
@@ -75,10 +83,13 @@ async function gracefulShutdown(signal: string): Promise<void> {
         console.error("[shutdown] Error durante apagado:", err);
     } finally {
         clearTimeout(forceExitTimer);
-        console.log("[shutdown] Saliendo con código 0");
-        process.exit(0);
+        console.log(`[shutdown] Saliendo con código ${exitCode}`);
+        process.exit(exitCode);
     }
 }
 
 process.on("SIGTERM", () => { void gracefulShutdown("SIGTERM"); });
 process.on("SIGINT", () => { void gracefulShutdown("SIGINT"); });
+installCrashProcessHandlers({
+    drain: (source) => { void gracefulShutdown(source, 1); },
+});

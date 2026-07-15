@@ -15,6 +15,7 @@ Documento vivo que registra cada escenario de comportamiento del motor de juego 
 | E-005 | APUESTA_4_CARTAS | Cruzado — Mano reingresa tras apuesta de otro | ✅ Correcto | 0.7.0 |
 | E-006 | APUESTA_4_CARTAS | Excepción 7 jugadores — cartas de Mano barajadas | ✅ Correcto | 0.7.0 |
 | E-007 | APUESTA_4_CARTAS | Animación de recogida de cartas al naipe | ✅ Correcto | 0.7.1 |
+| E-008 | Recovery | Crash recovery con roster bloqueado, deadline y refund idempotente | ✅ Correcto | 0.7.2 |
 
 ---
 
@@ -219,3 +220,35 @@ En mesa de 3 jugadores:
 - Board solo mostraba face-up en fases SORTEO_MANO/SHOWDOWN
 
 **Tests**: assertions de `revealedCards`, `cards=""`, `cardCount` en todos los escenarios anteriores
+
+---
+
+## E-008: Crash Recovery con Roster Bloqueado
+
+**Fase**: Recovery desde una fase estable (`APUESTA_4_CARTAS`, `PIQUE`, `DESCARTE`, `CANTICOS`, `DECLARAR_JUEGO`, `GUERRA`, `GUERRA_JUEGO` o `PIQUE_REVEAL`)
+**Regla**: Tras un crash, el servidor reconstruye una replacement desde el checkpoint íntegro y solo el roster original puede volver. La mano permanece bloqueada hasta que todos regresen. Si el deadline expira con miembros ausentes, los refunds derivados del ledger se aplican con un `operationId` estable; un segundo crash no puede crear otra replacement ni duplicar créditos.
+
+**Lógica del servidor**:
+1. `CrashRecoveryService` verifica hash, versión, fase y roster del checkpoint.
+2. Reclama el incidente de forma durable antes de crear la replacement y persiste su mapping.
+3. `MesaRoom.restoreFromRecoverySnapshot()` activa `recoveryLocked` y desactiva `autoDispose`, para que un intento outsider rechazado no elimine la replacement vacía.
+4. `onAuth` y `onJoin` rechazan identidades fuera del roster. Los rejoin se emparejan por `supabaseUserId` y conservan asiento y estado privado.
+5. Cuando todo el roster queda conectado, se desbloquea la mano, se reactiva `autoDispose` y se rearma el timer de turno.
+6. Al deadline, los importes se derivan del ledger y se envían con UUID determinista `recovery-refund:<gameId>:<userId>`. El RPC de expiración aplica cada operación una sola vez.
+
+**Ejemplo**:
+```
+Checkpoint: Ana, Beto y Carla en APUESTA_4_CARTAS; pozo activo.
+
+1. El proceso cae después del checkpoint.
+2. El nuevo proceso reclama el incidente y crea una sola replacement bloqueada.
+3. Un outsider intenta entrar: se rechaza; la replacement sigue viva sin clientes.
+4. Ana, Beto y Carla hacen rejoin: se restauran sus tres asientos y la mano se desbloquea.
+
+Alternativa con Carla ausente:
+1. El deadline vence y deriva los tres refunds pendientes.
+2. El proceso vuelve a caer durante recovery.
+3. El claim existente impide una segunda replacement; repetir la expiración reutiliza los mismos operationId y no duplica refunds.
+```
+
+**Tests**: `CrashRecoveryChaos.test.ts` usa `@colyseus/testing`, reloj y scheduler inyectados, replacement local y ledger idempotente en memoria; no usa Redis, Supabase ni esperas arbitrarias.

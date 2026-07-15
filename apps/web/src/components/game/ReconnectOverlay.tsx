@@ -17,8 +17,7 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4 }}
-          className="fixed inset-0 z-[200] flex flex-col items-center justify-center p-6"
-          style={{ background: 'radial-gradient(ellipse at center, #0d2e1b 0%, #050f08 100%)' }}
+          className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-surface-felt p-6"
         >
           {/* Felt texture overlay */}
           <div
@@ -45,10 +44,8 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
 
             {/* Card-shaped panel */}
             <div
-              className="relative w-full rounded-2xl overflow-hidden"
+              className="relative w-full overflow-hidden rounded-card border border-border-gold bg-surface-card"
               style={{
-                background: 'linear-gradient(160deg, #0f2a18 0%, #0a1c10 60%, #071209 100%)',
-                border: '1px solid rgba(212,175,55,0.35)',
                 boxShadow: '0 0 0 1px rgba(212,175,55,0.08), 0 24px 64px rgba(0,0,0,0.7), inset 0 1px 0 rgba(212,175,55,0.12)',
               }}
             >
@@ -68,25 +65,21 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
                 <m.div
                   animate={{ opacity: [1, 0.5, 1] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                  className="relative flex items-center justify-center w-20 h-20 rounded-full mb-7"
+                  className="relative mb-7 flex h-20 w-20 items-center justify-center rounded-full border border-primary-muted/30 bg-primary/10"
                   style={{
-                    background: 'radial-gradient(circle, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.04) 70%)',
-                    border: '1px solid rgba(212,175,55,0.3)',
                     boxShadow: '0 0 24px rgba(212,175,55,0.1), inset 0 1px 0 rgba(212,175,55,0.15)',
                   }}
                 >
                   <WifiOff
-                    className="w-9 h-9"
-                    style={{ color: '#d4af37', filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.4))' }}
+                    className="h-9 w-9 text-primary"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.4))' }}
                   />
                 </m.div>
 
                 {/* Title */}
                 <h2
-                  className="text-2xl font-bold tracking-widest uppercase mb-1"
+                  className="mb-1 font-display text-headline-md font-bold uppercase tracking-widest text-text-primary"
                   style={{
-                    fontFamily: "'Playfair Display', serif",
-                    color: '#fdf0a6',
                     textShadow: '0 0 20px rgba(212,175,55,0.25)',
                     letterSpacing: '0.12em',
                   }}
@@ -97,14 +90,13 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
                 {/* Gold ornament line */}
                 <div className="flex items-center gap-2 my-4 w-full">
                   <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.4))' }} />
-                  <span style={{ color: '#d4af37', fontSize: '10px' }}>✦</span>
+                  <span className="text-label-sm text-primary">✦</span>
                   <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(212,175,55,0.4), transparent)' }} />
                 </div>
 
                 {/* Message */}
                 <p
-                  className="text-sm leading-relaxed mb-8"
-                  style={{ color: 'rgba(253,240,166,0.55)', fontFamily: "'Outfit', sans-serif" }}
+                  className="mb-8 font-body-md text-body-sm leading-relaxed text-text-secondary"
                 >
                   {message}
                 </p>
@@ -117,14 +109,13 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
                         key={i}
                         animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.1, 0.8] }}
                         transition={{ duration: 1.4, repeat: Infinity, delay, ease: 'easeInOut' }}
-                        className="block w-2 h-2 rounded-full"
-                        style={{ background: '#d4af37', boxShadow: '0 0 6px rgba(212,175,55,0.6)' }}
+                          className="block h-2 w-2 rounded-full bg-primary"
+                          style={{ boxShadow: '0 0 6px rgba(212,175,55,0.6)' }}
                       />
                     ))}
                   </div>
                   <span
-                    className="text-xs tracking-[0.2em] uppercase font-semibold"
-                    style={{ color: 'rgba(212,175,55,0.7)', fontFamily: "'Outfit', sans-serif" }}
+                    className="font-label-md text-label-md font-semibold uppercase tracking-[0.2em] text-primary-muted"
                   >
                     Restaurando sesión
                   </span>
@@ -133,9 +124,7 @@ export function ReconnectOverlay({ isVisible, message = "Intentando reconectar a
               </div>
 
               {/* Bottom gold divider */}
-              <div className="absolute bottom-0 left-0 right-0 h-px"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)' }}
-              />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-border-gold/30" />
             </div>
 
             {/* Corner ornaments */}

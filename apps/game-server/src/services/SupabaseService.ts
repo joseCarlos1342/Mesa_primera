@@ -24,6 +24,61 @@ if (!supabaseKey) {
 /** Cached table ID to avoid refetching on every saveReplay/createGameSession call */
 let cachedTableId: string | null = null;
 
+export interface RecoveryCheckpointInput {
+  gameId: string;
+  roomId: string;
+  checkpointVersion: number;
+  stateHash: string;
+  privateState: Record<string, unknown>;
+  rosterUserIds: string[];
+}
+
+export interface PendingRecoveryCheckpoint {
+  gameId: string;
+  roomId: string;
+  checkpointVersion: number;
+  stateHash: string;
+  privateState: unknown;
+  rosterUserIds: string[];
+  recoveryDeadlineAt?: Date;
+  recoveredRoomId?: string;
+}
+
+export interface RecoveredRoomMappingInput {
+  gameId: string;
+  originalRoomId: string;
+  recoveredRoomId: string;
+  ownerId: string;
+}
+
+export interface RecoveryClaimInput {
+  gameId: string;
+  ownerId: string;
+}
+
+export interface RecoveryIncidentInput {
+  gameId: string;
+  roomId: string;
+  detectedAt: Date;
+  causeCode: string;
+}
+
+export interface RecoveryRefundInput {
+  userId: string;
+  amountCents: number;
+  operationId: string;
+}
+
+export interface DerivedRecoveryRefund {
+  userId: string;
+  amountCents: number;
+}
+
+export interface ExpireRecoveryIncidentInput {
+  gameId: string;
+  refunds: RecoveryRefundInput[];
+}
+
 async function getOrCreateTableId(tableName: string): Promise<string> {
   if (cachedTableId) return cachedTableId;
   const { data: table } = await supabase.from('tables').select('id').limit(1).single();
@@ -42,6 +97,226 @@ async function getOrCreateTableId(tableName: string): Promise<string> {
 }
 
 export class SupabaseService {
+  /** Verifica en Supabase Auth la identidad usada exclusivamente en recovery. */
+  static async validateRecoveryIdentity(accessToken: unknown, userId: string): Promise<boolean> {
+    if (!supabaseKey || typeof accessToken !== "string" || !userId) return false;
+
+    try {
+      const { data, error } = await supabase.auth.getUser(accessToken);
+      return !error && data.user?.id === userId;
+    } catch (error) {
+      console.error("[SupabaseService] Error validating recovery identity:", error);
+      return false;
+    }
+  }
+
+  static async loadPendingRecoveryCheckpoints(): Promise<PendingRecoveryCheckpoint[]> {
+    if (!supabaseKey) return [];
+
+    try {
+      const { data, error } = await supabase.rpc("load_pending_game_recovery_checkpoints_v2");
+      if (error) throw error;
+      if (!Array.isArray(data)) return [];
+
+      return data.map((checkpoint: {
+        game_id: string;
+        room_id: string;
+        checkpoint_version: number;
+        state_hash: string;
+        private_state: unknown;
+        roster_user_ids: string[];
+        recovery_deadline_at: string | null;
+        recovered_room_id: string | null;
+      }) => ({
+        gameId: checkpoint.game_id,
+        roomId: checkpoint.room_id,
+        checkpointVersion: checkpoint.checkpoint_version,
+        stateHash: checkpoint.state_hash,
+        privateState: checkpoint.private_state,
+        rosterUserIds: checkpoint.roster_user_ids,
+        recoveryDeadlineAt: checkpoint.recovery_deadline_at
+          ? new Date(checkpoint.recovery_deadline_at)
+          : undefined,
+        recoveredRoomId: checkpoint.recovered_room_id ?? undefined,
+      }));
+    } catch (error) {
+      console.error("[SupabaseService] Error loading recovery checkpoints:", error);
+      return [];
+    }
+  }
+
+  static async saveRecoveredRoomMapping(
+    input: RecoveredRoomMappingInput,
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!supabaseKey) return { success: true };
+
+    try {
+      const { data, error } = await supabase.rpc("save_game_recovery_room_mapping", {
+        p_game_id: input.gameId,
+        p_original_room_id: input.originalRoomId,
+        p_recovered_room_id: input.recoveredRoomId,
+        p_owner_id: input.ownerId,
+      });
+      if (error) throw error;
+      if (data?.error) return { success: false, error: String(data.error) };
+      return { success: true };
+    } catch (error) {
+      console.error("[SupabaseService] Error saving recovered room mapping:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  static async claimRecoveryIncident(
+    input: RecoveryClaimInput,
+  ): Promise<{ claimed: boolean; error?: string }> {
+    if (!supabaseKey) return { claimed: true };
+
+    try {
+      const { data, error } = await supabase.rpc("claim_game_recovery_incident", {
+        p_game_id: input.gameId,
+        p_owner_id: input.ownerId,
+      });
+      if (error) throw error;
+      if (data?.error) return { claimed: false, error: String(data.error) };
+      return { claimed: data?.claimed === true };
+    } catch (error) {
+      console.error("[SupabaseService] Error claiming recovery incident:", error);
+      return { claimed: false, error: String(error) };
+    }
+  }
+
+  static async createRecoveryIncident(input: RecoveryIncidentInput): Promise<{ success: boolean; recoveryDeadlineAt?: Date; error?: string }> {
+    if (!supabaseKey) return { success: true };
+
+    try {
+      const { data, error } = await supabase.rpc("open_game_recovery_incident", {
+        p_game_id: input.gameId,
+        p_room_id: input.roomId,
+        p_detected_at: input.detectedAt.toISOString(),
+        p_cause_code: input.causeCode,
+      });
+
+      if (error) throw error;
+      if (data?.error) return { success: false, error: String(data.error) };
+      const recoveryDeadlineAt = data?.recovery_deadline_at
+        ? new Date(data.recovery_deadline_at)
+        : undefined;
+      return { success: true, recoveryDeadlineAt };
+    } catch (error) {
+      console.error("[SupabaseService] Error creating recovery incident:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  static async expireRecoveryIncidentAndRefund(
+    input: ExpireRecoveryIncidentInput,
+  ): Promise<{ success: boolean; status?: string; error?: string }> {
+    if (!supabaseKey) return { success: true };
+
+    try {
+      const { data, error } = await supabase.rpc("expire_game_recovery_incident", {
+        p_game_id: input.gameId,
+        p_refunds: input.refunds.map((refund) => ({
+          user_id: refund.userId,
+          amount_cents: refund.amountCents,
+          operation_id: refund.operationId,
+        })),
+      });
+
+      if (error) throw error;
+      if (data?.error) return { success: false, error: String(data.error) };
+      return { success: true, status: data?.status };
+    } catch (error) {
+      console.error("[SupabaseService] Error expiring recovery incident:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  static async deriveRecoveryRefunds(gameId: string): Promise<{ success: boolean; refunds?: DerivedRecoveryRefund[]; error?: string }> {
+    if (!supabaseKey) return { success: false, error: "Supabase service_role no configurado" };
+
+    try {
+      const { data, error } = await supabase.rpc("derive_game_recovery_refunds", {
+        p_game_id: gameId,
+      });
+      if (error) throw error;
+      if (!Array.isArray(data)) return { success: false, error: "Refunds persistidos inválidos" };
+
+      const refunds = data.map((refund: { user_id: string; amount_cents: number }) => ({
+        userId: refund.user_id,
+        amountCents: refund.amount_cents,
+      }));
+      if (refunds.some((refund) => !refund.userId || !Number.isSafeInteger(refund.amountCents) || refund.amountCents <= 0)) {
+        return { success: false, error: "Refunds persistidos inválidos" };
+      }
+      return { success: true, refunds };
+    } catch (error) {
+      console.error("[SupabaseService] Error deriving recovery refunds:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  static async markRecoveryIncidentManualReview(input: { gameId: string; reason: string }): Promise<{ success: boolean; status?: string; error?: string }> {
+    if (!supabaseKey) return { success: false, error: "Supabase service_role no configurado" };
+
+    try {
+      const { data, error } = await supabase.rpc("mark_game_recovery_incident_manual_review", {
+        p_game_id: input.gameId,
+        p_reason: input.reason,
+      });
+      if (error) throw error;
+      if (data?.error) return { success: false, error: String(data.error) };
+      return { success: true, status: typeof data?.status === "string" ? data.status : undefined };
+    } catch (error) {
+      console.error("[SupabaseService] Error marking recovery incident for manual review:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  static async resolveRecoveryIncident(gameId: string): Promise<{ success: boolean; updated: boolean; error?: string }> {
+    if (!supabaseKey) return { success: false, updated: false, error: "Supabase service_role no configurado" };
+
+    try {
+      const { data, error } = await supabase.rpc("resolve_game_recovery_incident", {
+        p_game_id: gameId,
+      });
+      if (error) throw error;
+      if (data?.error) return { success: false, updated: false, error: String(data.error) };
+      return { success: true, updated: data?.updated === true };
+    } catch (error) {
+      console.error("[SupabaseService] Error resolving recovery incident:", error);
+      return { success: false, updated: false, error: String(error) };
+    }
+  }
+
+  /**
+   * Persiste el último estado recuperable de una mano. Este payload es privado
+   * del motor: RLS no permite que el panel administrativo lo consulte.
+   */
+  static async saveRecoveryCheckpoint(input: RecoveryCheckpointInput): Promise<{ success: boolean; error?: string }> {
+    if (!supabaseKey) return { success: true };
+    if (input.checkpointVersion < 1 || input.rosterUserIds.length === 0) {
+      return { success: false, error: "Checkpoint de recuperación inválido" };
+    }
+
+    try {
+      const { data, error } = await supabase.rpc("save_game_recovery_checkpoint", {
+        p_game_id: input.gameId,
+        p_room_id: input.roomId,
+        p_checkpoint_version: input.checkpointVersion,
+        p_state_hash: input.stateHash,
+        p_private_state: input.privateState,
+        p_roster_user_ids: input.rosterUserIds,
+      });
+      if (error) throw error;
+      if (data?.error) return { success: false, error: String(data.error) };
+      return { success: true };
+    } catch (error) {
+      console.error("[SupabaseService] Error saving recovery checkpoint:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
   /**
    * Distributes the pot to the winner and records the rake atomically
    * via the `award_pot` database RPC. This guarantees that the ledger
@@ -334,14 +609,16 @@ export class SupabaseService {
   /**
    * Initializes a game session with 'in_progress' status in the database.
    */
-  static async createGameSession(gameId: string, tableName: string) {
-    if (!supabaseKey) return;
+  static async createGameSession(gameId: string, tableName: string): Promise<boolean> {
+    if (!supabaseKey) return true;
     try {
       const tableId = await getOrCreateTableId(tableName);
       const { error: gameErr } = await supabase.from('games').upsert({ id: gameId, table_id: tableId, status: 'in_progress' });
       if (gameErr) throw gameErr;
+      return true;
     } catch (e) {
       console.error('[SupabaseService] Error creating game session:', e);
+      return false;
     }
   }
 

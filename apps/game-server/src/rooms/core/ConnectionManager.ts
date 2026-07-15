@@ -72,6 +72,10 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
     return;
   }
 
+  if (r.recoveryLocked && (!options.userId || !r.recoveryRosterUserIds.includes(options.userId))) {
+    throw new Error("Sala en recuperación: solo puede volver el roster original");
+  }
+
   const requestedNickname = normalizeNickname(options.nickname, `Jugador_${client.sessionId}`);
   const avatarUrl = normalizeAvatarUrl(options.avatarUrl);
   const chips = normalizeJoinChips(options.chips ?? 0);
@@ -121,6 +125,15 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
     newPlayer.cards = oldPlayer.cards;
     newPlayer.cardCount = oldPlayer.cardCount;
     newPlayer.revealedCards = oldPlayer.revealedCards;
+    newPlayer.isWaiting = oldPlayer.isWaiting;
+    newPlayer.isAllIn = oldPlayer.isAllIn;
+    newPlayer.passedWithJuego = oldPlayer.passedWithJuego;
+    newPlayer.roundBet = oldPlayer.roundBet;
+    newPlayer.turnOrder = oldPlayer.turnOrder;
+    newPlayer.pendingDiscardCards = [...oldPlayer.pendingDiscardCards];
+    newPlayer.totalMainBet = oldPlayer.totalMainBet;
+    newPlayer.declaredJuego = oldPlayer.declaredJuego;
+    newPlayer.declinedGuerraJuegoBet = oldPlayer.declinedGuerraJuegoBet;
     // Si la sala fue reseteada (LOBBY), el jugador debe estar listo de nuevo
     newPlayer.isReady = r.state.phase === "LOBBY" ? false : oldPlayer.isReady;
     newPlayer.hasActed = r.state.phase === "LOBBY" ? false : oldPlayer.hasActed;
@@ -179,7 +192,8 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
     });
 
     r.updateLobbyMetadata();
-    r.checkStartCountdown();
+    await r.unlockRecoveryWhenRosterReturns();
+    if (!r.recoveryLocked) r.checkStartCountdown();
     return;
   }
 
@@ -264,7 +278,7 @@ export async function handleConnectionLeave(room: MesaRoom, client: Client, code
   // Si TODOS los jugadores están desconectados, resetear la sala a estado limpio
   const playerValues = Array.from(r.state.players.values()) as Player[];
   const anyoneConnected = playerValues.some((p: Player) => p.connected);
-  if (!anyoneConnected && r.state.players.size > 0) {
+  if (!r.recoveryLocked && !anyoneConnected && r.state.players.size > 0) {
     console.log(`[MesaRoom] Todos los jugadores se desconectaron. Reseteando sala a estado limpio.`);
     r.resetRoomState();
   }
