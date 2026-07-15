@@ -101,6 +101,7 @@ describe('AdminPage', () => {
     expect(screen.getByRole('link', { name: /Soporte/i })).toHaveAttribute('href', '/admin/support')
     expect(screen.getByRole('link', { name: /Alertas Mesa/i })).toHaveAttribute('href', '/admin/alerts')
     expect(screen.getByRole('link', { name: /Log del Servidor/i })).toHaveAttribute('href', '/admin/server-log')
+    expect(screen.getByRole('link', { name: /Recovery Incidentes/i })).toHaveAttribute('href', '/admin/recovery')
     expect(screen.getByRole('link', { name: /Disputas/i })).toHaveAttribute('href', '/admin/disputes')
   })
 

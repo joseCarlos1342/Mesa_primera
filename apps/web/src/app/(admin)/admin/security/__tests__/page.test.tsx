@@ -69,7 +69,7 @@ describe('AdminSecurityPage', () => {
     render(await AdminSecurityPage())
 
     expect(mockGetAdminSecuritySnapshot).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('link', { name: /volver al panel/i })).toHaveAttribute('href', '/admin')
+    expect(screen.queryByRole('link', { name: /volver al panel/i })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /blindaje de acceso/i })).toBeInTheDocument()
     expect(screen.getByText('TOTP verificado · AAL2')).toBeInTheDocument()
     expect(screen.getByText('Cambio endurecido de email')).toBeInTheDocument()

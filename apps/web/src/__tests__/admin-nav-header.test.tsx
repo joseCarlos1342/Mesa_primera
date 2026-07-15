@@ -8,10 +8,11 @@
 import { render, screen } from '@testing-library/react'
 import fs from 'fs'
 import path from 'path'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(),
+  useRouter: jest.fn(),
 }))
 
 // ────────────────────────────────────────────────
@@ -20,6 +21,7 @@ jest.mock('next/navigation', () => ({
 describe('Admin layout header home link', () => {
   beforeEach(() => {
     jest.mocked(usePathname).mockReturnValue('/admin')
+    jest.mocked(useRouter).mockReturnValue({ push: jest.fn() } as never)
   })
 
   it('renders "Admin" as a link to /admin', async () => {
@@ -52,10 +54,10 @@ describe('Admin layout header home link', () => {
     const broadcastLink = screen.getByRole('link', { name: /nuevo broadcast/i })
     const signOutButton = screen.getByRole('button', { name: /cerrar sesión/i })
 
-    expect(broadcastLink.className).toContain('h-11')
-    expect(broadcastLink.className).toContain('w-11')
-    expect(signOutButton.className).toContain('h-11')
-    expect(signOutButton.className).toContain('w-11')
+    expect(broadcastLink.className).toContain('h-10')
+    expect(broadcastLink.className).toContain('w-10')
+    expect(signOutButton.className).toContain('h-10')
+    expect(signOutButton.className).toContain('w-10')
   })
 
   it('hides the broadcast shortcut outside the admin dashboard root', async () => {
@@ -82,10 +84,10 @@ describe('Admin layout header home link', () => {
 
     expect(backLink).toBeInTheDocument()
     expect(backLink).toHaveAttribute('href', '/admin/ledger')
-    expect(backLink.className).toContain('h-11')
-    expect(backLink.className).toContain('w-11')
-    expect(signOutButton.className).toContain('h-11')
-    expect(signOutButton.className).toContain('w-11')
+    expect(backLink.className).toContain('h-10')
+    expect(backLink.className).toContain('w-10')
+    expect(signOutButton.className).toContain('h-10')
+    expect(signOutButton.className).toContain('w-10')
     expect(screen.queryByRole('link', { name: /nuevo broadcast/i })).not.toBeInTheDocument()
   })
 
@@ -102,10 +104,10 @@ describe('Admin layout header home link', () => {
 
     expect(backLink).toBeInTheDocument()
     expect(backLink).toHaveAttribute('href', '/admin/broadcast')
-    expect(backLink.className).toContain('h-11')
-    expect(backLink.className).toContain('w-11')
-    expect(signOutButton.className).toContain('h-11')
-    expect(signOutButton.className).toContain('w-11')
+    expect(backLink.className).toContain('h-10')
+    expect(backLink.className).toContain('w-10')
+    expect(signOutButton.className).toContain('h-10')
+    expect(signOutButton.className).toContain('w-10')
   })
 })
 

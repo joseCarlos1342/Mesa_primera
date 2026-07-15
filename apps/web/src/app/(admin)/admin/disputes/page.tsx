@@ -51,12 +51,6 @@ export default async function DisputesListPage() {
         <h1 className="text-2xl font-bold">Disputas</h1>
         <div className="flex gap-2">
           <Link
-            href="/admin/consultas"
-            className="text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            ← Consultas
-          </Link>
-          <Link
             href="/admin/disputes/new"
             className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
           >

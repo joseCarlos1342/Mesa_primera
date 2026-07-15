@@ -127,6 +127,22 @@ components:
     rounded: "{rounded.button}"
     padding: 12px 24px
     typography: "{typography.label-lg}"
+  game-table:
+    backgroundColor: "{colors.surface-poker}"
+  game-felt:
+    backgroundColor: "{colors.surface-felt}"
+  label-muted:
+    textColor: "{colors.primary-muted}"
+    typography: "{typography.label-sm}"
+  caption:
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.body-sm}"
+  divider-brass:
+    backgroundColor: "{colors.border-brass}"
+    height: 1px
+  divider-gold:
+    backgroundColor: "{colors.border-gold}"
+    height: 1px
   card:
     backgroundColor: "{colors.surface-card}"
     textColor: "{colors.text-primary}"
