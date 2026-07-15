@@ -39,18 +39,20 @@ export function AdminGlobalSearch() {
         </svg>
         <input
           ref={inputRef}
-          type="text"
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar ID, seed, usuario…"
-          className="w-48 md:w-64 rounded-md bg-gray-800 border border-white/10 pl-9 pr-3 py-1.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          className="h-10 w-24 rounded-md bg-gray-800 border border-white/10 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:w-48 md:w-64"
           aria-label="Búsqueda global admin"
         />
       </div>
       <button
         type="submit"
         disabled={isPending || !query.trim()}
-        className="hidden md:inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        aria-label="Buscar"
+        title="Buscar"
+        className="hidden h-10 items-center justify-center rounded-md bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors sm:inline-flex"
       >
         {isPending ? 'Buscando…' : 'Buscar'}
       </button>

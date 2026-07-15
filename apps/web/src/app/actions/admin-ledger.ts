@@ -46,18 +46,20 @@ async function verifyAdmin() {
   return supabase;
 }
 
-export async function getLedgerEntries(limit = 100): Promise<AdminLedgerEntry[]> {
+export async function getLedgerEntries(limit = 100, entryId?: string): Promise<AdminLedgerEntry[]> {
   const supabase = await verifyAdmin();
 
-  const { data: entries, error } = await supabase
+  const baseQuery = supabase
     .from("ledger")
     .select(`
       id, user_id, amount_cents, type, direction, balance_before_cents, balance_after_cents,
       reference_id, description, metadata, status, created_at,
       user:profiles!ledger_user_id_fkey(full_name, username)
-    `)
-    .order("sequence", { ascending: false })
-    .limit(limit);
+    `);
+
+  const { data: entries, error } = entryId
+    ? await baseQuery.or(`id.eq.${entryId},reference_id.eq.${entryId}`).limit(limit)
+    : await baseQuery.order("sequence", { ascending: false }).limit(limit);
 
   if (error) throw error;
 

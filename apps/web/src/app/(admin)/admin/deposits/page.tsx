@@ -3,8 +3,10 @@ import { formatCurrency } from '@/utils/format'
 import { User, ExternalLink, CheckCircle2, MessageSquare, Image as ImageIcon, Wallet, Clock, AlertCircle } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 import { DepositActions } from './DepositActions'
-export default async function AdminDepositsPage() {
-  const result = await getPendingDeposits()
+export default async function AdminDepositsPage({ searchParams }: { searchParams: Promise<{ q?: string }> } = { searchParams: Promise.resolve({}) }) {
+  const { q } = await searchParams
+  const requestId = typeof q === 'string' ? q.trim() : ''
+  const result = await getPendingDeposits(requestId || undefined)
   const supabase = await createClient()
 
   if (result.error) {
@@ -33,7 +35,7 @@ export default async function AdminDepositsPage() {
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <div className="space-y-2">
             <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-white drop-shadow-md">
-              DEPÓSITOS <span className="text-emerald-400">PENDIENTES</span>
+              DEPÓSITOS <span className="text-emerald-400">{requestId ? 'ENCONTRADOS' : 'PENDIENTES'}</span>
             </h1>
             <div className="flex items-center gap-3">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -216,4 +218,3 @@ function ArrowDownLeft(props: any) {
     </svg>
   )
 }
-

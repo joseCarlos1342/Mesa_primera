@@ -13,8 +13,10 @@ export interface DetectedIdentifier {
 // ─── Search Report ──────────────────────────────────────────
 
 export interface SearchMatch {
-  entity: 'ledger' | 'deposit' | 'withdrawal' | 'replay' | 'user' | 'ticket' | 'alert'
+  entity: 'ledger' | 'deposit' | 'withdrawal' | 'replay' | 'user' | 'ticket' | 'alert' | 'dispute'
   id: string
+  /** Identificador que requiere la ruta de destino cuando difiere de la clave primaria. */
+  target_id?: string
   label: string
   /** Secondary info (e.g. amount, date, user) */
   detail: string | null

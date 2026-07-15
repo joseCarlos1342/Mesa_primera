@@ -38,15 +38,21 @@ export async function processTransaction(requestId: string, status: 'completed' 
   return { success: true };
 }
 
-export async function getPendingDeposits() {
+export async function getPendingDeposits(requestId?: string) {
   const supabase = await createClient()
 
-  // 1. Fetch pending requests
-  const { data: requests, error: requestsError } = await supabase
+  const requestsResult = requestId
+    ? await supabase
+      .from('deposit_requests')
+      .select('*')
+      .eq('id', requestId)
+    : await supabase
     .from('deposit_requests')
     .select('*')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
+
+  const { data: requests, error: requestsError } = requestsResult
 
   if (requestsError) return { error: requestsError.message }
   if (!requests || requests.length === 0) return { deposits: [] }
