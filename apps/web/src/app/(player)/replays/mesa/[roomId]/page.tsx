@@ -1,15 +1,23 @@
-import { getPlayerReplaysForRoom } from "@/app/actions/replays";
+import { getPlayerReplaysForRoom, type ReplayFilters } from "@/app/actions/replays";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
 import { Film, Trophy, TrendingDown, Users, Clock } from "lucide-react";
 
 interface Props {
   params: Promise<{ roomId: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function MesaDetailPage({ params }: Props) {
+export default async function MesaDetailPage({ params, searchParams }: Props) {
   const { roomId } = await params;
-  const replays = await getPlayerReplaysForRoom(roomId);
+  const query = await (searchParams ?? Promise.resolve<Record<string, string | string[] | undefined>>({}));
+  const period = typeof query.period === 'string' && ['7d', '30d', '90d', 'all'].includes(query.period) ? query.period as ReplayFilters['period'] : '7d';
+  const filters: ReplayFilters = {
+    period,
+    from: typeof query.from === 'string' ? query.from : undefined,
+    to: typeof query.to === 'string' ? query.to : undefined,
+  };
+  const replays = await getPlayerReplaysForRoom(roomId, filters);
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto">

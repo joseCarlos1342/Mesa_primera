@@ -2,19 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/utils/supabase/client';
+import { getPlayerReplayDetail, type PlayerReplayDetail } from '@/app/actions/replays';
 import { ReplayController } from '@/components/replay/ReplayController';
 import { LandscapeLockOverlay } from '@/components/replay/LandscapeLockOverlay';
-import { Copy, Check, Trophy, Users, Coins, Layers, Clock } from 'lucide-react';
+import { Trophy, Users, Coins, Layers, Clock } from 'lucide-react';
 import { formatCurrency } from '@/utils/format';
 
 export default function ReplayViewer({ params }: { params: Promise<{ gameId: string }> }) {
-  const supabase = createClient();
   const [gameId, setGameId] = useState<string>('');
-  const [replay, setReplay] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [replay, setReplay] = useState<PlayerReplayDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [seedCopied, setSeedCopied] = useState(false);
 
   useEffect(() => {
     params.then(p => setGameId(p.gameId));
@@ -23,47 +20,11 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
   useEffect(() => {
     if (!gameId) return;
     async function fetchData() {
-      // Check if current user is admin
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        setIsAdmin(profile?.role === 'admin');
-      }
-
-      const { data, error } = await supabase
-        .from('game_replays')
-        .select('*')
-        .eq('game_id', gameId)
-        .single();
-
-      if (error) console.error('Error fetching replay:', error);
-      if (data) {
-        // Supabase no almacena frames/version: hidratarlos desde el game server (VPS).
-        try {
-          const gsUrl = process.env.NEXT_PUBLIC_GAME_SERVER_URL;
-          if (gsUrl) {
-            const res = await fetch(`${gsUrl}/api/replays/${gameId}`);
-            if (res.ok) {
-              const json = await res.json();
-              if (json?.ok && json?.data?.frames?.length) {
-                data.frames = json.data.frames;
-                data.version = json.data.version;
-              }
-            }
-          }
-        } catch (e) {
-          console.warn('[replay] frames hydration fallback failed', e);
-        }
-        setReplay(data);
-      }
+      setReplay(await getPlayerReplayDetail(gameId));
       setLoading(false);
     }
     fetchData();
-  }, [gameId, supabase]);
+  }, [gameId]);
 
   if (loading) {
     return (
@@ -85,14 +46,11 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
     );
   }
 
-  // Admin sees admin_timeline (with rng_state), player sees timeline
-  const players: any[] = replay.players || [];
+  const players = replay.players || [];
   const pot = replay.pot_breakdown || {};
   const hands = replay.final_hands || {};
-  const timeline: any[] = isAdmin
-    ? (replay.admin_timeline || replay.timeline || [])
-    : (replay.timeline || []);
-  const frames: any[] = Array.isArray(replay.frames) ? replay.frames : [];
+  const timeline = replay.timeline || [];
+  const frames = Array.isArray(replay.frames) ? replay.frames : [];
 
   // Mapa sessionId -> nickname (los eventos del timeline usan sessionId, no userId).
   const sessionIdToNickname: Record<string, string> = {};
@@ -164,47 +122,13 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          {isAdmin && (
-            <div className="mb-2">
-              <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 tracking-widest">
-                MODO ADMIN
-              </span>
-            </div>
-          )}
           <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter text-(--accent-gold)">
             Repetición de Partida
           </h1>
           <p className="text-xs text-(--text-secondary) font-mono mt-1">
             ID: {replay.game_id?.substring(0, 8)}
           </p>
-          {replay.rng_seed && (
-            <div className="mt-2 flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2 max-w-full">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0">Seed:</span>
-              <code className="text-[11px] font-mono text-slate-300 break-all select-all leading-relaxed">
-                {replay.rng_seed}
-              </code>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(replay.rng_seed);
-                  setSeedCopied(true);
-                  setTimeout(() => setSeedCopied(false), 2000);
-                }}
-                className="shrink-0 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-(--accent-gold) transition-all border border-white/5"
-                title="Copiar seed"
-              >
-                {seedCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          )}
         </div>
-
-        {isAdmin && (
-          <span
-            className="px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border bg-red-500/15 text-red-400 border-red-500/30"
-          >
-            Modo admin · vista completa
-          </span>
-        )}
       </div>
 
       {/* Reconstrucción visual (v2): única vista del replay */}

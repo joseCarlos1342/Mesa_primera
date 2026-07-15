@@ -27,6 +27,7 @@ import { TableHelpModal } from '@/components/game/TableHelpModal'
 import { GameTransferModal } from '@/components/game/TransferModal'
 import { PermissionsGate } from '@/components/game/PermissionsGate'
 import { getPlayRoomShellClassName } from './play-room-shell'
+import { resolveRecoveredRoom, type RecoveredRoom } from '@/app/actions/recovery'
 
 export default function GameRoomPage() {
   const params = useParams()
@@ -41,6 +42,8 @@ export default function GameRoomPage() {
   const [showTableHelp, setShowTableHelp] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
   const [isReconnecting, setIsReconnecting] = useState(false)
+  const [recovery, setRecovery] = useState<RecoveredRoom | null>(null)
+  const [recoverySecondsRemaining, setRecoverySecondsRemaining] = useState<number | null>(null)
 
   // Game State
   const [gameState, setGameState] = useState({
@@ -107,6 +110,20 @@ export default function GameRoomPage() {
       body.style.overscrollBehavior = prevOverscroll
     }
   }, [])
+
+  useEffect(() => {
+    if (!recovery || recovery.status === 'resumed') {
+      setRecoverySecondsRemaining(null)
+      return
+    }
+
+    const updateRemaining = () => {
+      setRecoverySecondsRemaining(Math.max(0, Math.ceil((new Date(recovery.deadline).getTime() - Date.now()) / 1000)))
+    }
+    updateRemaining()
+    const interval = window.setInterval(updateRemaining, 1000)
+    return () => window.clearInterval(interval)
+  }, [recovery])
 
   // ── Detección de orientación: bloquear en portrait y auto-cancelar "Listo" ──
   const [isPortrait, setIsPortrait] = useState(false)
@@ -240,6 +257,7 @@ export default function GameRoomPage() {
         if (sbUser) setSupabaseUserId(sbUser.id);
 
         let joinedRoom: Room | undefined;
+        let nativeReconnectFailed = false;
         const tokenKey = `reconnectionToken_${roomId}`;
         const nickKey = `nickname_${roomId}`;
 
@@ -263,17 +281,29 @@ export default function GameRoomPage() {
               console.warn("Fallo al reconectar:", e.message || e);
             }
             sessionStorage.removeItem(tokenKey);
+            nativeReconnectFailed = true;
           }
         }
 
         if (!joinedRoom) {
+          const recovered = nativeReconnectFailed ? await resolveRecoveredRoom(roomId) : null
+          if (recovered?.status === 'recovery_pending' && new Date(recovered.deadline).getTime() <= Date.now()) {
+            setRecovery(recovered)
+            setIsReconnecting(true)
+            return
+          }
+          if (recovered) {
+            setRecovery(recovered)
+            setIsReconnecting(true)
+          }
+
           // Sync with Supabase session first
           let avatarUrl = sessionStorage.getItem(`avatarUrl_${roomId}`);
           if (!avatarUrl) {
             avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
           }
 
-          if (sbUser) {
+          if (sbUser && !recovered) {
             // Fetch real balance from wallets table
             const { data: wallet } = await supabase
               .from('wallets')
@@ -323,12 +353,14 @@ export default function GameRoomPage() {
 
           const chips = parseInt(sessionStorage.getItem(`chips_${roomId}`) || "1000");
 
-          joinedRoom = await client.joinById(roomId, {
+          const { data: { session } } = await supabase.auth.getSession()
+          joinedRoom = await client.joinById(recovered?.recoveredRoomId ?? roomId, {
             nickname: nick,
             deviceId: deviceId,
             avatarUrl: avatarUrl,
             chips: chips,
-            userId: sbUser?.id || null
+            userId: sbUser?.id || null,
+            accessToken: session?.access_token || null,
           })
 
           // Guardar el token para permitir reconexiones si se recarga la página (F5)
@@ -924,7 +956,14 @@ export default function GameRoomPage() {
 
 
       <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
-      <ReconnectOverlay isVisible={isReconnecting} message="Sincronizando tu mesa..." />
+      <ReconnectOverlay
+        isVisible={isReconnecting}
+        message={recovery
+          ? recoverySecondsRemaining === 0
+            ? 'La recuperación fue cancelada. Tu partida pasará a revisión manual.'
+            : `Recuperando tu mesa... La mesa se reanudó.${recoverySecondsRemaining !== null ? ` Tiempo restante: ${Math.floor(recoverySecondsRemaining / 60)}:${String(recoverySecondsRemaining % 60).padStart(2, '0')}.` : ''}`
+          : 'Sincronizando tu mesa...'}
+      />
       <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
       <GameTransferModal
         isOpen={showTransfer}

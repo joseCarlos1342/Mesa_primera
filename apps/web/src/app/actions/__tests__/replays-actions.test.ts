@@ -2,10 +2,11 @@ import {
   getAdminReplayDetail,
   getAllReplays,
   getPlayerMesaReplays,
+  getPlayerReplayDetail,
   getPlayerReplays,
   getPlayerReplaysForRoom,
-  getReplayDetail,
 } from '../replays'
+import { sanitizeReplayFrames } from '@/lib/replay-sanitizer'
 import { createClient } from '@/utils/supabase/server'
 
 jest.mock('@/utils/supabase/server', () => ({
@@ -54,13 +55,6 @@ function replayRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function replaySelectQuery(result: unknown) {
-  const single = jest.fn().mockResolvedValue(result)
-  const eq = jest.fn().mockReturnValue({ single })
-  const select = jest.fn().mockReturnValue({ eq })
-  return { select, eq, single }
-}
-
 function profileRoleQuery(role: string | null = 'admin') {
   const single = jest.fn().mockResolvedValue({ data: role ? { role } : null, error: null })
   const eq = jest.fn().mockReturnValue({ single })
@@ -92,11 +86,71 @@ describe('replay actions', () => {
     const rpc = jest.fn().mockResolvedValue({ data, error: null })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
 
-    await expect(getPlayerReplays(12)).resolves.toEqual(data)
+    await expect(getPlayerReplays({ period: 'all' })).resolves.toEqual(data)
     expect(rpc).toHaveBeenCalledWith('get_player_replays', {
       p_user_id: 'user-123',
-      p_limit: 12,
+      p_limit: 100,
+      p_from: null,
+      p_to: null,
     })
+  })
+
+  it('aplica periodo y rango de fechas al historial del jugador', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: [], error: null })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
+
+    await getPlayerReplays({ period: '90d', from: '2026-01-10', to: '2026-02-10' })
+
+    expect(rpc).toHaveBeenCalledWith('get_player_replays', {
+      p_user_id: 'user-123',
+      p_limit: 100,
+      p_from: '2026-01-10T00:00:00.000Z',
+      p_to: '2026-02-10T23:59:59.999Z',
+    })
+  })
+
+  it('rechaza filtros de replay inválidos antes de llamar a Supabase', async () => {
+    const supabase = queuedSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getPlayerReplays({ period: 'forever' as never })).resolves.toEqual([])
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('obtiene el detalle player mediante la RPC saneada, sin select directo', async () => {
+    const rpc = jest.fn().mockResolvedValue({
+      data: [replayRow({ final_hands: { 'user-123': { cards: '1O,7E' } } })],
+      error: null,
+    })
+    const supabase = queuedSupabase({ rpc })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getPlayerReplayDetail('game-1')).resolves.toMatchObject({ game_id: 'game-1' })
+    expect(rpc).toHaveBeenCalledWith('get_player_replay_detail', {
+      p_game_id: 'game-1',
+    })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('elimina cartas privadas ajenas y pistas de cartas de los frames player', () => {
+    const frames = sanitizeReplayFrames([
+      {
+        players: [
+          { id: 'mine-session', userId: 'user-123', privateCards: ['1O'], revealedCards: [] },
+          { id: 'other-session', userId: 'user-456', privateCards: ['7E'], revealedCards: ['3B'] },
+        ],
+        hint: { kind: 'discard', targetPlayerId: 'other-session', cards: ['7E'] },
+      },
+    ], 'user-123')
+    const [frame] = frames as Array<{
+      players: Array<Record<string, unknown>>
+      hint: Record<string, unknown>
+    }>
+
+    expect(frame.players[0].privateCards).toEqual(['1O'])
+    expect(frame.players[1]).not.toHaveProperty('privateCards')
+    expect(frame.players[1].revealedCards).toEqual(['3B'])
+    expect(frame.hint).not.toHaveProperty('cards')
   })
 
   it('devuelve lista vacía si no hay usuario al consultar replays de jugador', async () => {
@@ -124,10 +178,12 @@ describe('replay actions', () => {
     const rpc = jest.fn().mockResolvedValue({ data, error: null })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
 
-    await expect(getPlayerMesaReplays(7)).resolves.toEqual(data)
+    await expect(getPlayerMesaReplays({ period: 'all' })).resolves.toEqual(data)
     expect(rpc).toHaveBeenCalledWith('get_player_replays_by_mesa', {
       p_user_id: 'user-123',
-      p_limit: 7,
+      p_limit: 100,
+      p_from: null,
+      p_to: null,
     })
   })
 
@@ -155,11 +211,13 @@ describe('replay actions', () => {
     const rpc = jest.fn().mockResolvedValue({ data, error: null })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
 
-    await expect(getPlayerReplaysForRoom('room-1', 20)).resolves.toEqual(data)
+    await expect(getPlayerReplaysForRoom('room-1', { period: 'all' })).resolves.toEqual(data)
     expect(rpc).toHaveBeenCalledWith('get_player_replays_for_room', {
       p_user_id: 'user-123',
       p_room_id: 'room-1',
-      p_limit: 20,
+      p_limit: 100,
+      p_from: null,
+      p_to: null,
     })
   })
 
@@ -182,99 +240,11 @@ describe('replay actions', () => {
     errorSpy.mockRestore()
   })
 
-  it('devuelve detalle Supabase e hidrata frames desde el game-server si existen', async () => {
-    process.env.GAME_SERVER_URL = 'https://game.test'
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        ok: true,
-        data: replayRow({ game_id: 'game-1', version: 2, frames: [{ tick: 1 }] }),
-      }),
-    })
-    const query = replaySelectQuery({ data: replayRow(), error: null })
-    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
-      tables: { game_replays: [{ select: query.select }] },
-    }))
-
-    await expect(getReplayDetail('game-1')).resolves.toMatchObject({
-      game_id: 'game-1',
-      version: 2,
-      frames: [{ tick: 1 }],
-    })
-    expect(global.fetch).toHaveBeenCalledWith('https://game.test/api/replays/game-1', {
-      next: { revalidate: 60 },
-    })
-  })
-
-  it('usa fallback del game-server cuando Supabase no tiene replay', async () => {
-    const errorSpy = mockConsoleError()
-    process.env.NEXT_PUBLIC_GAME_SERVER_URL = 'https://public-game.test'
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({ ok: true, data: replayRow({ game_id: 'game-2' }) }),
-    })
-    const query = replaySelectQuery({ data: null, error: { message: 'not found' } })
-    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
-      tables: { game_replays: [{ select: query.select }] },
-    }))
-
-    await expect(getReplayDetail('game-2')).resolves.toMatchObject({ game_id: 'game-2' })
-    expect(errorSpy).toHaveBeenCalledWith('[getReplayDetail] Supabase error, trying game server fallback:', 'not found')
-    errorSpy.mockRestore()
-  })
-
-  it('devuelve detalle Supabase sin frames si el game-server no está configurado o no entrega frames', async () => {
-    const queryWithoutUrl = replaySelectQuery({ data: replayRow({ game_id: 'game-3' }), error: null })
-    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({
-      tables: { game_replays: [{ select: queryWithoutUrl.select }] },
-    }))
-    await expect(getReplayDetail('game-3')).resolves.toEqual(replayRow({ game_id: 'game-3' }))
-    expect(global.fetch).not.toHaveBeenCalled()
-
-    process.env.GAME_SERVER_URL = 'https://game.test'
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false })
-    const queryWithNotOk = replaySelectQuery({ data: replayRow({ game_id: 'game-4' }), error: null })
-    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({
-      tables: { game_replays: [{ select: queryWithNotOk.select }] },
-    }))
-    await expect(getReplayDetail('game-4')).resolves.toEqual(replayRow({ game_id: 'game-4' }))
-
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: jest.fn().mockResolvedValue({ ok: false, data: replayRow({ game_id: 'game-5', frames: [{ tick: 1 }] }) }),
-    })
-    const queryWithInvalidJson = replaySelectQuery({ data: replayRow({ game_id: 'game-5' }), error: null })
-    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({
-      tables: { game_replays: [{ select: queryWithInvalidJson.select }] },
-    }))
-    await expect(getReplayDetail('game-5')).resolves.toEqual(replayRow({ game_id: 'game-5' }))
-  })
-
-  it('devuelve null si fallback game-server falla por excepción o payload vacío', async () => {
-    const errorSpy = mockConsoleError()
-    process.env.GAME_SERVER_URL = 'https://game.test'
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('network down'))
-    const queryWithNetworkError = replaySelectQuery({ data: null, error: { message: 'not found' } })
-    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({
-      tables: { game_replays: [{ select: queryWithNetworkError.select }] },
-    }))
-    await expect(getReplayDetail('game-6')).resolves.toBeNull()
-    expect(errorSpy).toHaveBeenCalledWith('[fetchReplayFromGameServer] Error:', expect.any(Error))
-
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue({ ok: true, data: null }) })
-    const queryWithEmptyPayload = replaySelectQuery({ data: null, error: { message: 'not found' } })
-    ;(createClient as jest.Mock).mockResolvedValueOnce(queuedSupabase({
-      tables: { game_replays: [{ select: queryWithEmptyPayload.select }] },
-    }))
-    await expect(getReplayDetail('game-7')).resolves.toBeNull()
-    errorSpy.mockRestore()
-  })
-
   it('devuelve null si no hay usuario al consultar detalle de replay', async () => {
     const supabase = queuedSupabase({ authUser: null })
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
-    await expect(getReplayDetail('game-1')).resolves.toBeNull()
+    await expect(getPlayerReplayDetail('game-1')).resolves.toBeNull()
     expect(supabase.from).not.toHaveBeenCalled()
   })
 
@@ -331,68 +301,24 @@ describe('replay actions', () => {
     })
   })
 
-  it('devuelve detalle admin con replay y ledger', async () => {
+  it('obtiene el detalle admin por RPC autorizada y conserva el ledger', async () => {
     const profile = profileRoleQuery('admin')
-    const replayQuery = replaySelectQuery({ data: replayRow({ game_id: 'game-1' }), error: null })
+    const replay = replayRow({ game_id: 'game-1' })
     const ledger = [{ id: 'ledger-1', user_id: 'user-123', amount_cents: 5000 }]
-    const rpc = jest.fn().mockResolvedValue({ data: ledger, error: null })
+    const rpc = jest.fn((name: string) => Promise.resolve(name === 'get_admin_replay_detail'
+      ? { data: [replay], error: null }
+      : { data: ledger, error: null }))
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
       authUser: admin,
       rpc,
-      tables: {
-        profiles: [{ select: profile.select }],
-        game_replays: [{ select: replayQuery.select }],
-      },
+      tables: { profiles: [{ select: profile.select }] },
     }))
 
     await expect(getAdminReplayDetail('game-1')).resolves.toEqual({
-      replay: replayRow({ game_id: 'game-1' }),
+      replay,
       ledger,
     })
+    expect(rpc).toHaveBeenCalledWith('get_admin_replay_detail', { p_game_id: 'game-1' })
     expect(rpc).toHaveBeenCalledWith('get_replay_ledger', { p_game_id: 'game-1' })
-  })
-
-  it('registra errores de replay/ledger admin y devuelve valores seguros', async () => {
-    const errorSpy = mockConsoleError()
-    const profile = profileRoleQuery('admin')
-    const replayQuery = replaySelectQuery({ data: null, error: { message: 'replay missing' } })
-    const rpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'ledger missing' } })
-    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
-      authUser: admin,
-      rpc,
-      tables: {
-        profiles: [{ select: profile.select }],
-        game_replays: [{ select: replayQuery.select }],
-      },
-    }))
-
-    await expect(getAdminReplayDetail('game-404')).resolves.toEqual({ replay: null, ledger: [] })
-    expect(errorSpy).toHaveBeenCalledWith('[getAdminReplayDetail] Replay error:', { message: 'replay missing' })
-    expect(errorSpy).toHaveBeenCalledWith('[getAdminReplayDetail] Ledger error:', { message: 'ledger missing' })
-    errorSpy.mockRestore()
-  })
-
-  it('hidrata detalle admin con frames del game-server cuando existen', async () => {
-    process.env.GAME_SERVER_URL = 'https://game.test'
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({ ok: true, data: replayRow({ game_id: 'game-9', version: 2, frames: [{ tick: 9 }] }) }),
-    })
-    const profile = profileRoleQuery('admin')
-    const replayQuery = replaySelectQuery({ data: replayRow({ game_id: 'game-9' }), error: null })
-    const rpc = jest.fn().mockResolvedValue({ data: [], error: null })
-    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
-      authUser: admin,
-      rpc,
-      tables: {
-        profiles: [{ select: profile.select }],
-        game_replays: [{ select: replayQuery.select }],
-      },
-    }))
-
-    await expect(getAdminReplayDetail('game-9')).resolves.toMatchObject({
-      replay: { game_id: 'game-9', version: 2, frames: [{ tick: 9 }] },
-      ledger: [],
-    })
   })
 })

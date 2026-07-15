@@ -73,6 +73,9 @@ describe('AdminReplayDetailPage', () => {
 
     expect(mockGetAdminReplayDetail).toHaveBeenCalledWith(replay.game_id)
     expect(screen.getByRole('heading', { name: /auditoría de partida/i })).toBeInTheDocument()
+    // El enlace "Volver a Repeticiones" del header se ha eliminado; solo debe aparecer
+    // en el fallback de "Repetición no encontrada".
+    expect(screen.queryByRole('link', { name: /volver a repeticiones/i })).not.toBeInTheDocument()
     expect(screen.getByText('MODO ADMIN')).toBeInTheDocument()
     expect(screen.getByText((text) => text.includes('ID:') && text.includes('game-1234567'))).toBeInTheDocument()
     expect(screen.getByText('Jugadores')).toBeInTheDocument()

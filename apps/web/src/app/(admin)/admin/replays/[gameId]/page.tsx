@@ -1,7 +1,7 @@
 import { getAdminReplayDetail } from "@/app/actions/replays";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
-import { ArrowLeft, Film, Shield, BookOpen, Users, Trophy, Clock, Layers } from "lucide-react";
+import { Film, Shield, BookOpen, Users, Trophy, Clock, Layers } from "lucide-react";
 import { ReplayController } from "@/components/replay/ReplayController";
 import { ResponsiveDataView } from "@/components/admin/ResponsiveDataView";
 
@@ -29,13 +29,6 @@ export default async function AdminReplayDetailPage({ params }: { params: Promis
     <div className="min-h-full space-y-8 animate-in fade-in duration-700">
       {/* Header */}
       <div className="pb-6 border-b border-white/5">
-        <Link
-          href="/admin/replays"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-bold uppercase tracking-widest mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver a Repeticiones
-        </Link>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
             <h1 className="text-3xl font-black italic tracking-tighter bg-linear-to-br from-white to-slate-500 bg-clip-text text-transparent flex items-center gap-4">

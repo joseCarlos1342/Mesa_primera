@@ -1,18 +1,15 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import PlayerReplaysPage from '../page'
 import MesaDetailPage from '../mesa/[roomId]/page'
 import ReplayViewer from '../[gameId]/page'
-import { getPlayerMesaReplays, getPlayerReplaysForRoom } from '@/app/actions/replays'
-import { createClient } from '@/utils/supabase/client'
+import { getPlayerMesaReplays, getPlayerReplayDetail, getPlayerReplaysForRoom } from '@/app/actions/replays'
 
 jest.mock('@/app/actions/replays', () => ({
   getPlayerMesaReplays: jest.fn(),
+  getPlayerReplayDetail: jest.fn(),
   getPlayerReplaysForRoom: jest.fn(),
 }))
 
-jest.mock('@/utils/supabase/client', () => ({
-  createClient: jest.fn(),
-}))
 
 jest.mock('@/components/replay/ReplayController', () => ({
   ReplayController: ({ frames }: { frames: unknown[] }) => <div data-testid="replay-controller">Frames: {frames.length}</div>,
@@ -23,43 +20,8 @@ jest.mock('@/components/replay/LandscapeLockOverlay', () => ({
 }))
 
 const mockGetPlayerMesaReplays = getPlayerMesaReplays as jest.MockedFunction<typeof getPlayerMesaReplays>
+const mockGetPlayerReplayDetail = getPlayerReplayDetail as jest.MockedFunction<typeof getPlayerReplayDetail>
 const mockGetPlayerReplaysForRoom = getPlayerReplaysForRoom as jest.MockedFunction<typeof getPlayerReplaysForRoom>
-const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>
-
-function restoreOptionalEnv(key: string, value: string | undefined) {
-  if (value === undefined) {
-    delete process.env[key]
-    return
-  }
-  process.env[key] = value
-}
-
-function supabaseClient({ role = 'player', replay, replayError = null }: {
-  role?: 'player' | 'admin'
-  replay?: Record<string, unknown> | null
-  replayError?: Error | null
-}) {
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
-    },
-    from: jest.fn((table: string) => {
-      if (table === 'profiles') {
-        return {
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: { role }, error: null }),
-        }
-      }
-
-      return {
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({ data: replay ?? null, error: replayError }),
-      }
-    }),
-  }
-}
 
 const mesaReplay = {
   room_id: 'room-alpha-123456',
@@ -106,6 +68,7 @@ describe('player replay pages', () => {
       configurable: true,
       value: { writeText: clipboardWrite },
     })
+    mockGetPlayerReplayDetail.mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -115,9 +78,9 @@ describe('player replay pages', () => {
   it('muestra empty state cuando el jugador no tiene mesas grabadas', async () => {
     mockGetPlayerMesaReplays.mockResolvedValue([] as never)
 
-    render(await PlayerReplaysPage())
+    render(await PlayerReplaysPage({ searchParams: Promise.resolve({}) }))
 
-    expect(mockGetPlayerMesaReplays).toHaveBeenCalledWith(100)
+    expect(mockGetPlayerMesaReplays).toHaveBeenCalledWith({ period: '7d', from: undefined, to: undefined })
     expect(screen.getByRole('heading', { name: /mis grabaciones/i })).toBeInTheDocument()
     expect(screen.getByText('Aún no tienes partidas registradas')).toBeInTheDocument()
   })
@@ -125,7 +88,7 @@ describe('player replay pages', () => {
   it('lista mesas jugadas con jugadores unicos, resultado y enlace al detalle', async () => {
     mockGetPlayerMesaReplays.mockResolvedValue([mesaReplay] as never)
 
-    render(await PlayerReplaysPage())
+    render(await PlayerReplaysPage({ searchParams: Promise.resolve({}) }))
 
     expect(screen.getAllByText('Mesa Dorada')[0]).toBeInTheDocument()
     expect(screen.getAllByText(/Ana, Luis \(2\)/)[0]).toBeInTheDocument()
@@ -139,7 +102,7 @@ describe('player replay pages', () => {
       { ...mesaReplay, room_id: 'room-even-123456', table_name: '', players: null, total_net_result: 0 },
     ] as never)
 
-    render(await PlayerReplaysPage())
+    render(await PlayerReplaysPage({ searchParams: Promise.resolve({}) }))
 
     expect(screen.getByText(/2 mesas/)).toBeInTheDocument()
     expect(screen.getAllByText('Mesa')[0]).toBeInTheDocument()
@@ -153,7 +116,7 @@ describe('player replay pages', () => {
 
     render(await MesaDetailPage({ params: Promise.resolve({ roomId: 'room-empty' }) }))
 
-    expect(mockGetPlayerReplaysForRoom).toHaveBeenCalledWith('room-empty')
+    expect(mockGetPlayerReplaysForRoom).toHaveBeenCalledWith('room-empty', { period: '7d', from: undefined, to: undefined })
     expect(screen.getByText('No se encontraron grabaciones')).toBeInTheDocument()
   })
 
@@ -187,7 +150,7 @@ describe('player replay pages', () => {
   })
 
   it('visor muestra fallback cuando no encuentra replay', async () => {
-    mockCreateClient.mockReturnValue(supabaseClient({ replay: null, replayError: new Error('not found') }) as never)
+    mockGetPlayerReplayDetail.mockResolvedValue(null)
 
     render(<ReplayViewer params={Promise.resolve({ gameId: 'missing-game' })} />)
 
@@ -195,8 +158,8 @@ describe('player replay pages', () => {
     expect(screen.getByRole('link', { name: 'Volver al Inicio' })).toHaveAttribute('href', '/lobby')
   })
 
-  it('visor de jugador hidrata replay visual y permite copiar seed', async () => {
-    mockCreateClient.mockReturnValue(supabaseClient({ replay: { ...fullReplay } }) as never)
+  it('visor de jugador muestra el replay saneado sin exponer seed ni modo admin', async () => {
+    mockGetPlayerReplayDetail.mockResolvedValue({ ...fullReplay, rng_seed: undefined, admin_timeline: undefined } as never)
 
     render(<ReplayViewer params={Promise.resolve({ gameId: 'game-alpha-123456' })} />)
 
@@ -206,22 +169,19 @@ describe('player replay pages', () => {
     expect(screen.getByText('Primera')).toBeInTheDocument()
     expect(screen.getAllByText('Apuesta')[0]).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTitle('Copiar seed'))
-
-    await waitFor(() => expect(clipboardWrite).toHaveBeenCalledWith('seed-visible'))
+    expect(screen.queryByText('Seed:')).not.toBeInTheDocument()
+    expect(screen.queryByText(/modo admin/i)).not.toBeInTheDocument()
   })
 
   it('visor usa fallback legacy cuando no hay frames reproducibles', async () => {
-    mockCreateClient.mockReturnValue(supabaseClient({
-      replay: {
+    mockGetPlayerReplayDetail.mockResolvedValue({
         game_id: 'legacy-game',
         version: 1,
         players: [],
         pot_breakdown: {},
         final_hands: {},
         timeline: [],
-      },
-    }) as never)
+    } as never)
 
     render(<ReplayViewer params={Promise.resolve({ gameId: 'legacy-game' })} />)
 
@@ -231,60 +191,17 @@ describe('player replay pages', () => {
     expect(screen.queryByText('Seed:')).not.toBeInTheDocument()
   })
 
-  it('visor hidrata frames desde game-server cuando Supabase solo trae metadata', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: jest.fn().mockResolvedValue({ ok: true, data: { version: 2, frames: [{ players: [] }, { players: [] }] } }),
-    })
-    const originalUrl = process.env.NEXT_PUBLIC_GAME_SERVER_URL
-    try {
-      process.env.NEXT_PUBLIC_GAME_SERVER_URL = 'https://game.example.test'
-      mockCreateClient.mockReturnValue(supabaseClient({
-        replay: { ...fullReplay, frames: [], version: 1 },
-      }) as never)
 
-      render(<ReplayViewer params={Promise.resolve({ gameId: 'game-alpha-123456' })} />)
-
-      expect(await screen.findByTestId('replay-controller')).toHaveTextContent('Frames: 2')
-      expect(global.fetch).toHaveBeenCalledWith('https://game.example.test/api/replays/game-alpha-123456')
-    } finally {
-      restoreOptionalEnv('NEXT_PUBLIC_GAME_SERVER_URL', originalUrl)
-    }
-  })
-
-  it('visor mantiene el replay local cuando falla la hidratación remota de frames', async () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
-    const originalUrl = process.env.NEXT_PUBLIC_GAME_SERVER_URL
-    try {
-      process.env.NEXT_PUBLIC_GAME_SERVER_URL = 'https://game.example.test'
-      ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('network down'))
-      mockCreateClient.mockReturnValue(supabaseClient({ replay: { ...fullReplay } }) as never)
-
-      render(<ReplayViewer params={Promise.resolve({ gameId: 'game-alpha-123456' })} />)
-
-      expect(await screen.findByTestId('replay-controller')).toHaveTextContent('Frames: 1')
-      expect(warnSpy).toHaveBeenCalledWith(
-        '[replay] frames hydration fallback failed',
-        expect.any(Error),
-      )
-    } finally {
-      restoreOptionalEnv('NEXT_PUBLIC_GAME_SERVER_URL', originalUrl)
-      warnSpy.mockRestore()
-    }
-  })
-
-  it('visor muestra detalle de cartas descartadas en la línea de tiempo', async () => {
-    mockCreateClient.mockReturnValue(supabaseClient({
-      replay: {
+  it('visor no recibe cartas descartadas en la línea de tiempo saneada', async () => {
+    mockGetPlayerReplayDetail.mockResolvedValue({
         ...fullReplay,
-        timeline: [{ event: 'action', action: 'descartar', player: 'session-1', droppedCards: ['1O', '7E'] }],
-      },
-    }) as never)
+        timeline: [{ event: 'action', action: 'descartar', player: 'session-1' }],
+    } as never)
 
     render(<ReplayViewer params={Promise.resolve({ gameId: 'game-alpha-123456' })} />)
 
     expect(await screen.findAllByText('Descarta')).toHaveLength(2)
-    expect(screen.getByText('Descarta 1O, 7E')).toBeInTheDocument()
+    expect(screen.queryByText('Descarta 1O, 7E')).not.toBeInTheDocument()
   })
 
   it.each([
@@ -300,7 +217,7 @@ describe('player replay pages', () => {
         { nickname: `Jugador ${index + 1}`, handType: 'Primera', cards: '1O,7E' },
       ]),
     )
-    mockCreateClient.mockReturnValue(supabaseClient({ replay: { ...fullReplay, final_hands: finalHands } }) as never)
+    mockGetPlayerReplayDetail.mockResolvedValue({ ...fullReplay, final_hands: finalHands } as never)
     render(
       <ReplayViewer params={Promise.resolve({ gameId: `game-hands-${handsCount}` })} />,
     )
@@ -312,14 +229,13 @@ describe('player replay pages', () => {
     }
   })
 
-  it('visor admin usa timeline completa y muestra insignias de supervision', async () => {
-    mockCreateClient.mockReturnValue(supabaseClient({ role: 'admin', replay: { ...fullReplay } }) as never)
+  it('visor player no habilita la vista admin aunque el payload incluya datos ajenos', async () => {
+    mockGetPlayerReplayDetail.mockResolvedValue({ ...fullReplay, admin_timeline: [{ event: 'end', payout: 500000 }] } as never)
 
     render(<ReplayViewer params={Promise.resolve({ gameId: 'game-alpha-123456' })} />)
 
-    expect(await screen.findByText('MODO ADMIN')).toBeInTheDocument()
-    expect(screen.getByText('Modo admin · vista completa')).toBeInTheDocument()
-    expect(screen.getAllByText('Fin')[0]).toBeInTheDocument()
-    expect(screen.getByText(/Pago \$\s*5\.000/)).toBeInTheDocument()
+    expect(await screen.findByText('Repetición de Partida')).toBeInTheDocument()
+    expect(screen.queryByText('MODO ADMIN')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Pago \$\s*5\.000/)).not.toBeInTheDocument()
   })
 })
