@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import { ColyseusTestServer, boot } from '@colyseus/testing';
 import { CloseCode } from '@colyseus/sdk';
-import { MesaRoom } from '../MesaRoom';
+import { MesaRoom, type RecoverySnapshotV1 } from '../MesaRoom';
 import { SupabaseService } from '../../services/SupabaseService';
 import { AlertService } from '../../services/AlertService';
 import { evaluateHand, compareHands } from '../combinations';
@@ -48,6 +48,7 @@ vi.mock('../../services/SupabaseService', () => {
       }),
       awardPot: vi.fn().mockResolvedValue({ success: true }),
       recordBet: vi.fn().mockResolvedValue({ success: true }),
+      saveRecoveryCheckpoint: vi.fn().mockResolvedValue({ success: true }),
       refundPlayer: vi.fn().mockResolvedValue({ success: true }),
       transferPiqueBanda: vi.fn().mockResolvedValue({ success: true }),
       transferBetweenPlayers: vi.fn().mockResolvedValue({ success: true, recipientName: 'Test' }),
@@ -55,7 +56,9 @@ vi.mock('../../services/SupabaseService', () => {
       saveReplay: vi.fn().mockResolvedValue(undefined),
       createGameSession: vi.fn().mockResolvedValue(undefined),
       validateSupervisionToken: vi.fn().mockResolvedValue({ valid: true, adminId: 'admin-1' }),
-      checkTableAccess: vi.fn().mockResolvedValue({ blocked: false }),
+       validateRecoveryIdentity: vi.fn().mockResolvedValue(true),
+       checkTableAccess: vi.fn().mockResolvedValue({ blocked: false }),
+       resolveRecoveryIncident: vi.fn().mockResolvedValue({ success: true, updated: true }),
     }
   };
 });
@@ -1315,6 +1318,60 @@ describe('MesaRoom via Colyseus Testing', () => {
       expect(player.roundBet).toBe(1_000_000);
       expect(room.state.pot).toBe(1_000_000);
       expect(room.state.currentMaxBet).toBe(1_000_000);
+    });
+
+    it('no persiste checkpoints durante fases animadas', async () => {
+      const { room, internalRoom } = await createMesaTestContext(colyseus, {
+        tableId: 'test-recovery-checkpoint-supported-phase',
+        playerCount: 3,
+      });
+
+      room.state.phase = 'COMPLETAR';
+      const recoveryRoom = internalRoom as unknown as { recoveryGameSessionReady: boolean };
+      recoveryRoom.recoveryGameSessionReady = true;
+      internalRoom.recoveryRosterUserIds = ['supa-u1', 'supa-u2', 'supa-u3'];
+      vi.mocked(SupabaseService.saveRecoveryCheckpoint).mockClear();
+
+      internalRoom.persistRecoveryCheckpoint();
+      await new Promise(r => setTimeout(r, 20));
+
+      expect(SupabaseService.saveRecoveryCheckpoint).not.toHaveBeenCalled();
+    });
+
+    it('guarda un checkpoint consistente después de confirmar y aplicar una apuesta', async () => {
+      const { room, internalRoom, clients, ids } = await createMesaTestContext(colyseus, {
+        tableId: 'test-apuesta4-checkpoint-confirmed-bet',
+        playerCount: 3,
+      });
+
+      const player = room.state.players.get(ids[0])!;
+      player.cards = '01-O,03-C,05-E,07-B';
+      player.isFolded = false;
+      player.supabaseUserId = 'supa-u1';
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'APUESTA_4_CARTAS';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      internalRoom.currentGameId = 'test-checkpoint-confirmed-bet';
+      const recoveryRoom = internalRoom as unknown as { recoveryGameSessionReady: boolean };
+      recoveryRoom.recoveryGameSessionReady = true;
+      internalRoom.recoveryRosterUserIds = ['supa-u1', 'supa-u2', 'supa-u3'];
+
+      clients[0].send('action', { action: 'voy', amount: 1_000_000 });
+      await new Promise(r => setTimeout(r, 200));
+
+      const saveCheckpoint = vi.mocked(SupabaseService.saveRecoveryCheckpoint);
+      const latestCheckpoint = saveCheckpoint.mock.calls.at(-1)?.[0];
+      const privateState = latestCheckpoint?.privateState as RecoverySnapshotV1 | undefined;
+      const checkpointPlayer = privateState?.players.find(({ sessionId }) => sessionId === ids[0]);
+      expect(SupabaseService.recordBet).toHaveBeenCalledBefore(saveCheckpoint);
+      expect(privateState?.gameState).toMatchObject({
+        phase: 'APUESTA_4_CARTAS', pot: 1_000_000, currentMaxBet: 1_000_000,
+      });
+      expect(checkpointPlayer).toMatchObject({
+        serverState: { totalMainBet: 1_000_000 },
+        publicState: { chips: player.chips, roundBet: 1_000_000 },
+      });
     });
 
     it('igualar calls the active bet with exact chips deduction', async () => {
@@ -3406,6 +3463,27 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       expect(refundSpy).not.toHaveBeenCalled();
       refundSpy.mockClear();
+    });
+
+    it('does not issue normal refunds when discarding a recovery replacement', async () => {
+      const { room, internalRoom, players } = await createMesaTestContext(colyseus, {
+        tableId: 'recovery-replacement-dispose-no-refund',
+        playerCount: 2,
+      });
+      room.state.phase = 'GUERRA';
+      room.state.piquePot = 500_000;
+      players.forEach((player, index) => {
+        player.supabaseUserId = `recovery-dispose-${index}`;
+        player.totalMainBet = 500_000;
+        player.connected = true;
+      });
+      const refundSpy = vi.spyOn(SupabaseService, 'refundPlayer').mockResolvedValue({ success: true } as any);
+
+      internalRoom.discardFailedRecoveryReplacement();
+      internalRoom.onDispose();
+
+      expect(refundSpy).not.toHaveBeenCalled();
+      refundSpy.mockRestore();
     });
   });
 
@@ -14430,6 +14508,252 @@ describe('MesaRoom via Colyseus Testing', () => {
         kind: 'fold',
         targetPlayerId: 'p3',
       });
+    });
+  });
+
+  describe('crash recovery — APUESTA_4_CARTAS estable', () => {
+    it('restaura la mano, bloquea outsiders y rearma el timer al volver el roster', async () => {
+      const recovery = {
+        version: 1,
+        gameState: {
+          phase: 'APUESTA_4_CARTAS',
+          dealerId: 'old-session-a',
+          activeManoId: 'old-session-a',
+          pot: 1_500_000,
+          piquePot: 500_000,
+          turnPlayerId: 'old-session-b',
+          minPlayers: 3,
+          maxPlayers: 7,
+          countdown: -1,
+          lastSeed: 'recovery-seed',
+          lastAction: 'Jugador B va 500000',
+          showdownTimer: 0,
+          currentMaxBet: 500_000,
+          highestBetPlayerId: 'old-session-b',
+          isFirstGame: false,
+          bottomCard: '01-O',
+          minPique: 500_000,
+          proposedPique: 0,
+          proposedPiqueBy: '',
+          piqueVotesFor: 0,
+          piqueVotesAgainst: 0,
+          piqueVotersTotal: 0,
+        },
+        players: [
+          {
+            sessionId: 'old-session-a',
+            publicState: {
+              id: 'old-session-a', nickname: 'Ana', avatarUrl: 'ana', isFolded: false,
+              hasActed: true, isReady: true, isWaiting: false, isAllIn: false,
+              passedWithJuego: false, chips: 8_500_000, roundBet: 500_000,
+              turnOrder: 1, cardCount: 4, revealedCards: '',
+            },
+            serverState: {
+              cards: '07-O,06-C,05-E,01-B', deviceId: 'device-a', supabaseUserId: 'user-a',
+              pendingDiscardCards: [], totalMainBet: 1_000_000, declaredJuego: null,
+              declinedGuerraJuegoBet: false,
+            },
+          },
+          {
+            sessionId: 'old-session-b',
+            publicState: {
+              id: 'old-session-b', nickname: 'Beto', avatarUrl: 'beto', isFolded: false,
+              hasActed: false, isReady: true, isWaiting: false, isAllIn: false,
+              passedWithJuego: false, chips: 7_500_000, roundBet: 500_000,
+              turnOrder: 2, cardCount: 4, revealedCards: '',
+            },
+            serverState: {
+              cards: '07-C,06-E,05-B,01-O', deviceId: 'device-b', supabaseUserId: 'user-b',
+              pendingDiscardCards: ['01-O'], totalMainBet: 1_000_000, declaredJuego: true,
+              declinedGuerraJuegoBet: true,
+            },
+          },
+        ],
+        deck: ['03-O', '04-O', '05-O'],
+        seatOrder: ['old-session-a', 'old-session-b'],
+        currentGameId: 'recovered-game-id',
+        rosterUserIds: ['user-a', 'user-b'],
+        runtime: {
+           apuesta4OriginalManoId: 'old-session-a',
+           pasoPendienteIds: ['old-session-a'],
+           currentTimeline: [{ event: 'action', player: 'old-session-a' }],
+           rngCounter: 9,
+           juegoCallers: [], pendingPiqueWinnerId: '', pendingPiqueWinnerIds: [], pendingPiqueContestantIds: [],
+           pendingPiqueContinuation: 'DESCARTE', pendingPiqueReopenCallers: [], pendingLlevoJuegoPlayerId: '',
+           piqueVoters: [], piqueProposerId: '', piquePassPlayerIds: [], piquePreBetPasserIds: [],
+           piqueReopenActive: false, piqueReopenPendingIds: [], dealerRotatedThisGame: false, piqueRestartCount: 0,
+           piqueFoldCount: [], forcedShowdownRevealWinnerId: '', pendingPasoJuegoPlayerId: '',
+           pendingPasoJuegoPhase: '', phaseBeforePiqueReveal: '',
+        },
+      };
+      const room = await colyseus.createRoom<any>('mesa_primera', {
+        tableId: 'recovery-apuesta-4', recovery,
+      });
+      const internalRoom = colyseus.getRoomById(room.roomId) as any;
+
+      expect(room.state.phase).toBe('APUESTA_4_CARTAS');
+      expect(room.state.pot).toBe(1_500_000);
+      expect(room.state.turnPlayerId).toBe('old-session-b');
+      expect(internalRoom.deck).toEqual(['03-O', '04-O', '05-O']);
+      expect(internalRoom.seatOrder).toEqual(['old-session-a', 'old-session-b']);
+      expect(room.state.players.get('old-session-a')?.cards).toBe('07-O,06-C,05-E,01-B');
+      expect(room.state.players.get('old-session-b')?.declaredJuego).toBe(true);
+      expect(room.state.players.get('old-session-a')?.connected).toBe(false);
+      expect(internalRoom.countdownTimer).toBeUndefined();
+      expect(internalRoom.turnTimer).toBeUndefined();
+      expect(internalRoom.showdownAutoTimer).toBeUndefined();
+
+      const ana = await colyseus.connectTo(room, {
+        userId: 'user-a', nickname: 'Otra Ana', avatarUrl: 'other', chips: 10_000_000,
+      });
+      expect(internalRoom.seatOrder).toEqual([ana.sessionId, 'old-session-b']);
+      expect(room.state.players.get(ana.sessionId)?.totalMainBet).toBe(1_000_000);
+      expect(room.state.players.get(ana.sessionId)?.connected).toBe(true);
+      expect(internalRoom.turnTimer).toBeUndefined();
+
+      room.state.turnPlayerId = ana.sessionId;
+      room.state.players.get(ana.sessionId)!.hasActed = false;
+      ana.send('action', { action: 'paso' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(room.state.players.get(ana.sessionId)?.hasActed).toBe(false);
+
+      await expect(colyseus.connectTo(room, {
+        userId: 'outsider', nickname: 'Outsider', avatarUrl: 'outsider', chips: 10_000_000,
+      })).rejects.toThrow('recuperación');
+      expect(room.state.players.size).toBe(2);
+
+      const beto = await colyseus.connectTo(room, {
+        userId: 'user-b', nickname: 'Otro Beto', avatarUrl: 'other', chips: 10_000_000,
+      });
+       expect(internalRoom.seatOrder).toEqual([ana.sessionId, beto.sessionId]);
+       expect(room.state.players.get(beto.sessionId)?.declinedGuerraJuegoBet).toBe(true);
+       expect(internalRoom.recoveryLocked).toBe(false);
+       expect(internalRoom.turnTimer).toBeDefined();
+     });
+
+    it('mantiene el recovery lock si un miembro del roster se desconecta antes de completarlo', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', {
+        tableId: 'recovery-lock-on-leave', recovery: {
+          version: 1,
+          gameState: { phase: 'APUESTA_4_CARTAS', dealerId: 'old-a', activeManoId: 'old-a', pot: 0, piquePot: 0, turnPlayerId: 'old-a', minPlayers: 2, maxPlayers: 7, countdown: -1, lastSeed: '', lastAction: '', showdownTimer: 0, currentMaxBet: 0, highestBetPlayerId: '', isFirstGame: false, bottomCard: '', minPique: 500000, proposedPique: 0, proposedPiqueBy: '', piqueVotesFor: 0, piqueVotesAgainst: 0, piqueVotersTotal: 0 },
+          players: [
+            { sessionId: 'old-a', publicState: { id: 'old-a', nickname: 'Ana', avatarUrl: 'ana', isFolded: false, hasActed: false, isReady: true, isWaiting: false, isAllIn: false, passedWithJuego: false, chips: 1, roundBet: 0, turnOrder: 1, cardCount: 4, revealedCards: '' }, serverState: { cards: '01-O', deviceId: 'device-a', supabaseUserId: 'user-a', pendingDiscardCards: [], totalMainBet: 0, declaredJuego: null, declinedGuerraJuegoBet: false } },
+            { sessionId: 'old-b', publicState: { id: 'old-b', nickname: 'Beto', avatarUrl: 'beto', isFolded: false, hasActed: false, isReady: true, isWaiting: false, isAllIn: false, passedWithJuego: false, chips: 1, roundBet: 0, turnOrder: 2, cardCount: 4, revealedCards: '' }, serverState: { cards: '01-C', deviceId: 'device-b', supabaseUserId: 'user-b', pendingDiscardCards: [], totalMainBet: 0, declaredJuego: null, declinedGuerraJuegoBet: false } },
+          ],
+          deck: ['03-O'], seatOrder: ['old-a', 'old-b'], currentGameId: 'recovered-game-lock', rosterUserIds: ['user-a', 'user-b'],
+          runtime: {
+            apuesta4OriginalManoId: 'old-a', pasoPendienteIds: [], currentTimeline: [], rngCounter: 0,
+            juegoCallers: [], pendingPiqueWinnerId: '', pendingPiqueWinnerIds: [], pendingPiqueContestantIds: [],
+            pendingPiqueContinuation: 'DESCARTE', pendingPiqueReopenCallers: [], pendingLlevoJuegoPlayerId: '',
+            piqueVoters: [], piqueProposerId: '', piquePassPlayerIds: [], piquePreBetPasserIds: [],
+            piqueReopenActive: false, piqueReopenPendingIds: [], dealerRotatedThisGame: false, piqueRestartCount: 0,
+            piqueFoldCount: [], forcedShowdownRevealWinnerId: '', pendingPasoJuegoPlayerId: '',
+            pendingPasoJuegoPhase: '', phaseBeforePiqueReveal: '',
+          },
+        },
+      });
+      const internalRoom = colyseus.getRoomById(room.roomId) as any;
+      internalRoom.allowReconnection = vi.fn().mockRejectedValue(new Error('grace expired'));
+      const ana = await colyseus.connectTo(room, { userId: 'user-a', nickname: 'Ana', avatarUrl: 'ana', chips: 10_000_000 });
+
+      await internalRoom.onLeave({ sessionId: ana.sessionId } as any, 1006);
+
+      expect(internalRoom.recoveryLocked).toBe(true);
+      expect(room.state.players.has(ana.sessionId)).toBe(false);
+    });
+  });
+
+  describe('crash recovery — fases estables', () => {
+    const stablePhases = ['PIQUE', 'DESCARTE', 'CANTICOS', 'DECLARAR_JUEGO', 'GUERRA', 'GUERRA_JUEGO', 'PIQUE_REVEAL'];
+
+    function createStableRecoverySnapshot(phase: string): RecoverySnapshotV1 {
+      return {
+        version: 1,
+        gameState: {
+          phase, dealerId: 'old-a', activeManoId: 'old-a', pot: 500_000, piquePot: 200_000,
+          turnPlayerId: 'old-b', minPlayers: 2, maxPlayers: 7, countdown: -1, lastSeed: 'seed',
+          lastAction: 'accion recuperable', showdownTimer: 0, currentMaxBet: 500_000,
+          highestBetPlayerId: 'old-b', isFirstGame: false, bottomCard: '01-O', minPique: 500_000,
+          proposedPique: 500_000, proposedPiqueBy: 'old-a', piqueVotesFor: 1, piqueVotesAgainst: 0,
+          piqueVotersTotal: 1,
+        },
+        players: ['old-a', 'old-b'].map((sessionId, index) => ({
+          sessionId,
+          publicState: {
+            id: sessionId, nickname: sessionId, avatarUrl: '', isFolded: false, hasActed: false,
+            isReady: true, isWaiting: false, isAllIn: false, passedWithJuego: false,
+            chips: 5_000_000, roundBet: index * 500_000, turnOrder: index + 1, cardCount: 4,
+            revealedCards: index === 0 ? '07-O,06-O' : '',
+          },
+          serverState: {
+            cards: index === 0 ? '07-O,06-O,05-C,01-B' : '07-C,06-C,05-O,01-E',
+            deviceId: `device-${index}`, pendingDiscardCards: ['01-O'], supabaseUserId: `user-${index}`,
+            totalMainBet: 500_000, declaredJuego: index === 0, declinedGuerraJuegoBet: index === 1,
+          },
+        })),
+        deck: ['03-O', '04-O'], seatOrder: ['old-a', 'old-b'], currentGameId: `recovery-${phase}`,
+        rosterUserIds: ['user-0', 'user-1'],
+        runtime: {
+          apuesta4OriginalManoId: 'old-a', pasoPendienteIds: ['old-b'], currentTimeline: [{ event: 'action' }],
+          rngCounter: 3, juegoCallers: ['old-a'], pendingPiqueWinnerId: 'old-a',
+          pendingPiqueWinnerIds: ['old-a'], pendingPiqueContestantIds: ['old-a', 'old-b'],
+          pendingPiqueContinuation: 'DESCARTE', pendingPiqueReopenCallers: [{ playerId: 'old-b', amount: 500_000 }],
+          pendingLlevoJuegoPlayerId: 'old-a', piqueVoters: [['old-a', true]], piqueProposerId: 'old-a',
+          piquePassPlayerIds: ['old-b'], piquePreBetPasserIds: ['old-a'], piqueReopenActive: true,
+          piqueReopenPendingIds: ['old-b'], dealerRotatedThisGame: true, piqueRestartCount: 2,
+          piqueFoldCount: [['old-b', 1]], forcedShowdownRevealWinnerId: '', pendingPasoJuegoPlayerId: 'old-a',
+          pendingPasoJuegoPhase: 'GUERRA', phaseBeforePiqueReveal: 'PIQUE',
+        },
+      };
+    }
+
+    it.each(stablePhases)('restaura %s sin reiniciar la mano y rearma su timer', async (phase) => {
+      const room = await colyseus.createRoom<any>('mesa_primera', {
+        tableId: `recovery-stable-${phase}`, recovery: createStableRecoverySnapshot(phase),
+      });
+      const internalRoom = colyseus.getRoomById(room.roomId) as MesaRoom;
+
+      expect(room.state.phase).toBe(phase);
+      expect(room.state.pot).toBe(500_000);
+      expect(internalRoom.deck).toEqual(['03-O', '04-O']);
+      expect(internalRoom.piqueVoters).toEqual(new Map([['old-a', true]]));
+      expect(internalRoom.piquePassPlayerIds).toEqual(new Set(['old-b']));
+      expect(internalRoom.piqueFoldCount).toEqual(new Map([['old-b', 1]]));
+      expect(internalRoom.pendingPiqueReopenCallers).toEqual([{ playerId: 'old-b', amount: 500_000 }]);
+
+      room.state.players.get('old-a')!.connected = true;
+      room.state.players.get('old-b')!.connected = true;
+       await internalRoom.unlockRecoveryWhenRosterReturns();
+
+      expect(internalRoom.recoveryLocked).toBe(false);
+      expect(internalRoom.turnTimer).toBeDefined();
+       internalRoom.clearTurnTimer();
+     });
+
+    it('permanece bloqueada y se descarta ante un rejoin tardío que la RPC no puede reanudar', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', {
+        tableId: 'recovery-fail-closed', recovery: createStableRecoverySnapshot('PIQUE'),
+      });
+      const internalRoom = colyseus.getRoomById(room.roomId) as MesaRoom;
+      const disconnect = vi.spyOn(internalRoom, 'disconnect');
+      vi.mocked(SupabaseService.resolveRecoveryIncident).mockResolvedValueOnce({
+        success: true,
+        updated: false,
+      });
+
+      for (const player of internalRoom.state.players.values()) {
+        player.connected = true;
+      }
+      await internalRoom.unlockRecoveryWhenRosterReturns();
+
+      expect(internalRoom.recoveryLocked).toBe(true);
+      expect(disconnect).toHaveBeenCalledOnce();
+    });
+
+    it('rechaza una fase animada aunque el snapshot tenga estructura válida', async () => {
+      await expect(colyseus.createRoom<any>('mesa_primera', {
+        tableId: 'recovery-animated-phase', recovery: createStableRecoverySnapshot('COMPLETAR'),
+      })).rejects.toThrow('Snapshot de recuperación inválido');
     });
   });
 

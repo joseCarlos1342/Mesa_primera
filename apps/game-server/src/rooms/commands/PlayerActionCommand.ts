@@ -278,6 +278,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       r.state.highestBetPlayerId = client.sessionId;
       player.hasActed = true;
       r.state.lastAction = `${player.nickname} va $${(actualBet / 100).toLocaleString()}`;
+      r.persistRecoveryCheckpoint();
       r.markDisconnectedAsImplicitAllIn();
       advanceNext();
 
@@ -315,6 +316,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
         r.state.lastAction = `${player.nickname} iguala $${(actualCall / 100).toLocaleString()}`;
       }
       player.hasActed = true;
+      r.persistRecoveryCheckpoint();
       advanceNext();
 
     } else if (action === "resto") {
@@ -353,6 +355,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       }
       player.hasActed = true;
       r.state.lastAction = `${player.nickname} va RESTO $${(allInAmount / 100).toLocaleString()}`;
+      r.persistRecoveryCheckpoint();
       r.markDisconnectedAsImplicitAllIn();
       advanceNext();
     }

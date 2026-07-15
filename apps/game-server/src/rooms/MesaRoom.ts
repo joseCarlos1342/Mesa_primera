@@ -34,6 +34,7 @@ import {
 } from "./phases";
 import { SnapshotBuilder, type AnimationHint, type StateLike } from "../services/ReplayV2";
 import { MIN_BALANCE_CENTS, COLYSEUS_CONSENTED_CLOSE_CODE, TURN_TIMEOUT_SECONDS, SHOWDOWN_TIMEOUT_SECONDS } from "./core/constants";
+import { isRecoverableGamePhase, stableJson } from "../services/RecoveryPolicy";
 
 export interface MesaMetadata {
   tableName: string;
@@ -51,6 +52,48 @@ export interface MesaMetadata {
   isCustom: boolean;
 }
 
+export interface RecoveryPlayerSnapshot {
+  sessionId: string;
+  publicState: Pick<Player, "id" | "nickname" | "avatarUrl" | "isFolded" | "hasActed" | "isReady" | "isWaiting" | "isAllIn" | "passedWithJuego" | "chips" | "roundBet" | "turnOrder" | "cardCount" | "revealedCards">;
+  serverState: Pick<Player, "cards" | "deviceId" | "pendingDiscardCards" | "supabaseUserId" | "totalMainBet" | "declaredJuego" | "declinedGuerraJuegoBet">;
+}
+
+export interface RecoverySnapshotV1 {
+  version: 1;
+  gameState: Omit<Pick<GameState, "phase" | "dealerId" | "activeManoId" | "pot" | "piquePot" | "turnPlayerId" | "minPlayers" | "maxPlayers" | "countdown" | "lastSeed" | "lastAction" | "showdownTimer" | "currentMaxBet" | "highestBetPlayerId" | "isFirstGame" | "bottomCard" | "minPique" | "proposedPique" | "proposedPiqueBy" | "piqueVotesFor" | "piqueVotesAgainst" | "piqueVotersTotal">, "players">;
+  players: RecoveryPlayerSnapshot[];
+  deck: string[];
+  seatOrder: string[];
+  currentGameId: string;
+  rosterUserIds: string[];
+  runtime: {
+    apuesta4OriginalManoId: string;
+    pasoPendienteIds: string[];
+    currentTimeline: unknown[];
+    rngCounter: number;
+    juegoCallers: string[];
+    pendingPiqueWinnerId: string;
+    pendingPiqueWinnerIds: string[];
+    pendingPiqueContestantIds: string[];
+    pendingPiqueContinuation: "DESCARTE" | "CLEANUP" | "REOPEN_BETTING";
+    pendingPiqueReopenCallers: { playerId: string; amount: number }[];
+    pendingLlevoJuegoPlayerId: string;
+    piqueVoters: Array<[string, boolean]>;
+    piqueProposerId: string;
+    piquePassPlayerIds: string[];
+    piquePreBetPasserIds: string[];
+    piqueReopenActive: boolean;
+    piqueReopenPendingIds: string[];
+    dealerRotatedThisGame: boolean;
+    piqueRestartCount: number;
+    piqueFoldCount: Array<[string, number]>;
+    forcedShowdownRevealWinnerId: string;
+    pendingPasoJuegoPlayerId: string;
+    pendingPasoJuegoPhase: string;
+    phaseBeforePiqueReveal: string;
+  };
+}
+
 export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }> {
   maxClients = 7;
   public countdownTimer?: any;
@@ -60,6 +103,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   public showdownAutoTimer?: any;
   public currentGameId: string = crypto.randomUUID();
   public currentTimeline: any[] = [];
+  /** Versión monotónica del último checkpoint durable de recuperación. */
+  private recoveryCheckpointVersion = 0;
+  private recoveryGameSessionReady = false;
+  private discardRecoveryReplacementWithoutRefund = false;
+  public recoveryRosterUserIds: string[] = [];
+  /** Impide continuar la mano hasta que el roster del checkpoint vuelva a la mesa. */
+  public recoveryLocked = false;
+  private recoveryCheckpointQueue: Promise<void> = Promise.resolve();
   /** Snapshots normalizados por evento para reconstruir visualmente la partida (Replay v2). */
   public snapshotBuilder = new SnapshotBuilder();
   /** RNG state tracker: incremented per action for admin audit trail */
@@ -185,6 +236,10 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     // O según la variante más común de 28: 1, 2, 3, 4, 5, 6, 7
     this.createDeck();
 
+    if (options.recovery) {
+      this.restoreFromRecoverySnapshot(options.recovery);
+    }
+
     // ── Subscribe to single-session kick events ──
     setupSessionKickListener(this);
 
@@ -212,6 +267,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     });
 
     this.onMessage("action", async (client, message) => {
+      if (this.recoveryLocked) return;
       await handlePlayerAction(this, client, message);
     });
 
@@ -276,8 +332,171 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     });
   }
 
+  public restoreFromRecoverySnapshot(snapshot: unknown): void {
+    if (!this.isRecoverySnapshotV1(snapshot)) {
+      throw new Error("Snapshot de recuperación inválido");
+    }
+
+    this.stopCountdown();
+    this.clearTurnTimer();
+    this.clearShowdownAutoTimer();
+
+    Object.assign(this.state, snapshot.gameState);
+    this.state.countdown = -1;
+    this.state.players.clear();
+    for (const playerSnapshot of snapshot.players) {
+      const player = new Player();
+      Object.assign(player, playerSnapshot.publicState, playerSnapshot.serverState);
+      player.connected = false;
+      player.pendingDiscardCards = [...playerSnapshot.serverState.pendingDiscardCards];
+      this.state.players.set(playerSnapshot.sessionId, player);
+    }
+
+    this.deck = [...snapshot.deck];
+    this.seatOrder = [...snapshot.seatOrder];
+    this.currentGameId = snapshot.currentGameId;
+    this.recoveryRosterUserIds = [...snapshot.rosterUserIds];
+    this.apuesta4OriginalManoId = snapshot.runtime.apuesta4OriginalManoId;
+    this.pasoPendienteIds = new Set(snapshot.runtime.pasoPendienteIds);
+    this.currentTimeline = [...snapshot.runtime.currentTimeline];
+    this.rngCounter = snapshot.runtime.rngCounter;
+    this.juegoCallers = [...snapshot.runtime.juegoCallers];
+    this.pendingPiqueWinnerId = snapshot.runtime.pendingPiqueWinnerId;
+    this.pendingPiqueWinnerIds = [...snapshot.runtime.pendingPiqueWinnerIds];
+    this.pendingPiqueContestantIds = [...snapshot.runtime.pendingPiqueContestantIds];
+    this.pendingPiqueContinuation = snapshot.runtime.pendingPiqueContinuation;
+    this.pendingPiqueReopenCallers = snapshot.runtime.pendingPiqueReopenCallers.map((caller) => ({ ...caller }));
+    this.pendingLlevoJuegoPlayerId = snapshot.runtime.pendingLlevoJuegoPlayerId;
+    this.piqueVoters = new Map(snapshot.runtime.piqueVoters);
+    this.piqueProposerId = snapshot.runtime.piqueProposerId;
+    this.piquePassPlayerIds = new Set(snapshot.runtime.piquePassPlayerIds);
+    this.piquePreBetPasserIds = new Set(snapshot.runtime.piquePreBetPasserIds);
+    this.piqueReopenActive = snapshot.runtime.piqueReopenActive;
+    this.piqueReopenPendingIds = new Set(snapshot.runtime.piqueReopenPendingIds);
+    this.dealerRotatedThisGame = snapshot.runtime.dealerRotatedThisGame;
+    this.piqueRestartCount = snapshot.runtime.piqueRestartCount;
+    this.piqueFoldCount = new Map(snapshot.runtime.piqueFoldCount);
+    this.forcedShowdownRevealWinnerId = snapshot.runtime.forcedShowdownRevealWinnerId;
+    this.pendingPasoJuegoPlayerId = snapshot.runtime.pendingPasoJuegoPlayerId;
+    this.pendingPasoJuegoPhase = snapshot.runtime.pendingPasoJuegoPhase;
+    this.phaseBeforePiqueReveal = snapshot.runtime.phaseBeforePiqueReveal;
+    this.recoveryLocked = true;
+    // A rejected outsider must not make Colyseus dispose the replacement before its roster returns.
+    this.autoDispose = false;
+    this.updateLobbyMetadata();
+  }
+
+  public async unlockRecoveryWhenRosterReturns(): Promise<void> {
+    if (!this.recoveryLocked) return;
+    const connectedUserIds = new Set(
+      this.getPlayers().filter((player) => player.connected).map((player) => player.supabaseUserId),
+    );
+    if (this.recoveryRosterUserIds.every((userId) => connectedUserIds.has(userId))) {
+      const resolution = await SupabaseService.resolveRecoveryIncident(this.currentGameId);
+      if (!resolution.success || !resolution.updated) {
+        this.discardFailedRecoveryReplacement();
+        return;
+      }
+      this.recoveryLocked = false;
+      this.autoDispose = true;
+      this.resumeRecoveryTimer();
+    }
+  }
+
+  /** Descarta una sala recuperada que no pudo publicarse sin reembolsar sus apuestas. */
+  public discardFailedRecoveryReplacement(): void {
+    this.discardRecoveryReplacementWithoutRefund = true;
+    this.disconnect();
+  }
+
+  private isRecoverySnapshotV1(snapshot: unknown): snapshot is RecoverySnapshotV1 {
+    if (!snapshot || typeof snapshot !== "object") return false;
+    const value = snapshot as Partial<RecoverySnapshotV1>;
+    return value.version === 1
+      && isRecoverableGamePhase(value.gameState?.phase)
+      && Array.isArray(value.players)
+      && Array.isArray(value.deck)
+      && Array.isArray(value.seatOrder)
+      && Array.isArray(value.rosterUserIds)
+      && value.rosterUserIds.length > 0
+      && new Set(value.rosterUserIds).size === value.rosterUserIds.length
+      && typeof value.currentGameId === "string"
+      && this.hasRecoveryRuntime(value.runtime)
+      && value.players.length === value.rosterUserIds.length
+      && value.players.every((player) => Boolean(player?.sessionId)
+        && Boolean(player.serverState?.supabaseUserId)
+        && Array.isArray(player.serverState.pendingDiscardCards))
+      && new Set(value.players.map((player) => player.sessionId)).size === value.players.length
+      && new Set(value.seatOrder).size === value.players.length
+      && value.seatOrder.length === value.players.length
+      && value.seatOrder.every((sessionId) => value.players?.some((player) => player.sessionId === sessionId))
+      && new Set(value.players.map((player) => player.serverState.supabaseUserId)).size === value.rosterUserIds.length
+       && value.rosterUserIds.every((userId) => value.players?.some((player) => player.serverState.supabaseUserId === userId));
+  }
+
+  private hasRecoveryRuntime(runtime: unknown): runtime is RecoverySnapshotV1["runtime"] {
+    if (!runtime || typeof runtime !== "object" || Array.isArray(runtime)) return false;
+    const value = runtime as Partial<RecoverySnapshotV1["runtime"]>;
+    return typeof value.apuesta4OriginalManoId === "string"
+      && Array.isArray(value.pasoPendienteIds)
+      && Array.isArray(value.currentTimeline)
+      && Number.isSafeInteger(value.rngCounter)
+      && Array.isArray(value.juegoCallers)
+      && typeof value.pendingPiqueWinnerId === "string"
+      && Array.isArray(value.pendingPiqueWinnerIds)
+      && Array.isArray(value.pendingPiqueContestantIds)
+      && (value.pendingPiqueContinuation === "DESCARTE" || value.pendingPiqueContinuation === "CLEANUP" || value.pendingPiqueContinuation === "REOPEN_BETTING")
+      && Array.isArray(value.pendingPiqueReopenCallers)
+      && value.pendingPiqueReopenCallers.every((caller) => typeof caller?.playerId === "string" && Number.isSafeInteger(caller.amount))
+      && typeof value.pendingLlevoJuegoPlayerId === "string"
+      && this.isStringBooleanEntries(value.piqueVoters)
+      && typeof value.piqueProposerId === "string"
+      && this.isStringArray(value.piquePassPlayerIds)
+      && this.isStringArray(value.piquePreBetPasserIds)
+      && typeof value.piqueReopenActive === "boolean"
+      && this.isStringArray(value.piqueReopenPendingIds)
+      && typeof value.dealerRotatedThisGame === "boolean"
+      && Number.isSafeInteger(value.piqueRestartCount)
+      && this.isStringNumberEntries(value.piqueFoldCount)
+      && typeof value.forcedShowdownRevealWinnerId === "string"
+      && typeof value.pendingPasoJuegoPlayerId === "string"
+      && typeof value.pendingPasoJuegoPhase === "string"
+      && typeof value.phaseBeforePiqueReveal === "string";
+  }
+
+  private isStringArray(value: unknown): value is string[] {
+    return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+  }
+
+  private isStringBooleanEntries(value: unknown): value is Array<[string, boolean]> {
+    return Array.isArray(value) && value.every((entry) => Array.isArray(entry) && entry.length === 2 && typeof entry[0] === "string" && typeof entry[1] === "boolean");
+  }
+
+  private isStringNumberEntries(value: unknown): value is Array<[string, number]> {
+    return Array.isArray(value) && value.every((entry) => Array.isArray(entry) && entry.length === 2 && typeof entry[0] === "string" && Number.isSafeInteger(entry[1]));
+  }
+
+  private resumeRecoveryTimer(): void {
+    if (isRecoverableGamePhase(this.state.phase)) {
+      this.startTurnTimer();
+    }
+  }
+
   async onJoin(client: Client, options: any) {
     return handleConnectionJoin(this, client, options);
+  }
+
+  async onAuth(_client: Client, options: any) {
+    if (this.recoveryLocked && options?.spectator !== true) {
+      if (!options?.userId || !this.recoveryRosterUserIds.includes(options.userId)) {
+        throw new Error("Sala en recuperación: solo puede volver el roster original");
+      }
+      const identityIsValid = await SupabaseService.validateRecoveryIdentity(options.accessToken, options.userId);
+      if (!identityIsValid) {
+        throw new Error("Sala en recuperación: identidad no verificada");
+      }
+    }
+    return true;
   }
 
   public updateLobbyMetadata() {
@@ -369,17 +588,19 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.clearShowdownAutoTimer();
 
     // Refundar apuestas pendientes si hay partida en curso
-    if (this.state.phase !== "LOBBY") {
+    if (!this.discardRecoveryReplacementWithoutRefund && this.state.phase !== "LOBBY") {
       const tableName = (this as any).metadata?.tableName || 'Mesa VIP';
       for (const [, player] of this.state.players) {
         const p = player as Player;
         if (!p.supabaseUserId || p.totalMainBet <= 0) continue;
         console.log(`[MesaRoom] Refunding ${p.nickname}: $${p.totalMainBet} (reset room)`);
-        SupabaseService.refundPlayer(
-          p.supabaseUserId,
-          p.totalMainBet,
-          this.currentGameId,
-          { roomId: this.roomId, tableName, reason: 'Reembolso: todos los jugadores se desconectaron' }
+        void Promise.resolve(
+          SupabaseService.refundPlayer(
+            p.supabaseUserId,
+            p.totalMainBet,
+            this.currentGameId,
+            { roomId: this.roomId, tableName, reason: 'Reembolso: todos los jugadores se desconectaron' },
+          ),
         ).catch(err => AlertService.refundFailed(p.supabaseUserId, p.totalMainBet, this.currentGameId, String(err), this.roomId));
       }
     }
@@ -626,6 +847,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.forcedShowdownRevealWinnerId = "";
     this.apuesta4OriginalManoId = "";
     this.currentGameId = crypto.randomUUID();
+    this.recoveryGameSessionReady = false;
+    this.recoveryCheckpointVersion = 0;
+    this.recoveryRosterUserIds = this.getPlayers()
+      .filter((player) => player.isReady && !player.isWaiting && Boolean(player.supabaseUserId))
+      .map((player) => player.supabaseUserId);
     this.currentTimeline = [];
     this.snapshotBuilder.reset();
     this.rngCounter = 0;
@@ -637,7 +863,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.currentMaxBet = 0;
     this.state.bottomCard = "";
 
-    SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP");
+    void SupabaseService.createGameSession(this.currentGameId, this.metadata?.tableName || "Mesa VIP")
+      .then((created) => {
+        this.recoveryGameSessionReady = created;
+        if (created) this.persistRecoveryCheckpoint();
+      });
 
     // Resetear el estado de los jugadores para la nueva ronda
     // M1: Validación de saldo mínimo — jugadores sin saldo suficiente se sientan como espectadores
@@ -1158,7 +1388,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // Revertir la porción no igualada en el ledger
     if (highBetter.supabaseUserId) {
-      SupabaseService.refundPlayer(highBetter.supabaseUserId, uncalled, this.currentGameId, { reason: 'Apuesta no igualada' }).catch(console.error);
+      void Promise.resolve(
+        SupabaseService.refundPlayer(highBetter.supabaseUserId, uncalled, this.currentGameId, { reason: 'Apuesta no igualada' }),
+      ).catch(console.error);
     }
 
     return uncalled;
@@ -2447,11 +2679,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       if (!p.supabaseUserId || p.totalMainBet <= 0) continue;
       console.log(`[MesaRoom] Refunding pot: ${p.nickname}: $${p.totalMainBet}`);
       p.chips += p.totalMainBet;
-      SupabaseService.refundPlayer(
-        p.supabaseUserId,
-        p.totalMainBet,
-        this.currentGameId,
-        { roomId: this.roomId, tableName, reason: 'Reembolso: mano cancelada (sin jugadores conectados)' }
+      void Promise.resolve(
+        SupabaseService.refundPlayer(
+          p.supabaseUserId,
+          p.totalMainBet,
+          this.currentGameId,
+          { roomId: this.roomId, tableName, reason: 'Reembolso: mano cancelada (sin jugadores conectados)' },
+        ),
       ).catch(err => AlertService.refundFailed(p.supabaseUserId, p.totalMainBet, this.currentGameId, String(err), this.roomId));
     }
 
@@ -2468,11 +2702,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           const refundAmount = share + (i === 0 ? remainder : 0);
           if (refundAmount > 0) {
             p.chips += refundAmount;
-            SupabaseService.refundPlayer(
-              p.supabaseUserId,
-              refundAmount,
-              this.currentGameId,
-              { roomId: this.roomId, tableName, reason: 'Reembolso pique: mano cancelada (sin jugadores conectados)' }
+            void Promise.resolve(
+              SupabaseService.refundPlayer(
+                p.supabaseUserId,
+                refundAmount,
+                this.currentGameId,
+                { roomId: this.roomId, tableName, reason: 'Reembolso pique: mano cancelada (sin jugadores conectados)' },
+              ),
             ).catch(err => AlertService.refundFailed(p.supabaseUserId, refundAmount, this.currentGameId, String(err), this.roomId));
           }
         });
@@ -2591,18 +2827,20 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
   onDispose() {
     // ── Settlement: refund unsettled bets if a game was in progress ──
-    if (this.state.phase !== "LOBBY") {
+    if (!this.discardRecoveryReplacementWithoutRefund && this.state.phase !== "LOBBY") {
       console.log(`[MesaRoom] Room disposing during active game (phase: ${this.state.phase}). Refunding unsettled bets...`);
       const tableName = (this as any).metadata?.tableName || 'Mesa VIP';
       for (const [sessionId, player] of this.state.players) {
         const p = player as Player;
         if (!p.supabaseUserId || p.totalMainBet <= 0) continue;
         console.log(`[MesaRoom] Refunding ${p.nickname}: $${p.totalMainBet} (totalMainBet)`);
-        SupabaseService.refundPlayer(
-          p.supabaseUserId,
-          p.totalMainBet,
-          this.currentGameId,
-          { roomId: this.roomId, tableName, reason: 'Reembolso por cierre de sala en partida activa' }
+        void Promise.resolve(
+          SupabaseService.refundPlayer(
+            p.supabaseUserId,
+            p.totalMainBet,
+            this.currentGameId,
+            { roomId: this.roomId, tableName, reason: 'Reembolso por cierre de sala en partida activa' },
+          ),
         ).catch(err => AlertService.refundFailed(p.supabaseUserId, p.totalMainBet, this.currentGameId, String(err), this.roomId));
       }
       // Refund pique pot contributions (tracked via piquePot but not via totalMainBet in some phases)
@@ -2623,11 +2861,13 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
           piqueContributors.forEach((p, i) => {
             const refundAmount = share + (i === 0 ? remainder : 0);
             if (refundAmount > 0) {
-              SupabaseService.refundPlayer(
-                p.supabaseUserId,
-                refundAmount,
-                this.currentGameId,
-                { roomId: this.roomId, tableName, reason: 'Reembolso de pique por cierre de sala' }
+              void Promise.resolve(
+                SupabaseService.refundPlayer(
+                  p.supabaseUserId,
+                  refundAmount,
+                  this.currentGameId,
+                  { roomId: this.roomId, tableName, reason: 'Reembolso de pique por cierre de sala' },
+                ),
               ).catch(err => AlertService.refundFailed(p.supabaseUserId, refundAmount, this.currentGameId, String(err), this.roomId));
             }
           });
@@ -2659,6 +2899,139 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.currentTimeline.length - 1,
       hint,
     );
+    this.persistRecoveryCheckpoint();
+  }
+
+  /**
+   * Conserva el estado privado necesario para reanudar una mano después de un
+   * crash. El checkpoint queda bajo RLS de service_role y nunca se comparte
+   * con el panel admin ni con clientes que no pertenezcan al roster original.
+   */
+  public persistRecoveryCheckpoint(): void {
+    if (!isRecoverableGamePhase(this.state.phase)) return;
+    if (!this.recoveryGameSessionReady) return;
+    const rosterUserIds = this.recoveryRosterUserIds;
+
+    if (rosterUserIds.length === 0 || new Set(rosterUserIds).size !== rosterUserIds.length) return;
+
+    const privateState = this.createRecoverySnapshot() as unknown as Record<string, unknown>;
+    const stateHash = crypto.createHash("sha256").update(stableJson(privateState)).digest("hex");
+    const checkpointVersion = ++this.recoveryCheckpointVersion;
+
+    const saveRecoveryCheckpoint = SupabaseService.saveRecoveryCheckpoint;
+    if (typeof saveRecoveryCheckpoint !== "function") return;
+
+    this.recoveryCheckpointQueue = this.recoveryCheckpointQueue
+      .catch(() => undefined)
+      .then(async () => {
+        const result = await saveRecoveryCheckpoint({
+          gameId: this.currentGameId,
+          roomId: this.roomId,
+          checkpointVersion,
+          stateHash,
+          privateState,
+          rosterUserIds,
+        });
+        if (!result.success) {
+          await AlertService.emitAsync({
+            severity: "critical",
+            category: "recovery_checkpoint",
+            title: "No se pudo guardar checkpoint de recuperación",
+            message: "La mano requiere revisión manual si la mesa se interrumpe.",
+            room_id: this.roomId,
+            game_id: this.currentGameId,
+            metadata: { checkpointVersion, error: result.error },
+          });
+        }
+      });
+  }
+
+  private createRecoverySnapshot(): RecoverySnapshotV1 {
+    return {
+      version: 1,
+      gameState: {
+        phase: this.state.phase,
+        dealerId: this.state.dealerId,
+        activeManoId: this.state.activeManoId,
+        pot: this.state.pot,
+        piquePot: this.state.piquePot,
+        turnPlayerId: this.state.turnPlayerId,
+        minPlayers: this.state.minPlayers,
+        maxPlayers: this.state.maxPlayers,
+        countdown: this.state.countdown,
+        lastSeed: this.state.lastSeed,
+        lastAction: this.state.lastAction,
+        showdownTimer: this.state.showdownTimer,
+        currentMaxBet: this.state.currentMaxBet,
+        highestBetPlayerId: this.state.highestBetPlayerId,
+        isFirstGame: this.state.isFirstGame,
+        bottomCard: this.state.bottomCard,
+        minPique: this.state.minPique,
+        proposedPique: this.state.proposedPique,
+        proposedPiqueBy: this.state.proposedPiqueBy,
+        piqueVotesFor: this.state.piqueVotesFor,
+        piqueVotesAgainst: this.state.piqueVotesAgainst,
+        piqueVotersTotal: this.state.piqueVotersTotal,
+      },
+      players: this.getPlayerEntries().map(([sessionId, player]) => ({
+        sessionId,
+        publicState: {
+          id: player.id,
+          nickname: player.nickname,
+          avatarUrl: player.avatarUrl,
+          isFolded: player.isFolded,
+          hasActed: player.hasActed,
+          isReady: player.isReady,
+          isWaiting: player.isWaiting,
+          isAllIn: player.isAllIn,
+          passedWithJuego: player.passedWithJuego,
+          chips: player.chips,
+          roundBet: player.roundBet,
+          turnOrder: player.turnOrder,
+          cardCount: player.cardCount,
+          revealedCards: player.revealedCards,
+        },
+        serverState: {
+          cards: player.cards,
+          deviceId: player.deviceId,
+          pendingDiscardCards: [...player.pendingDiscardCards],
+          supabaseUserId: player.supabaseUserId,
+          totalMainBet: player.totalMainBet,
+          declaredJuego: player.declaredJuego,
+          declinedGuerraJuegoBet: player.declinedGuerraJuegoBet,
+        },
+      })),
+      deck: [...this.deck],
+      seatOrder: [...this.seatOrder],
+      currentGameId: this.currentGameId,
+      rosterUserIds: [...this.recoveryRosterUserIds],
+      runtime: {
+        apuesta4OriginalManoId: this.apuesta4OriginalManoId,
+        pasoPendienteIds: [...this.pasoPendienteIds],
+        currentTimeline: [...this.currentTimeline],
+        rngCounter: this.rngCounter,
+        juegoCallers: [...this.juegoCallers],
+        pendingPiqueWinnerId: this.pendingPiqueWinnerId,
+        pendingPiqueWinnerIds: [...this.pendingPiqueWinnerIds],
+        pendingPiqueContestantIds: [...this.pendingPiqueContestantIds],
+        pendingPiqueContinuation: this.pendingPiqueContinuation,
+        pendingPiqueReopenCallers: this.pendingPiqueReopenCallers.map((caller) => ({ ...caller })),
+        pendingLlevoJuegoPlayerId: this.pendingLlevoJuegoPlayerId,
+        piqueVoters: [...this.piqueVoters.entries()],
+        piqueProposerId: this.piqueProposerId,
+        piquePassPlayerIds: [...this.piquePassPlayerIds],
+        piquePreBetPasserIds: [...this.piquePreBetPasserIds],
+        piqueReopenActive: this.piqueReopenActive,
+        piqueReopenPendingIds: [...this.piqueReopenPendingIds],
+        dealerRotatedThisGame: this.dealerRotatedThisGame,
+        piqueRestartCount: this.piqueRestartCount,
+        piqueFoldCount: [...this.piqueFoldCount.entries()],
+        forcedShowdownRevealWinnerId: this.forcedShowdownRevealWinnerId,
+        pendingPasoJuegoPlayerId: this.pendingPasoJuegoPlayerId,
+        pendingPasoJuegoPhase: this.pendingPasoJuegoPhase,
+        phaseBeforePiqueReveal: this.phaseBeforePiqueReveal,
+      },
+    };
   }
 
   /** Deriva una pista de animacion a partir del evento para el reproductor visual. */

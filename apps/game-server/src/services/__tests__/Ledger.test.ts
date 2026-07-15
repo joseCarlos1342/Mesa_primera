@@ -123,4 +123,80 @@ describe('SupabaseService — Settlement & Error Handling', () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe('saveRecoveryCheckpoint', () => {
+    it('persiste estado privado con el roster original de la mano', async () => {
+      mockRpc.mockResolvedValue({ data: { success: true, saved: true }, error: null });
+
+      const result = await SupabaseService.saveRecoveryCheckpoint({
+        gameId: 'game-123',
+        roomId: 'room-123',
+        checkpointVersion: 4,
+        stateHash: 'sha256:checkpoint',
+        privateState: { phase: 'GUERRA', privateCards: 'sealed' },
+        rosterUserIds: ['player-a', 'player-b'],
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(mockRpc).toHaveBeenCalledWith('save_game_recovery_checkpoint', expect.objectContaining({
+        p_game_id: 'game-123', p_room_id: 'room-123',
+        p_checkpoint_version: 4, p_roster_user_ids: ['player-a', 'player-b'],
+      }));
+    });
+  });
+
+  describe('createRecoveryIncident', () => {
+    it('delegates to the protected RPC so resolved incidents cannot be reopened', async () => {
+      mockRpc.mockResolvedValue({ data: { success: true, status: 'recovery_pending' }, error: null });
+      const detectedAt = new Date('2026-07-12T12:00:00.000Z');
+
+      const result = await SupabaseService.createRecoveryIncident({
+        gameId: 'game-123', roomId: 'room-123', detectedAt, causeCode: 'process_restart',
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(mockRpc).toHaveBeenCalledWith('open_game_recovery_incident', {
+        p_game_id: 'game-123',
+        p_room_id: 'room-123',
+        p_detected_at: '2026-07-12T12:00:00.000Z',
+        p_cause_code: 'process_restart',
+      });
+    });
+  });
+
+  describe('expireRecoveryIncidentAndRefund', () => {
+    it('sends stable recovery operation IDs to the transactional refund RPC', async () => {
+      mockRpc.mockResolvedValue({ data: { success: true, status: 'cancelled_crash' }, error: null });
+
+      const result = await SupabaseService.expireRecoveryIncidentAndRefund({
+        gameId: 'game-123',
+        refunds: [{
+          userId: '00000000-0000-0000-0000-000000000001',
+          amountCents: 250000,
+          operationId: '00000000-0000-0000-0000-000000000101',
+        }],
+      });
+
+      expect(result).toEqual({ success: true, status: 'cancelled_crash' });
+      expect(mockRpc).toHaveBeenCalledWith('expire_game_recovery_incident', {
+        p_game_id: 'game-123',
+        p_refunds: [{
+          user_id: '00000000-0000-0000-0000-000000000001',
+          amount_cents: 250000,
+          operation_id: '00000000-0000-0000-0000-000000000101',
+        }],
+      });
+    });
+
+    it('returns the RPC error without treating the refund as successful', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'connection timeout' } });
+
+      const result = await SupabaseService.expireRecoveryIncidentAndRefund({
+        gameId: 'game-123',
+        refunds: [],
+      });
+
+      expect(result).toEqual(expect.objectContaining({ success: false }));
+    });
+  });
 });
