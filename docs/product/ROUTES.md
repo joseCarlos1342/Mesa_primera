@@ -72,9 +72,9 @@ Mapa de rutas reales segun `apps/web/src/app`.
 | `/admin/withdrawals` | Revision de retiros | Activa |
 | `/admin/ganancias` | Rake y metricas financieras | Activa |
 | `/admin/consultas` | Busqueda global | Activa |
-| `/admin/disputes` | Disputas | Activa |
-| `/admin/disputes/new` | Alta de disputa | Activa |
-| `/admin/disputes/[id]` | Detalle de disputa | Activa |
+| `/admin/disputes` | Investigaciones internas (URL legacy) | Activa |
+| `/admin/disputes/new` | Alta de investigación interna | Activa |
+| `/admin/disputes/[id]` | Expediente de investigación | Activa |
 | `/admin/audit` | Auditoria administrativa | Activa |
 | `/admin/security` | Seguridad admin y recovery codes | Activa |
 | `/admin/broadcast` | Broadcast masivo | Activa |
