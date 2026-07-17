@@ -3,6 +3,9 @@ import {
   createRecoveryMetrics,
   createRecoveryObserver,
   createStructuredLogger,
+  getRecoveryHealth,
+  markRecoveryDegraded,
+  markRecoveryHealthy,
 } from "../RecoveryObservability";
 
 describe("RecoveryObservability", () => {
@@ -42,17 +45,30 @@ describe("RecoveryObservability", () => {
 
     observer.record({ level: "info", event: "recovery_detected" });
     observer.record({ level: "info", event: "replacement_created" });
+    observer.record({ level: "info", event: "replacement_published" });
     observer.record({ level: "info", event: "roster_completed" });
     observer.record({ level: "warn", event: "deadline_expired" });
     observer.record({ level: "error", event: "manual_review" });
 
     expect(metrics.snapshot()).toEqual({
       recovery_detected_total: 1,
+      checkpoint_load_failed_total: 0,
       replacement_created_total: 1,
+      replacement_published_total: 1,
+      replacement_retry_total: 0,
       roster_completed_total: 1,
       deadline_expired_total: 1,
       manual_review_total: 1,
       critical_process_failure_total: 0,
     });
+  });
+
+  it("expone degraded para que health reporte una carga de checkpoints fallida", () => {
+    markRecoveryDegraded("checkpoint_load_failed");
+
+    expect(getRecoveryHealth()).toEqual({ status: "degraded", reason: "checkpoint_load_failed" });
+
+    markRecoveryHealthy();
+    expect(getRecoveryHealth()).toEqual({ status: "ok" });
   });
 });

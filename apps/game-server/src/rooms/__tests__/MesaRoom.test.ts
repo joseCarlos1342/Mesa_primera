@@ -7,6 +7,12 @@ import { AlertService } from '../../services/AlertService';
 import { evaluateHand, compareHands } from '../combinations';
 import { createMesaTestContext, getAvailableTestPort } from './mesa-room-test-helpers';
 import { EventEmitter } from 'events';
+import * as PiqueVotingCommand from '../commands/PiqueVotingCommand';
+import * as PlayerActionCommand from '../commands/PlayerActionCommand';
+import * as RoomLifecycleCommand from '../commands/RoomLifecycleCommand';
+import * as ShowdownCommand from '../commands/ShowdownCommand';
+import * as TransferCommand from '../commands/TransferCommand';
+import * as AdminCommand from '../commands/AdminCommand';
 
 // Mock Redis subscriber to avoid real Redis connections during tests
 vi.mock('../../services/redis', () => {
@@ -14587,7 +14593,9 @@ describe('MesaRoom via Colyseus Testing', () => {
         },
       };
       const room = await colyseus.createRoom<any>('mesa_primera', {
-        tableId: 'recovery-apuesta-4', recovery,
+        tableId: 'recovery-apuesta-4',
+        recovery,
+        recoveryContext: { ownerId: '00000000-0000-0000-0000-000000000200', fence: 1 },
       });
       const internalRoom = colyseus.getRoomById(room.roomId) as any;
 
@@ -14661,6 +14669,63 @@ describe('MesaRoom via Colyseus Testing', () => {
       expect(internalRoom.recoveryLocked).toBe(true);
       expect(room.state.players.has(ana.sessionId)).toBe(false);
     });
+
+    it('bloquea todos los mensajes que mutan la mano hasta completar el roster', async () => {
+      const recovery = {
+        version: 1,
+        gameState: { phase: 'APUESTA_4_CARTAS', dealerId: 'old-a', activeManoId: 'old-a', pot: 0, piquePot: 0, turnPlayerId: 'old-a', minPlayers: 2, maxPlayers: 7, countdown: -1, lastSeed: '', lastAction: '', showdownTimer: 0, currentMaxBet: 0, highestBetPlayerId: '', isFirstGame: false, bottomCard: '', minPique: 500000, proposedPique: 0, proposedPiqueBy: '', piqueVotesFor: 0, piqueVotesAgainst: 0, piqueVotersTotal: 0 },
+        players: [
+          { sessionId: 'old-a', publicState: { id: 'old-a', nickname: 'Ana', avatarUrl: 'ana', isFolded: false, hasActed: false, isReady: true, isWaiting: false, isAllIn: false, passedWithJuego: false, chips: 1, roundBet: 0, turnOrder: 1, cardCount: 4, revealedCards: '' }, serverState: { cards: '01-O', deviceId: 'device-a', supabaseUserId: 'user-a', pendingDiscardCards: [], totalMainBet: 0, declaredJuego: null, declinedGuerraJuegoBet: false } },
+          { sessionId: 'old-b', publicState: { id: 'old-b', nickname: 'Beto', avatarUrl: 'beto', isFolded: false, hasActed: false, isReady: true, isWaiting: false, isAllIn: false, passedWithJuego: false, chips: 1, roundBet: 0, turnOrder: 2, cardCount: 4, revealedCards: '' }, serverState: { cards: '01-C', deviceId: 'device-b', supabaseUserId: 'user-b', pendingDiscardCards: [], totalMainBet: 0, declaredJuego: null, declinedGuerraJuegoBet: false } },
+        ],
+        deck: ['03-O'], seatOrder: ['old-a', 'old-b'], currentGameId: 'recovered-game-guard', rosterUserIds: ['user-a', 'user-b'],
+        runtime: { apuesta4OriginalManoId: 'old-a', pasoPendienteIds: [], currentTimeline: [], rngCounter: 0, juegoCallers: [], pendingPiqueWinnerId: '', pendingPiqueWinnerIds: [], pendingPiqueContestantIds: [], pendingPiqueContinuation: 'DESCARTE', pendingPiqueReopenCallers: [], pendingLlevoJuegoPlayerId: '', piqueVoters: [], piqueProposerId: '', piquePassPlayerIds: [], piquePreBetPasserIds: [], piqueReopenActive: false, piqueReopenPendingIds: [], dealerRotatedThisGame: false, piqueRestartCount: 0, piqueFoldCount: [], forcedShowdownRevealWinnerId: '', pendingPasoJuegoPlayerId: '', pendingPasoJuegoPhase: '', phaseBeforePiqueReveal: '' },
+      } satisfies RecoverySnapshotV1;
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'recovery-message-guard', recovery });
+      const handlers = [
+        vi.spyOn(RoomLifecycleCommand, 'handleToggleReady'),
+        vi.spyOn(RoomLifecycleCommand, 'handleAbandon'),
+        vi.spyOn(PiqueVotingCommand, 'handleProposePique'),
+        vi.spyOn(PiqueVotingCommand, 'handleVotePique'),
+        vi.spyOn(PlayerActionCommand, 'handlePlayerAction'),
+        vi.spyOn(ShowdownCommand, 'handleDismissReveal'),
+        vi.spyOn(ShowdownCommand, 'handleLlevoJuego'),
+        vi.spyOn(ShowdownCommand, 'handlePasoJuegoResponse'),
+        vi.spyOn(ShowdownCommand, 'handleJuegoValidationResponse'),
+        vi.spyOn(ShowdownCommand, 'handleDismissShowdown'),
+        vi.spyOn(ShowdownCommand, 'handleDeclararJuego'),
+        vi.spyOn(ShowdownCommand, 'handleShowMuck'),
+        vi.spyOn(TransferCommand, 'handleTransfer'),
+        vi.spyOn(AdminCommand, 'handleDeleteRoom'),
+        vi.spyOn(AdminCommand, 'handleAdminKick'),
+        vi.spyOn(AdminCommand, 'handleAdminMute'),
+        vi.spyOn(AdminCommand, 'handleAdminBan'),
+      ];
+      const ana = await colyseus.connectTo(room, { userId: 'user-a', nickname: 'Ana', avatarUrl: 'ana', chips: 10_000_000 });
+
+      ana.send('toggleReady', { isReady: true });
+      ana.send('abandon');
+      ana.send('propose_pique', { amount: 500_000 });
+      ana.send('vote_pique', { approve: true });
+      ana.send('action', { action: 'paso' });
+      ana.send('dismiss-reveal');
+      ana.send('llevo-juego');
+      ana.send('paso-juego-response', { hasJuego: true });
+      ana.send('juego-validation-response', { hasJuego: true });
+      ana.send('dismiss-showdown');
+      ana.send('declarar-juego', { tiene: true });
+      ana.send('show-muck', { show: true });
+      ana.send('transfer', { recipientId: 'user-b', amount: 1_000 });
+      ana.send('delete-room', {});
+      ana.send('admin:kick', { playerId: 'old-b' });
+      ana.send('admin:mute', { playerId: 'old-b' });
+      ana.send('admin:ban', { playerId: 'old-b' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      for (const handler of handlers) {
+        expect(handler).not.toHaveBeenCalled();
+      }
+    });
   });
 
   describe('crash recovery — fases estables', () => {
@@ -14709,7 +14774,9 @@ describe('MesaRoom via Colyseus Testing', () => {
 
     it.each(stablePhases)('restaura %s sin reiniciar la mano y rearma su timer', async (phase) => {
       const room = await colyseus.createRoom<any>('mesa_primera', {
-        tableId: `recovery-stable-${phase}`, recovery: createStableRecoverySnapshot(phase),
+        tableId: `recovery-stable-${phase}`,
+        recovery: createStableRecoverySnapshot(phase),
+        recoveryContext: { ownerId: '00000000-0000-0000-0000-000000000201', fence: 1 },
       });
       const internalRoom = colyseus.getRoomById(room.roomId) as MesaRoom;
 
@@ -14725,14 +14792,22 @@ describe('MesaRoom via Colyseus Testing', () => {
       room.state.players.get('old-b')!.connected = true;
        await internalRoom.unlockRecoveryWhenRosterReturns();
 
-      expect(internalRoom.recoveryLocked).toBe(false);
-      expect(internalRoom.turnTimer).toBeDefined();
+       expect(internalRoom.recoveryLocked).toBe(false);
+       expect(SupabaseService.resolveRecoveryIncident).toHaveBeenCalledWith({
+         gameId: `recovery-${phase}`,
+         recoveredRoomId: room.roomId,
+         ownerId: '00000000-0000-0000-0000-000000000201',
+         fence: 1,
+       });
+       expect(internalRoom.turnTimer).toBeDefined();
        internalRoom.clearTurnTimer();
      });
 
     it('permanece bloqueada y se descarta ante un rejoin tardío que la RPC no puede reanudar', async () => {
       const room = await colyseus.createRoom<any>('mesa_primera', {
-        tableId: 'recovery-fail-closed', recovery: createStableRecoverySnapshot('PIQUE'),
+        tableId: 'recovery-fail-closed',
+        recovery: createStableRecoverySnapshot('PIQUE'),
+        recoveryContext: { ownerId: '00000000-0000-0000-0000-000000000202', fence: 2 },
       });
       const internalRoom = colyseus.getRoomById(room.roomId) as MesaRoom;
       const disconnect = vi.spyOn(internalRoom, 'disconnect');
@@ -14748,6 +14823,41 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       expect(internalRoom.recoveryLocked).toBe(true);
       expect(disconnect).toHaveBeenCalledOnce();
+    });
+
+    it('descarta la sala y no marca resumed cuando no conserva contexto fenced', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', {
+        tableId: 'recovery-missing-context', recovery: createStableRecoverySnapshot('PIQUE'),
+      });
+      const internalRoom = colyseus.getRoomById(room.roomId) as MesaRoom;
+      const disconnect = vi.spyOn(internalRoom, 'disconnect');
+
+      for (const player of internalRoom.state.players.values()) player.connected = true;
+      vi.mocked(SupabaseService.resolveRecoveryIncident).mockClear();
+      await internalRoom.unlockRecoveryWhenRosterReturns();
+
+      expect(SupabaseService.resolveRecoveryIncident).not.toHaveBeenCalled();
+      expect(internalRoom.recoveryLocked).toBe(true);
+      expect(disconnect).toHaveBeenCalledOnce();
+    });
+
+    it('rechaza un token de recuperación inválido aun si el userId pertenece al roster', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', {
+        tableId: 'recovery-invalid-token',
+        recovery: createStableRecoverySnapshot('PIQUE'),
+        recoveryContext: { ownerId: '00000000-0000-0000-0000-000000000203', fence: 3 },
+      });
+      const internalRoom = colyseus.getRoomById(room.roomId) as MesaRoom;
+      vi.mocked(SupabaseService.validateRecoveryIdentity).mockResolvedValueOnce(false);
+
+      await expect(internalRoom.onAuth({} as any, {
+        userId: 'user-0',
+        accessToken: 'not-a-valid-supabase-token',
+      })).rejects.toThrow('identidad no verificada');
+      expect(SupabaseService.validateRecoveryIdentity).toHaveBeenCalledWith(
+        'not-a-valid-supabase-token',
+        'user-0',
+      );
     });
 
     it('rechaza una fase animada aunque el snapshot tenga estructura válida', async () => {

@@ -94,6 +94,11 @@ export interface RecoverySnapshotV1 {
   };
 }
 
+interface RecoveryRoomContext {
+  ownerId: string;
+  fence: number;
+}
+
 export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }> {
   maxClients = 7;
   public countdownTimer?: any;
@@ -107,6 +112,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   private recoveryCheckpointVersion = 0;
   private recoveryGameSessionReady = false;
   private discardRecoveryReplacementWithoutRefund = false;
+  private recoveryContext?: RecoveryRoomContext;
   public recoveryRosterUserIds: string[] = [];
   /** Impide continuar la mano hasta que el roster del checkpoint vuelva a la mesa. */
   public recoveryLocked = false;
@@ -238,31 +244,39 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     if (options.recovery) {
       this.restoreFromRecoverySnapshot(options.recovery);
+      if (this.isRecoveryRoomContext(options.recoveryContext)) {
+        this.recoveryContext = options.recoveryContext;
+      }
     }
 
     // ── Subscribe to single-session kick events ──
     setupSessionKickListener(this);
 
     this.onMessage("delete-room", async (client, message) => {
+      if (this.recoveryLocked) return;
       handleDeleteRoom(this, client, message);
     });
 
     this.onMessage("toggleReady", (client, message) => {
+      if (this.recoveryLocked) return;
       handleToggleReady(this, client, message);
     });
 
     // ── Pique Fijo: Propuesta y Votación Democrática ──
 
     this.onMessage("propose_pique", (client, message) => {
+      if (this.recoveryLocked) return;
       handleProposePique(this, client, message);
     });
 
     this.onMessage("vote_pique", (client, message) => {
+      if (this.recoveryLocked) return;
       handleVotePique(this, client, message);
     });
 
     // Abandono explícito: el jugador decidió irse voluntariamente
     this.onMessage("abandon", (client) => {
+      if (this.recoveryLocked) return;
       handleAbandon(this, client);
     });
 
@@ -272,50 +286,62 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     });
 
     this.onMessage("dismiss-reveal", (client) => {
+      if (this.recoveryLocked) return;
       handleDismissReveal(this, client);
     });
 
     // ── Llevo Juego: jugador que pasó con juego reclama el pique durante DESCARTE ──
     this.onMessage("llevo-juego", (client) => {
+      if (this.recoveryLocked) return;
       handleLlevoJuego(this, client);
     });
 
     // ── Resolución inmediata de Llevo Juego / No Llevo en cualquier fase de apuestas ──
     this.onMessage("paso-juego-response", (client, message) => {
+      if (this.recoveryLocked) return;
       handlePasoJuegoResponse(this, client, message);
     });
 
     // ── Respuesta a la re-pregunta de juego tras all-check con juego detectado ──
     this.onMessage("juego-validation-response", (client, message) => {
+      if (this.recoveryLocked) return;
       handleJuegoValidationResponse(this, client, message);
     });
 
     this.onMessage("dismiss-showdown", (client) => {
+      if (this.recoveryLocked) return;
       handleDismissShowdown(this, client);
     });
 
     this.onMessage("declarar-juego", (client, message) => {
+      if (this.recoveryLocked) return;
       handleDeclararJuego(this, client, message);
     });
 
     this.onMessage("show-muck", (client, message) => {
+      if (this.recoveryLocked) return;
       handleShowMuck(this, client, message);
     });
 
     // ── Admin Moderation (spectator-only) ──
 
     this.onMessage("admin:kick", (client, message) => {
+      if (this.recoveryLocked) return;
       handleAdminKick(this, client, message);
     });
 
     this.onMessage("admin:mute", (client, message) => {
+      if (this.recoveryLocked) return;
       handleAdminMute(this, client, message);
     });
 
     this.onMessage("admin:ban", (client, message) => {
+      if (this.recoveryLocked) return;
       handleAdminBan(this, client, message);
     });
 
+    // Durante recoveryLocked, solo se permiten estas lecturas: no mutan la mano
+    // ni el roster y permiten que el jugador recupere su estado privado.
     // ── Resincronización silenciosa de cartas privadas ──
     this.onMessage("request-resync", (client) => {
       handleRequestResync(this, client);
@@ -328,6 +354,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
 
     // ── Transferencia P2P entre jugadores ──
     this.onMessage("transfer", async (client, message) => {
+      if (this.recoveryLocked) return;
       await handleTransfer(this, client, message);
     });
   }
@@ -392,7 +419,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       this.getPlayers().filter((player) => player.connected).map((player) => player.supabaseUserId),
     );
     if (this.recoveryRosterUserIds.every((userId) => connectedUserIds.has(userId))) {
-      const resolution = await SupabaseService.resolveRecoveryIncident(this.currentGameId);
+      if (!this.recoveryContext) {
+        this.discardFailedRecoveryReplacement();
+        return;
+      }
+      const resolution = await SupabaseService.resolveRecoveryIncident({
+        gameId: this.currentGameId,
+        recoveredRoomId: this.roomId,
+        ownerId: this.recoveryContext.ownerId,
+        fence: this.recoveryContext.fence,
+      });
       if (!resolution.success || !resolution.updated) {
         this.discardFailedRecoveryReplacement();
         return;
@@ -432,6 +468,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       && value.seatOrder.every((sessionId) => value.players?.some((player) => player.sessionId === sessionId))
       && new Set(value.players.map((player) => player.serverState.supabaseUserId)).size === value.rosterUserIds.length
        && value.rosterUserIds.every((userId) => value.players?.some((player) => player.serverState.supabaseUserId === userId));
+  }
+
+  private isRecoveryRoomContext(context: unknown): context is RecoveryRoomContext {
+    if (!context || typeof context !== "object" || Array.isArray(context)) return false;
+    const value = context as Partial<RecoveryRoomContext>;
+    return typeof value.ownerId === "string"
+      && value.ownerId.trim().length > 0
+      && typeof value.fence === "number"
+      && Number.isSafeInteger(value.fence)
+      && value.fence > 0;
   }
 
   private hasRecoveryRuntime(runtime: unknown): runtime is RecoverySnapshotV1["runtime"] {

@@ -5,6 +5,7 @@ import { CrashRecoveryService, type CrashRecoveryDependencies } from "../CrashRe
 import { stableJson } from "../RecoveryPolicy";
 import { MesaRoom, type RecoverySnapshotV1 } from "../../rooms/MesaRoom";
 import { getAvailableTestPort } from "../../rooms/__tests__/mesa-room-test-helpers";
+import { SupabaseService } from "../SupabaseService";
 
 vi.mock("../../services/redis", () => ({
   createRedisSubscriber: vi.fn(() => ({
@@ -25,9 +26,11 @@ vi.mock("../../services/AlertService", () => ({
 
 vi.mock("../../services/SupabaseService", () => ({
   SupabaseService: {
-    validateRecoveryIdentity: vi.fn().mockResolvedValue(true),
+    validateRecoveryIdentity: vi.fn((accessToken, userId) =>
+      Promise.resolve(accessToken === `recovery-token-${userId}`),
+    ),
     checkTableAccess: vi.fn().mockResolvedValue({ blocked: false }),
-    resolveRecoveryIncident: vi.fn().mockResolvedValue({ success: true, updated: true }),
+    resolveRecoveryIncident: vi.fn(),
   },
 }));
 
@@ -54,13 +57,23 @@ describe("CrashRecoveryService chaos recovery", () => {
     let replacementRoomId = "";
     let replacementTestRoom: Parameters<ColyseusTestServer["connectTo"]>[0];
     const dependencies = createInMemoryDependencies(checkpoint, {
-      createReplacementRoom: async ({ recovery }) => {
-        const replacement = await colyseus.createRoom<any>("mesa_primera", { recovery });
+      createReplacementRoom: async ({ recovery, recoveryContext }) => {
+        const replacement = await colyseus.createRoom<any>("mesa_primera", { recovery, recoveryContext });
         replacementRoomId = replacement.roomId;
         replacementTestRoom = replacement;
         return { roomId: replacement.roomId };
       },
     });
+    vi.mocked(SupabaseService.resolveRecoveryIncident).mockImplementation(async (input) => ({
+      success: true,
+      get updated() {
+        const mapping = dependencies.getPersistedMapping();
+        return input.gameId === mapping.gameId
+          && input.recoveredRoomId === mapping.recoveredRoomId
+          && input.ownerId === mapping.ownerId
+          && input.fence === mapping.fence;
+      },
+    }));
 
     const recoveredRooms = await new CrashRecoveryService(dependencies).recoverPendingCheckpoints();
     expect(recoveredRooms).toEqual({ [checkpoint.roomId]: replacementRoomId });
@@ -83,6 +96,7 @@ describe("CrashRecoveryService chaos recovery", () => {
         nickname: userId,
         avatarUrl: "default",
         chips: 10_000_000,
+        accessToken: `recovery-token-${userId}`,
       });
     }
 
@@ -94,7 +108,7 @@ describe("CrashRecoveryService chaos recovery", () => {
 
   it("ante un segundo crash y deadline con roster incompleto no duplica replacement ni refunds", async () => {
     const checkpoint = await createCheckpointFromLiveRoom(colyseus, "chaos-deadline");
-    const scheduled: Array<() => Promise<void>> = [];
+    const scheduled: Array<{ callback: () => Promise<void>; delayMs: number }> = [];
     const createdRooms: string[] = [];
     const claimedGames = new Set<string>();
     const appliedRefundOperations = new Set<string>();
@@ -103,15 +117,15 @@ describe("CrashRecoveryService chaos recovery", () => {
       claimRecoveryIncident: async ({ gameId }) => {
         if (claimedGames.has(gameId)) return { claimed: false };
         claimedGames.add(gameId);
-        return { claimed: true };
+        return { claimed: true, fence: 1 };
       },
       createReplacementRoom: async ({ recovery }) => {
         const replacement = await colyseus.createRoom<any>("mesa_primera", { recovery });
         createdRooms.push(replacement.roomId);
         return { roomId: replacement.roomId };
       },
-      schedule: (callback) => {
-        scheduled.push(callback);
+      schedule: (callback, delayMs) => {
+        scheduled.push({ callback, delayMs });
       },
       expireRecoveryIncidentAndRefund: async ({ refunds }) => {
         for (const refund of refunds) {
@@ -127,9 +141,10 @@ describe("CrashRecoveryService chaos recovery", () => {
     await new CrashRecoveryService(dependencies).recoverPendingCheckpoints();
 
     expect(createdRooms).toHaveLength(1);
-    expect(scheduled).toHaveLength(2);
 
-    await Promise.all(scheduled.map((expire) => expire()));
+    await Promise.all(scheduled
+      .filter(({ delayMs }) => delayMs === deadline.getTime() - now.getTime())
+      .map(({ callback }) => callback()));
 
     expect(persistedRefunds).toHaveLength(3);
     expect(new Set(persistedRefunds.map((refund) => refund.operationId))).toHaveLength(3);
@@ -176,12 +191,22 @@ async function createCheckpointFromLiveRoom(
 function createInMemoryDependencies(
   checkpoint: Awaited<ReturnType<typeof createCheckpointFromLiveRoom>>,
   overrides: Partial<CrashRecoveryDependencies> = {},
-): CrashRecoveryDependencies {
+): CrashRecoveryDependencies & { getPersistedMapping: () => { gameId: string; recoveredRoomId: string; ownerId: string; fence: number } } {
+  let persistedMapping: { gameId: string; recoveredRoomId: string; ownerId: string; fence: number } | undefined;
   return {
     loadPendingRecoveryCheckpoints: async () => [checkpoint],
     createRecoveryIncident: async () => ({ success: true, recoveryDeadlineAt: deadline }),
-    claimRecoveryIncident: async () => ({ claimed: true }),
-    saveRecoveredRoomMapping: async () => ({ success: true }),
+    claimRecoveryIncident: async () => ({ claimed: true, fence: 1 }),
+    saveRecoveredRoomMapping: async (input) => {
+      persistedMapping = { ...input };
+      return { success: true };
+    },
+    renewRecoveredRoomMappingLease: async (input) => ({
+      renewed: persistedMapping?.gameId === input.gameId
+        && persistedMapping.recoveredRoomId === input.recoveredRoomId
+        && persistedMapping.ownerId === input.ownerId
+        && persistedMapping.fence === input.fence,
+    }),
     createReplacementRoom: async () => ({ roomId: "unused" }),
     disposeReplacementRoom: async () => undefined,
     deriveRecoveryRefunds: async () => ({
@@ -191,8 +216,13 @@ function createInMemoryDependencies(
     expireRecoveryIncidentAndRefund: async () => ({ success: true }),
     markRecoveryIncidentManualReview: async () => ({ success: true }),
     emitRecoveryManualReviewAlert: async () => undefined,
+    emitRecoveryInfrastructureAlert: async () => undefined,
     schedule: () => undefined,
     now: () => now,
     ...overrides,
+    getPersistedMapping: () => {
+      if (!persistedMapping) throw new Error("El mapping de recovery no fue persistido");
+      return persistedMapping;
+    },
   };
 }

@@ -259,6 +259,51 @@ describe('GameRoomPage', () => {
     expect(screen.getByText(/La mesa se reanudó/)).toBeInTheDocument()
   })
 
+  it.each([
+    ['recovery_pending', new Date(Date.now() + 60_000).toISOString()],
+    ['resumed', '2026-07-13T12:05:00.000Z'],
+  ] as const)('recupera la sala mapeada sin token cuando el join original falla y está %s', async (status, deadline) => {
+    const originalJoinError = new Error('Mesa original no disponible')
+    sessionStorage.removeItem('reconnectionToken_room-123')
+    mockJoinById
+      .mockRejectedValueOnce(originalJoinError)
+      .mockResolvedValueOnce(makeRoom() as never)
+    mockResolveRecoveredRoom.mockResolvedValue({
+      status,
+      recoveredRoomId: 'recovered-room-456',
+      deadline,
+    })
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    await waitFor(() => expect(mockResolveRecoveredRoom).toHaveBeenCalledWith('room-123'))
+    expect(mockJoinById).toHaveBeenNthCalledWith(1, 'room-123', expect.objectContaining({
+      userId: 'user-1',
+      accessToken: 'access-token',
+    }))
+    expect(mockJoinById).toHaveBeenNthCalledWith(2, 'recovered-room-456', expect.objectContaining({
+      userId: 'user-1',
+      accessToken: 'access-token',
+    }))
+  })
+
+  it('mantiene el error de conexión actual si el join original falla sin token ni mapping de recuperación', async () => {
+    const originalJoinError = new Error('Mesa original no disponible')
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    sessionStorage.removeItem('reconnectionToken_room-123')
+    mockJoinById.mockRejectedValue(originalJoinError)
+    mockResolveRecoveredRoom.mockResolvedValue(null)
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    expect(await screen.findByText('Mesa original no disponible')).toBeInTheDocument()
+    expect(mockResolveRecoveredRoom).toHaveBeenCalledWith('room-123')
+    expect(mockJoinById).toHaveBeenCalledTimes(1)
+    expect(consoleError).toHaveBeenCalledWith('Join Error:', originalJoinError)
+  })
+
   it('recupera el asiento aunque el saldo actual no alcance el mínimo de una mesa nueva', async () => {
     sessionStorage.setItem('reconnectionToken_room-123', 'expired-token')
     mockReconnect.mockRejectedValue(new Error('expired'))
