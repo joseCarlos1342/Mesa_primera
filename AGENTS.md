@@ -36,9 +36,12 @@ pnpm exec tsc --noEmit -p apps/web/tsconfig.json
 pnpm exec tsc --noEmit -p apps/game-server/tsconfig.json
 
 # Database
+# La fuente de verdad es el proyecto remoto de Supabase Cloud. No usamos
+# `supabase start`, contenedores Docker ni `supabase db reset` localmente.
+# Usar Supabase CLI enlazado al proyecto remoto para migraciones y tipos.
 pnpm exec supabase migration new <name>
-pnpm exec supabase db reset
-pnpm exec supabase gen types typescript --local > apps/web/src/types/supabase.ts
+pnpm exec supabase db push
+pnpm exec supabase gen types typescript --linked > apps/web/src/types/supabase.ts
 ```
 
 # Mesa Primera - Reglas globales (nucleo)
@@ -64,7 +67,7 @@ pnpm exec supabase gen types typescript --local > apps/web/src/types/supabase.ts
 - **Design System como fuente de verdad**: cada interfaz tiene su `DESIGN.md` validado por el CLI de Google. El agente DEBE leerlo antes de crear o modificar componentes UI.
 
 ## 3. Stack
-- Monorepo Turbo. Web: Next.js 16 / React 19 / Tailwind 4 / Jest 30. Game: Colyseus + Vitest 4. DB: Supabase + Postgres + RLS. Realtime: Redis 7 (`:6380`). E2E: Playwright. VPS con Caddy + systemd.
+- Monorepo Turbo. Web: Next.js 16 / React 19 / Tailwind 4 / Jest 30. Game: Colyseus + Vitest 4. DB: Supabase Cloud + Postgres + RLS (sin instancia local). Realtime: Redis 7 (`:6380`). E2E: Playwright. VPS con Caddy + systemd.
 
 ## 4. CLI, Ops y Skills
 * **CLIs y gotchas del VPS** (puerto Redis 6380, versiones de herramientas): ver `.github/instructions/deploy-ops.instructions.md`.

@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.30%` statements, `90.50%` branches, `96.65%` functions, `99.30%` lines con `213` suites y `1824` tests pasando (`2026-07-16`).
+- Medicion web vigente: `99.44%` statements, `90.43%` branches, `97.18%` functions, `99.44%` lines con `213` suites y `1830` tests pasando (`2026-07-16`).
 - Medicion game-server vigente: `93.41%` statements, `85.03%` branches, `94.78%` functions, `95.17%` lines con `34` suites y `831` tests pasando (`2026-07-16`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
