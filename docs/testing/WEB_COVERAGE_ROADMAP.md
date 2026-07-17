@@ -8,23 +8,23 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-07-09. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-07-16. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.67%` |
-| Lines | `99.67%` |
-| Functions | `97.92%` |
-| Branches | `92.76%` |
+| Statements | `99.30%` |
+| Lines | `99.30%` |
+| Functions | `96.65%` |
+| Branches | `90.50%` |
 
 Resultado de la corrida:
 
-- `203` suites en verde.
-- `1768` tests pasando.
-- La suite actual ya cubre una parte amplia de UI, server actions, rutas y componentes compartidos. El gap restante se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-09 (`/home/jose/.local/share/opencode/tool-output/tool_f540d31ed001Yi0bZlncR1o9xr`).
+- `213` suites en verde.
+- `1824` tests pasando.
+- La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-16 (`/home/jose/.local/share/opencode/tool-output/tool_f6da87fbe001JK0Ll6hN1Uxs5Z`).
 
 ## Meta Final
 
@@ -156,7 +156,7 @@ Estado actual:
 
 - `components/game/Lobby.tsx`: `99.71%`, branches `80.51%`, functions `93.33%`.
 - `components/game/Board.tsx`: `100%` statements/lines, ramas `89.78%`, funciones `92.85%`.
-- `app/play/[id]/page.tsx`: `99.68%` statements/lines, `87.74%` branches, `100%` functions; quedan callback de `window.location.reload` y catch defensivo de audio.
+- `app/play/[id]/page.tsx`: `99.30%` statements/lines, `89.25%` branches, `100%` functions; quedan callback de `window.location.reload`, catch defensivo de audio y el retorno de recuperación pendiente vencida.
 
 Riesgo:
 
@@ -2844,3 +2844,15 @@ Ese lote combina:
 - Tests agregados: estado vacío, chat, eliminación, invitación y apodo exitosos/fallidos, cancelación de edición, avatar y estados online/offline/en partida.
 - Riesgos cerrados: FriendsList llega a `100%` statements/functions/lines y `97.14%` branches focalizados, protegiendo la interfaz social ante fallos de acciones.
 - Resultado de verificacion: suite focalizada verde con `5` tests; `pnpm --filter web test:coverage` verde con `203` suites y `1768` tests.
+
+## Checkpoint 139
+
+- Fecha: 2026-07-16, recuperación de sala y acciones de consultas admin.
+- Coverage antes: `99.25%` statements/lines, `96.55%` functions, `90.47%` branches; `213` suites y `1822` tests.
+- Coverage despues: `99.30%` statements/lines, `96.65%` functions, `90.50%` branches; `213` suites y `1824` tests.
+- Archivos cubiertos: `app/play/[id]/page.tsx` y `components/admin/IssueAdminActions.tsx`.
+- Tests agregados/ajustados: fallback del join inicial a una sala recuperada para estados `resumed` y `recovery_pending` vigente; respuesta, cierre, errores y refresh tras adjuntar evidencia en consultas admin.
+- Riesgos cerrados: la suite ya no depende de una fecha fija que vence con el calendario y protege que un jugador llegue al room mapeado después de un fallo de join; las acciones operativas de una consulta tienen cobertura de sus efectos visibles y errores.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde con `213` suites y `1824` tests; `IssueAdminActions.tsx` queda en `100%` focalizado.
+- Riesgos abiertos: falta `1.35` puntos en functions y `7.50` en branches para el objetivo estratégico. Los siguientes focos de mejor retorno son `app/actions/admin-issues.ts` (69.94% statements, 53.84% functions, 40.42% branches), `components/SupportChat.tsx` (72% functions) y ramas de game UI con comportamiento real.
+- Siguiente lote recomendado: caracterizar primero `admin-issues.ts` por sus guards de autenticación/rol y resultados de RPC, usando el cliente Supabase como borde mockeado; después continuar con los callbacks visibles de `SupportChat.tsx`.

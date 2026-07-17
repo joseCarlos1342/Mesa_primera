@@ -4,8 +4,10 @@ import { PlayerControls } from '../PlayerControls'
 import { ResponsiveDataView, type ColumnDef } from '../ResponsiveDataView'
 import { RulesEditor } from '../RulesEditor'
 import { TableControls } from '../TableControls'
+import { IssueAdminActions } from '../IssueAdminActions'
 import { kickPlayer, setGameStatus } from '@/app/actions/admin-tables'
 import { updateRulebook } from '@/app/actions/admin-settings'
+import { appendIssueTicketMessage, closeIssueTicket } from '@/app/actions/admin-issues'
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
@@ -20,10 +22,23 @@ jest.mock('@/app/actions/admin-settings', () => ({
   updateRulebook: jest.fn(),
 }))
 
+jest.mock('@/app/actions/admin-issues', () => ({
+  appendIssueTicketMessage: jest.fn(),
+  closeIssueTicket: jest.fn(),
+}))
+
+jest.mock('@/components/IssueAttachmentComposer', () => ({
+  IssueAttachmentComposer: ({ onUploaded }: { onUploaded: () => void }) => (
+    <button type="button" onClick={onUploaded}>Adjuntar evidencia</button>
+  ),
+}))
+
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>
 const mockKickPlayer = kickPlayer as jest.MockedFunction<typeof kickPlayer>
 const mockSetGameStatus = setGameStatus as jest.MockedFunction<typeof setGameStatus>
 const mockUpdateRulebook = updateRulebook as jest.MockedFunction<typeof updateRulebook>
+const mockAppendIssueTicketMessage = appendIssueTicketMessage as jest.MockedFunction<typeof appendIssueTicketMessage>
+const mockCloseIssueTicket = closeIssueTicket as jest.MockedFunction<typeof closeIssueTicket>
 
 type Row = { id: string; name: string; amount: number; status: string }
 
@@ -44,6 +59,8 @@ describe('admin controls and data view', () => {
     mockKickPlayer.mockResolvedValue({ success: true })
     mockSetGameStatus.mockResolvedValue({ success: true })
     mockUpdateRulebook.mockResolvedValue({ success: true })
+    mockAppendIssueTicketMessage.mockResolvedValue({ data: { message_id: 'message-1' } })
+    mockCloseIssueTicket.mockResolvedValue({ data: undefined })
   })
 
   it('renderiza tabla, cards mobile, header/footer y clases por fila', () => {
@@ -175,5 +192,42 @@ describe('admin controls and data view', () => {
     fireEvent.click(screen.getByRole('button', { name: /guardar cambios/i }))
 
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Error guardando el reglamento: Markdown invalido'))
+  })
+
+  it('permite responder, cerrar y refrescar una consulta abierta', async () => {
+    render(<IssueAdminActions issueId="issue-1" status="open" />)
+
+    const response = screen.getByLabelText('Responder al jugador')
+    const sendButton = screen.getByRole('button', { name: 'Enviar respuesta' })
+    expect(sendButton).toBeDisabled()
+
+    fireEvent.change(response, { target: { value: 'Revisamos tu caso' } })
+    fireEvent.click(sendButton)
+
+    await waitFor(() => expect(mockAppendIssueTicketMessage).toHaveBeenCalledWith('issue-1', 'Revisamos tu caso'))
+    await waitFor(() => expect(response).toHaveValue(''))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar caso' }))
+    await waitFor(() => expect(mockCloseIssueTicket).toHaveBeenCalledWith('issue-1'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Adjuntar evidencia' }))
+    expect(refresh).toHaveBeenCalledTimes(3)
+  })
+
+  it('muestra errores de acciones de consulta y bloquea los casos finalizados', async () => {
+    mockAppendIssueTicketMessage.mockResolvedValueOnce({ error: 'No fue posible enviar la respuesta' })
+    mockCloseIssueTicket.mockResolvedValueOnce({ error: 'No fue posible cerrar la consulta' })
+    const { rerender } = render(<IssueAdminActions issueId="issue-1" status="investigating" />)
+
+    fireEvent.change(screen.getByLabelText('Responder al jugador'), { target: { value: 'Respuesta' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar respuesta' }))
+    expect(await screen.findByText('No fue posible enviar la respuesta')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar caso' }))
+    expect(await screen.findByText('No fue posible cerrar la consulta')).toBeInTheDocument()
+
+    rerender(<IssueAdminActions issueId="issue-1" status="resolved" />)
+    expect(screen.getByText(/caso finalizado/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Enviar respuesta' })).not.toBeInTheDocument()
   })
 })
