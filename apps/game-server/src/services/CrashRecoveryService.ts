@@ -2,7 +2,12 @@ import { matchMaker } from "colyseus";
 import { createHash, randomUUID } from "node:crypto";
 import { AlertService } from "./AlertService";
 import { isRecoverableGamePhase, stableJson } from "./RecoveryPolicy";
-import { recoveryObserver, type RecoveryObserver } from "./RecoveryObservability";
+import {
+  markRecoveryDegraded,
+  markRecoveryHealthy,
+  recoveryObserver,
+  type RecoveryObserver,
+} from "./RecoveryObservability";
 import {
   SupabaseService,
   type PendingRecoveryCheckpoint,
@@ -14,14 +19,19 @@ import {
 export interface CrashRecoveryDependencies {
   loadPendingRecoveryCheckpoints: () => Promise<PendingRecoveryCheckpoint[]>;
   createRecoveryIncident: (input: RecoveryIncidentInput) => Promise<{ success: boolean; recoveryDeadlineAt?: Date; error?: string }>;
-  claimRecoveryIncident: (input: RecoveryClaimInput) => Promise<{ claimed: boolean; error?: string }>;
+  claimRecoveryIncident: (input: RecoveryClaimInput) => Promise<{ claimed: boolean; fence?: number; error?: string }>;
   saveRecoveredRoomMapping: (input: RecoveredRoomMappingInput) => Promise<{ success: boolean; error?: string }>;
-  createReplacementRoom: (options: { recovery: Record<string, unknown> }) => Promise<{ roomId: string }>;
+  renewRecoveredRoomMappingLease: (input: RecoveredRoomMappingInput) => Promise<{ renewed: boolean; error?: string }>;
+  createReplacementRoom: (options: {
+    recovery: Record<string, unknown>;
+    recoveryContext: { ownerId: string; fence: number };
+  }) => Promise<{ roomId: string }>;
   disposeReplacementRoom: (roomId: string) => Promise<void>;
   deriveRecoveryRefunds: (gameId: string) => Promise<{ success: boolean; refunds?: Array<{ userId: string; amountCents: number }>; error?: string }>;
   expireRecoveryIncidentAndRefund: (input: { gameId: string; refunds: Array<{ userId: string; amountCents: number; operationId: string }> }) => Promise<{ success: boolean; status?: string; error?: string }>;
   markRecoveryIncidentManualReview: (input: { gameId: string; reason: string }) => Promise<{ success: boolean; status?: string; error?: string }>;
   emitRecoveryManualReviewAlert: (input: { gameId?: string; roomId?: string; reason: string }) => Promise<void>;
+  emitRecoveryInfrastructureAlert: (input: { event: "checkpoint_load_failed" | "replacement_retry"; gameId?: string; roomId?: string; reason: string }) => Promise<void>;
   schedule: (callback: () => Promise<void>, delayMs: number) => unknown;
   now: () => Date;
 }
@@ -61,6 +71,10 @@ function hasNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isPositiveSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
 function hasRecoveryIdentifiers(checkpoint: PendingRecoveryCheckpoint): boolean {
   return hasNonEmptyString(checkpoint.gameId) && hasNonEmptyString(checkpoint.roomId);
 }
@@ -83,6 +97,7 @@ const defaultDependencies: CrashRecoveryDependencies = {
   createRecoveryIncident: (input) => SupabaseService.createRecoveryIncident(input),
   claimRecoveryIncident: (input) => SupabaseService.claimRecoveryIncident(input),
   saveRecoveredRoomMapping: (input) => SupabaseService.saveRecoveredRoomMapping(input),
+  renewRecoveredRoomMappingLease: (input) => SupabaseService.renewRecoveredRoomMappingLease(input),
   async createReplacementRoom(options) {
     const reservation = await matchMaker.create("mesa", options);
     return { roomId: reservation.roomId };
@@ -104,6 +119,19 @@ const defaultDependencies: CrashRecoveryDependencies = {
       metadata: { reason: input.reason },
     });
   },
+  emitRecoveryInfrastructureAlert: async (input) => {
+    await AlertService.emitAsync({
+      severity: "critical",
+      category: "recovery_infrastructure",
+      title: input.event === "checkpoint_load_failed"
+        ? "No se pudieron cargar checkpoints de recuperación"
+        : "Reintento de sala de recuperación",
+      message: input.reason,
+      game_id: input.gameId,
+      room_id: input.roomId,
+      metadata: { event: input.event, reason: input.reason },
+    });
+  },
   schedule: (callback, delayMs) => setTimeout(() => { void callback(); }, delayMs),
   now: () => new Date(),
 };
@@ -120,6 +148,9 @@ function stableRecoveryRefundOperationId(gameId: string, userId: string): string
 export class CrashRecoveryService {
   private readonly recoveryOwnerId = randomUUID();
   private readonly replacementRoomIds = new Map<string, string>();
+  private checkpointLoadRetries = 0;
+  private readonly replacementRetries = new Map<string, number>();
+  private readonly leaseRenewalRetries = new Map<string, number>();
 
   constructor(
     private readonly dependencies: CrashRecoveryDependencies = defaultDependencies,
@@ -132,7 +163,22 @@ export class CrashRecoveryService {
 
   async recoverPendingCheckpoints(): Promise<Record<string, string>> {
     const recoveredRooms: Record<string, string> = {};
-    const checkpoints = await this.dependencies.loadPendingRecoveryCheckpoints();
+    let checkpoints: PendingRecoveryCheckpoint[];
+    try {
+      checkpoints = await this.dependencies.loadPendingRecoveryCheckpoints();
+      this.checkpointLoadRetries = 0;
+      markRecoveryHealthy();
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.observer.record({ level: "error", event: "checkpoint_load_failed", errCode: "checkpoint_load_failed" });
+      markRecoveryDegraded("checkpoint_load_failed");
+      await this.dependencies.emitRecoveryInfrastructureAlert({ event: "checkpoint_load_failed", reason });
+      this.dependencies.schedule(
+        () => this.recoverPendingCheckpoints().then(() => undefined),
+        this.retryDelay(this.checkpointLoadRetries++),
+      );
+      return recoveredRooms;
+    }
 
     for (const checkpoint of checkpoints) {
       const context = {
@@ -200,58 +246,159 @@ export class CrashRecoveryService {
       const recovery = await this.scheduleOrExpireRecovery(checkpoint, incident.recoveryDeadlineAt);
       if (!recovery) continue;
 
-      const claim = await this.dependencies.claimRecoveryIncident({
-        gameId: checkpoint.gameId,
-        ownerId: this.recoveryOwnerId,
-      });
-      if (!claim.claimed) continue;
-
-      let replacement: { roomId: string } | undefined;
-      const disposeReplacement = async (): Promise<void> => {
-        if (!replacement) return;
-        const roomId = replacement.roomId;
-        replacement = undefined;
-        this.replacementRoomIds.delete(checkpoint.gameId);
-        await this.dependencies.disposeReplacementRoom(roomId);
-      };
-      try {
-        replacement = await this.dependencies.createReplacementRoom({
-          recovery: recovery.privateState as Record<string, unknown>,
-        });
-        this.replacementRoomIds.set(checkpoint.gameId, replacement.roomId);
-        this.observer.record({
-          level: "info",
-          event: "replacement_created",
-          ...context,
-        });
-        const mapping = await this.dependencies.saveRecoveredRoomMapping({
-          gameId: checkpoint.gameId,
-          originalRoomId: checkpoint.roomId,
-          recoveredRoomId: replacement.roomId,
-          ownerId: this.recoveryOwnerId,
-        });
-        if (mapping.success) {
-          recoveredRooms[checkpoint.roomId] = replacement.roomId;
-          this.observer.record({
-            level: "info",
-            event: "roster_completed",
-            ...context,
-          });
-        } else {
-          await disposeReplacement();
-        }
-      } catch (error) {
-        await disposeReplacement();
-        this.observer.record({
-          level: "error",
-          event: "manual_review",
-          ...context,
-          errCode: "replacement_creation_failed",
-        });
-      }
+      const recoveredRoomId = await this.createReplacement(recovery);
+      if (recoveredRoomId) recoveredRooms[checkpoint.roomId] = recoveredRoomId;
     }
 
     return recoveredRooms;
+  }
+
+  private async createReplacement(
+    checkpoint: PendingRecoveryCheckpoint & { recoveryDeadlineAt: Date },
+  ): Promise<string | undefined> {
+    if (checkpoint.recoveryDeadlineAt.getTime() <= this.dependencies.now().getTime()) {
+      await this.expireRecovery(checkpoint);
+      return undefined;
+    }
+
+    const context = {
+      roomId: checkpoint.roomId,
+      gameId: checkpoint.gameId,
+      phase: checkpointPhase(checkpoint),
+    };
+    const claim = await this.dependencies.claimRecoveryIncident({
+      gameId: checkpoint.gameId,
+      ownerId: this.recoveryOwnerId,
+    });
+    const fence = claim.fence;
+    if (!claim.claimed || !isPositiveSafeInteger(fence)) {
+      await this.scheduleReplacementRetry(checkpoint);
+      return undefined;
+    }
+
+    let replacement: { roomId: string } | undefined;
+    const disposeReplacement = async (): Promise<void> => {
+      if (!replacement) return;
+      const roomId = replacement.roomId;
+      replacement = undefined;
+      this.replacementRoomIds.delete(checkpoint.gameId);
+      await this.dependencies.disposeReplacementRoom(roomId);
+    };
+
+    try {
+      replacement = await this.dependencies.createReplacementRoom({
+        recovery: checkpoint.privateState as Record<string, unknown>,
+        recoveryContext: { ownerId: this.recoveryOwnerId, fence },
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.observer.record({ level: "warn", event: "replacement_retry", ...context, errCode: "replacement_creation_failed" });
+      await this.dependencies.emitRecoveryInfrastructureAlert({
+        event: "replacement_retry",
+        gameId: checkpoint.gameId,
+        roomId: checkpoint.roomId,
+        reason,
+      });
+      await this.scheduleReplacementRetry(checkpoint);
+      return undefined;
+    }
+
+    this.replacementRoomIds.set(checkpoint.gameId, replacement.roomId);
+    this.observer.record({ level: "info", event: "replacement_created", ...context });
+    const mapping = await this.dependencies.saveRecoveredRoomMapping({
+      gameId: checkpoint.gameId,
+      originalRoomId: checkpoint.roomId,
+      recoveredRoomId: replacement.roomId,
+      ownerId: this.recoveryOwnerId,
+      fence,
+    });
+    if (!mapping.success) {
+      await disposeReplacement();
+      this.observer.record({ level: "warn", event: "replacement_retry", ...context, errCode: "mapping_fenced_failed" });
+      await this.dependencies.emitRecoveryInfrastructureAlert({
+        event: "replacement_retry",
+        gameId: checkpoint.gameId,
+        roomId: checkpoint.roomId,
+        reason: mapping.error ?? "No se pudo persistir el mapping fenced de la sala recuperada",
+      });
+      await this.scheduleReplacementRetry(checkpoint);
+      return undefined;
+    }
+
+    this.replacementRetries.delete(checkpoint.gameId);
+    this.renewRecoveredRoomMappingLease({
+      gameId: checkpoint.gameId,
+      originalRoomId: checkpoint.roomId,
+      recoveredRoomId: replacement.roomId,
+      ownerId: this.recoveryOwnerId,
+      fence,
+    }, checkpoint);
+    this.observer.record({ level: "info", event: "replacement_published", ...context });
+    return replacement.roomId;
+  }
+
+  private retryDelay(attempt: number): number {
+    return Math.min(1_000 * 2 ** attempt, 30_000);
+  }
+
+  private async scheduleReplacementRetry(
+    checkpoint: PendingRecoveryCheckpoint & { recoveryDeadlineAt: Date },
+  ): Promise<void> {
+    const remainingMs = checkpoint.recoveryDeadlineAt.getTime() - this.dependencies.now().getTime();
+    if (remainingMs <= 0) {
+      await this.expireRecovery(checkpoint);
+      return;
+    }
+    const attempt = this.replacementRetries.get(checkpoint.gameId) ?? 0;
+    this.dependencies.schedule(
+      () => this.createReplacement(checkpoint).then(() => undefined),
+      Math.min(this.retryDelay(attempt), remainingMs),
+    );
+    this.replacementRetries.set(checkpoint.gameId, attempt + 1);
+  }
+
+  private renewRecoveredRoomMappingLease(
+    mapping: RecoveredRoomMappingInput,
+    checkpoint: PendingRecoveryCheckpoint,
+    delayMs = 10_000,
+  ): void {
+    this.dependencies.schedule(async () => {
+      try {
+        const renewal = await this.dependencies.renewRecoveredRoomMappingLease(mapping);
+        if (renewal.renewed) {
+          this.leaseRenewalRetries.delete(mapping.gameId);
+          this.renewRecoveredRoomMappingLease(mapping, checkpoint);
+          return;
+        }
+        await this.retryLeaseRenewal(mapping, checkpoint, renewal.error ?? "lease no renovado");
+      } catch (error) {
+        await this.retryLeaseRenewal(
+          mapping,
+          checkpoint,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }, delayMs);
+  }
+
+  private async retryLeaseRenewal(
+    mapping: RecoveredRoomMappingInput,
+    checkpoint: PendingRecoveryCheckpoint,
+    reason: string,
+  ): Promise<void> {
+    const attempts = this.leaseRenewalRetries.get(mapping.gameId) ?? 0;
+    if (attempts >= 3) {
+      const manualReviewReason = `No se pudo renovar el lease de la sala recuperada: ${reason}`;
+      this.leaseRenewalRetries.delete(mapping.gameId);
+      const result = await this.markManualReview(checkpoint, manualReviewReason);
+      if (result.status === "manual_review" || result.success) {
+        await this.disposeReplacementRoom(mapping.gameId);
+      }
+      return;
+    }
+
+    this.leaseRenewalRetries.set(mapping.gameId, attempts + 1);
+    this.renewRecoveredRoomMappingLease(mapping, checkpoint, this.retryDelay(attempts));
   }
 
   private scheduleExpiration(checkpoint: PendingRecoveryCheckpoint & { recoveryDeadlineAt: Date }): void {

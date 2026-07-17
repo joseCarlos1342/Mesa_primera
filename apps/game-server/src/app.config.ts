@@ -8,7 +8,7 @@ import { ReplayFileService } from "./services/ReplayFileService";
 import { emitBroadcastToClients } from "./services/socket";
 import { isDraining } from "./runtime-state";
 import { isInternalRequest } from "./services/internal-api";
-import { recoveryMetrics } from "./services/RecoveryObservability";
+import { getRecoveryHealth, recoveryMetrics } from "./services/RecoveryObservability";
 
 export default defineServer({
     transport: new WebSocketTransport({
@@ -61,7 +61,10 @@ export default defineServer({
                 activeRooms,
                 activePlayers,
                 activeGames,
-                recovery: recoveryMetrics.snapshot(),
+                recovery: {
+                    ...getRecoveryHealth(),
+                    metrics: recoveryMetrics.snapshot(),
+                },
             });
         });
 

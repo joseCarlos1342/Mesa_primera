@@ -1,6 +1,9 @@
 export type RecoveryEvent =
   | "recovery_detected"
+  | "checkpoint_load_failed"
   | "replacement_created"
+  | "replacement_published"
+  | "replacement_retry"
   | "roster_completed"
   | "deadline_expired"
   | "manual_review"
@@ -26,7 +29,10 @@ export interface RecoveryMetrics {
 
 const recoveryEvents: RecoveryEvent[] = [
   "recovery_detected",
+  "checkpoint_load_failed",
   "replacement_created",
+  "replacement_published",
+  "replacement_retry",
   "roster_completed",
   "deadline_expired",
   "manual_review",
@@ -91,3 +97,26 @@ export function createRecoveryObserver(options: {
 
 export const recoveryMetrics = createRecoveryMetrics();
 export const recoveryObserver = createRecoveryObserver({ metrics: recoveryMetrics });
+
+export interface RecoveryHealth {
+  status: "ok" | "degraded";
+  reason?: "checkpoint_load_failed";
+}
+
+let recoveryHealth: RecoveryHealth = { status: "ok" };
+
+export function markRecoveryDegraded(reason: "checkpoint_load_failed"): void {
+  recoveryHealth = { status: "degraded", reason };
+}
+
+export function markRecoveryHealthy(): void {
+  recoveryHealth = { status: "ok" };
+}
+
+export function getRecoveryHealth(): RecoveryHealth {
+  return { ...recoveryHealth };
+}
+
+export function resetRecoveryHealth(): void {
+  markRecoveryHealthy();
+}

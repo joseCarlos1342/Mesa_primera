@@ -49,11 +49,19 @@ export interface RecoveredRoomMappingInput {
   originalRoomId: string;
   recoveredRoomId: string;
   ownerId: string;
+  fence: number;
 }
 
 export interface RecoveryClaimInput {
   gameId: string;
   ownerId: string;
+}
+
+export interface RecoveryResolutionInput {
+  gameId: string;
+  recoveredRoomId: string;
+  ownerId: string;
+  fence: number;
 }
 
 export interface RecoveryIncidentInput {
@@ -141,7 +149,7 @@ export class SupabaseService {
       }));
     } catch (error) {
       console.error("[SupabaseService] Error loading recovery checkpoints:", error);
-      return [];
+      throw error;
     }
   }
 
@@ -156,6 +164,7 @@ export class SupabaseService {
         p_original_room_id: input.originalRoomId,
         p_recovered_room_id: input.recoveredRoomId,
         p_owner_id: input.ownerId,
+        p_claim_fence: input.fence,
       });
       if (error) throw error;
       if (data?.error) return { success: false, error: String(data.error) };
@@ -168,7 +177,7 @@ export class SupabaseService {
 
   static async claimRecoveryIncident(
     input: RecoveryClaimInput,
-  ): Promise<{ claimed: boolean; error?: string }> {
+  ): Promise<{ claimed: boolean; fence?: number; error?: string }> {
     if (!supabaseKey) return { claimed: true };
 
     try {
@@ -178,10 +187,34 @@ export class SupabaseService {
       });
       if (error) throw error;
       if (data?.error) return { claimed: false, error: String(data.error) };
-      return { claimed: data?.claimed === true };
+      return {
+        claimed: data?.claimed === true,
+        fence: typeof data?.fence === "number" ? data.fence : undefined,
+      };
     } catch (error) {
       console.error("[SupabaseService] Error claiming recovery incident:", error);
       return { claimed: false, error: String(error) };
+    }
+  }
+
+  static async renewRecoveredRoomMappingLease(
+    input: RecoveredRoomMappingInput,
+  ): Promise<{ renewed: boolean; error?: string }> {
+    if (!supabaseKey) return { renewed: true };
+
+    try {
+      const { data, error } = await supabase.rpc("renew_game_recovery_room_mapping_lease", {
+        p_game_id: input.gameId,
+        p_recovered_room_id: input.recoveredRoomId,
+        p_owner_id: input.ownerId,
+        p_claim_fence: input.fence,
+      });
+      if (error) throw error;
+      if (data?.error) return { renewed: false, error: String(data.error) };
+      return { renewed: data?.renewed === true };
+    } catch (error) {
+      console.error("[SupabaseService] Error renewing recovered room mapping lease:", error);
+      return { renewed: false, error: String(error) };
     }
   }
 
@@ -273,12 +306,15 @@ export class SupabaseService {
     }
   }
 
-  static async resolveRecoveryIncident(gameId: string): Promise<{ success: boolean; updated: boolean; error?: string }> {
+  static async resolveRecoveryIncident(input: RecoveryResolutionInput): Promise<{ success: boolean; updated: boolean; error?: string }> {
     if (!supabaseKey) return { success: false, updated: false, error: "Supabase service_role no configurado" };
 
     try {
       const { data, error } = await supabase.rpc("resolve_game_recovery_incident", {
-        p_game_id: gameId,
+        p_game_id: input.gameId,
+        p_recovered_room_id: input.recoveredRoomId,
+        p_owner_id: input.ownerId,
+        p_claim_fence: input.fence,
       });
       if (error) throw error;
       if (data?.error) return { success: false, updated: false, error: String(data.error) };

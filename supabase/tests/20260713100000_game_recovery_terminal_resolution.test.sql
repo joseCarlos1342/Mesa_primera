@@ -44,7 +44,7 @@ SELECT is(
 );
 
 SELECT is(
-  public.resolve_game_recovery_incident('00000000-0000-0000-0000-000000001004')->>'updated',
+  public.resolve_game_recovery_incident('00000000-0000-0000-0000-000000001004', 'terminal-recovery-room', '00000000-0000-0000-0000-000000001014', 1)->>'updated',
   'false',
   'Resolver un incidente ya terminal informa que no lo actualizó'
 );
@@ -56,7 +56,7 @@ SELECT is(
 );
 
 SELECT is(
-  public.resolve_game_recovery_incident('00000000-0000-0000-0000-000000001005')->>'updated',
+  public.resolve_game_recovery_incident('00000000-0000-0000-0000-000000001005', 'expired-recovery-room', '00000000-0000-0000-0000-000000001015', 1)->>'updated',
   'false',
   'Un rejoin después del deadline no reanuda el incidente'
 );

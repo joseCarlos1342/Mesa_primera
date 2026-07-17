@@ -51,6 +51,12 @@ describe("SupabaseService recovery queries", () => {
     expect(mockRpc).toHaveBeenCalledWith("load_pending_game_recovery_checkpoints_v2");
   });
 
+  it("propaga el fallo de la RPC para no confundirlo con una lista vacía", async () => {
+    mockRpc.mockResolvedValue({ data: null, error: new Error("database unavailable") });
+
+    await expect(SupabaseService.loadPendingRecoveryCheckpoints()).rejects.toThrow("database unavailable");
+  });
+
   it("guarda la sala recuperada en el incidente", async () => {
     mockRpc.mockResolvedValue({ data: { success: true }, error: null });
 
@@ -59,22 +65,24 @@ describe("SupabaseService recovery queries", () => {
       originalRoomId: "room-1",
       recoveredRoomId: "room-recovered-1",
       ownerId: "a66cbb59-c03c-4db5-83f4-6517e9018e8f",
+      fence: 1,
     })).resolves.toEqual({ success: true });
     expect(mockRpc).toHaveBeenCalledWith("save_game_recovery_room_mapping", {
       p_game_id: "game-1",
       p_original_room_id: "room-1",
       p_recovered_room_id: "room-recovered-1",
       p_owner_id: "a66cbb59-c03c-4db5-83f4-6517e9018e8f",
+      p_claim_fence: 1,
     });
   });
 
   it("reclama un incidente pendiente con un owner de proceso", async () => {
-    mockRpc.mockResolvedValue({ data: { claimed: true }, error: null });
+    mockRpc.mockResolvedValue({ data: { claimed: true, fence: 1 }, error: null });
 
     await expect(SupabaseService.claimRecoveryIncident({
       gameId: "game-1",
       ownerId: "a66cbb59-c03c-4db5-83f4-6517e9018e8f",
-    })).resolves.toEqual({ claimed: true });
+    })).resolves.toEqual({ claimed: true, fence: 1 });
     expect(mockRpc).toHaveBeenCalledWith("claim_game_recovery_incident", {
       p_game_id: "game-1",
       p_owner_id: "a66cbb59-c03c-4db5-83f4-6517e9018e8f",
@@ -122,15 +130,23 @@ describe("SupabaseService recovery queries", () => {
     });
   });
 
-  it("solo considera resuelta una recuperación si la RPC actualiza el incidente pending", async () => {
+  it("solo considera resuelta una recuperación si la RPC fenced actualiza el incidente pending", async () => {
     mockRpc.mockResolvedValue({ data: { success: true, updated: false }, error: null });
 
-    await expect(SupabaseService.resolveRecoveryIncident("game-1")).resolves.toEqual({
+    await expect(SupabaseService.resolveRecoveryIncident({
+      gameId: "game-1",
+      recoveredRoomId: "recovered-room-1",
+      ownerId: "a66cbb59-c03c-4db5-83f4-6517e9018e8f",
+      fence: 4,
+    })).resolves.toEqual({
       success: true,
       updated: false,
     });
     expect(mockRpc).toHaveBeenCalledWith("resolve_game_recovery_incident", {
       p_game_id: "game-1",
+      p_recovered_room_id: "recovered-room-1",
+      p_owner_id: "a66cbb59-c03c-4db5-83f4-6517e9018e8f",
+      p_claim_fence: 4,
     });
   });
 });

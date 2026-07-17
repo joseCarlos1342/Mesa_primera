@@ -286,7 +286,8 @@ export default function GameRoomPage() {
         }
 
         if (!joinedRoom) {
-          const recovered = nativeReconnectFailed ? await resolveRecoveredRoom(roomId) : null
+          let recovered = nativeReconnectFailed ? await resolveRecoveredRoom(roomId) : null
+          const recoveryLookupDone = nativeReconnectFailed
           if (recovered?.status === 'recovery_pending' && new Date(recovered.deadline).getTime() <= Date.now()) {
             setRecovery(recovered)
             setIsReconnecting(true)
@@ -354,14 +355,33 @@ export default function GameRoomPage() {
           const chips = parseInt(sessionStorage.getItem(`chips_${roomId}`) || "1000");
 
           const { data: { session } } = await supabase.auth.getSession()
-          joinedRoom = await client.joinById(recovered?.recoveredRoomId ?? roomId, {
+          const joinOptions = {
             nickname: nick,
             deviceId: deviceId,
             avatarUrl: avatarUrl,
             chips: chips,
             userId: sbUser?.id || null,
             accessToken: session?.access_token || null,
-          })
+          }
+
+          try {
+            joinedRoom = await client.joinById(recovered?.recoveredRoomId ?? roomId, joinOptions)
+          } catch (originalJoinError) {
+            if (recovered || recoveryLookupDone) throw originalJoinError
+
+            recovered = await resolveRecoveredRoom(roomId)
+            if (!recovered) throw originalJoinError
+
+            if (recovered.status === 'recovery_pending' && new Date(recovered.deadline).getTime() <= Date.now()) {
+              setRecovery(recovered)
+              setIsReconnecting(true)
+              return
+            }
+
+            setRecovery(recovered)
+            setIsReconnecting(true)
+            joinedRoom = await client.joinById(recovered.recoveredRoomId, joinOptions)
+          }
 
           // Guardar el token para permitir reconexiones si se recarga la página (F5)
           sessionStorage.setItem(tokenKey, joinedRoom.reconnectionToken);
