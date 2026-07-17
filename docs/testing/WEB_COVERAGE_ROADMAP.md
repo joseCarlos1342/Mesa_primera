@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.30%` |
-| Lines | `99.30%` |
-| Functions | `96.65%` |
-| Branches | `90.50%` |
+| Statements | `99.44%` |
+| Lines | `99.44%` |
+| Functions | `97.18%` |
+| Branches | `90.43%` |
 
 Resultado de la corrida:
 
 - `213` suites en verde.
-- `1824` tests pasando.
+- `1830` tests pasando.
 - La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-16 (`/home/jose/.local/share/opencode/tool-output/tool_f6da87fbe001JK0Ll6hN1Uxs5Z`).
 
@@ -2844,6 +2844,17 @@ Ese lote combina:
 - Tests agregados: estado vacío, chat, eliminación, invitación y apodo exitosos/fallidos, cancelación de edición, avatar y estados online/offline/en partida.
 - Riesgos cerrados: FriendsList llega a `100%` statements/functions/lines y `97.14%` branches focalizados, protegiendo la interfaz social ante fallos de acciones.
 - Resultado de verificacion: suite focalizada verde con `5` tests; `pnpm --filter web test:coverage` verde con `203` suites y `1768` tests.
+
+## Checkpoint 140
+
+- Fecha: 2026-07-16, acciones de consultas y adjuntos.
+- Coverage antes: `99.30%` statements/lines, `96.65%` functions, `90.50%` branches; `213` suites y `1824` tests.
+- Coverage despues: `99.44%` statements/lines, `97.18%` functions, `90.43%` branches; `213` suites y `1830` tests.
+- Archivo cubierto: `app/actions/admin-issues.ts` mediante `admin-issues.test.ts`.
+- Tests agregados: errores seguros de archivos y conteos admin; lectura de detalle, mensajes y adjuntos; validación de respuesta, cierre y subida exitosa de evidencia.
+- Riesgos cerrados: la acción cubre ahora sus caminos operativos de lectura/escritura sin filtrar errores internos ni confiar en roles de cliente.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde; `admin-issues.ts` queda en `100%` statements/lines/functions y `52%` branches.
+- Siguiente lote recomendado: `SupportChat.tsx` por sus callbacks aún sin ejecutar, priorizando eventos socket y fallos visibles de adjuntos.
 
 ## Checkpoint 139
 
