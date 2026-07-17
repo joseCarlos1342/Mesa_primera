@@ -45,8 +45,8 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.67%` statements, `92.76%` branches, `97.92%` functions, `99.67%` lines con `203` suites y `1768` tests pasando (`2026-07-09`).
-- Medicion game-server vigente: `95.38%` statements, `86.11%` branches, `97.76%` functions, `96.55%` lines con `27` suites y `769` tests pasando (`2026-07-09`).
+- Medicion web vigente: `99.30%` statements, `90.50%` branches, `96.65%` functions, `99.30%` lines con `213` suites y `1824` tests pasando (`2026-07-16`).
+- Medicion game-server vigente: `93.41%` statements, `85.03%` branches, `94.78%` functions, `95.17%` lines con `34` suites y `831` tests pasando (`2026-07-16`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
 - Frentes flojos actuales de game-server: `MesaRoom.ts` por volumen de reglas, `SupabaseService.ts` en catch/fail-open residuales y ramas defensivas de comandos.
@@ -87,6 +87,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de AdminStatusCard y CleanupStaleGamesButton UI (2026-07-08): 2 tests web adicionales cubren render sin `detail` y cancelación de confirmación, dejando ambos componentes en `100%` focalizado.
 - Hardening de DeleteTableButton y PlayerControls UI (2026-07-08): 2 tests web adicionales cubren cancelación de confirmación en eliminación de mesa y expulsión de jugador, dejando ambos componentes en `100%` focalizado.
 - Hardening de AdminAuditPage (2026-07-09): 2 tests web adicionales cubren fallbacks de actor/admin/detalles nulos y error de carga no estándar, dejando `app/(admin)/admin/audit/page.tsx` en `100%` focalizado.
+- Hardening de recuperación y acciones de consultas (2026-07-16): las pruebas de `app/play/[id]` validan el fallback al room mapeado cuando falla el join inicial, tanto para recuperación reanudada como pendiente no vencida; la fecha del caso pendiente se deriva de `Date.now()` para evitar falsos rojos por calendario. `IssueAdminActions` cubre respuesta, cierre, errores y actualización tras adjuntar evidencia, quedando en `100%` focalizado. En el servidor, los mensajes que mutan una mano quedan bloqueados hasta que regrese todo el roster y la telemetría distingue la publicación del replacement de la completitud real del roster.
 
 ## Roadmap de Cobertura Web
 
