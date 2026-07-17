@@ -22,6 +22,11 @@ describe('DisputesListPage', () => {
           description: 'Jugador reporta doble cargo.',
           status: 'open',
           priority: 'critical',
+          investigation_type: 'collusion',
+          source: 'manual',
+          subject_user_ids: [],
+          game_id: null,
+          room_id: null,
           opened_by: 'admin-1',
           support_ticket_id: 'ticket-1',
           assigned_to: 'admin-1',
@@ -38,6 +43,11 @@ describe('DisputesListPage', () => {
           description: 'No aplica.',
           status: 'unknown' as never,
           priority: 'unknown' as never,
+          investigation_type: 'game_integrity',
+          source: 'manual',
+          subject_user_ids: [],
+          game_id: null,
+          room_id: null,
           opened_by: 'admin-1',
           support_ticket_id: null,
           assigned_to: null,
@@ -53,9 +63,10 @@ describe('DisputesListPage', () => {
 
     render(await DisputesListPage())
 
-    expect(screen.getByRole('heading', { name: 'Disputas' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Investigaciones internas' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /consultas/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /nueva disputa/i })).toHaveAttribute('href', '/admin/disputes/new')
+    expect(screen.getByRole('link', { name: /nueva investigación/i })).toHaveAttribute('href', '/admin/disputes/new')
+    expect(screen.getByText('collusion')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open critical .*cobro duplicado/i })).toHaveAttribute('href', '/admin/disputes/dispute-1')
     expect(screen.getByText('Asignado')).toBeInTheDocument()
     expect(screen.getAllByText('unknown')).toHaveLength(2)
@@ -66,7 +77,7 @@ describe('DisputesListPage', () => {
 
     render(await DisputesListPage())
 
-    expect(screen.getByText('No hay disputas registradas.')).toBeInTheDocument()
+    expect(screen.getByText('No hay investigaciones registradas.')).toBeInTheDocument()
   })
 
   it('muestra error de carga', async () => {
@@ -74,7 +85,23 @@ describe('DisputesListPage', () => {
 
     render(await DisputesListPage())
 
-    expect(screen.getByRole('heading', { name: 'Disputas' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Investigaciones internas' })).toBeInTheDocument()
     expect(screen.getByText('No autorizado')).toBeInTheDocument()
+  })
+
+  it('expone filtros operativos y los aplica al listado', async () => {
+    mockListDisputes.mockResolvedValue({ data: [] })
+
+    render(await DisputesListPage({
+      searchParams: Promise.resolve({ status: 'investigating', priority: 'high', type: 'collusion' }),
+    }))
+
+    expect(mockListDisputes).toHaveBeenCalledWith({
+      status: 'investigating',
+      priority: 'high',
+      investigationType: 'collusion',
+    })
+    expect(screen.getByLabelText('Estado')).toHaveValue('investigating')
+    expect(screen.getByLabelText('Tipo')).toHaveValue('collusion')
   })
 })

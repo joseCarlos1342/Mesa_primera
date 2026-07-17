@@ -465,7 +465,7 @@ export default async function AdminPage() {
               <Scale className="w-6 h-6 text-pink-400" />
             </div>
             <div>
-              <h3 className="text-xl font-black tracking-tight text-white">Disputas</h3>
+              <h3 className="text-xl font-black tracking-tight text-white">Investigaciones</h3>
             </div>
           </div>
           <div className="relative z-10">

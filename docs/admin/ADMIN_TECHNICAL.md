@@ -40,7 +40,10 @@ apps/web/src/
 │   │       ├── withdrawals/page.tsx        ← /admin/withdrawals
 │   │       ├── ganancias/page.tsx          ← /admin/ganancias
 │   │       ├── consultas/page.tsx          ← /admin/consultas
-│   │       ├── disputes/page.tsx           ← /admin/disputes
+│   │       ├── disputes/
+│   │       │   ├── page.tsx                ← /admin/disputes (URL legacy, Investigaciones internas)
+│   │       │   ├── new/page.tsx            ← Creación manual o desde búsqueda
+│   │       │   └── [id]/page.tsx           ← Expediente y acciones
 │   │       ├── audit/page.tsx              ← /admin/audit
 │   │       ├── broadcast/
 │   │       │   ├── page.tsx                ← /admin/broadcast
@@ -259,9 +262,11 @@ const VALID_CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as
 
 | Tipo | Tablas buscadas |
 |---|---|
-| `uuid` | `ledger`, `deposit_requests`, `withdrawal_requests`, `game_replays`, `support_tickets`, `server_alerts` |
+| `uuid` | `ledger`, `deposit_requests`, `withdrawal_requests`, `game_replays`, reclamos, `server_alerts` |
 | `seed` | `game_replays` (campo `rng_seed`) |
-| `username` | `profiles`, tickets y alertas del perfil; disputas vinculadas a esos tickets |
+| `username` | `profiles`, reclamos y alertas del perfil; investigaciones relacionadas |
+
+`/admin/consultas` también contiene la bandeja de reclamos de jugadores. Esos reclamos no son investigaciones internas: el enlace de escalamiento abre `/admin/disputes/new?q=...`, y el servidor vuelve a ejecutar `globalSearch` para construir la evidencia.
 
 ---
 
@@ -269,11 +274,16 @@ const VALID_CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as
 
 | Función exportada | Parámetros | Retorno | Descripción |
 |---|---|---|---|
-| `createDispute(input)` | `{ title, description, priority, evidence_snapshot, support_ticket_id? }` | `Promise<ActionResult<{ id: string }>>` | Inserta en `admin_dispute_cases`; registra en auditoría |
-| `assignDispute(disputeId, assignToAdminId)` | `string`, `string` | `Promise<ActionResult<...>>` | Cambia estado a `investigating` y asigna admin responsable |
-| `resolveDispute(disputeId, resolutionNotes)` | `string`, `string` | `Promise<ActionResult<...>>` | Cierra el caso con notas obligatorias; registra `resolved_by` y `resolved_at` |
-| `dismissDispute(disputeId, reason)` | `string`, `string` | `Promise<ActionResult<...>>` | Desestima el caso con motivo |
-| `listDisputes(filters?)` | `DisputeFilters?` | `Promise<AdminDisputeCase[]>` | Lista todos los casos con filtros opcionales por estado y prioridad |
+| `createDispute(input)` | título, descripción, tipo, prioridad, fuente, sujetos y referencias opcionales | `Promise<ActionResult<{ id: string }>>` | Crea la investigación mediante `create_admin_investigation`; si recibe `source_query`, resuelve la evidencia de nuevo en el servidor y la base de datos la normaliza |
+| `startDispute(disputeId)` | `string` | `Promise<ActionResult<...>>` | Ejecuta `start_admin_investigation`; toma el admin desde `auth.uid()`, lo asigna y cambia `open` a `investigating` |
+| `resolveDispute(disputeId, resolution)` | `string`, `{ outcome, notes }` | `Promise<ActionResult<...>>` | Cierra desde `investigating` con `no_action`, `warning` o `sanction` |
+| `proposeDisputeCompensation(disputeId, input)` | `string`, `{ userId, amountCents, reason }` | `Promise<ActionResult<...>>` | Registra una compensación propuesta sin tocar el ledger |
+| `cancelDisputeCompensation(disputeId, reason)` | `string`, `string` | `Promise<ActionResult<...>>` | Cancela una propuesta pendiente, conserva un evento auditado y permite proponer una corrección |
+| `approveDisputeCompensation(disputeId)` | `string` | `Promise<ActionResult<...>>` | Confirma la compensación, acredita el ledger de forma atómica/idempotente y resuelve con `compensation` |
+| `dismissDispute(disputeId, reason)` | `string`, `string` | `Promise<ActionResult<...>>` | Cambia `investigating` a `dismissed` con resultado `no_action` |
+| `listDisputes(filters?)` | estado, prioridad, tipo y límite opcionales | `Promise<ActionResult<AdminDisputeCase[]>>` | Filtra por `status`, `priority` e `investigation_type` |
+
+La evidencia que llega desde una búsqueda no se acepta desde el cliente: `createDispute` conserva la consulta e invoca `globalSearch` en el servidor. Después, `create_admin_investigation` verifica en la base de datos la existencia de cada entidad, exige estado `finished` para toda referencia asociada a una partida y reconstruye etiquetas normalizadas. Si una alerta aporta `room_id` sin `game_id`, debe existir un replay que demuestre una partida histórica terminada; de lo contrario, se rechaza. El trigger impide modificar después la clasificación, los sujetos y la evidencia.
 
 ---
 
@@ -409,6 +419,24 @@ process_admin_transaction(
 ```
 
 El RPC detecta automáticamente si el `p_request_id` corresponde a un depósito o a un retiro, y llama a `process_ledger_entry` internamente con el `type` y `direction` correctos.
+
+---
+
+### RPCs de investigaciones internas
+
+| RPC | Garantía principal |
+|---|---|
+| `create_admin_investigation` | Crea el expediente y su evento `opened`; rechaza partidas no terminadas |
+| `start_admin_investigation` | Transición única `open` → `investigating`; asigna `auth.uid()` sin UUID aportado por el cliente |
+| `resolve_admin_investigation` | Transición `investigating` → `resolved` con `no_action`, `warning` o `sanction` |
+| `dismiss_admin_investigation` | Transición `investigating` → `dismissed` con justificación |
+| `propose_admin_investigation_compensation` | Guarda propuesta, beneficiario vinculado, monto, motivo y `operation_id`; no acredita saldo |
+| `cancel_admin_investigation_compensation` | Cancela una propuesta pendiente con motivo, registra `compensation_cancelled` y libera el expediente para una propuesta corregida |
+| `approve_admin_investigation_compensation` | Bajo bloqueo del expediente, valida íntegramente el movimiento idempotente si ya existe o llama a `process_ledger_entry`; acredita una sola vez y resuelve con `compensation` |
+
+La idempotencia financiera se apoya en `compensation_operation_id` y en un índice único sobre el `operation_id` guardado en el metadata del ledger. Si encuentra un movimiento previo, la aprobación compara beneficiario, monto, dirección `credit`, tipo `adjustment`, referencia de investigación, `game_id`, estado `completed` y metadata de clase, operación e investigación. Cualquier diferencia aborta el flujo. La aprobación, el enlace al movimiento y el cierre se realizan en la misma RPC.
+
+En la etapa de un solo admin, propuesta y confirmación no implementan separación de funciones: son dos pasos explícitos para revisar datos antes de una mutación financiera irreversible.
 
 ---
 
@@ -561,15 +589,23 @@ interface AdminDisputeCase {
   id: string
   status: DisputeStatus          // 'open' | 'investigating' | 'resolved' | 'dismissed'
   priority: DisputePriority      // 'low' | 'medium' | 'high' | 'critical'
+  investigation_type: InvestigationType // integridad, colusión, fraude, abuso de bonos o conducta
+  source: InvestigationSource    // 'manual' | 'global_search' | 'server_alert' | 'replay'
   title: string
   description: string
   opened_by: string
   assigned_to: string | null
-  support_ticket_id: string | null
+  support_ticket_id: string | null // referencia legacy; no define el flujo actual
+  subject_user_ids: string[]
+  game_id: string | null          // solo partidas finished
+  room_id: string | null
   evidence_snapshot: EvidenceLink[]
   resolution_notes: string | null
   resolved_at: string | null
   resolved_by: string | null
+  resolution_outcome: InvestigationOutcome | null // no_action | warning | sanction | compensation
+  compensation_status: 'proposed' | 'approved' | null
+  compensation_ledger_id: string | null
   created_at: string
   updated_at: string
 }
@@ -734,8 +770,12 @@ Mapa completo de facultades administrativas a sus fuentes técnicas:
 | Rechazar retiro | `processTransaction('failed')` | `process_admin_transaction` | `withdrawal_requests` | `transaction_rejected` |
 | Ver rake | `getAdminRakeData` | — | `ledger` | — |
 | Búsqueda global | `globalSearch` | — | `ledger`, `deposit_requests`, `withdrawal_requests`, `game_replays`, `support_tickets`, `server_alerts`, `profiles`, `admin_dispute_cases` | — |
-| Crear disputa | `createDispute` | — | `admin_dispute_cases` | `dispute_created` |
-| Resolver disputa | `resolveDispute` | — | `admin_dispute_cases` | `dispute_resolved` |
+| Crear investigación | `createDispute` | `create_admin_investigation` | `admin_dispute_cases`, `admin_dispute_case_events` | `dispute_created` |
+| Iniciar investigación | `startDispute` | `start_admin_investigation` | `admin_dispute_cases`, `admin_dispute_case_events` | `dispute_started` |
+| Resolver investigación | `resolveDispute` | `resolve_admin_investigation` | `admin_dispute_cases`, `admin_dispute_case_events` | `dispute_resolved` |
+| Proponer compensación | `proposeDisputeCompensation` | `propose_admin_investigation_compensation` | `admin_dispute_cases`, `admin_dispute_case_events` | `dispute_compensation_proposed` |
+| Cancelar propuesta | `cancelDisputeCompensation` | `cancel_admin_investigation_compensation` | `admin_dispute_cases`, `admin_dispute_case_events` | `dispute_compensation_cancelled` |
+| Confirmar compensación | `approveDisputeCompensation` | `approve_admin_investigation_compensation` | `admin_dispute_cases`, `admin_dispute_case_events`, `ledger`, `wallets` | `dispute_compensation_approved` |
 | Leer auditoría | `getAuditLog` | — | `admin_audit_log` | — |
 | Enviar broadcast | `sendBroadcast` | — | `profiles`, `notifications` | `broadcast_sent` |
 | Editar reglamento | `updateRulebook` | — | `site_settings` | `rulebook_updated` |

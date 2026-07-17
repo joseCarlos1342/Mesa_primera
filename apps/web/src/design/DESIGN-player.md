@@ -17,10 +17,8 @@ colors:
   text-on-primary: "#0a0a0a"
   border-brass: "#8b6b2e"
   border-gold: "#c5a059"
-  success: "#2ecc71"
   danger: "#e74c3c"
   overlay-black: "#000000"
-  overlay-white: "#ffffff"
 typography:
   display:
     fontFamily: Cinzel

@@ -18,7 +18,7 @@
 8. [Retiros](#8-retiros)
 9. [Ganancias (Rake)](#9-ganancias-rake)
 10. [Búsqueda Global](#10-búsqueda-global)
-11. [Disputas](#11-disputas)
+11. [Investigaciones internas](#11-investigaciones-internas)
 12. [Auditoría](#12-auditoría)
 13. [Broadcast](#13-broadcast)
 14. [Soporte](#14-soporte)
@@ -352,15 +352,15 @@ Desglose detallado de la comisión del 5% que la casa cobra en cada mano ganada.
 
 ### Objetivo
 
-Motor de búsqueda omnicanal que permite al admin localizar cualquier entidad del sistema a partir de un identificador único, sea cual sea su tipo.
+Bandeja de reclamos formales enviados por jugadores y motor de búsqueda transversal para localizar entidades del sistema. Los reclamos se atienden aquí; los casos de fraude, colusión, abuso de bonos, conducta o integridad del juego se gestionan por separado en `/admin/disputes`.
 
 ### Tipos de búsqueda soportados
 
 | Tipo de entrada | Ejemplo | Entidades que busca |
 |---|---|---|
-| **UUID** | `a1b2c3d4-...` | Ledger, depósitos, retiros, replays, tickets, alertas |
+| **UUID** | `a1b2c3d4-...` | Ledger, depósitos, retiros, replays, reclamos, alertas |
 | **Seed hexadecimal** | `4f2a7b...` (32–64 chars) | Replays (RNG seed de la partida) |
-| **Username** | `@pepito` o `pepito` | Perfiles, tickets de soporte, alertas, disputas |
+| **Username** | `@pepito` o `pepito` | Perfiles, reclamos, alertas e investigaciones |
 
 ### Funcionamiento interno
 
@@ -376,41 +376,55 @@ Según el tipo detectado, lanza búsquedas en paralelo sobre las tablas relevant
 
 - Localizar una transacción del ledger por su ID o por el `reference_id` de la solicitud.
 - Encontrar una partida por seed o por `game_id` y acceder directamente a su replay.
-- Buscar el perfil, tickets, alertas y disputas vinculadas a un usuario por su username.
+- Buscar el perfil, reclamos, alertas e investigaciones vinculadas a un usuario por su username.
 - Abrir cada resultado con el filtro o detalle correcto; las solicitudes históricas no se pierden al salir de las bandejas pendientes.
+- Crear una investigación interna a partir de los resultados sin transportar evidencia serializada en la URL.
 
 ---
 
-## 11. Disputas
+## 11. Investigaciones internas
 
 **Ruta:** `/admin/disputes`
 
-### Objetivo
+La URL legacy se conserva, pero el módulo ya no representa tickets de soporte ni reclamos de jugadores. Es el expediente interno para investigar **fraude, colusión, abuso de bonos, conducta e integridad del juego**. Los reclamos reportados por jugadores permanecen en `/admin/consultas`.
 
-Sistema interno de gestión de casos. Permite a los administradores documentar, investigar y resolver incidentes formales relacionados con el comportamiento del juego, movimientos financieros sospechosos o conflictos entre jugadores.
+### Creación y evidencia
 
-### Ciclo de vida de una disputa
+- La investigación se crea manualmente desde `/admin/disputes/new` o desde un resultado de búsqueda en `/admin/consultas`.
+- Cuando nace desde una búsqueda, la URL solo transporta la consulta. El servidor repite la búsqueda y la base de datos verifica que cada referencia exista, comprueba su estado histórico cuando está relacionada con una partida y reconstruye sus etiquetas antes de guardar el snapshot; no confía en evidencia serializada por el cliente.
+- Las referencias de evidencia y los datos de apertura quedan inmutables después de crear el expediente.
+- Una referencia de partida solo se acepta si la partida está `finished`. Admin Blindness impide incorporar estado de una partida activa.
+- Una alerta que solo tenga `room_id` se rechaza si no puede relacionarse con una partida histórica terminada.
+
+### Clasificación y filtros
+
+- **Tipo:** `game_integrity`, `collusion`, `fraud`, `bonus_abuse`, `conduct`.
+- **Prioridad:** `low`, `medium`, `high`, `critical`.
+- **Filtros del listado:** estado, prioridad y tipo de investigación.
+
+### Ciclo de vida de una investigación
 
 ```
   open  →  investigating  →  resolved
-        ↘                 ↗
-          dismissed
+                      └──→  dismissed
 ```
 
 ### Qué puede hacer el admin
 
-- **Crear una disputa:** Requiere título, descripción, prioridad y puede incluir evidencia vinculada (snapshot de otras entidades: replays, ledger, tickets).
-- **Asignar a un admin:** El caso pasa a estado `investigating` y queda asignado al admin responsable.
-- **Resolver:** Cierra el caso con notas de resolución obligatorias. Registra `resolved_by` y `resolved_at`.
-- **Desestimar:** Cierra el caso sin acción concreta; requiere también justificación.
-- **Vincular a ticket de soporte:** La disputa puede referenciar un ticket previo de soporte para mantener trazabilidad completa.
-- **Filtrar por estado:** `open`, `investigating`, `resolved`, `dismissed`.
-- **Filtrar por prioridad:** `low`, `medium`, `high`, `critical`.
+- **Iniciar:** Un único admin inicia el expediente. El servidor toma su identidad de la sesión, asigna el caso y cambia el estado a `investigating`; la UI no solicita un UUID de admin.
+- **Resolver:** Desde `investigating`, registra notas y uno de los resultados `no_action`, `warning` o `sanction`.
+- **Compensar:** Propone beneficiario, monto y motivo. Puede cancelar una propuesta pendiente con un motivo auditado y crear otra corregida. La confirmación posterior ejecuta una RPC atómica e idempotente, verifica todos los atributos del movimiento coincidente, acredita una única entrada en el ledger y resuelve el caso con resultado `compensation`.
+- **Desestimar:** Desde `investigating`, cierra el expediente como `dismissed` con resultado `no_action` y una justificación.
+
+> [!IMPORTANT]
+> Mientras opera un solo admin, separar **propuesta** y **confirmación** es una barrera deliberada contra errores y dobles clics, no una separación de funciones entre dos personas.
 
 ### Qué no puede hacer el admin
 
-- No puede eliminar una disputa una vez creada.
-- No puede cambiar la evidencia vinculada después de crear el caso.
+- No puede eliminar una investigación una vez creada.
+- No puede cambiar la evidencia ni los datos de apertura después de crear el caso.
+- No puede vincular una partida activa ni acceder a su estado privado.
+- No puede saltar de `open` directamente a un estado cerrado ni reabrir un expediente cerrado.
 
 ---
 
@@ -702,7 +716,7 @@ El acceso a la sala genera un token de supervisión mediante `generateSupervisio
 | **Retiros** | Aprobar o rechazar | Ejecutar transferencias bancarias externas |
 | **Rake** | Ver estadísticas y detalle paginado | Cambiar porcentaje (fijado en game server) |
 | **Búsqueda** | UUID, seed, username en todas las entidades | | 
-| **Disputas** | Crear, asignar, resolver, desestimar | Eliminar casos, cambiar evidencia posterior |
+| **Investigaciones** | Crear manualmente o desde búsqueda; iniciar, resolver, compensar o desestimar | Eliminar, alterar evidencia, vincular partidas activas o reabrir casos |
 | **Auditoría** | Ver y filtrar el log completo | Editar o eliminar entradas |
 | **Broadcast** | Enviar a todos los jugadores | Envío selectivo, envío programado |
 | **Soporte** | Ver, responder, cerrar tickets | Iniciar conversación sin ticket del jugador |

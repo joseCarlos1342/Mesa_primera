@@ -208,7 +208,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 | `game_participants` | ❌ Sin política SELECT admin | — | — | — | **Admin blindness** — sin acceso directo |
 | `game_replays` | ✅ (post-partida) | — | — | — | Solo `status = 'finished'` |
 | `admin_audit_log` | ✅ Todos | ✅ (system) | ❌ | ❌ | Solo admins leen; INSERT solo vía `logAdminAction` |
-| `admin_dispute_cases` | ✅ Todos | ✅ | ✅ | — | CRUD completo de disputas |
+| `admin_dispute_cases` | ✅ Todos | ✅ vía RPC | ✅ vía RPC | ❌ | Investigaciones internas; datos de apertura y evidencia inmutables |
+| `admin_dispute_case_events` | ✅ Todos | ✅ vía RPC | ❌ | ❌ | Historial inmutable del expediente |
 | `user_sanctions` | ✅ Todos | ✅ | ✅ | — | Gestión de sanciones |
 | `deposit_requests` | ✅ Todos | — | ✅ (status) | — | Aprobación/rechazo |
 | `withdrawal_requests` | ✅ Todos | — | ✅ (status) | — | Aprobación/rechazo |
@@ -259,6 +260,14 @@ Los componentes de `TableControls` y la vista de supervisión no renderizan ning
 | En curso (`in_progress` o `waiting`) | Metadata: estado, jugadores, pote. No: cartas, acciones |
 | Finalizada (`finished`) | Replay completo disponible en `/admin/replays` |
 
+### Investigaciones internas y evidencia
+
+`/admin/disputes` conserva la URL legacy, pero gestiona investigaciones internas de fraude, colusión, abuso de bonos, conducta e integridad del juego; los reclamos de jugadores se atienden por separado en `/admin/consultas`.
+
+Una investigación puede crearse manualmente o desde una búsqueda. En el segundo caso, el servidor vuelve a resolver la consulta y la base de datos verifica la existencia de cada referencia, valida que cualquier partida asociada esté `finished` y reconstruye etiquetas normalizadas antes de persistir el snapshot inmutable. Una alerta con `room_id` pero sin partida histórica demostrable mediante replay se rechaza. Así, ni la URL ni una etiqueta aportada por el cliente se convierten en fuentes confiables o en un canal alternativo para consultar estado activo.
+
+El trigger de guarda bloquea cambios posteriores sobre título, descripción, prioridad, tipo, fuente, sujetos, partida, sala y evidencia. Solo permite `open` → `investigating` → `resolved` o `dismissed`; un caso cerrado no puede reabrirse. Al iniciar, la RPC asigna `auth.uid()` como único administrador responsable, sin confiar en un UUID enviado por el cliente.
+
 ### Evidencia funcional
 
 El test E2E `e2e/admin-blindness.spec.ts` valida que el WebSocket del admin no filtre datos de cartas privadas durante una partida activa. El test verifica que el elemento `.private-card-reveal-admin` permanezca oculto y que el panel no exponga valores de cartas individuales.
@@ -295,6 +304,14 @@ La RPC `process_ledger_entry()` es la funcion central que inserta entradas en el
 ### Consecuencia para el administrador
 
 El admin **no puede** ejecutar correcciones retroactivas. Si aprobó un depósito incorrecto, la corrección operativa correcta es generar una nueva entrada de tipo `refund` o `adjustment`. La entrada original queda en el ledger de forma permanente como evidencia del error y de la corrección posterior.
+
+### Compensaciones por investigación
+
+Los resultados posibles son `no_action`, `warning`, `sanction` y `compensation`. Una compensación se separa en propuesta y confirmación: proponerla no modifica saldos; puede cancelarse con un motivo registrado en el historial inmutable y sustituirse por una propuesta corregida; confirmarla ejecuta `approve_admin_investigation_compensation`.
+
+La RPC bloquea el expediente y comprueba que siga en `investigating`. Si ya existe una acreditación para el `operation_id`, verifica beneficiario, monto, dirección, tipo, referencia, partida, estado y metadata antes de reutilizarla; cualquier discrepancia aborta. De lo contrario, llama a `process_ledger_entry`. La misma transacción enlaza el movimiento, marca la compensación como aprobada y cierra el expediente.
+
+En la etapa actual de un solo admin, los dos pasos son una **barrera de seguridad** para revisar la operación y evitar acreditaciones accidentales; no constituyen separación de funciones ni aprobación por una segunda persona.
 
 ### Integridad continua
 
@@ -545,6 +562,9 @@ El sistema actual no hace bloqueo preventivo en tiempo real, pero si tiene detec
 | Saldo negativo | Débito mayor al saldo | Check en `process_ledger_entry`: `IF v_new_balance < 0 THEN RETURN error` |
 | Sesión concurrente desde dos dispositivos | Acceso paralelo | Cookie `session_device_id` + `last_device_id` en tabla |
 | Acción sin traza | Cualquier operación admin sin log | `logAdminAction` integrado en todas las server actions sensibles |
+| Evidencia manipulada al abrir una investigación | Snapshot construido en cliente o alterado por URL | Resolución server-side y trigger de inmutabilidad |
+| Acceso a una partida activa desde una investigación | `game_id` de partida en curso | RPC exige estado `finished` |
+| Compensación duplicada | Reintento o doble confirmación | RPC atómica, bloqueo de fila y `operation_id` único en ledger |
 | Phishing a nivel de ruta (acceso indirecto) | URL crafteada a `/admin/...` | Middleware verifica rol + AAL2 en cada petición |
 
 ### Limitaciones conocidas

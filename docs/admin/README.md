@@ -22,7 +22,7 @@ Documento base para onboarding, operación diaria, soporte interno y futuros vid
 4. Atender caja: depósitos y retiros pendientes.
 5. Revisar usuarios, fraude y ajustes de saldo.
 6. Supervisar mesas activas y alertas en vivo.
-7. Resolver soporte, disputas y comunicaciones masivas.
+7. Atender reclamos en consultas, gestionar investigaciones internas y enviar comunicaciones masivas.
 8. Auditar replays, logs y trazabilidad.
 
 ## 1. Qué es el rol admin en Mesa Primera
@@ -351,19 +351,20 @@ La UI marca cuentas con dispositivos compartidos como sospecha de multi-cuenta. 
 - Para revisar identidad operativa del jugador.
 - Para corregir saldo vía ajuste administrativo.
 - Para banear o levantar una restricción.
-- Para investigar comportamiento sospechoso antes de aprobar retiros o resolver disputas.
+- Para investigar comportamiento sospechoso antes de aprobar retiros o resolver una investigación interna.
 
-## 11. Consultas globales y disputas
+## 11. Consultas e investigaciones internas
 
 ### Rutas
 
 - `/admin/consultas`
 - `/admin/disputes`
+- `/admin/disputes/new`
 - `/admin/disputes/[id]`
 
 ### Consultas globales
 
-Este módulo funciona como búsqueda transversal. Es útil cuando el admin necesita encontrar rápidamente:
+`/admin/consultas` reúne los **reclamos formales de jugadores** y una búsqueda transversal. Es útil cuando el admin necesita encontrar rápidamente:
 
 - usuario,
 - UUID,
@@ -371,22 +372,15 @@ Este módulo funciona como búsqueda transversal. Es útil cuando el admin neces
 - referencia operativa,
 - evidencia útil para abrir un caso.
 
-### Disputas
+### Investigaciones internas
 
-El módulo de disputas sirve para formalizar casos de:
+`/admin/disputes` conserva su URL legacy, pero está separado de los reclamos y se presenta como **Investigaciones internas**. Formaliza casos de fraude, colusión, abuso de bonos, conducta e integridad del juego.
 
-- fraude,
-- conflicto financiero,
-- revisión operativa,
-- incidentes conectados con soporte o mesa.
+El admin puede crear el expediente manualmente o desde una búsqueda. En este segundo flujo, el servidor repite la consulta y la base de datos verifica la existencia y el carácter histórico de las referencias, reconstruye sus etiquetas y guarda el snapshot inmutable; la URL no transporta evidencia confiable. Las partidas vinculadas deben estar terminadas, y una alerta con `room_id` se rechaza si no puede asociarse a una partida histórica demostrable.
 
-En el detalle de una disputa el admin puede:
+El flujo operativo es `open` → `investigating` → `resolved` o `dismissed`. Al iniciar, el admin autenticado queda asignado automáticamente, sin introducir un UUID. El cierre admite `no_action`, `warning`, `sanction` o `compensation`. Una propuesta de compensación puede cancelarse con motivo auditado y sustituirse por otra corregida. La confirmación usa una RPC atómica e idempotente, valida todos los atributos del movimiento y deja una única entrada trazable en el ledger. En la etapa de un solo admin, propuesta y confirmación son una barrera de seguridad contra errores, no separación de funciones.
 
-- revisar descripción,
-- ver evidencia vinculada,
-- relacionar ticket de soporte,
-- ejecutar acciones de resolución o descarte,
-- asignar seguimiento.
+El listado se puede filtrar por estado, prioridad y tipo: integridad del juego, colusión, fraude, abuso de bonos o conducta.
 
 ## 12. Control de mesas
 
@@ -685,14 +679,14 @@ Si hay un problema en vivo, el admin puede supervisar y decidir, pero no romper 
 3. Tomar el caso.
 4. Abrir `/admin/spectate/[roomId]` si hace falta ver el contexto operativo.
 5. Resolver o descartar.
-6. Si el caso escala, documentarlo en disputas.
+6. Si el caso escala a fraude, colusión, abuso de bonos, conducta o integridad del juego, abrir una investigación interna.
 
 ### Flujo de fraude o multi-cuenta
 
 1. Abrir `/admin/users`.
 2. Buscar por nombre, teléfono o filtro de fraude.
 3. Revisar dispositivos compartidos.
-4. Cruzar información con ledger, disputas y replays.
+4. Cruzar información con ledger, investigaciones y replays.
 5. Aplicar restricción o dejar evidencia para seguimiento.
 
 ## 21. Orden sugerido para videos o capacitación interna
@@ -703,7 +697,7 @@ Si hay un problema en vivo, el admin puede supervisar y decidir, pero no romper 
 4. Ledger y ganancias.
 5. Usuarios, fraude y sanciones.
 6. Mesas en vivo y alertas.
-7. Soporte, disputas y broadcast.
+7. Reclamos, investigaciones internas y broadcast.
 8. Reglas, replays y auditoría.
 
 ## 22. Documentación complementaria

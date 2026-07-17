@@ -89,7 +89,7 @@ describe('ConsultasPage', () => {
     expect(screen.getByRole('link', { name: /ledger movimiento inicial credit ledger-1/i })).toHaveAttribute('href', '/admin/ledger?q=ledger-1')
     expect(screen.getByRole('link', { name: /replay partida auditada seed replay-1/i })).toHaveAttribute('href', '/admin/replays/game-1')
     expect(screen.getByRole('link', { name: /alert alerta activa critical alert-1/i })).toHaveAttribute('href', '/admin/server-log?q=alert-1')
-    expect(screen.getByRole('link', { name: /abrir disputa/i })).toHaveAttribute('href', expect.stringContaining('/admin/disputes/new?q=abc-123'))
+    expect(screen.getByRole('link', { name: /abrir investigación/i })).toHaveAttribute('href', expect.stringContaining('/admin/disputes/new?q=abc-123'))
   })
 
   it('muestra empty state cuando la busqueda no tiene coincidencias', async () => {

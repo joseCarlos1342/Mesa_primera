@@ -196,6 +196,22 @@ components:
   incident-log-marker:
     textColor: "{colors.accent-rose}"
     typography: "{typography.label-sm}"
+  finance-accent:
+    textColor: "{colors.accent-indigo}"
+  user-accent:
+    textColor: "{colors.accent-emerald}"
+  table-accent:
+    textColor: "{colors.accent-blue}"
+  warning-accent:
+    textColor: "{colors.accent-amber}"
+  critical-accent:
+    textColor: "{colors.accent-red}"
+  support-accent:
+    textColor: "{colors.accent-purple}"
+  investigation-accent:
+    textColor: "{colors.accent-teal}"
+  dispute-accent:
+    textColor: "{colors.accent-pink}"
 ---
 
 ## Overview
