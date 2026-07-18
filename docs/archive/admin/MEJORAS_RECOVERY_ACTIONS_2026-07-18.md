@@ -1,16 +1,19 @@
-# Roadmap: Acciones del Admin en `/admin/recovery`
+# Acciones del Admin en `/admin/recovery` — Implementado
 
-> **Actualización 2026-07-18:** las fases operativas aprobadas están implementadas y validadas en el repositorio: detalle terminal de refunds con enlaces al ledger, conciliación mediante RPC, CSV seguro, cierre irreversible y alerta persistente deduplicada para `manual_review`. Su despliegue sigue pendiente del gate de migraciones descrito abajo. Las acciones preservan Admin Blindness y no aceptan créditos, montos ni `operation_id` desde el cliente.
+> **Archivado:** 2026-07-18
+> **Estado:** implementado, validado y aplicado en el entorno de desarrollo enlazado.
+
+> **Actualización 2026-07-18:** las fases operativas aprobadas están implementadas y validadas en el repositorio: detalle terminal de refunds con enlaces al ledger, conciliación mediante RPC, CSV seguro, cierre irreversible y alerta persistente deduplicada para `manual_review`. Las migraciones fueron aplicadas en el entorno de desarrollo enlazado. Las acciones preservan Admin Blindness y no aceptan créditos, montos ni `operation_id` desde el cliente.
 
 > **Corrección de premisas:** el flujo actual de expiración de recovery es transaccional y no tiene una cola periódica de refunds pendientes; si falla, deriva a `manual_review`. Los incidentes `manual_review` generan una alerta crítica persistente y deduplicada en `server_alerts`.
 
 ## Gate de reconciliación de migraciones
 
-La aplicación de la consulta paginada está bloqueada hasta reconciliar el historial remoto: el remoto termina en `20260713100000`, mientras el repositorio contiene además `20260714000000`, `20260714010000`, `20260714020000` y `20260718010833`.
+Para un entorno que todavía termine en `20260713100000`, la aplicación queda bloqueada hasta reconciliar el historial remoto. El entorno de desarrollo enlazado ya tiene la secuencia completa.
 
 - **No usar `supabase migration repair --status applied`** para este caso: solo inserta una marca en el historial y no ejecuta SQL.
 - Antes de una ventana de mantenimiento, ejecutar prechecks de incidentes `recovery_pending`, refunds no completados, admins disponibles, evidencia JSON histórica inválida y duplicados de operaciones de compensación.
-- Drenar recovery y detener binarios antiguos antes de aplicar, en este orden: investigaciones (`140000`), fencing de mapping (`140100`), fencing de resolución (`140200`) y explorador read-only (`18010833`).
+- Drenar recovery y detener binarios antiguos antes de aplicar, en este orden: investigaciones (`140000`), fencing de mapping (`140100`), fencing de resolución (`140200`), explorador (`18010833`), reconciliación (`18020246`), reconocimiento (`18024605`), operaciones admin (`18033000`), deduplicación de alertas (`18033100`) y hardening de evidencia ledger al cerrar (`18034000`).
 - Aplicar con `pnpm exec supabase db push --linked` únicamente tras backup verificable, prechecks limpios y aprobación de la ventana. Luego regenerar tipos y ejecutar pruebas SQL contra el esquema actualizado.
 
 La reconciliación no tiene rollback automático seguro: `140000` transforma evidencia histórica y `140100`/`140200` cambian contratos RPC del game server.
@@ -55,7 +58,7 @@ El admin consulta esta página cuando:
 
 Sin filtros ni enlaces, el admin hace ese cruce **manualmente** abriendo otras pestañas y pegando IDs. Es trabajo extra que se repite varias veces al día.
 
-## 3. Roadmap propuesto
+## 3. Implementación realizada
 
 Dividido en tres niveles por coste y valor.
 
@@ -198,7 +201,7 @@ Si el admin empieza a quejarse de fricción antes de que entre cualquiera de los
 - **RLS**: la tabla `game_recovery_incidents` ya tiene RLS restrictivo (los admins solo leen lo terminal). Si se añade `acknowledge`, hay que validar que la policy de UPDATE esté alineada.
 - **Concurrencia**: si dos admins ven el mismo `manual_review` y ambos le dan a "Marcar como revisado" al mismo tiempo, el efecto debe ser idempotente o devolver error limpio.
 
-## 7. Resumen de prioridad sugerida
+## 7. Prioridad original
 
 | Mejora | Coste | Valor | Prioridad |
 |---|---|---|---|
