@@ -1,5 +1,10 @@
 BEGIN;
 
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+SET LOCAL ROLE postgres;
+GRANT USAGE ON SCHEMA extensions TO PUBLIC;
+SET LOCAL search_path = public, extensions;
+
 SELECT plan(14);
 
 SELECT has_function('public', 'list_admin_recovery_refunds', ARRAY['uuid'], 'El detalle terminal de refunds existe');
@@ -13,7 +18,7 @@ SELECT ok(
   'El cierre requiere evidencia de ledger para cada refund completado'
 );
 SELECT ok(
-  pg_get_functiondef('public.list_admin_recovery_incidents_export(text,text,text,date,date)'::regprocedure) LIKE '%LIMIT 5001%',
+  pg_get_functiondef('public.list_admin_recovery_incidents_export(text,text,text,date,date)'::regprocedure) ILIKE '%LIMIT 5001%',
   'La exportación limita el volumen y permite detectar exceso sin truncarlo'
 );
 
@@ -71,7 +76,7 @@ SELECT throws_ok(
   'Un jugador no puede exportar incidentes terminales'
 );
 
-RESET ROLE;
+SET LOCAL ROLE postgres;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000991', true);
 
@@ -93,7 +98,7 @@ SELECT is(
   'La exportación permite el resumen terminal al admin'
 );
 
-RESET ROLE;
+SET LOCAL ROLE postgres;
 SET LOCAL ROLE service_role;
 
 SELECT is(
