@@ -10,7 +10,7 @@ import {
   listUserTickets,
   uploadSupportAttachment,
 } from '@/app/actions/support'
-import { getPlayerIssueMessages, listIssueTicketAttachments, listPlayerIssueTickets } from '@/app/actions/admin-issues'
+import { closeIssueTicket, getPlayerIssueMessages, listIssueTicketAttachments, listPlayerIssueTickets } from '@/app/actions/admin-issues'
 
 const socketHandlers = new Map<string, (payload: any) => void>()
 const socket = {
@@ -103,6 +103,81 @@ describe('SupportChat', () => {
       category: 'deposit_missing',
       transactionReference: 'deposit-123',
       message: 'El saldo no se actualizó.',
+    })))
+  })
+
+  it('conserva el formulario y muestra un error cuando no se puede registrar un reclamo', async () => {
+    ;(createSupportIssue as jest.Mock).mockResolvedValueOnce({ error: 'No se pudo validar la referencia' })
+    render(<SupportChat userId="user-1" />)
+    act(() => window.dispatchEvent(new CustomEvent('open-support-chat')))
+    await screen.findByText('Centro de Ayuda')
+    fireEvent.click(screen.getByRole('button', { name: /reportar un problema/i }))
+    fireEvent.click(screen.getByRole('button', { name: /depósito no acreditado/i }))
+    fireEvent.change(screen.getByLabelText('ID de transacción'), { target: { value: 'deposit-1' } })
+    fireEvent.change(screen.getByLabelText('Observaciones del error'), { target: { value: 'Sigue sin acreditarse' } })
+    fireEvent.click(screen.getByRole('button', { name: /enviar reporte/i }))
+
+    expect(await screen.findByText('No se pudo validar la referencia')).toBeInTheDocument()
+    expect(screen.getByLabelText('Observaciones del error')).toHaveValue('Sigue sin acreditarse')
+  })
+
+  it('permite revisar y cerrar un reclamo abierto del jugador', async () => {
+    const issue = {
+      id: 'issue-1', user_id: 'user-1', category: 'table_error', description: 'La mesa quedó bloqueada',
+      transaction_reference: null, table_reference: 'room-1', occurred_at: '2026-07-16T10:00:00.000Z',
+      status: 'open', resolution_notes: null, created_at: '2026-07-16T10:00:00.000Z', updated_at: '2026-07-16T10:00:00.000Z',
+    }
+    ;(listPlayerIssueTickets as jest.Mock).mockResolvedValue({ data: [issue] })
+    ;(getPlayerIssueMessages as jest.Mock).mockResolvedValue({ data: [{ id: 'issue-message-1', ticket_id: 'issue-1', message: 'Estamos revisando la mesa.', from_admin: true, created_at: '2026-07-16T10:05:00.000Z' }] })
+    ;(closeIssueTicket as jest.Mock).mockResolvedValue({ data: undefined })
+
+    render(<SupportChat userId="user-1" />)
+    act(() => window.dispatchEvent(new Event('open-support-chat')))
+    await screen.findByText('Centro de Ayuda')
+    fireEvent.click(screen.getByRole('button', { name: /mis reclamos/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /table error/i }))
+    await act(async () => { await Promise.resolve() })
+
+    expect(await screen.findByText('Estamos revisando la mesa.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar caso' }))
+
+    await waitFor(() => expect(closeIssueTicket).toHaveBeenCalledWith('issue-1'))
+    expect(await screen.findByText('El caso fue cerrado por el jugador.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cerrar caso' })).not.toBeInTheDocument()
+  })
+
+  it('mantiene las acciones ocultas para un reclamo resuelto', async () => {
+    const resolvedIssue = {
+      id: 'issue-2', user_id: 'user-1', category: 'deposit_missing', description: 'Depósito resuelto',
+      transaction_reference: 'deposit-1', table_reference: null, occurred_at: '2026-07-16T10:00:00.000Z',
+      status: 'resolved', resolution_notes: 'Acreditado', created_at: '2026-07-16T10:00:00.000Z', updated_at: '2026-07-16T10:00:00.000Z',
+    }
+    ;(listPlayerIssueTickets as jest.Mock).mockResolvedValue({ data: [resolvedIssue] })
+
+    render(<SupportChat userId="user-1" />)
+    act(() => window.dispatchEvent(new Event('open-support-chat')))
+    await screen.findByText('Centro de Ayuda')
+    fireEvent.click(screen.getByRole('button', { name: /mis reclamos/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /deposit missing/i }))
+    await act(async () => { await Promise.resolve() })
+
+    expect(await screen.findByText('Depósito resuelto')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cerrar caso' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Seleccionar imagen')).not.toBeInTheDocument()
+  })
+
+  it('envía la referencia de mesa sin referencia financiera al reportar un error de juego', async () => {
+    render(<SupportChat userId="user-1" />)
+    act(() => window.dispatchEvent(new Event('open-support-chat')))
+    await screen.findByText('Centro de Ayuda')
+    fireEvent.click(screen.getByRole('button', { name: /reportar un problema/i }))
+    fireEvent.click(screen.getByRole('button', { name: /error en mesa o partida/i }))
+    fireEvent.change(screen.getByLabelText('ID de mesa'), { target: { value: 'room-7' } })
+    fireEvent.change(screen.getByLabelText('Observaciones del error'), { target: { value: 'La mano no avanzó' } })
+    fireEvent.click(screen.getByRole('button', { name: /enviar reporte/i }))
+
+    await waitFor(() => expect(createSupportIssue).toHaveBeenCalledWith(expect.objectContaining({
+      category: 'table_error', tableReference: 'room-7', transactionReference: undefined,
     })))
   })
 
