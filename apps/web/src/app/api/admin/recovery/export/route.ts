@@ -18,7 +18,7 @@ const exportQuerySchema = z.object({
 
 function escapeCsv(value: string | number | null): string {
   const raw = value === null ? '' : String(value)
-  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
+  const safe = /^[\s]*[=+\-@]/.test(raw) ? `'${raw}` : raw
   return `"${safe.replaceAll('"', '""')}"`
 }
 

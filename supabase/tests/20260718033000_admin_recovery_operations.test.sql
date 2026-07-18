@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(13);
+SELECT plan(14);
 
 SELECT has_function('public', 'list_admin_recovery_refunds', ARRAY['uuid'], 'El detalle terminal de refunds existe');
 SELECT has_function('public', 'list_admin_recovery_incidents_export', ARRAY['text', 'text', 'text', 'date', 'date'], 'El contrato de exportación existe');
@@ -8,6 +8,10 @@ SELECT has_function('public', 'close_game_recovery_incident', ARRAY['uuid', 'tex
 SELECT ok(has_function_privilege('authenticated', 'public.list_admin_recovery_refunds(uuid)', 'EXECUTE'), 'Solo usuarios autenticados pueden pedir refunds terminales');
 SELECT ok(NOT has_function_privilege('anon', 'public.list_admin_recovery_refunds(uuid)', 'EXECUTE'), 'anon no puede pedir refunds');
 SELECT ok(NOT has_function_privilege('anon', 'public.close_game_recovery_incident(uuid,text)', 'EXECUTE'), 'anon no puede cerrar incidentes');
+SELECT ok(
+  pg_get_functiondef('public.close_game_recovery_incident(uuid,text)'::regprocedure) LIKE '%refund.ledger_id IS NULL%',
+  'El cierre requiere evidencia de ledger para cada refund completado'
+);
 SELECT ok(
   pg_get_functiondef('public.list_admin_recovery_incidents_export(text,text,text,date,date)'::regprocedure) LIKE '%LIMIT 5001%',
   'La exportación limita el volumen y permite detectar exceso sin truncarlo'

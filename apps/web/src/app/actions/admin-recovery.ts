@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
+import { checkRateLimit } from '@/utils/redis'
 
 const RECOVERY_PAGE_SIZE = 25
 const RECOVERY_EXPORT_MAX_ROWS = 5000
@@ -255,6 +256,10 @@ export async function reconcileRecoveryRefund(input: {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Refund inválido' }
 
   const supabase = await verifyAdmin()
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) return { error: 'No autenticado' }
+  const rateLimit = await checkRateLimit(`rate_limit:admin_recovery_reconcile:${userData.user.id}:${parsed.data.refundId}`, 3, 3600)
+  if (!rateLimit.success) return { error: 'Demasiados intentos de conciliación. Inténtalo más tarde.' }
   const { data, error } = await supabase.rpc('reconcile_game_recovery_refund', {
     p_refund_id: parsed.data.refundId,
     p_reason: parsed.data.reason,
