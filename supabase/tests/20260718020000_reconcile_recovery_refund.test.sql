@@ -1,5 +1,10 @@
 BEGIN;
 
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+SET LOCAL ROLE postgres;
+GRANT USAGE ON SCHEMA extensions TO PUBLIC;
+SET LOCAL search_path = public, extensions;
+
 SELECT plan(11);
 
 SELECT has_function(
@@ -76,7 +81,7 @@ SELECT throws_ok(
   'Un jugador no puede reconciliar refunds'
 );
 
-RESET ROLE;
+SET LOCAL ROLE postgres;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000981', true);
 
@@ -106,11 +111,14 @@ SELECT is(
   'La reconciliación crea exactamente un crédito idempotente'
 );
 
+SET LOCAL ROLE postgres;
 SELECT is(
   (SELECT status FROM public.game_recovery_refunds WHERE id = '00000000-0000-4000-8000-000000000987'),
   'completed',
   'El refund queda completado dentro de la misma transacción'
 );
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000981', true);
 
 INSERT INTO reconciliation_results (step, value)
 SELECT 'second', public.reconcile_game_recovery_refund(
