@@ -1,13 +1,11 @@
-import { getAllReplays } from "@/app/actions/replays";
+import { getAdminReplaysSummary, getAllReplays } from "@/app/actions/replays";
 import { formatCurrency } from "@/utils/format";
 import Link from "next/link";
 import { Film, Trophy, Users, Clock, Eye, BarChart3 } from "lucide-react";
 import { ResponsiveDataView } from "@/components/admin/ResponsiveDataView";
 
 export default async function AdminReplaysPage() {
-  const replays = await getAllReplays(100);
-
-  const totalRake = replays.reduce((sum, r) => sum + r.total_rake, 0);
+  const [replays, summary] = await Promise.all([getAllReplays(100), getAdminReplaysSummary()]);
 
   return (
     <div className="min-h-full space-y-8 animate-in fade-in duration-700">
@@ -18,7 +16,7 @@ export default async function AdminReplaysPage() {
           REPETICIONES
         </h1>
         <p className="text-slate-500 font-medium mt-1">
-          Todas las partidas jugadas del sistema ({replays.length} registros)
+          Últimas 100 partidas visibles · {summary ? `${summary.totalGamesWithReplay} partidas con replay` : 'resumen no disponible'}
         </p>
       </div>
 
@@ -27,25 +25,23 @@ export default async function AdminReplaysPage() {
         <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 space-y-2">
           <div className="flex items-center gap-2">
             <Film className="w-4 h-4 text-purple-400" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Partidas</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Partidas con replay</span>
           </div>
-          <p className="text-3xl font-black text-white">{replays.length}</p>
+          <p className="text-3xl font-black text-white">{summary?.totalGamesWithReplay ?? 'No disponible'}</p>
         </div>
         <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 space-y-2">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-emerald-400" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rake Total</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rake de replays</span>
           </div>
-          <p className="text-3xl font-black text-emerald-400">{formatCurrency(totalRake)}</p>
+          <p className="text-3xl font-black text-emerald-400">{summary ? formatCurrency(summary.totalReplayRakeCents) : 'No disponible'}</p>
         </div>
         <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 space-y-2">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-blue-400" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Jugadores Únicos</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Jugadores observados</span>
           </div>
-          <p className="text-3xl font-black text-white">
-            {new Set(replays.flatMap(r => r.players?.map(p => p.userId) || [])).size}
-          </p>
+          <p className="text-3xl font-black text-white">{summary?.totalUniqueReplayPlayers ?? 'No disponible'}</p>
         </div>
       </div>
 

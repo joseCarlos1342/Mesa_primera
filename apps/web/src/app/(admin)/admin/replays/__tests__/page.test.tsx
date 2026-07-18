@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import AdminReplaysPage from '../page'
-import { getAllReplays } from '@/app/actions/replays'
+import { getAdminReplaysSummary, getAllReplays } from '@/app/actions/replays'
 
 jest.mock('@/app/actions/replays', () => ({
   getAllReplays: jest.fn(),
+  getAdminReplaysSummary: jest.fn(),
 }))
 
 type ReplayEntry = {
@@ -40,13 +41,19 @@ jest.mock('@/components/admin/ResponsiveDataView', () => ({
 }))
 
 const mockGetAllReplays = getAllReplays as jest.MockedFunction<typeof getAllReplays>
+const mockGetAdminReplaysSummary = getAdminReplaysSummary as jest.MockedFunction<typeof getAdminReplaysSummary>
 
 describe('AdminReplaysPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockGetAdminReplaysSummary.mockResolvedValue({
+      totalGamesWithReplay: 500,
+      totalReplayRakeCents: 12500000,
+      totalUniqueReplayPlayers: 80,
+    })
   })
 
-  it('lista replays con resumen, ganador, jugadores unicos y enlaces de detalle', async () => {
+  it('usa el summary global, no la muestra visible, para los cards', async () => {
     mockGetAllReplays.mockResolvedValue([
       {
         game_id: 'game-1',
@@ -70,10 +77,11 @@ describe('AdminReplaysPage', () => {
 
     expect(mockGetAllReplays).toHaveBeenCalledWith(100)
     expect(screen.getByRole('heading', { name: /repeticiones/i })).toBeInTheDocument()
-    expect(screen.getByText('Todas las partidas jugadas del sistema (2 registros)')).toBeInTheDocument()
-    expect(screen.getByText('2')).toBeInTheDocument()
-    expect(screen.getByText(/\$\s*1\.250/)).toBeInTheDocument()
-    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(mockGetAdminReplaysSummary).toHaveBeenCalledWith()
+    expect(screen.getByText(/Últimas 100 partidas visibles.*500 partidas con replay/i)).toBeInTheDocument()
+    expect(screen.getByText('500')).toBeInTheDocument()
+    expect(screen.getByText(/\$\s*125\.000/)).toBeInTheDocument()
+    expect(screen.getByText('80')).toBeInTheDocument()
     expect(screen.getAllByText('Ana')).toHaveLength(4)
     expect(screen.getAllByRole('link', { name: /ver/i })[0]).toHaveAttribute('href', '/admin/replays/game-1')
     expect(screen.getByText('Historial de Partidas')).toBeInTheDocument()
@@ -84,7 +92,7 @@ describe('AdminReplaysPage', () => {
 
     render(await AdminReplaysPage())
 
-    expect(screen.getByText('Todas las partidas jugadas del sistema (0 registros)')).toBeInTheDocument()
+    expect(screen.getByText(/Últimas 100 partidas visibles.*500 partidas con replay/i)).toBeInTheDocument()
     expect(screen.getByText('No hay partidas registradas en el sistema.')).toBeInTheDocument()
   })
 
@@ -106,7 +114,7 @@ describe('AdminReplaysPage', () => {
     expect(screen.getAllByRole('link', { name: /ver/i })[0]).toHaveAttribute('href', '/admin/replays/game-3')
   })
 
-  it('calcula jugadores unicos ignorando replays sin lista de jugadores', async () => {
+  it('no reemplaza el summary global cuando la muestra no tiene jugadores', async () => {
     mockGetAllReplays.mockResolvedValue([
       {
         game_id: 'game-without-players',
@@ -128,8 +136,7 @@ describe('AdminReplaysPage', () => {
 
     render(await AdminReplaysPage())
 
-    expect(screen.getByText('Todas las partidas jugadas del sistema (2 registros)')).toBeInTheDocument()
-    expect(screen.getAllByText('1')[0]).toBeInTheDocument()
+    expect(screen.getByText('80')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /ver/i })[0]).toHaveAttribute('href', '/admin/replays/game-without-players')
   })
 })
