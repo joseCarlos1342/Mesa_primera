@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.45%` statements, `90.67%` branches, `97.53%` functions, `99.45%` lines con `213` suites y `1836` tests pasando (`2026-07-16`).
+- Medicion web vigente: `99.45%` statements, `90.85%` branches, `97.55%` functions, `99.45%` lines con `213` suites y `1851` tests pasando (`2026-07-17`).
 - Medicion game-server vigente: `93.41%` statements, `85.03%` branches, `94.78%` functions, `95.17%` lines con `34` suites y `831` tests pasando (`2026-07-16`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -88,6 +88,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de DeleteTableButton y PlayerControls UI (2026-07-08): 2 tests web adicionales cubren cancelación de confirmación en eliminación de mesa y expulsión de jugador, dejando ambos componentes en `100%` focalizado.
 - Hardening de AdminAuditPage (2026-07-09): 2 tests web adicionales cubren fallbacks de actor/admin/detalles nulos y error de carga no estándar, dejando `app/(admin)/admin/audit/page.tsx` en `100%` focalizado.
 - Hardening de recuperación y acciones de consultas (2026-07-16): las pruebas de `app/play/[id]` validan el fallback al room mapeado cuando falla el join inicial, tanto para recuperación reanudada como pendiente no vencida; la fecha del caso pendiente se deriva de `Date.now()` para evitar falsos rojos por calendario. `IssueAdminActions` cubre respuesta, cierre, errores y actualización tras adjuntar evidencia, quedando en `100%` focalizado. En el servidor, los mensajes que mutan una mano quedan bloqueados hasta que regrese todo el roster y la telemetría distingue la publicación del replacement de la completitud real del roster.
+- Hardening del visor de replays player (2026-07-17): 9 pruebas adicionales cubren replay legacy, datos parciales, traducción y detalles de eventos, resolución segura de jugadores y grillas de 1 a 7 manos finales. La página de detalle queda en `100%` statements/functions/lines y `87.01%` branches, sin exponer información no saneada.
 
 ## Roadmap de Cobertura Web
 

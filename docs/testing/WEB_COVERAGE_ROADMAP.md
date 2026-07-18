@@ -8,7 +8,7 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-07-16. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-07-17. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
@@ -16,15 +16,15 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.45%` |
 | Lines | `99.45%` |
-| Functions | `97.53%` |
-| Branches | `90.67%` |
+| Functions | `97.55%` |
+| Branches | `90.85%` |
 
 Resultado de la corrida:
 
 - `213` suites en verde.
-- `1836` tests pasando.
+- `1851` tests pasando.
 - La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-16 (`/home/jose/.local/share/opencode/tool-output/tool_f6da87fbe001JK0Ll6hN1Uxs5Z`).
+- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-17 (`/home/jose/.local/share/opencode/tool-output/tool_f72bc8d4200174PYZTqv9HrW18`).
 
 ## Meta Final
 
@@ -2877,3 +2877,14 @@ Ese lote combina:
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde con `213` suites y `1824` tests; `IssueAdminActions.tsx` queda en `100%` focalizado.
 - Riesgos abiertos: falta `1.35` puntos en functions y `7.50` en branches para el objetivo estratégico. Los siguientes focos de mejor retorno son `app/actions/admin-issues.ts` (69.94% statements, 53.84% functions, 40.42% branches), `components/SupportChat.tsx` (72% functions) y ramas de game UI con comportamiento real.
 - Siguiente lote recomendado: caracterizar primero `admin-issues.ts` por sus guards de autenticación/rol y resultados de RPC, usando el cliente Supabase como borde mockeado; después continuar con los callbacks visibles de `SupportChat.tsx`.
+
+## Checkpoint 142
+
+- Fecha: 2026-07-17, variantes históricas del visor de replays player.
+- Coverage antes: `99.45%` statements/lines, `97.53%` functions, `90.67%` branches; `213` suites y `1836` tests.
+- Coverage despues: `99.45%` statements/lines, `97.55%` functions, `90.85%` branches; `213` suites y `1851` tests.
+- Archivo cubierto: `app/(player)/replays/[gameId]/page.tsx`.
+- Tests agregados: degradación segura de replays V1 y datos parciales; traducción de acciones/eventos, nombres desde frames o jugadores, fallback de identificador y detalles de monto/pago/cartas/tiene; grillas para 1 a 7 manos finales.
+- Riesgos cerrados: los replays históricos incompletos no montan el controlador visual; el timeline conserva información entendible aun con acciones o jugadores desconocidos; las manos finales mantienen una presentación válida en todos los tamaños admitidos.
+- Resultado de verificacion: suite focalizada verde con `12` tests; `pnpm --filter web test:coverage` verde con `213` suites y `1851` tests. La página queda en `100%` statements/functions/lines y `87.01%` branches.
+- Siguiente lote recomendado: `app/actions/replays.ts` para los caminos server-side residuales, manteniendo Supabase como borde mockeado y la separación estricta player/admin.
