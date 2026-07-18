@@ -20,6 +20,7 @@ const socket = {
   }),
   disconnect: jest.fn(),
 }
+const originalAudio = window.Audio
 
 jest.mock('socket.io-client', () => ({
   io: jest.fn(() => socket),
@@ -70,6 +71,12 @@ const defaultHistory = {
   },
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => { resolve = promiseResolve })
+  return { promise, resolve }
+}
+
 describe('SupportChat', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -88,6 +95,11 @@ describe('SupportChat', () => {
     ;(uploadSupportAttachment as jest.Mock).mockResolvedValue({
       data: { id: 'attachment-1', file_name: 'evidencia.png' },
     })
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+    Object.defineProperty(window, 'Audio', { configurable: true, writable: true, value: originalAudio })
   })
 
   it('permite reportar un depósito no acreditado desde el centro de ayuda', async () => {
@@ -144,6 +156,8 @@ describe('SupportChat', () => {
     await waitFor(() => expect(closeIssueTicket).toHaveBeenCalledWith('issue-1'))
     expect(await screen.findByText('El caso fue cerrado por el jugador.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Cerrar caso' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /mis reclamos/i }))
+    expect(await screen.findByRole('button', { name: /table error/i })).toBeInTheDocument()
   })
 
   it('mantiene las acciones ocultas para un reclamo resuelto', async () => {
@@ -181,14 +195,40 @@ describe('SupportChat', () => {
     })))
   })
 
+  it('reporta la categoría otro sin asociar referencias financieras ni de mesa', async () => {
+    render(<SupportChat userId="user-1" />)
+    act(() => window.dispatchEvent(new Event('open-support-chat')))
+    await screen.findByText('Centro de Ayuda')
+    fireEvent.click(screen.getByRole('button', { name: /reportar un problema/i }))
+    fireEvent.click(screen.getByRole('button', { name: /otro problema/i }))
+
+    expect(screen.queryByLabelText('ID de transacción')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('ID de mesa')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Observaciones del error'), { target: { value: 'Necesito ayuda con otro caso' } })
+    fireEvent.click(screen.getByRole('button', { name: /enviar reporte/i }))
+
+    await waitFor(() => expect(createSupportIssue).toHaveBeenCalledWith({
+      category: 'other',
+      message: 'Necesito ayuda con otro caso',
+      transactionReference: undefined,
+      tableReference: undefined,
+      occurredAt: expect.any(String),
+    }))
+    expect(await screen.findByText('Necesito ayuda con otro caso')).toBeInTheDocument()
+    await waitFor(() => expect(getPlayerIssueMessages).toHaveBeenCalledWith('issue-ticket'))
+  })
+
   it('carga historial y estado cuando recibe un ticket embebido', async () => {
-    render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
+    const { unmount } = render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
 
     expect(await screen.findByText('Necesito ayuda con mi mesa')).toBeInTheDocument()
     expect(screen.getByText('Ya revisamos tu solicitud')).toBeInTheDocument()
     expect(getSupportTicketHistory).toHaveBeenCalledWith('ticket-1')
     expect(getSupportTicket).toHaveBeenCalledWith('ticket-1')
     expect(socket.emit).toHaveBeenCalledWith('support:join', 'ticket-1')
+    unmount()
+    expect(socket.emit).toHaveBeenCalledWith('support:leave', 'ticket-1')
+    expect(socket.disconnect).toHaveBeenCalled()
   })
 
   it('muestra la lista de tickets del jugador y abre el historial seleccionado', async () => {
@@ -214,6 +254,27 @@ describe('SupportChat', () => {
 
     expect(await screen.findByText('Necesito ayuda con mi mesa')).toBeInTheDocument()
     expect(getSupportTicketHistory).toHaveBeenCalledWith('ticket-1')
+  })
+
+  it('abre tickets archivados desde la lista sin habilitar nuevas respuestas', async () => {
+    ;(listUserTickets as jest.Mock).mockResolvedValue({
+      data: [{
+        id: 'ticket-final',
+        last_message_preview: 'Consulta ya archivada',
+        created_at: '2026-05-24T10:00:00.000Z',
+        status: 'finalized',
+      }],
+    })
+    ;(getSupportTicket as jest.Mock).mockResolvedValue({ data: { status: 'finalized' } })
+
+    render(<SupportChat userId="user-1" />)
+    act(() => window.dispatchEvent(new Event('open-support-chat')))
+    fireEvent.click(await screen.findByRole('button', { name: /consulta ya archivada/i }))
+
+    await screen.findByText('Necesito ayuda con mi mesa')
+    expect(await screen.findByText('Consulta Finalizada')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/escrib/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /nueva solicitud/i })).toBeInTheDocument()
   })
 
   it('crea un ticket con el primer mensaje del jugador', async () => {
@@ -261,6 +322,26 @@ describe('SupportChat', () => {
     })
   })
 
+  it('evita duplicar mensajes mientras el envío anterior sigue pendiente', async () => {
+    const pendingAppend = deferred<{ data: { message_id: string; from: 'player' } }>()
+    ;(appendSupportMessage as jest.Mock).mockReturnValueOnce(pendingAppend.promise)
+    render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
+
+    await screen.findByText('Necesito ayuda con mi mesa')
+    const input = screen.getByPlaceholderText('Escribe tu consulta...')
+    fireEvent.change(input, { target: { value: 'Enviar una sola vez' } })
+    const form = input.closest('form')!
+    fireEvent.submit(form)
+    fireEvent.submit(form)
+
+    expect(appendSupportMessage).toHaveBeenCalledTimes(1)
+    expect(screen.getAllByText('Enviar una sola vez')).toHaveLength(1)
+    expect(input).toBeDisabled()
+
+    pendingAppend.resolve({ data: { message_id: 'msg-pending', from: 'player' } })
+    await waitFor(() => expect(input).toBeEnabled())
+  })
+
   it('incorpora mensajes entrantes del socket del ticket activo', async () => {
     render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
 
@@ -278,8 +359,27 @@ describe('SupportChat', () => {
     expect(screen.getByText('Mensaje nuevo de soporte')).toBeInTheDocument()
   })
 
+  it('incorpora para admin mensajes player modernos sin duplicar los propios', async () => {
+    render(<SupportChat userId="user-1" embedded isAdmin ticketId="ticket-1" />)
+
+    await screen.findByText('Necesito ayuda con mi mesa')
+    await act(async () => {
+      socketHandlers.get('support:message-created')?.({
+        ticketId: 'ticket-1', messageId: 'player-msg', message: 'Respuesta del jugador',
+        from: 'player', timestamp: '2026-05-24T10:10:00.000Z',
+      })
+      socketHandlers.get('support:message-created')?.({
+        ticketId: 'ticket-1', messageId: 'admin-msg', message: 'Eco del administrador',
+        from: 'admin', timestamp: '2026-05-24T10:11:00.000Z',
+      })
+    })
+
+    expect(screen.getByText('Respuesta del jugador')).toBeInTheDocument()
+    expect(screen.queryByText('Eco del administrador')).not.toBeInTheDocument()
+  })
+
   it('ignora mensajes propios y notifica mensajes remotos cuando el chat flotante está cerrado', async () => {
-    const play = jest.fn(() => Promise.resolve())
+    const play = jest.fn(() => Promise.reject(new DOMException('Autoplay blocked', 'NotAllowedError')))
     const audioMock = jest.fn(() => ({ volume: 0, play }))
     const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
     Object.defineProperty(window, 'Audio', { configurable: true, value: audioMock })
@@ -344,6 +444,10 @@ describe('SupportChat', () => {
     expect(screen.getByText('Legacy de soporte')).toBeInTheDocument()
     expect(screen.getByText('Chat Finalizado')).toBeInTheDocument()
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'support-notification' }))
+    await waitFor(() => {
+      expect(getSupportTicketHistory).toHaveBeenCalledTimes(2)
+      expect(getSupportTicket).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('sube adjuntos y muestra el mensaje de archivo', async () => {
@@ -394,6 +498,10 @@ describe('SupportChat', () => {
 
     await waitFor(() => {
       expect(closeSupportTicket).toHaveBeenCalledWith('ticket-1')
+    })
+    expect(socket.emit).toHaveBeenCalledWith('support:ticket-finalized', {
+      ticketId: 'ticket-1',
+      closedByRole: 'player',
     })
     expect(screen.getByText('Consulta Finalizada')).toBeInTheDocument()
   })
@@ -472,8 +580,9 @@ describe('SupportChat', () => {
 
   it('abre el selector de archivos desde el boton de adjuntar', async () => {
     const clickSpy = jest.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
-    render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
+    render(<SupportChat userId="user-1" ticketId="ticket-1" />)
 
+    act(() => window.dispatchEvent(new Event('open-support-chat')))
     await screen.findByText('Necesito ayuda con mi mesa')
     fireEvent.click(screen.getByTitle('Adjuntar archivo'))
 
@@ -498,7 +607,12 @@ describe('SupportChat', () => {
   })
 
   it('inicia nueva solicitud desde el chat flotante finalizado', async () => {
-    ;(getSupportTicket as jest.Mock).mockResolvedValue({ data: { status: 'finalized' } })
+    ;(getSupportTicket as jest.Mock).mockImplementation((ticketId: string) => Promise.resolve(
+      ticketId === 'ticket-1' ? { data: { status: 'finalized' } } : { data: null }
+    ))
+    ;(getSupportTicketHistory as jest.Mock).mockImplementation((ticketId: string) => Promise.resolve(
+      ticketId === 'ticket-1' ? defaultHistory : { data: { messages: [], attachments: [] } }
+    ))
     render(<SupportChat userId="user-1" ticketId="ticket-1" />)
 
     await act(async () => {
@@ -507,6 +621,10 @@ describe('SupportChat', () => {
     expect(await screen.findByText('Consulta Finalizada')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /nueva solicitud/i }))
 
+    await waitFor(() => {
+      expect(getSupportTicketHistory).toHaveBeenCalledWith('uuid-ticket')
+      expect(getSupportTicket).toHaveBeenCalledWith('uuid-ticket')
+    })
     expect(screen.getByText(/cómo podemos asistirle/i)).toBeInTheDocument()
   })
 
@@ -649,9 +767,8 @@ describe('SupportChat', () => {
   })
 
   it('no envia mensaje cuando input esta vacio o esta enviando', async () => {
-    ;(getSupportTicketHistory as jest.Mock).mockResolvedValue({ data: { messages: [], attachments: [] } })
-
     render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
+    await screen.findByText('Necesito ayuda con mi mesa')
     const submitBtn = screen.getByRole('button', { name: '' })
     expect(submitBtn).toBeDisabled()
   })

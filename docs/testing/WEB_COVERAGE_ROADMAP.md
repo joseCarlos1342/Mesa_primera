@@ -16,15 +16,15 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.45%` |
 | Lines | `99.45%` |
-| Functions | `97.26%` |
-| Branches | `90.95%` |
+| Functions | `97.35%` |
+| Branches | `91.02%` |
 
 Resultado de la corrida:
 
 - `217` suites en verde.
-- `1900` tests pasando.
+- `1904` tests pasando.
 - La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 144 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
+- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 145 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
 ## Meta Final
 
@@ -171,7 +171,7 @@ Riesgo:
 Estado actual:
 
 - `NotificationCenter.tsx`: `100%`, ramas `97.18%`, funciones `100%`.
-- `SupportChat.tsx`: `100%` statements/lines, ramas `90.18%`, funciones `86.66%`; quedan guards defensivos de socketUrl y ramas de audio legacy.
+- `SupportChat.tsx`: `100%` statements/lines, `92.8%` branches y `88.46%` functions; quedan callbacks de adjuntos/navegación y guards estructuralmente inaccesibles de socket/SSR.
 - `components/providers/AppLockProvider.tsx`: `95.92%`, con ramas de browser/session aun pendientes.
 - Varios hooks estan sobre `88%`, pero branches siguen bajos.
 
@@ -2912,3 +2912,14 @@ Ese lote combina:
 - Resultado de verificación: suite focalizada verde con `24` tests, typecheck verde y coverage global web verde.
 - Progreso contra la meta: faltan `0.74` puntos en functions y `7.05` en branches.
 - Siguiente lote recomendado: callbacks visibles de `SupportChat.tsx`, priorizando doble submit, tickets finalizados, mensajes remotos y cleanup de socket sobre guards inaccesibles.
+
+## Checkpoint 145
+
+- Fecha: 2026-07-18, hardening de callbacks visibles de SupportChat.
+- Coverage antes: `99.45%` statements/lines, `97.26%` functions y `90.95%` branches; `217` suites y `1900` tests.
+- Coverage después: `99.45%` statements/lines, `97.35%` functions y `91.02%` branches; `217` suites y `1904` tests.
+- Archivo cubierto: `components/SupportChat.tsx`, que alcanza `100%` statements/lines, `88.46%` functions y `92.8%` branches.
+- Riesgos cerrados: el formulario `other` no filtra referencias ajenas, el guard de envío evita mensajes optimistas duplicados, admin recibe mensajes modernos del jugador sin eco propio, tickets finalizados no reabren el composer y el cierre emite su evento scoped.
+- Resultado de verificación: suite focalizada verde con `37` tests, typecheck verde y coverage global web verde.
+- Progreso contra la meta: faltan `0.65` puntos en functions y `6.98` en branches.
+- Siguiente lote recomendado: callbacks accesibles de `SupportConversationList` y `Board`, o branches reales de `admin-issues.ts`; no perseguir guards SSR/invariantes rotas de SupportChat.
