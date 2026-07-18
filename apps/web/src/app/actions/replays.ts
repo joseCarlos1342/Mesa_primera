@@ -32,6 +32,12 @@ export type AdminReplay = {
   winner_id: string | null;
 };
 
+export type AdminReplaysSummary = {
+  totalGamesWithReplay: number;
+  totalReplayRakeCents: number;
+  totalUniqueReplayPlayers: number;
+};
+
 export type ReplayDetail = {
   id: string;
   game_id: string;
@@ -251,6 +257,24 @@ export async function getAllReplays(limit = 50, offset = 0): Promise<AdminReplay
   }
 
   return (data || []) as AdminReplay[];
+}
+
+export async function getAdminReplaysSummary(): Promise<AdminReplaysSummary | null> {
+  const supabase = await verifyAdmin();
+  const { data, error } = await supabase.rpc("get_admin_replays_summary");
+  if (error || !Array.isArray(data) || !data[0]) return null;
+
+  const summary = data[0] as {
+    total_games_with_replay?: string | number;
+    total_replay_rake_cents?: string | number;
+    total_unique_replay_players?: string | number;
+  };
+
+  return {
+    totalGamesWithReplay: Number(summary.total_games_with_replay ?? 0),
+    totalReplayRakeCents: Number(summary.total_replay_rake_cents ?? 0),
+    totalUniqueReplayPlayers: Number(summary.total_unique_replay_players ?? 0),
+  };
 }
 
 export async function getAdminReplayDetail(gameId: string): Promise<{ replay: ReplayDetail | null; ledger: ReplayLedgerEntry[] }> {
