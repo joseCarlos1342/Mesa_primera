@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.37%` |
-| Lines | `99.37%` |
+| Statements | `99.45%` |
+| Lines | `99.45%` |
 | Functions | `97.26%` |
-| Branches | `90.74%` |
+| Branches | `90.95%` |
 
 Resultado de la corrida:
 
 - `217` suites en verde.
-- `1892` tests pasando.
+- `1900` tests pasando.
 - La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 143 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
+- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 144 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
 ## Meta Final
 
@@ -121,7 +121,7 @@ Esto es correcto para medir superficie real. El problema no es configuracion inc
 
 Estado actual:
 
-- `app/actions/replays.ts`: `88.02%` statements/lines, `100%` functions y `69.23%` branches; es el siguiente hueco server-side con mayor retorno.
+- `app/actions/replays.ts`: `100%` statements/lines/functions y `93.67%` branches tras cubrir privacidad player, autorización admin, hidratación best-effort y fallos parciales.
 - `app/actions/admin-rake.ts`: `100%` statements/lines/functions, branches `96.96%`; quedan ramas defensivas menores de `rakeEntries || []`.
 - `app/actions/admin-ledger.ts`: `100%` statements/lines/functions/branches.
 - `app/actions/admin-tables.ts`: `99.59%` statements/lines, `100%` functions y `94.36%` branches.
@@ -2901,3 +2901,14 @@ Ese lote combina:
 - Resultado de verificación: suites focalizadas core verdes con `42` tests; `pnpm --filter web test:coverage` verde con `217` suites y `1892` tests.
 - Progreso contra la meta: statements y lines ya superan `98%`; faltan `0.74` puntos en functions y `7.26` en branches. El cuello de botella estratégico continúa en ramas con comportamiento real, no en líneas.
 - Siguiente lote recomendado: `app/actions/replays.ts` (`88.02%` statements/lines, `69.23%` branches) para errores y datos históricos parciales; después, callbacks visibles de `SupportChat.tsx` (`84.61%` functions) sin perseguir guards inaccesibles.
+
+## Checkpoint 144
+
+- Fecha: 2026-07-18, hardening de replays server-side.
+- Coverage antes: `99.37%` statements/lines, `97.26%` functions y `90.74%` branches; `217` suites y `1892` tests.
+- Coverage después: `99.45%` statements/lines, `97.26%` functions y `90.95%` branches; `217` suites y `1900` tests.
+- Archivo cubierto: `app/actions/replays.ts`, que alcanza `100%` statements/lines/functions y `93.67%` branches.
+- Riesgos cerrados: los frames del game-server se sanean para player, permanecen completos para admin y nunca reemplazan el detalle canónico ante HTTP inválido, payload incompleto o fallo de red; errores independientes de replay/ledger preservan el resultado parcial útil.
+- Resultado de verificación: suite focalizada verde con `24` tests, typecheck verde y coverage global web verde.
+- Progreso contra la meta: faltan `0.74` puntos en functions y `7.05` en branches.
+- Siguiente lote recomendado: callbacks visibles de `SupportChat.tsx`, priorizando doble submit, tickets finalizados, mensajes remotos y cleanup de socket sobre guards inaccesibles.

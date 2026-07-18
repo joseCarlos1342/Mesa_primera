@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.37%` statements, `90.74%` branches, `97.26%` functions, `99.37%` lines con `217` suites y `1892` tests pasando (`2026-07-18`).
+- Medicion web vigente: `99.45%` statements, `90.95%` branches, `97.26%` functions, `99.45%` lines con `217` suites y `1900` tests pasando (`2026-07-18`).
 - Medicion game-server vigente: `93.35%` statements, `85.02%` branches, `94.79%` functions, `95.18%` lines con `34` suites y `833` tests pasando (`2026-07-18`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -90,6 +90,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de recuperación y acciones de consultas (2026-07-16): las pruebas de `app/play/[id]` validan el fallback al room mapeado cuando falla el join inicial, tanto para recuperación reanudada como pendiente no vencida; la fecha del caso pendiente se deriva de `Date.now()` para evitar falsos rojos por calendario. `IssueAdminActions` cubre respuesta, cierre, errores y actualización tras adjuntar evidencia, quedando en `100%` focalizado. En el servidor, los mensajes que mutan una mano quedan bloqueados hasta que regrese todo el roster y la telemetría distingue la publicación del replacement de la completitud real del roster.
 - Hardening del visor de replays player (2026-07-17): 9 pruebas adicionales cubren replay legacy, datos parciales, traducción y detalles de eventos, resolución segura de jugadores y grillas de 1 a 7 manos finales. La página de detalle queda en `100%` statements/functions/lines y `87.01%` branches, sin exponer información no saneada.
 - Hardening de recovery admin (2026-07-18): el lote vertical deja `217` suites y `1892` tests web en verde; cubre filtros, paginación, reconocimientos, refunds, cierre, exportación CSV y fallos de RPC. También corrige el schema Zod de exportación, acepta cursores Postgres con offset, evita refrescar la UI ante errores de dominio y protege el CSV con auth admin explícita, rate limit y un máximo sin truncamiento silencioso.
+- Hardening de replays server-side (2026-07-18): 8 casos adicionales cubren hidratación best-effort desde game-server, saneamiento de cartas privadas para player, autorización y visibilidad completa para admin, fallos HTTP/red y resultados parciales de RPC. `app/actions/replays.ts` queda en `100%` statements/lines/functions y `93.67%` branches.
 
 ## Roadmap de Cobertura Web
 
