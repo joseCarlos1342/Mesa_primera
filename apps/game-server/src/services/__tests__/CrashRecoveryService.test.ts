@@ -39,7 +39,7 @@ function createDependencies(
       refunds: [{ userId: "player-1", amountCents: 500_000 }],
     }),
     expireRecoveryIncidentAndRefund: vi.fn().mockResolvedValue({ success: true, status: "cancelled_crash" }),
-    markRecoveryIncidentManualReview: vi.fn().mockResolvedValue({ success: true, status: "manual_review" }),
+    markRecoveryIncidentManualReview: vi.fn().mockResolvedValue({ success: true, status: "manual_review", updated: true }),
     emitRecoveryManualReviewAlert: vi.fn().mockResolvedValue(undefined),
     emitRecoveryInfrastructureAlert: vi.fn().mockResolvedValue(undefined),
     schedule: vi.fn(),
@@ -538,6 +538,20 @@ describe("CrashRecoveryService", () => {
       roomId: "original-room-1",
       reason: "ledger incompleto",
     });
+  });
+
+  it("reintenta la alerta idempotente cuando manual_review ya estaba persistido", async () => {
+    let expiration: (() => Promise<void>) | undefined;
+    const dependencies = createDependencies({
+      deriveRecoveryRefunds: vi.fn().mockResolvedValue({ success: false, error: "ledger incompleto" }),
+      markRecoveryIncidentManualReview: vi.fn().mockResolvedValue({ success: true, status: "manual_review", updated: false }),
+      schedule: vi.fn((callback, delayMs) => { if (delayMs !== 10_000) expiration = callback; }),
+    });
+
+    await new CrashRecoveryService(dependencies).recoverPendingCheckpoints();
+    await expiration?.();
+
+    expect(dependencies.emitRecoveryManualReviewAlert).toHaveBeenCalledTimes(1);
   });
 
   it("cierra la sala de reemplazo cuando el deadline cancela y reembolsa el incidente", async () => {

@@ -1,23 +1,40 @@
-# Mejoras Futuras: Acciones del Admin en `/admin/recovery`
+# Roadmap: Acciones del Admin en `/admin/recovery`
 
-La página `/admin/recovery` es hoy **estrictamente informativa**: lista incidentes terminales (status `cancelled_crash` o `manual_review`) con su progreso de refunds, pero no permite al admin hacer nada sobre ellos. La información que muestra es valiosa para auditoría y diagnóstico, pero para sacarle más jugo operativo necesita volverse parcialmente accionable.
+> **Actualización 2026-07-18:** las fases operativas aprobadas están implementadas y validadas en el repositorio: detalle terminal de refunds con enlaces al ledger, conciliación mediante RPC, CSV seguro, cierre irreversible y alerta persistente deduplicada para `manual_review`. Su despliegue sigue pendiente del gate de migraciones descrito abajo. Las acciones preservan Admin Blindness y no aceptan créditos, montos ni `operation_id` desde el cliente.
 
-## 1. Estado actual
+> **Corrección de premisas:** el flujo actual de expiración de recovery es transaccional y no tiene una cola periódica de refunds pendientes; si falla, deriva a `manual_review`. Los incidentes `manual_review` generan una alerta crítica persistente y deduplicada en `server_alerts`.
 
-### Dónde está
+## Gate de reconciliación de migraciones
+
+La aplicación de la consulta paginada está bloqueada hasta reconciliar el historial remoto: el remoto termina en `20260713100000`, mientras el repositorio contiene además `20260714000000`, `20260714010000`, `20260714020000` y `20260718010833`.
+
+- **No usar `supabase migration repair --status applied`** para este caso: solo inserta una marca en el historial y no ejecuta SQL.
+- Antes de una ventana de mantenimiento, ejecutar prechecks de incidentes `recovery_pending`, refunds no completados, admins disponibles, evidencia JSON histórica inválida y duplicados de operaciones de compensación.
+- Drenar recovery y detener binarios antiguos antes de aplicar, en este orden: investigaciones (`140000`), fencing de mapping (`140100`), fencing de resolución (`140200`) y explorador read-only (`18010833`).
+- Aplicar con `pnpm exec supabase db push --linked` únicamente tras backup verificable, prechecks limpios y aprobación de la ventana. Luego regenerar tipos y ejecutar pruebas SQL contra el esquema actualizado.
+
+La reconciliación no tiene rollback automático seguro: `140000` transforma evidencia histórica y `140100`/`140200` cambian contratos RPC del game server.
+
+El código preparado convierte `/admin/recovery` en una consola terminal parcialmente accionable: filtra y pagina incidentes `cancelled_crash`, `manual_review` o `closed`, enlaza replays/refunds, permite reconocer y cerrar revisiones, y exporta CSV sin exponer estado activo de juego.
+
+## 1. Baseline previo que motivó el cambio
+
+Esta sección conserva el estado anterior a la implementación para explicar el problema original; no describe el código preparado actualmente.
+
+### Dónde estaba
 
 - Página: `apps/web/src/app/(admin)/admin/recovery/page.tsx`
 - Server action: `getAdminRecoveryIncidents` en `apps/web/src/app/actions/admin-recovery.ts` (única acción expuesta, solo lectura)
 - RPC consumido: `public.list_admin_recovery_incidents()` en `supabase/migrations/20260713090000_admin_recovery_history.sql`
 - Tablas: `game_recovery_incidents` y `game_recovery_refunds` en `supabase/migrations/20260713000000_game_crash_recovery.sql`
 
-### Lo que el admin ve hoy
+### Lo que veía el admin
 
 - Lista de incidentes terminales con sala, juego, causa, status, motivo, progreso de refunds, timestamps de detección y resolución.
 - Header con totales (cantidad de incidentes + refunds completados/totales).
 - No hay botones, no hay filtros, no hay enlaces a acciones derivadas.
 
-### Lo que el admin no puede hacer
+### Lo que el admin no podía hacer
 
 - Filtrar por status, rango de fechas, causa o sala.
 - Ver el detalle de un incidente en una vista propia.
@@ -42,7 +59,7 @@ Sin filtros ni enlaces, el admin hace ese cruce **manualmente** abriendo otras p
 
 Dividido en tres niveles por coste y valor.
 
-### Nivel 1 — Coste bajo, valor alto (un día de trabajo)
+### Nivel 1 — Consulta terminal (preparado, pendiente de aplicar migración)
 
 Mejoras puramente de UI y enlaces, sin tocar BD ni server actions.
 
@@ -54,7 +71,7 @@ Tres controles visibles solo cuando hay más de 1 incidente:
 - **Causa**: dropdown con los `cause_code` distintos presentes en la lista actual.
 - **Rango de fechas**: dos inputs `date` (desde / hasta) que filtran por `detected_at`.
 
-Implementación: estado client-side con `useState` en un componente nuevo `RecoveryFilters.tsx` (la página actual es server component, así que se necesitará extraer la lista a un client component que reciba `incidents` como prop). Los filtros no añaden query al backend — son sobre el array ya cargado.
+Implementación aplicada: `RecoveryExplorer.tsx` mantiene el formulario cliente, pero los filtros se representan en `searchParams` y llegan a `list_admin_recovery_incidents_v2`. La RPC pagina con cursor `(detected_at, game_id)`, límite en servidor y búsqueda por prefijo de sala o `gameId` exacto; no descarga todo el histórico al navegador.
 
 Beneficio: encontrar incidentes específicos sin scroll. Útil cuando hay 50+ terminales en producción.
 
@@ -66,7 +83,7 @@ Añadir a la card de cada incidente un botón/link:
 [ Ver replay ] → /admin/replays/{gameId}
 ```
 
-El `gameId` ya está disponible en el modelo `AdminRecoveryIncident`. El destino (`/admin/replays/[gameId]`) ya existe y muestra la auditoría completa de la partida.
+El destino (`/admin/replays/[gameId]`) ya existe. El enlace solo se muestra cuando `replay_available` es verdadero; una caída puede no haber persistido una grabación y entonces se informa `Replay no disponible`.
 
 Beneficio: el admin ve "esta partida tuvo un crash con 2 refunds incompletos" y en un click entra a revisar el replay para entender qué pasó antes de la caída. Cierra el loop de diagnóstico.
 
@@ -89,13 +106,13 @@ Coste: 2-3 horas. Server action nueva (`getAdminRecoveryRefunds(gameId)`) que de
 
 #### 3.4 Búsqueda rápida por sala o gameId
 
-Input de búsqueda en la cabecera que filtra en cliente sobre `roomId` y `gameId`. Mismo patrón que los filtros de 3.1.
+Input de búsqueda en la cabecera que consulta en servidor por prefijo de `roomId` o `gameId` exacto. Usa el mismo contrato de filtros y cursor de 3.1.
 
 Beneficio: cuando el admin tiene un `roomId` o `gameId` de un reporte, lo pega aquí y encuentra el incidente sin scroll.
 
 Coste: 30 minutos.
 
-### Nivel 2 — Coste medio, valor medio (un sprint)
+### Nivel 2 — Operación no financiera
 
 Requiere mutaciones controladas y nueva server action. No toca dinero directamente.
 
@@ -103,16 +120,16 @@ Requiere mutaciones controladas y nueva server action. No toca dinero directamen
 
 Un incidente en `manual_review` representa un caso que el game server cerró sin completar el flujo automático de recovery (porque detectó algo raro que necesita ojos humanos). El admin debería poder cerrarlos explícitamente.
 
-Cambios necesarios:
+Implementado el 2026-07-18:
 
-1. **Migración nueva**: añadir `acknowledged_by UUID REFERENCES profiles(id)` y `acknowledged_at TIMESTAMPTZ` a `game_recovery_incidents`.
-2. **Server action nueva**: `acknowledgeRecoveryIncident(incidentId)` que valide que el admin esté autenticado, que el incidente esté en `manual_review`, y haga el update.
-3. **UI**: un botón "Marcar como revisado" visible solo en cards con status `manual_review` y no reconocidas. Tras el click, la card muestra "Revisado por <display_name> · <fecha>".
-4. **RPC de listado actualizado**: incluir `acknowledged_by` y `acknowledged_at` en el SELECT.
+1. Migración `20260718024605_acknowledge_recovery_incident.sql` con `acknowledged_by`, `acknowledged_at` y constraint de consistencia.
+2. RPC `acknowledge_game_recovery_incident` protegida, atómica e idempotente: solo admite incidentes terminales en `manual_review` y el primer reconocimiento prevalece.
+3. Server action `acknowledgeRecoveryIncident(incidentId)` y botón "Marcar como revisado" solo para cards pendientes. Tras completar, se refresca la página y la card muestra "Revisado".
+4. El listado complementa el resumen terminal con el ID y fecha de reconocimiento desde `game_recovery_incidents`, bajo RLS admin existente.
 
 Beneficio: el admin tiene registro de quién vio cada caso y cuándo. Si el volumen crece, esto evita que dos admins investiguen lo mismo.
 
-Riesgo: si dos admins hacen click casi simultáneamente, ambos registran su reconocimiento. No es grave (ambos son legítimos), pero si se quiere evitar, añadir un check `WHERE acknowledged_at IS NULL` en la action y devolver error si ya está reconocida.
+Riesgo controlado: dos admins pueden pulsar casi a la vez, pero el bloqueo de fila y `acknowledged_at IS NULL` preservan el primer actor; los reintentos no duplican auditoría.
 
 Coste: 1-2 días (migración + action + UI + tests + RLS).
 
@@ -120,19 +137,21 @@ Coste: 1-2 días (migración + action + UI + tests + RLS).
 
 Botón "Exportar" en la cabecera que genera un CSV con todas las columnas visibles: `roomId`, `gameId`, `cause`, `status`, `resolutionReason`, `completedRefunds`, `totalRefunds`, `detectedAt`, `resolvedAt`.
 
-Implementación: endpoint `GET /api/admin/recovery/export` que use la misma `getAdminRecoveryIncidents` y devuelva `text/csv` con `Content-Disposition: attachment`.
+Implementación: endpoint `GET /api/admin/recovery/export` que usa el contrato terminal filtrado y devuelve `text/csv` con `Content-Disposition: attachment`. Autentica y autoriza al admin antes de aplicar rate limit de `3` solicitudes por minuto por usuario e IP; la RPC lee como máximo `5001` filas para detectar excesos y el endpoint exige acotar filtros con `422` en lugar de truncar silenciosamente por encima de `5000`.
 
 Beneficio: auditoría mensual o trimestral. El admin baja el CSV, lo pasa al equipo financiero o de operaciones, y tienen registro offline.
 
 Coste: 2-3 horas (endpoint + tests).
 
-### Nivel 3 — Coste alto, requiere conversación de producto (no hacer sin discusión)
+### Nivel 3 — Datos por jugador y dinero (excepción aprobada, despliegue bloqueado por gates)
 
 Estas son ideas que tocan dinero o flujo de operaciones, y deben decidirse con producto antes de implementarse.
 
 #### 3.7 Reintento manual de refunds pendientes
 
-Hoy si un refund queda en `pending`, el game server lo intenta vía cron / reintentos automáticos. Si tras N intentos sigue colgado, no hay forma humana de forzarlo.
+El flujo actual no tiene cron ni cola de retries: la RPC terminal acredita y marca refunds en una sola transacción. Si la resolución falla, el incidente pasa a `manual_review`. Antes de diseñar una reconciliación manual hay que medir si existen filas reales `pending` o `failed`, explicar su origen y aprobar la excepción de datos por jugador.
+
+**Validación de desarrollo 2026-07-18:** se detectaron dos refunds `pending` históricos de incidentes `manual_review`, sin crédito previo en ledger. Tras aplicar `reconcile_game_recovery_refund`, ambos quedaron `completed`, con el monto original, `operation_id` preservada y evento `recovery_refund_reconciled`. No se ejecutó ningún crédito duplicado.
 
 Propuesta: acción `forceRetryRefund(refundId)` que re-emplace el refund en la cola. Requiere:
 
@@ -145,9 +164,9 @@ Riesgo: si se implementa mal, **doble acreditación**. Mesa Primera tiene regla 
 
 #### 3.8 Cierre de incidente desde el admin
 
-Cambiar el status de `manual_review` a `closed` cuando el admin determina que el caso ya no requiere atención. Similar a 3.5 pero altera el status, no solo añade un campo.
+Implementado mediante `close_game_recovery_incident`: exige reconocimiento previo, todos los refunds completados, confirmación explícita y motivo de 10 a 500 caracteres. La operación es atómica e idempotente, registra `closed_by`, `closed_at` y `close_reason`, y conserva el motivo detallado en `admin_audit_log`; la lista y el CSV muestran el resumen terminal, no el detalle de auditoría.
 
-Riesgo: un incidente cerrado por error deja de aparecer en la lista activa. Habría que añadir un filtro "incluir cerrados" o un periodo de gracia.
+Riesgo controlado: los incidentes cerrados siguen disponibles mediante el filtro `closed`; el cierre no admite montos ni mutaciones financieras desde el cliente.
 
 #### 3.9 Notificación al admin cuando hay `manual_review` nuevo
 

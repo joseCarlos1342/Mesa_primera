@@ -289,7 +289,7 @@ export class SupabaseService {
     }
   }
 
-  static async markRecoveryIncidentManualReview(input: { gameId: string; reason: string }): Promise<{ success: boolean; status?: string; error?: string }> {
+  static async markRecoveryIncidentManualReview(input: { gameId: string; reason: string }): Promise<{ success: boolean; status?: string; updated?: boolean; error?: string }> {
     if (!supabaseKey) return { success: false, error: "Supabase service_role no configurado" };
 
     try {
@@ -299,7 +299,10 @@ export class SupabaseService {
       });
       if (error) throw error;
       if (data?.error) return { success: false, error: String(data.error) };
-      return { success: true, status: typeof data?.status === "string" ? data.status : undefined };
+      const result: { success: boolean; status?: string; updated?: boolean } = { success: true };
+      if (typeof data?.status === "string") result.status = data.status;
+      if (data?.updated === true) result.updated = true;
+      return result;
     } catch (error) {
       console.error("[SupabaseService] Error marking recovery incident for manual review:", error);
       return { success: false, error: String(error) };

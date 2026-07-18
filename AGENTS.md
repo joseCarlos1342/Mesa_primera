@@ -26,8 +26,8 @@ pnpm audit
 # Tests
 pnpm --filter web test                     # Jest 30 (jsdom, next/jest)
 pnpm --filter game-server test             # Vitest 4 (node env)
-pnpm --filter web test:coverage            # Threshold: 38% (statements/branches/lines)
-pnpm --filter game-server test:coverage    # Threshold: 75% lines, 65% branches
+pnpm --filter web test:coverage            # Gates: 90% statements/lines, 86% functions, 84% branches
+pnpm --filter game-server test:coverage    # Gates: 89% statements/functions, 90% lines, 80% branches
 pnpm exec playwright test                  # E2E (requires running services)
 
 # Lint & typecheck (run before committing)

@@ -207,6 +207,24 @@ describe('AlertService', () => {
     });
   });
 
+  describe('recoveryManualReview', () => {
+    it('persiste la alerta con una clave de deduplicación por juego', async () => {
+      const upsert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValueOnce({ upsert });
+
+      await AlertService.recoveryManualReview('game-1', 'room-1');
+
+      expect(upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'recovery_checkpoint',
+          game_id: 'game-1',
+          dedupe_key: 'recovery-manual-review:game-1',
+        }),
+        { onConflict: 'dedupe_key', ignoreDuplicates: true },
+      );
+    });
+  });
+
   describe('discrepancy', () => {
     it('emits a critical alert with wallet vs ledger balances', () => {
       AlertService.discrepancy('user-1', 100000, 90000);

@@ -29,7 +29,7 @@ export interface CrashRecoveryDependencies {
   disposeReplacementRoom: (roomId: string) => Promise<void>;
   deriveRecoveryRefunds: (gameId: string) => Promise<{ success: boolean; refunds?: Array<{ userId: string; amountCents: number }>; error?: string }>;
   expireRecoveryIncidentAndRefund: (input: { gameId: string; refunds: Array<{ userId: string; amountCents: number; operationId: string }> }) => Promise<{ success: boolean; status?: string; error?: string }>;
-  markRecoveryIncidentManualReview: (input: { gameId: string; reason: string }) => Promise<{ success: boolean; status?: string; error?: string }>;
+  markRecoveryIncidentManualReview: (input: { gameId: string; reason: string }) => Promise<{ success: boolean; status?: string; updated?: boolean; error?: string }>;
   emitRecoveryManualReviewAlert: (input: { gameId?: string; roomId?: string; reason: string }) => Promise<void>;
   emitRecoveryInfrastructureAlert: (input: { event: "checkpoint_load_failed" | "replacement_retry"; gameId?: string; roomId?: string; reason: string }) => Promise<void>;
   schedule: (callback: () => Promise<void>, delayMs: number) => unknown;
@@ -109,15 +109,7 @@ const defaultDependencies: CrashRecoveryDependencies = {
   expireRecoveryIncidentAndRefund: (input) => SupabaseService.expireRecoveryIncidentAndRefund(input),
   markRecoveryIncidentManualReview: (input) => SupabaseService.markRecoveryIncidentManualReview(input),
   emitRecoveryManualReviewAlert: async (input) => {
-    await AlertService.emitAsync({
-      severity: "critical",
-      category: "recovery_checkpoint",
-      title: "Recuperación requiere revisión manual",
-      message: "El checkpoint o la recuperación no pueden continuar automáticamente.",
-      game_id: input.gameId,
-      room_id: input.roomId,
-      metadata: { reason: input.reason },
-    });
+    if (input.gameId) await AlertService.recoveryManualReview(input.gameId, input.roomId);
   },
   emitRecoveryInfrastructureAlert: async (input) => {
     await AlertService.emitAsync({
@@ -481,11 +473,13 @@ export class CrashRecoveryService {
       errCode: "manual_review_required",
     });
     const result = await this.dependencies.markRecoveryIncidentManualReview({ gameId: checkpoint.gameId, reason });
-    await this.dependencies.emitRecoveryManualReviewAlert({
-      gameId: checkpoint.gameId,
-      roomId: checkpoint.roomId,
-      reason,
-    });
+    if (result.status === "manual_review") {
+      await this.dependencies.emitRecoveryManualReviewAlert({
+        gameId: checkpoint.gameId,
+        roomId: checkpoint.roomId,
+        reason,
+      });
+    }
     return result;
   }
 
