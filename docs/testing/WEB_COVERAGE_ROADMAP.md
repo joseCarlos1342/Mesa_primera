@@ -8,23 +8,23 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-07-17. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-07-18. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.45%` |
-| Lines | `99.45%` |
-| Functions | `97.55%` |
-| Branches | `90.85%` |
+| Statements | `99.37%` |
+| Lines | `99.37%` |
+| Functions | `97.26%` |
+| Branches | `90.74%` |
 
 Resultado de la corrida:
 
-- `213` suites en verde.
-- `1851` tests pasando.
+- `217` suites en verde.
+- `1892` tests pasando.
 - La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-17 (`/home/jose/.local/share/opencode/tool-output/tool_f72bc8d4200174PYZTqv9HrW18`).
+- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 143 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
 ## Meta Final
 
@@ -121,11 +121,12 @@ Esto es correcto para medir superficie real. El problema no es configuracion inc
 
 Estado actual:
 
-- `app/actions/replays.ts`: `100%` statements, con branches principales cubiertos.
+- `app/actions/replays.ts`: `88.02%` statements/lines, `100%` functions y `69.23%` branches; es el siguiente hueco server-side con mayor retorno.
 - `app/actions/admin-rake.ts`: `100%` statements/lines/functions, branches `96.96%`; quedan ramas defensivas menores de `rakeEntries || []`.
 - `app/actions/admin-ledger.ts`: `100%` statements/lines/functions/branches.
-- `app/actions/admin-tables.ts`: `100%` statements/lines/functions, branches `95.04%`.
-- `app/(auth)/auth-actions.ts`: `99.54%` statements/lines, branches `85.71%`, functions `100%` (Fase 1 del plan de hardening cubrió fieldErrors faltantes, verifyOtp edge cases, checkAccountSanction edge, phone recovery, completeGoogleRegistration rollback/duplicate/otp errors, admin TOTP setup edge, redeemAdminRecoveryCode sin TOTP, enrollAdminTotp error, checkPhoneHasPin catch no-Error, getGoogleUserData metadata vacía, rate limit + turnstile bloqueado).
+- `app/actions/admin-tables.ts`: `99.59%` statements/lines, `100%` functions y `94.36%` branches.
+- `app/actions/admin-recovery.ts`: `100%` statements/lines/functions y `87.91%` branches tras cubrir paginación, exportación, refunds, reconocimiento y cierre.
+- `app/(auth)/auth-actions.ts`: `100%` statements/lines/functions y `89.65%` branches.
 - `app/actions/admin-security.ts`: `100%` statements/lines/functions, branches `97.27%`; quedan solo ramas defensivas menores de defaults/nullish.
 - `app/actions/support.ts`: `100%` statements/lines/functions, branches `91.86%`; quedan solo ramas defensivas `||` que son inaccesibles con la implementación actual de `getAuthenticatedUser()`.
 
@@ -588,7 +589,7 @@ Esta seccion convierte el roadmap en trabajo operable. Cada lote debe poder toma
 | L9 | Board hardening | Alta | Pendiente | L8 | subir ramas y funciones de `Board.tsx` |
 | L10 | Hooks + Supabase web infra | Media | En progreso | ninguna | cubrir adaptadores y hooks en `0%` |
 | L11 | API routes web | Media | Completado | L10 opcional | cubrir rutas App Router sin tests |
-| L12 | Barrido final de huecos residuales | Alta | Pendiente | L1-L11 | preparar salto a gate final |
+| L12 | Barrido final de huecos residuales | Alta | En progreso | L1-L11 | preparar salto a gate final |
 
 ### Lote L1: Landing hero + tutoriales base
 
@@ -2888,3 +2889,15 @@ Ese lote combina:
 - Riesgos cerrados: los replays históricos incompletos no montan el controlador visual; el timeline conserva información entendible aun con acciones o jugadores desconocidos; las manos finales mantienen una presentación válida en todos los tamaños admitidos.
 - Resultado de verificacion: suite focalizada verde con `12` tests; `pnpm --filter web test:coverage` verde con `213` suites y `1851` tests. La página queda en `100%` statements/functions/lines y `87.01%` branches.
 - Siguiente lote recomendado: `app/actions/replays.ts` para los caminos server-side residuales, manteniendo Supabase como borde mockeado y la separación estricta player/admin.
+
+## Checkpoint 143
+
+- Fecha: 2026-07-18, hardening vertical de recovery admin y recuperación del baseline verde.
+- Referencia previa: la primera medición del nuevo alcance reportó `99.41%` statements/lines, `97.15%` functions y `90.60%` branches, con `216` suites (`1` fallida por ejecutar un Route Handler de Next.js bajo jsdom) y `1867` tests completados.
+- Coverage después: `99.37%` statements/lines, `97.26%` functions y `90.74%` branches; `217` suites y `1892` tests pasando. La variación frente al checkpoint anterior refleja nueva superficie funcional de recovery incorporada al denominador; el lote recupera el baseline verde y mejora branches sobre ese alcance ampliado.
+- Archivos cubiertos: `app/actions/admin-recovery.ts`, `app/(admin)/admin/recovery/RecoveryExplorer.tsx` y `app/api/admin/recovery/export/route.ts`.
+- Tests agregados/fortalecidos: asociación de reconocimientos terminales, cursor `TIMESTAMPTZ` con offset, error de lectura secundaria, contrato mínimo de exportación, errores seguros de RPC financiera/cierre/refunds, validación temprana de UUID, refresco exitoso, error de dominio visible sin refresco, rate limit y rechazo de exportaciones excesivas.
+- Bugs cerrados: el schema de exportación ya no llama `.omit()` sobre un objeto Zod refinado; el CSV no recibe propiedades fuera de su contrato ni filtra detalles internos; RecoveryExplorer no interpreta `{ error }` como éxito; el Route Handler usa entorno Node, limita `3` exportaciones por minuto e IP y exige acotar filtros sobre `5000` filas sin truncar resultados.
+- Resultado de verificación: suites focalizadas core verdes con `42` tests; `pnpm --filter web test:coverage` verde con `217` suites y `1892` tests.
+- Progreso contra la meta: statements y lines ya superan `98%`; faltan `0.74` puntos en functions y `7.26` en branches. El cuello de botella estratégico continúa en ramas con comportamiento real, no en líneas.
+- Siguiente lote recomendado: `app/actions/replays.ts` (`88.02%` statements/lines, `69.23%` branches) para errores y datos históricos parciales; después, callbacks visibles de `SupportChat.tsx` (`84.61%` functions) sin perseguir guards inaccesibles.

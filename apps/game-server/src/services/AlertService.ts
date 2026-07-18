@@ -21,6 +21,7 @@ export interface AlertPayload {
   room_id?: string;
   game_id?: string;
   player_id?: string;
+  dedupe_key?: string;
 }
 
 /**
@@ -70,9 +71,7 @@ export class AlertService {
     let lastError: any = null;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const { error } = await supabase
-        .from('server_alerts')
-        .insert({
+      const alert = {
           severity: payload.severity,
           category: payload.category,
           title: payload.title,
@@ -81,7 +80,11 @@ export class AlertService {
           room_id: payload.room_id || null,
           game_id: payload.game_id || null,
           player_id: payload.player_id || null,
-        });
+          dedupe_key: payload.dedupe_key || null,
+        };
+      const { error } = payload.dedupe_key
+        ? await supabase.from('server_alerts').upsert(alert, { onConflict: 'dedupe_key', ignoreDuplicates: true })
+        : await supabase.from('server_alerts').insert(alert);
 
       if (!error) return;
 
@@ -130,6 +133,18 @@ export class AlertService {
       player_id: userId,
       room_id: roomId,
       metadata: { amount, error },
+    });
+  }
+
+  static async recoveryManualReview(gameId: string, roomId?: string) {
+    await AlertService.emitAsync({
+      severity: 'critical',
+      category: 'recovery_checkpoint',
+      title: 'Recuperación requiere revisión manual',
+      message: 'El checkpoint o la recuperación no pueden continuar automáticamente.',
+      game_id: gameId,
+      room_id: roomId,
+      dedupe_key: `recovery-manual-review:${gameId}`,
     });
   }
 
