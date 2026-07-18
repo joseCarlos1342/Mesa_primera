@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.44%` |
-| Lines | `99.44%` |
-| Functions | `97.18%` |
-| Branches | `90.43%` |
+| Statements | `99.45%` |
+| Lines | `99.45%` |
+| Functions | `97.53%` |
+| Branches | `90.67%` |
 
 Resultado de la corrida:
 
 - `213` suites en verde.
-- `1830` tests pasando.
+- `1836` tests pasando.
 - La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
 - Ultimo reporte completo revisado por OpenCode: salida local de `pnpm --filter web test:coverage` del 2026-07-16 (`/home/jose/.local/share/opencode/tool-output/tool_f6da87fbe001JK0Ll6hN1Uxs5Z`).
 
@@ -2855,6 +2855,16 @@ Ese lote combina:
 - Riesgos cerrados: la acción cubre ahora sus caminos operativos de lectura/escritura sin filtrar errores internos ni confiar en roles de cliente.
 - Resultado de verificacion: `pnpm --filter web test:coverage` verde; `admin-issues.ts` queda en `100%` statements/lines/functions y `52%` branches.
 - Siguiente lote recomendado: `SupportChat.tsx` por sus callbacks aún sin ejecutar, priorizando eventos socket y fallos visibles de adjuntos.
+
+## Checkpoint 141
+
+- Fecha: 2026-07-16, ciclo de reclamos y evidencia del jugador.
+- Coverage antes: `99.44%` statements/lines, `97.18%` functions, `90.43%` branches; `213` suites y `1830` tests.
+- Coverage despues: `99.45%` statements/lines, `97.53%` functions, `90.67%` branches; `213` suites y `1836` tests.
+- Archivos cubiertos: `SupportChat.tsx`, `IssueAttachmentComposer.tsx` e `IssueAttachmentList.tsx`.
+- Riesgos cerrados: reporte rechazado preserva el formulario; el jugador puede revisar/cerrar reclamos abiertos; reclamos resueltos no exponen mutaciones; adjuntos degradan de forma segura sin URL firmada.
+- Resultado de verificacion: `pnpm --filter web test:coverage` verde; `SupportChat.tsx` queda en `100%` statements/lines, `84.61%` functions y `90.67%` branches.
+- Siguiente lote recomendado: callbacks residuales de `SupportChat` o `app/(player)/replays/[gameId]/page.tsx`, priorizando rutas visibles de usuario.
 
 ## Checkpoint 139
 
