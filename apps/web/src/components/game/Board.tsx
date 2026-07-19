@@ -53,6 +53,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   const pendingManoRef = useRef<{ fromId: string; toId: string } | null>(null);
   const prevPlayersRef = useRef<any[]>([]);
   const prevMyCardsRef = useRef<string>("");
+  const awaitingInitialPrivateHydrationRef = useRef(false);
 
   const myId = room?.sessionId ?? "";
   const currentPhase = room?.state?.phase ?? phase;
@@ -144,6 +145,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
     if (isInitialHydration) {
       prevPlayersRef.current = players.map(p => ({ ...p }));
       prevMyCardsRef.current = myCards;
+      awaitingInitialPrivateHydrationRef.current = !myCards;
       return;
     }
 
@@ -162,7 +164,8 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
         // Suppress animation when cards arrive from resync (old was empty but
         // the server state already has cardCount > 0, meaning this is hydration
         // of existing cards, not a fresh deal).
-        const isResyncHydration = oldCards.length === 0 && newCards.length > 0 && isActivePhase && (prevP?.cardCount ?? 0) > 0;
+        const isInitialPrivateHydration = awaitingInitialPrivateHydrationRef.current && oldCards.length === 0 && newCards.length > 0 && isActivePhase;
+        const isResyncHydration = isInitialPrivateHydration || (oldCards.length === 0 && newCards.length > 0 && isActivePhase && (prevP?.cardCount ?? 0) > 0);
 
         const added = newCards.filter((c: string) => !oldCards.includes(c));
         const removed = oldCards.filter((c: string) => !newCards.includes(c));
@@ -177,6 +180,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
         if (removed.length > 0) {
           window.dispatchEvent(new CustomEvent('animate-discard', { detail: { fromPlayerId: p.id, cards: removed }}));
         }
+        if (newCards.length > 0) awaitingInitialPrivateHydrationRef.current = false;
       } else {
         // For opponents: track revealedCards in reveal phases, else cardCount
         const isRevealPhase = currentPhase === 'SORTEO_MANO' || currentPhase === 'SHOWDOWN';
