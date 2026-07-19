@@ -2,7 +2,7 @@
 
 import {
   ShoppingCart, Menu, Users, Trophy, Plus, Film,
-  Mic, MicOff,
+  MicOff,
 } from 'lucide-react'
 import Image from 'next/image'
 import type { TutorialStep } from './TutorialWalkthrough'

@@ -4,7 +4,7 @@
 import { detectIdentifier } from '@/lib/detect-identifier'
 import { globalSearch } from '@/app/actions/admin-search'
 import { createClient } from '@/utils/supabase/server'
-import type { IdentifierType } from '@/types/admin-search'
+import { logAdminAction } from '@/app/actions/admin-audit'
 
 jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
@@ -258,7 +258,6 @@ describe('globalSearch', () => {
 
   it('logs the search in admin_audit_log', async () => {
     const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
-    const { logAdminAction } = require('@/app/actions/admin-audit')
 
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === 'profiles') {

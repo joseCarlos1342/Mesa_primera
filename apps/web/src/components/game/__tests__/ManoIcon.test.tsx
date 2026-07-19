@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { ManoIcon } from '../ManoIcon';
 
 // Mock framer-motion to render a plain div so we can inspect props

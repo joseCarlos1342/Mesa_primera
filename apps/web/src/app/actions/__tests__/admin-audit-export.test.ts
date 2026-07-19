@@ -48,7 +48,6 @@ describe('exportAuditLog', () => {
 
   it('exporta JSON legible y fuerza un límite amplio por defecto', async () => {
     const result = await exportAuditLog({ adminId: 'admin-1' }, 'json')
-
     expect(getAuditLog).toHaveBeenCalledWith({ adminId: 'admin-1', limit: 5000 })
     expect(JSON.parse(result)).toEqual(auditEntries)
     expect(result).toContain('\n  {')
@@ -56,18 +55,16 @@ describe('exportAuditLog', () => {
 
   it('respeta el límite explícito al exportar JSON', async () => {
     await exportAuditLog({ limit: 25 }, 'json')
-
     expect(getAuditLog).toHaveBeenCalledWith({ limit: 25 })
   })
 
   it('exporta CSV con cabecera, valores nulos vacíos y comillas escapadas', async () => {
     const csv = await exportAuditLog({ context: 'wallet' })
-
     const lines = csv.split('\n')
     expect(lines[0]).toBe('id,created_at,action,context,actor_kind,actor_label,admin_id,admin_name,target_type,target_id,details,before_state,after_state,ip_address')
     expect(lines[1]).toContain('"audit-1","2026-01-01T12:00:00.000Z","user_balance_adjusted","wallet"')
     expect(lines[1]).toContain('"Admin ""Principal"""')
-    expect(lines[1]).toContain('"{\""reason\"":\""ajuste, manual\""}"')
+    expect(lines[1]).toContain(`"{""reason"":""ajuste, manual""}"`)
     expect(lines[2]).toBe('"audit-2","2026-01-02T12:00:00.000Z","admin_login","","system","","","","","","{}","{}","{}",""')
   })
 })

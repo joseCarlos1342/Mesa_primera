@@ -3,7 +3,7 @@
 import {
   ShoppingCart, Menu, Mic, HelpCircle, Headphones, ArrowRightLeft,
   Maximize, LogOut, ShieldAlert, AlertTriangle, Wrench, Send,
-  X, Check, Landmark, Copy, ShieldCheck, Upload,
+  X, Landmark, Copy, ShieldCheck, Upload,
 } from 'lucide-react'
 import type { TutorialStep } from './TutorialWalkthrough'
 

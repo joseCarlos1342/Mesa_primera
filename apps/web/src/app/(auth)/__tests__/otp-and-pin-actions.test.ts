@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { enforceSessionPolicy } from '../auth-actions-helpers'
+import { enforceRateLimiting } from '@/app/actions/anti-fraud'
+import { verifyTurnstile } from '@/lib/security/turnstile'
 import {
   enrollAdminTotp,
   loginWithPhone,
@@ -29,9 +31,6 @@ jest.mock('@/lib/security/turnstile', () => ({
 jest.mock('@/app/actions/anti-fraud', () => ({
   enforceRateLimiting: jest.fn().mockResolvedValue({ success: true }),
 }))
-
-const { enforceRateLimiting } = require('@/app/actions/anti-fraud')
-const { verifyTurnstile } = require('@/lib/security/turnstile')
 
 jest.mock('next/headers', () => ({
   cookies: jest.fn(),

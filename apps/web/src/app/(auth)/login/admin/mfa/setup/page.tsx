@@ -31,7 +31,7 @@ export default function AdminMFASetupPage() {
       setEnrolling(false)
     }
     enroll()
-  }, [])
+  }, [router])
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -133,8 +133,6 @@ async function searchBySeed(
   supabase: Awaited<ReturnType<typeof createClient>>,
   seed: string
 ): Promise<SearchMatch[]> {
-  const matches: SearchMatch[] = []
-
   return searchAdminReplays(supabase, seed)
 }
 

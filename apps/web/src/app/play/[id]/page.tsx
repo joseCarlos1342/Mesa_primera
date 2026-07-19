@@ -139,9 +139,9 @@ export default function GameRoomPage() {
       mql.removeEventListener('change', handler)
       // Al desmontar la página de juego, desbloquear orientación landscape
       const so = window.screen.orientation as ScreenOrientation & { unlock?: () => void }
-      try { so?.unlock?.() } catch {}
+      try { so?.unlock?.() } catch { /* La orientación puede no estar bloqueada. */ }
       if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {})
+        document.exitFullscreen().catch(() => { /* El navegador pudo cerrar fullscreen antes. */ })
       }
     }
   }, [])

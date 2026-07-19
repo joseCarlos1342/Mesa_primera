@@ -2,8 +2,7 @@ import { loginAdmin, loginWithPhone, redeemAdminRecoveryCode, registerAdmin, reg
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { enforceSessionPolicy } from '../auth-actions-helpers'
-
-const { enforceRateLimiting } = require('@/app/actions/anti-fraud')
+import { enforceRateLimiting } from '@/app/actions/anti-fraud'
 
 jest.mock('@/lib/admin-recovery-codes', () => ({
   hashAdminRecoveryCode: jest.fn((code: string) => `hash:${code}`),
@@ -211,7 +210,6 @@ describe('Auth Actions', () => {
     it('devuelve null y usa String(e) cuando createClient lanza un valor no-Error', async () => {
       const consoleErrSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
       ;(createClient as any).mockImplementationOnce(() => {
-        // eslint-disable-next-line @typescript-eslint/no-throw-literal
         throw 'boom from createClient'
       })
 

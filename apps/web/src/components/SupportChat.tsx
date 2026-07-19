@@ -11,8 +11,6 @@ import {
   listUserTickets,
   getSupportTicketHistory,
   uploadSupportAttachment,
-  getSupportAttachmentUrl,
-  type SupportTicket,
   type SupportTicketStatus,
   type SupportIssueCategory,
 } from '@/app/actions/support';
@@ -167,7 +165,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
         ticketId: data.ticketId,
       }]);
       if (!isAdmin && !isOpen) {
-        try { const a = new Audio('/sounds/notification.mp3'); a.volume = 0.5; a.play().catch(() => {}); } catch {}
+        try { const a = new Audio('/sounds/notification.mp3'); a.volume = 0.5; a.play().catch(() => undefined); } catch { /* Audio no disponible. */ }
       }
       window.dispatchEvent(new CustomEvent('support-notification', { detail: data }));
     });
@@ -192,7 +190,7 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
       if (!isAdmin && data.userId === userId && data.ticketId === activeTicketId) {
         setMessages(prev => [...prev, { id: uuidv4(), sender: 'Soporte', text: data.message, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), ticketId: data.ticketId }]);
         window.dispatchEvent(new CustomEvent('support-notification', { detail: data }));
-        if (!isOpen) { try { const a = new Audio('/sounds/notification.mp3'); a.volume = 0.5; a.play().catch(() => {}); } catch {} }
+        if (!isOpen) { try { const a = new Audio('/sounds/notification.mp3'); a.volume = 0.5; a.play().catch(() => undefined); } catch { /* Audio no disponible. */ } }
       }
     });
     s.on('support:resolved', (data: { userId: string; ticketId: string }) => {
@@ -336,7 +334,6 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
         return;
       }
       // Show attachment as a chat message
-      const isImage = file.type.startsWith('image/');
       setMessages(prev => [...prev, {
         id: result.data!.id,
         sender: 'Tú',

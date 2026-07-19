@@ -3,11 +3,12 @@ import { ReplayController } from '../ReplayController';
 import type { ReplayFrame } from '@/types/replay';
 
 jest.mock('framer-motion', () => {
-  const React = require('react');
-  const passthrough = (tag: string) =>
-    React.forwardRef(({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: any, ref: any) =>
-      React.createElement(tag, { ...props, ref }, children),
-    );
+  const React = jest.requireActual<typeof import('react')>('react');
+  const passthrough = (tag: string) => {
+    const Component = React.forwardRef(({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: any, ref: any) => React.createElement(tag, { ...props, ref }, children));
+    Component.displayName = `Motion${tag}`;
+    return Component;
+  };
   return {
     m: new Proxy({}, { get: (_t, prop: string) => passthrough(prop) }),
     motion: new Proxy({}, { get: (_t, prop: string) => passthrough(prop) }),
