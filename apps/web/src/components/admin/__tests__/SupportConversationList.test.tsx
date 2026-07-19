@@ -25,6 +25,7 @@ jest.mock('@/utils/avatars', () => ({
 
 const mockIo = io as jest.MockedFunction<typeof io>
 const mockCloseSupportTicket = closeSupportTicket as jest.MockedFunction<typeof closeSupportTicket>
+const originalAudio = global.Audio
 
 type SocketHandler = (payload: never) => void
 
@@ -41,6 +42,12 @@ function createSocketMock() {
       act(() => handlers.get(event)?.(payload as never))
     },
   }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => { resolve = promiseResolve })
+  return { promise, resolve }
 }
 
 function ticket(overrides: Partial<SupportTicket> & { user?: { username: string; full_name: string; avatar_url: string | null } }) {
@@ -80,6 +87,26 @@ describe('SupportConversationList', () => {
 
   afterEach(() => {
     delete (window as Window & typeof globalThis & { __MESA_PRIMERA_RUNTIME_ENV__?: unknown }).__MESA_PRIMERA_RUNTIME_ENV__
+    global.Audio = originalAudio
+  })
+
+  it('abre únicamente un initialTicketId que pertenezca a la lista', () => {
+    const initialTickets = [
+      ticket({ id: 'ticket-initial-ok', user_id: 'user-initial' }),
+      ticket({ id: 'ticket-secondary', user_id: 'user-secondary' }),
+    ]
+    const { unmount } = render(
+      <SupportConversationList adminId="admin-1" initialTickets={initialTickets} initialTicketId="ticket-initial-ok" />,
+    )
+
+    expect(screen.getByTestId('support-chat')).toHaveTextContent('Chat ticket-initial-ok user-initial admin embedded')
+    unmount()
+
+    render(
+      <SupportConversationList adminId="admin-1" initialTickets={initialTickets} initialTicketId="ticket-inexistente" />,
+    )
+    expect(screen.queryByTestId('support-chat')).not.toBeInTheDocument()
+    expect(screen.getByText('Centro de Comando')).toBeInTheDocument()
   })
 
   it('muestra tickets por estado, contadores y abre el chat seleccionado', () => {
@@ -185,6 +212,19 @@ describe('SupportConversationList', () => {
     expect(screen.getByText(/Sin sonido/)).toBeInTheDocument()
   })
 
+  it('mantiene el ticket nuevo si Audio.play rechaza por autoplay', async () => {
+    const play = jest.fn().mockRejectedValue(new DOMException('Autoplay bloqueado', 'NotAllowedError'))
+    global.Audio = jest.fn().mockImplementation(() => ({ volume: 0, play })) as unknown as typeof Audio
+    render(<SupportConversationList adminId="admin-1" initialTickets={[]} />)
+
+    socket.trigger('support:ticket-created', {
+      ticketId: 'audio-rejected', userId: 'user-audio', username: 'audio', preview: 'Continuar sin audio',
+    })
+
+    expect(await screen.findByText(/Continuar sin audio/)).toBeInTheDocument()
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
   it('finaliza un ticket desde admin, emite realtime y muestra estado cerrado', async () => {
     render(<SupportConversationList adminId="admin-1" initialTickets={[
       ticket({ id: 'ticket-close-1' }),
@@ -194,8 +234,7 @@ describe('SupportConversationList', () => {
     fireEvent.click(screen.getByText('Ana Mesa'))
     fireEvent.click(screen.getAllByRole('button', { name: /finalizar chat/i })[0])
 
-    await waitFor(() => expect(mockCloseSupportTicket).toHaveBeenCalledWith('ticket-close-1'))
-    expect(socket.emit).toHaveBeenCalledWith('support:ticket-finalized', { ticketId: 'ticket-close-1', closedByRole: 'admin' })
+    await waitFor(() => expect(socket.emit).toHaveBeenCalledWith('support:ticket-finalized', { ticketId: 'ticket-close-1', closedByRole: 'admin' }))
     expect(screen.getByText('Centro de Comando')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'FINALIZADOS' }))
@@ -205,6 +244,57 @@ describe('SupportConversationList', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'PENDIENTES' }))
     expect(screen.getByText(/Sigo pendiente/)).toBeInTheDocument()
+  })
+
+  it('finaliza el ticket desde el callback móvil', async () => {
+    render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-mobile-close' })]} />)
+    fireEvent.click(screen.getByText('Ana Mesa'))
+
+    fireEvent.click(screen.getByRole('button', { name: /finalizar chat en móvil/i }))
+
+    await waitFor(() => expect(socket.emit).toHaveBeenCalledWith('support:ticket-finalized', {
+      ticketId: 'ticket-mobile-close', closedByRole: 'admin',
+    }))
+    expect(screen.getByText('Centro de Comando')).toBeInTheDocument()
+  })
+
+  it('permite reintentar si la acción de cierre rechaza por red', async () => {
+    mockCloseSupportTicket
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce({ data: { closed_by_role: 'admin' } })
+    render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-retry-close' })]} />)
+    fireEvent.click(screen.getByText('Ana Mesa'))
+    const closeButton = screen.getAllByRole('button', { name: /finalizar chat/i })[0]
+
+    fireEvent.click(closeButton)
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo finalizar el chat')
+    expect(closeButton).toBeEnabled()
+    expect(screen.getByTestId('support-chat')).toBeInTheDocument()
+    expect(socket.emit).not.toHaveBeenCalledWith('support:ticket-finalized', expect.anything())
+
+    fireEvent.click(closeButton)
+    await waitFor(() => expect(socket.emit).toHaveBeenCalledWith('support:ticket-finalized', {
+      ticketId: 'ticket-retry-close', closedByRole: 'admin',
+    }))
+  })
+
+  it('no cierra la vista de otro ticket ante una respuesta tardía', async () => {
+    const pendingClose = deferred<{ data: { closed_by_role: 'admin' } }>()
+    mockCloseSupportTicket.mockReturnValueOnce(pendingClose.promise)
+    render(<SupportConversationList adminId="admin-1" initialTickets={[
+      ticket({ id: 'ticket-close-slow', last_message_preview: 'Cerrar lento' }),
+      ticket({ id: 'ticket-stay-open', user_id: 'user-2', last_message_preview: 'Mantener abierto', user: { username: 'beto', full_name: 'Beto Club', avatar_url: null } }),
+    ]} />)
+    fireEvent.click(screen.getByText('Ana Mesa'))
+    fireEvent.click(screen.getAllByRole('button', { name: /finalizar chat/i })[0])
+    fireEvent.click(screen.getByText('Beto Club'))
+
+    pendingClose.resolve({ data: { closed_by_role: 'admin' } })
+
+    await waitFor(() => expect(socket.emit).toHaveBeenCalledWith('support:ticket-finalized', {
+      ticketId: 'ticket-close-slow', closedByRole: 'admin',
+    }))
+    expect(screen.getByTestId('support-chat')).toHaveTextContent('Chat ticket-stay-open user-2 admin embedded')
   })
 
   it('actualiza estados por eventos realtime de atendido y finalizado', () => {
@@ -279,7 +369,6 @@ describe('SupportConversationList', () => {
 
   it('muestra empty states, respeta errores de cierre y desconecta el socket', async () => {
     mockCloseSupportTicket.mockResolvedValueOnce({ error: 'No se pudo cerrar' })
-    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
     const { unmount } = render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-error-1' })]} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'ATENDIDOS' }))
@@ -289,11 +378,10 @@ describe('SupportConversationList', () => {
     fireEvent.click(screen.getByText('Ana Mesa'))
     fireEvent.click(screen.getAllByRole('button', { name: /finalizar chat/i })[0])
 
-    await waitFor(() => expect(consoleError).toHaveBeenCalledWith('Error closing ticket:', 'No se pudo cerrar'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo finalizar el chat')
     expect(screen.getByTestId('support-chat')).toBeInTheDocument()
 
     unmount()
     expect(socket.disconnect).toHaveBeenCalledTimes(1)
-    consoleError.mockRestore()
   })
 })
