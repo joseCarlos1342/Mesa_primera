@@ -37,6 +37,7 @@ export function SupportConversationList({ initialTickets, adminId: _adminId, ini
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(() => initialTickets.some((ticket) => ticket.id === initialTicketId) ? initialTicketId! : null);
   const [filter, setFilter] = useState<TicketFilter>('pending');
   const [isClosing, setIsClosing] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
@@ -149,10 +150,11 @@ export function SupportConversationList({ initialTickets, adminId: _adminId, ini
 
   const handleClose = useCallback(async (ticketId: string) => {
     setIsClosing(true);
+    setCloseError(null);
     try {
       const result = await closeSupportTicket(ticketId);
       if (result.error) {
-        console.error('Error closing ticket:', result.error);
+        setCloseError('No se pudo finalizar el chat. Inténtalo nuevamente.');
         return;
       }
       setTickets(prev => prev.map(t =>
@@ -161,7 +163,9 @@ export function SupportConversationList({ initialTickets, adminId: _adminId, ini
           : t
       ));
       socket?.emit('support:ticket-finalized', { ticketId, closedByRole: 'admin' });
-      setSelectedTicketId(null);
+      setSelectedTicketId(current => current === ticketId ? null : current);
+    } catch {
+      setCloseError('No se pudo finalizar el chat. Inténtalo nuevamente.');
     } finally {
       setIsClosing(false);
     }
@@ -316,6 +320,7 @@ export function SupportConversationList({ initialTickets, adminId: _adminId, ini
                     </button>
                 </div>
             </div>
+            {closeError ? <p role="alert" className="border-b border-red-400/20 bg-red-500/10 px-5 py-2 text-xs font-semibold text-red-300">{closeError}</p> : null}
             
             {/* Chat Area */}
              <div className="flex-1 min-h-0 relative">
@@ -335,6 +340,7 @@ export function SupportConversationList({ initialTickets, adminId: _adminId, ini
                   <button 
                     onClick={() => handleClose(selectedTicketId)}
                     disabled={isClosing}
+                    aria-label="Finalizar chat en móvil"
                     className="w-full py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-4 h-4" />

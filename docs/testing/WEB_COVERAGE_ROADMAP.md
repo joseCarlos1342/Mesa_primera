@@ -16,15 +16,15 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.45%` |
 | Lines | `99.45%` |
-| Functions | `97.35%` |
-| Branches | `91.02%` |
+| Functions | `97.43%` |
+| Branches | `90.97%` |
 
 Resultado de la corrida:
 
-- `217` suites en verde.
-- `1904` tests pasando.
+- `218` suites en verde.
+- `1911` tests pasando.
 - La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 145 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
+- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 146 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
 ## Meta Final
 
@@ -2923,3 +2923,15 @@ Ese lote combina:
 - Resultado de verificación: suite focalizada verde con `37` tests, typecheck verde y coverage global web verde.
 - Progreso contra la meta: faltan `0.65` puntos en functions y `6.98` en branches.
 - Siguiente lote recomendado: callbacks accesibles de `SupportConversationList` y `Board`, o branches reales de `admin-issues.ts`; no perseguir guards SSR/invariantes rotas de SupportChat.
+
+## Checkpoint 146
+
+- Fecha: 2026-07-18, hardening de soporte admin realtime.
+- Coverage antes: `99.45%` statements/lines, `97.35%` functions y `91.02%` branches; `217` suites y `1904` tests.
+- Coverage después: `99.45%` statements/lines, `97.43%` functions y `90.97%` branches; `218` suites y `1911` tests.
+- Archivo cubierto: `components/admin/SupportConversationList.tsx`, que alcanza `100%` statements/lines/functions y `98.38%` branches.
+- Riesgos cerrados: `initialTicketId` no abre sesiones ajenas a la lista, ambos callbacks de cierre operan el ticket correcto, el autoplay rechazado no rompe realtime, los fallos muestran feedback reintentable y una respuesta tardía no cierra otra conversación seleccionada.
+- Resultado de verificación: suite focalizada verde con `17` tests, typecheck verde y coverage global web verde.
+- Nota de medición: el leve descenso global de branches refleja superficie nueva del resumen global de replays incorporada en paralelo; functions sí mejora `0.08` puntos.
+- Progreso contra la meta: faltan `0.57` puntos en functions y `7.03` en branches.
+- Siguiente lote recomendado: callbacks visibles y diferencias incrementales de `Board.tsx`, evitando guards estructuralmente inaccesibles.
