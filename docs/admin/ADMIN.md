@@ -235,6 +235,24 @@ Visión operativa de todas las mesas y salas activas, con herramientas para gest
 - **Asignar categoría:** `common` (mesa estándar) o `custom` (personalizada).
 - **Controlar el slot de lobby:** Define en qué posición aparece la mesa dentro del listado para los jugadores.
 
+#### Montos de mesas personalizadas
+
+Las mesas de categoría `custom` conservan los presets como atajos para saldo mínimo de entrada y pique mínimo. Cuando se requiere un monto especial, el admin puede usar los campos **Otro saldo mínimo (COP)** y **Otro pique mínimo (COP)**:
+
+- El valor se ingresa en **pesos COP enteros**: `750000` representa `$750.000 COP`.
+- Los valores deben ser positivos y múltiplos de `$1.000 COP`.
+- El saldo mínimo debe ser mayor o igual al pique mínimo.
+- La interfaz muestra el error junto al campo afectado y el servidor repite las validaciones antes de guardar la mesa.
+
+#### Historial terminal de recuperación
+
+**Ruta:** `/admin/recovery`
+
+El historial lista solo incidentes `cancelled_crash`, `manual_review` o `closed` cuyas partidas ya terminaron. Permite buscar por sala o juego, filtrar por estado, causa y fechas, recorrer resultados mediante páginas estables, exportar el resumen filtrado y abrir el detalle terminal de refunds. Cuando una grabación histórica existe, el admin puede abrir su auditoría/replay; una caída no garantiza que haya replay disponible.
+
+> [!IMPORTANT]
+> Este módulo no muestra checkpoints, roster, cartas ni estados de recuperación activos. La conciliación reutiliza la operación idempotente original; el cierre exige reconocimiento, refunds completados con ledger vinculado y motivo operativo auditado.
+
 #### Limitaciones explícitas de la vista
 
 > [!IMPORTANT]
@@ -651,7 +669,7 @@ Acceso administrativo al archivo histórico de partidas jugadas. Permite revisar
 ### Qué puede hacer el admin
 
 - **Listar todas las partidas** con fecha, jugadores involucrados y rake generado.
-- **Ver resúmenes estadísticos:** total de partidas registradas, rake acumulado, número de jugadores únicos.
+- **Ver resúmenes estadísticos:** juegos terminados con replay, rake completado asociado y participantes observados. La tabla conserva una muestra visible de las últimas 100 filas.
 - **Acceder a un replay individual** directamente desde el listado para reproducirlo visualmente.
 - **Acceder a un replay individual** para reconstruir la mano y usarlo como evidencia operativa.
 

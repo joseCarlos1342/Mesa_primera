@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **Summary de replays deja de presentar una muestra como total** (`/admin/replays`): los cards muestran juegos terminados con replay, rake completado asociado y participantes observados mediante una RPC administrativa protegida.
+
 ## [Sprint 6.10e] - 2026-04-26
 
 ### Added

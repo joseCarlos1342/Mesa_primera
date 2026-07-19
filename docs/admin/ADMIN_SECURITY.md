@@ -486,7 +486,7 @@ A continuación se documentan las vulnerabilidades identificadas y corregidas du
 **Corrección aplicada:** Migración `20260528000000_harden_replay_rpc_rls.sql`.
 
 - `get_player_replays`, `get_player_replays_by_mesa` y `get_player_replays_for_room` ahora exigen `auth.uid() = p_user_id`.
-- `get_admin_replays` y `get_replay_ledger` ahora exigen `public.is_admin()` dentro de la RPC.
+- `get_admin_replays`, `get_replay_ledger` y `get_admin_replays_summary` exigen `public.is_admin()` dentro de la RPC.
 - `get_replay_ledger` solo devuelve ledger asociado a partidas `finished`.
 - Se revocó `EXECUTE` desde `PUBLIC` y se concedió únicamente a `authenticated`.
 - La regresión queda cubierta en `supabase/tests/20260528000000_replay_rpc_rls.test.sql`.

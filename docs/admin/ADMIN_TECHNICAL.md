@@ -187,6 +187,25 @@ export async function someAdminAction(): Promise<ActionResult<Data>> {
 
 ---
 
+### `admin-recovery.ts`
+
+| Función exportada | Parámetros | Retorno | Descripción |
+|---|---|---|---|
+| `getAdminRecoveryIncidents()` | — | `Promise<AdminRecoveryIncident[]>` | Compatibilidad con el resumen histórico original |
+| `getAdminRecoveryIncidentPage(filters?)` | estado, causa, búsqueda, fechas y cursor opcionales | `Promise<RecoveryIncidentPage>` | Consulta terminal paginada con cursor estable y disponibilidad de replay |
+| `getAdminRecoveryRefunds(gameId)` | UUID de juego | `Promise<AdminRecoveryRefund[]>` | Detalle terminal de refunds con enlaces al ledger, sin `operation_id` ni metadata privada |
+| `reconcileRecoveryRefund({ refundId, reason })` | UUID de refund y motivo operativo | resultado con refund y ledger | Delega la reconciliación idempotente a la RPC; no acepta monto, jugador ni `operation_id` del cliente |
+| `closeRecoveryIncident({ incidentId, reason, confirmed })` | UUID, motivo y confirmación | resultado idempotente | Cierra solo un `manual_review` reconocido, con juego finalizado y todos los refunds completados |
+| `getAdminRecoveryIncidentExport(filters?)` | filtros terminales | resumen CSV | Fuente de `GET /api/admin/recovery/export`; el Route Handler aplica escape anti-fórmulas y cabeceras de descarga seguras |
+
+La RPC `list_admin_recovery_incidents_v2` solo acepta filtros parametrizados, limita la página en servidor y ordena por `detected_at DESC, game_id DESC`. Conserva Admin Blindness: devuelve únicamente metadata terminal, conteos agregados de refunds y si existe replay; no expone checkpoints, roster ni datos por jugador.
+
+La RPC financiera `reconcile_game_recovery_refund(refundId, reason)` bloquea el refund, exige incidente terminal y juego finalizado, reutiliza el `operation_id` existente y valida cualquier crédito previo antes de crear uno. Al completarse, enlaza el ledger, marca el refund y registra `recovery_refund_reconciled` en auditoría dentro de la misma transacción.
+
+`close_game_recovery_incident(incidentId, reason)` adquiere el bloqueo del incidente y registra `recovery_incident_closed`. Es irreversible: no cambia refunds ni crea créditos; exige reconocimiento previo y evidencia de ledger para cada refund completado. La alerta de `manual_review` usa `server_alerts.dedupe_key` y solo se emite después de una transición real.
+
+---
+
 ### `admin-users.ts`
 
 | Función exportada | Parámetros | Retorno | Descripción |
@@ -229,7 +248,9 @@ processTransaction(requestId, 'completed')
 |---|---|---|---|
 | `getTablesList(category?)` | `TableCategory?` | `Promise<Table[]>` | Lista mesas con conteo de partidas activas |
 | `getActiveGames()` | — | `Promise<AdminGameView[]>` | Partidas en `waiting` o `in_progress` con jugadores visibles |
-| `createTable(input)` | `CreateTableInput` | `Promise<LobbyTable>` | Crea una nueva mesa; valida denominaciones de fichas |
+| `createTable(input)` | `{ name, max_players?, game_type?, lobby_slot? }` | `Promise<{ success: true }>` | Crea una mesa común con configuración financiera fija |
+| `createCustomTable(input)` | `{ name, max_players, min_entry_cents, min_pique_cents, disabled_chips, game_type? }` | `Promise<{ success: true }>` | Crea una mesa personalizada y valida sus montos y fichas |
+| `updateTable(tableId, data)` | `string`, campos editables de `tables` | `Promise<{ success: true }>` | Actualiza una mesa; bloquea campos financieros en mesas comunes y valida los de mesas personalizadas |
 | `setGameStatus(gameId, status)` | `string`, `string` | `Promise<void>` | Pausa o reanuda una sala |
 | `kickPlayer(gameId, userId, reason)` | `string`, `string`, `string` | `Promise<void>` | Expulsa a un jugador de la sala activa |
 | `getTableFinancials()` | — | `Promise<TableFinancials[]>` | Agregados financieros por mesa (rake, apuestas, créditos) |
@@ -240,6 +261,12 @@ processTransaction(requestId, 'completed')
 const VALID_CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as const;
 // Equivalen a: $1.000, $2.000, $5.000, $10.000, $20.000, $50.000 COP
 ```
+
+**Montos de mesas personalizadas:**
+
+- La UI recibe importes en pesos COP enteros y los convierte a centavos antes de llamar a la action.
+- `createCustomTable` y `updateTable` exigen enteros seguros positivos, múltiplos de `100000` centavos (`$1.000 COP`) y `min_entry_cents >= min_pique_cents`.
+- Los presets del admin residen en `src/config/table-presets.ts`; no representan una configuración persistida por local.
 
 ---
 
@@ -761,7 +788,9 @@ Mapa completo de facultades administrativas a sus fuentes técnicas:
 | Ver ledger global | `getLedgerEntries` | — | `ledger` | — |
 | Ver ledger por usuario | `getUserLedgerEntries` | — | `ledger` | — |
 | Ver mesas activas | `getActiveGames` | — | `games`, `game_participants`, `tables` | — |
-| Crear mesa | `createTable` | — | `tables` | — |
+| Consultar recovery terminal | `getAdminRecoveryIncidentPage` | `list_admin_recovery_incidents_v2` | `game_recovery_incidents`, `game_recovery_refunds`, `games`, `game_replays` | — |
+| Crear mesa común | `createTable` | — | `tables` | `table_created` |
+| Crear mesa personalizada | `createCustomTable` | — | `tables` | `table_created` |
 | Pausar/reanudar sala | `setGameStatus` | — | `games` | — |
 | Expulsar jugador | `kickPlayer` | — | `game_participants` | — |
 | Aprobar depósito | `processTransaction('completed')` | `process_admin_transaction` | `deposit_requests`, `ledger`, `wallets` | `transaction_approved` |
