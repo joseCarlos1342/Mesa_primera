@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { SupportChat } from '../SupportChat'
+import { v4 as uuid } from 'uuid'
 import {
   appendSupportMessage,
   closeSupportTicket,
@@ -699,8 +700,7 @@ describe('SupportChat', () => {
   })
 
   it('usa fallback de uuid y Date.now cuando el socket no envia messageId ni timestamp', async () => {
-    const { v4 } = require('uuid')
-    ;(v4 as jest.Mock).mockReturnValueOnce('fallback-uuid')
+    ;(uuid as jest.Mock).mockReturnValueOnce('fallback-uuid')
 
     render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
     await screen.findByText('Necesito ayuda con mi mesa')

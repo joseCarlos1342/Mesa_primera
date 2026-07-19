@@ -92,11 +92,12 @@ export function AnimationLayer() {
     window.addEventListener('animate-deal', handleDeal);
     window.addEventListener('animate-discard', handleDiscard);
     
+    const timers = timersRef.current;
     return () => {
       window.removeEventListener('animate-deal', handleDeal);
       window.removeEventListener('animate-discard', handleDiscard);
-      timersRef.current.forEach(t => clearTimeout(t));
-      timersRef.current.clear();
+      timers.forEach(t => clearTimeout(t));
+      timers.clear();
     };
   }, []);
 

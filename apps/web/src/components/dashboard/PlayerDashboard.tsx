@@ -1,7 +1,7 @@
 'use client'
 
 import { m } from 'framer-motion'
-import { Wallet, Play, Users, TrendingUp, ShoppingCart, ArrowUpWideNarrow, Gamepad2, Plus, RotateCcw } from 'lucide-react'
+import { Wallet, Play, Users, TrendingUp, ArrowUpWideNarrow, Gamepad2, Plus, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getWalletData } from '@/app/actions/wallet'
@@ -30,7 +30,7 @@ export function PlayerDashboard({ initialData }: PlayerDashboardProps) {
       setData(res)
       setLoading(false)
     })
-  }, [])
+  }, [initialData])
 
   const balance = data?.wallet?.balance_cents || 0
 

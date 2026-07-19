@@ -46,7 +46,7 @@ export function GameAnnouncer({ phase, customMessage }: GameAnnouncerProps) {
       const timer = setTimeout(() => setAnnouncement(null), 3000);
       return () => clearTimeout(timer);
     }
-  }, [phase]);
+  }, [customMessage, phase]);
 
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none mb-56 md:mb-72">

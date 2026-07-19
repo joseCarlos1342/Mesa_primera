@@ -111,7 +111,7 @@ export async function getAuditLog(filters: AuditLogFilters | number = 200): Prom
 
   // Resolve admin names from profiles
   const adminIds = [...new Set((entries || []).map((e: any) => e.admin_id).filter(Boolean))]
-  let adminMap: Record<string, { full_name: string | null; username: string | null }> = {}
+  const adminMap: Record<string, { full_name: string | null; username: string | null }> = {}
   if (adminIds.length > 0) {
     const { data: admins } = await supabase
       .from('profiles')

@@ -83,7 +83,7 @@ describe('Auth pages contrast compliance', () => {
     expect(source).not.toMatch(/text-slate-500/)
   })
 
-  it('BiometricSetupPage does not use text-white\/30', () => {
+  it('BiometricSetupPage does not use text-white/30', () => {
     const source = fs.readFileSync(
       path.resolve(
         __dirname,
@@ -591,7 +591,6 @@ describe('Profile page heading order', () => {
 
 describe('Profile page contrast compliance', () => {
   it('Stat labels use text-slate-400 instead of text-slate-600', () => {
-    const mesasMatch = profileSource.match(/Mesas<\/p>[\s\S]{0,5}/)
     const mesasContext = profileSource.substring(
       profileSource.indexOf('Mesas</p>') - 80,
       profileSource.indexOf('Mesas</p>')
@@ -601,7 +600,6 @@ describe('Profile page contrast compliance', () => {
   })
 
   it('Form labels use text-brand-gold without opacity modifier', () => {
-    const aliasLabel = profileSource.match(/Alias de Jugador[\s\S]{0,5}/)
     const aliasContext = profileSource.substring(
       profileSource.indexOf('Alias de Jugador') - 100,
       profileSource.indexOf('Alias de Jugador')

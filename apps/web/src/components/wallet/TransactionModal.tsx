@@ -12,8 +12,6 @@ interface TransactionModalProps {
   onClose: () => void
 }
 
-const VAULT_TYPES = ['deposit', 'withdrawal', 'refund', 'adjustment', 'admin_adjustment', 'transfer']
-
 function getTypeLabel(type: string) {
   switch (type) {
     case 'deposit': return 'Depósito de Fondos'

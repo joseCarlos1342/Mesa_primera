@@ -4,7 +4,6 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { enforceRateLimiting } from '@/app/actions/anti-fraud'
-import { redis } from '@/utils/redis'
 import {
   registerPlayerSchema,
   loginPlayerSchema,
@@ -14,7 +13,6 @@ import {
   adminRecoveryCodeSchema,
   otpTokenSchema,
   setPinSchema,
-  pinSchema,
   flattenZodErrors,
 } from '@/lib/validations'
 import { hashAdminRecoveryCode } from '@/lib/admin-recovery-codes'
@@ -59,7 +57,7 @@ type ProfileSeedCandidate = {
  * Genera y persiste un device_trusted_id en cookie httpOnly (30 días)
  * y lo registra como dispositivo confiable en la BD.
  */
-async function registerTrustedDevice(userId: string) {
+async function registerTrustedDevice(_userId: string) {
   const deviceId = crypto.randomUUID()
   const cookieStore = await cookies()
 
@@ -517,7 +515,7 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       await adminSupabase.auth.admin.updateUserById(data.user.id, {
         phone_confirm: true,
       })
-      redirect(`/register/player/pin`)
+      return redirect(`/register/player/pin`)
     }
 
     case 'device-verify': {
@@ -527,16 +525,16 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       await registerTrustedDevice(data.user.id)
       await enforceSessionPolicy(data.user.id)
       await setAppLockBypassCookie()
-      redirect('/')
+      return redirect('/')
     }
 
     case 'recovery':
       // User verified for PIN recovery — redirect to set new PIN
-      redirect(`/recovery/pin`)
+      return redirect(`/recovery/pin`)
 
     case 'login-set-pin':
       // Legacy user without PIN — verified via OTP, now redirect to set PIN
-      redirect(`/register/player/pin`)
+      return redirect(`/register/player/pin`)
 
     default: {
       // Legacy login flow (backwards compat)
@@ -544,7 +542,7 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       if (defSanction.blocked) return { error: defSanction.error }
       await enforceSessionPolicy(data.user.id)
       await setAppLockBypassCookie()
-      redirect('/')
+      return redirect('/')
     }
   }
 }

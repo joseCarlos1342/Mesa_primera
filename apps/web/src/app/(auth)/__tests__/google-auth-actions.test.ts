@@ -1,8 +1,7 @@
 import { completeGoogleRegistration, getGoogleUserData } from '../auth-actions'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-
-const { enforceRateLimiting } = require('@/app/actions/anti-fraud')
+import { enforceRateLimiting } from '@/app/actions/anti-fraud'
 
 const TEST_PHONE_LOCAL = '3000000000'
 const TEST_PHONE_E164 = '+573000000000'
@@ -76,7 +75,6 @@ describe('Google Auth Actions', () => {
       }),
     }
 
-    const { createAdminClient } = require('@/utils/supabase/server')
     ;(createAdminClient as any).mockResolvedValue(mockAdminSupabase)
   })
 

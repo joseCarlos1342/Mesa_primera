@@ -55,7 +55,7 @@ describe('AdminHeaderActions', () => {
 
   it('mantiene altura uniforme (h-10) en todos los elementos del header para evitar saltos visuales', () => {
     mockUsePathname.mockReturnValue('/admin')
-    const { container } = render(<AdminHeaderActions />)
+    render(<AdminHeaderActions />)
     // Verificamos específicamente los 3 elementos visibles del header en /admin:
     // link "Nuevo Broadcast" + botón "Cerrar Sesión" (de SignOutButton mockeado).
     // El input y submit del form de búsqueda los verificamos en su propio test.

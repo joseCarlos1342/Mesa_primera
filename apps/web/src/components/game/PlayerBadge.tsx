@@ -18,7 +18,7 @@ interface PlayerBadgeProps {
   isAllIn?: boolean;
 }
 
-export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, points, turnOrder, isWaiting = false, isAllIn = false }: PlayerBadgeProps) {
+export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, turnOrder, isWaiting = false, isAllIn = false }: PlayerBadgeProps) {
   const _isMuted = true; // Placeholder for actual voice chat state if available
 
   // Determine avatar rendering

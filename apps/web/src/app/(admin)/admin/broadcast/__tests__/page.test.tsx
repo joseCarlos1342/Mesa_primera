@@ -10,7 +10,7 @@ jest.mock('@/app/actions/admin-broadcast', () => ({
 jest.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   motion: {
-    div: ({ children, initial, animate, exit, transition, layoutId, ...props }: React.HTMLAttributes<HTMLDivElement> & {
+    div: ({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, layoutId: _layoutId, ...props }: React.HTMLAttributes<HTMLDivElement> & {
       initial?: unknown
       animate?: unknown
       exit?: unknown

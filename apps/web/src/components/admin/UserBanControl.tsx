@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from 'react-dom'
-import { Lock, Shield, AlertTriangle, X } from "lucide-react";
+import { Lock, Shield, X } from "lucide-react";
 import { createSanction, revokeSanction, getActiveSanctions, type SanctionRecord, type SanctionInput, type SanctionType } from "@/app/actions/admin-sanctions";
 import { useRouter } from "next/navigation";
 

@@ -16,7 +16,7 @@ for (const size of sizes) {
     const count = await cards.count();
     for (let i = 0; i < count; i++) {
       // If modal is open, close it first by clicking overlay
-      const modal = page.locator('.fixed.inset-0.z-\[60\]').first();
+      const modal = page.locator('.fixed.inset-0.z-[60]').first();
       if (await modal.isVisible().catch(() => false)) {
         await modal.click();
         await page.waitForTimeout(300);

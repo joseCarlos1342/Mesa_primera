@@ -2,7 +2,6 @@ import {
   parseCardsStr,
   evaluateHand,
   CARD_POINTS,
-  type Card,
 } from '@/utils/handEvaluation';
 
 describe('parseCardsStr', () => {
@@ -11,7 +10,7 @@ describe('parseCardsStr', () => {
   });
 
   it('returns empty array for undefined-like input', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     expect(parseCardsStr(undefined as any)).toEqual([]);
   });
 

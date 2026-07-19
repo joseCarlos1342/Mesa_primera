@@ -83,7 +83,7 @@ function PlayerLoginContent() {
       }
 
       setPasskeyError(result.error ?? 'Error en la verificación.')
-    } catch (e) {
+    } catch {
       setPasskeyError('Verificación biométrica cancelada o fallida.')
     } finally {
       setPasskeyLoading(false)

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { client } from '@/lib/colyseus';
 import { Room } from '@colyseus/sdk';
-import { ArrowLeft, Eye, UserX, VolumeX, Ban, Loader2, Users, AlertTriangle, Shield, X } from 'lucide-react';
+import { ArrowLeft, Eye, UserX, VolumeX, Loader2, Users, AlertTriangle, Shield, X } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ManoIcon } from '@/components/game/ManoIcon';
