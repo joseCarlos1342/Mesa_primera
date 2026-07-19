@@ -722,6 +722,7 @@ Si hay un problema en vivo, el admin puede supervisar y decidir, pero no romper 
 - [ADMIN_SECURITY.md](ADMIN_SECURITY.md): restricciones, ceguera administrativa y superficie de seguridad.
 - [ADMIN_TECHNICAL.md](ADMIN_TECHNICAL.md): rutas, server actions, RPCs y trazabilidad técnica.
 - [Archivo de summary cards de replays](../archive/admin/MEJORAS_SUMMARY_CARDS_REPLAYS_2026-07-18.md): implementación del agregado terminal de replays.
+- [Seguimiento de rendimiento del summary de replays](seguimiento-rendimiento-summary-replays.md): medición requerida antes de optimizar el agregado histórico.
 - [Archivo de acciones de recovery](../archive/admin/MEJORAS_RECOVERY_ACTIONS_2026-07-18.md): implementación histórica del detalle terminal, conciliación, cierre y exportación.
 - [Archivo de valores personalizados de mesa](../archive/admin/MEJORAS_CREATE_TABLE_PERSONALIZADOS_2026-07-17.md): mejora ya implementada en `CreateTableModal`.
 
