@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.45%` statements, `90.97%` branches, `97.43%` functions, `99.45%` lines con `218` suites y `1911` tests pasando (`2026-07-18`).
+- Medicion web vigente: `99.45%` statements, `91.08%` branches, `97.52%` functions, `99.45%` lines con `218` suites y `1916` tests pasando (`2026-07-18`).
 - Medicion game-server vigente: `93.35%` statements, `85.02%` branches, `94.79%` functions, `95.18%` lines con `34` suites y `833` tests pasando (`2026-07-18`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -93,6 +93,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de replays server-side (2026-07-18): 8 casos adicionales cubren hidratación best-effort desde game-server, saneamiento de cartas privadas para player, autorización y visibilidad completa para admin, fallos HTTP/red y resultados parciales de RPC. `app/actions/replays.ts` queda en `100%` statements/lines/functions y `93.67%` branches.
 - Hardening de callbacks SupportChat (2026-07-18): 4 tests nuevos cubren categoría `other` sin referencias indebidas, doble submit, mensajes player→admin y tickets archivados; además se refuerzan navegación, lifecycle de socket y emisión de cierre en casos existentes. `SupportChat.tsx` queda en `100%` statements/lines, `88.46%` functions y `92.8%` branches.
 - Hardening de soporte admin (2026-07-18): `SupportConversationList` cubre selección inicial segura, ambos callbacks de cierre, autoplay bloqueado, feedback/reintento después de un rechazo de red y respuestas tardías sin cerrar otra conversación. El componente queda en `100%` statements/lines/functions y `98.38%` branches.
+- Hardening de Board realtime (2026-07-18): se cubren ambos órdenes del resync privado sin reparto falso, reveal incremental, deselección de cartas, limpieza de apuestas, sorteo de mano, ordinal y semántica de resto después de pasar con juego. `Board.tsx` queda en `100%` statements/lines/functions y `97.05%` branches.
 
 ## Roadmap de Cobertura Web
 

@@ -9,7 +9,7 @@ jest.mock('framer-motion', () => ({
   },
 }))
 
-jest.mock('../PlayerBadge', () => ({ PlayerBadge: ({ player }: { player: { nickname?: string } }) => <div data-testid="player-badge">{player?.nickname ?? 'VACÍO'}</div> }))
+jest.mock('../PlayerBadge', () => ({ PlayerBadge: ({ player, isAllIn }: { player: { nickname?: string }; isAllIn?: boolean }) => <div data-testid="player-badge" data-all-in={String(Boolean(isAllIn))}>{player?.nickname ?? 'VACÍO'}</div> }))
 jest.mock('../ActionControls', () => ({
   ActionControls: ({ onBetConfirm, onBetClear, onClearSelection, selectedCards, totalBet, pasoJuegoChoice, onPasoJuegoResolved }: any) => (
     <div data-testid="action-controls">
@@ -170,8 +170,12 @@ describe('Board misc guards and banners', () => {
     expect(screen.getByText(/selecciona las cartas/i)).toBeInTheDocument()
     const firstCard = screen.getByText('1-O').closest('div')!
     fireEvent.click(firstCard)
-    expect(screen.getByText('1-O')).toBeInTheDocument()
+    expect(screen.getByTestId('selected-count')).toHaveTextContent('1')
+    fireEvent.click(firstCard)
+    expect(screen.getByTestId('selected-count')).toHaveTextContent('0')
+    fireEvent.click(firstCard)
     fireEvent.click(screen.getByRole('button', { name: /limpiar selección/i }))
+    expect(screen.getByTestId('selected-count')).toHaveTextContent('0')
   })
 
   it('suma fichas, confirma apuesta y limpia chipCounts', async () => {
@@ -192,6 +196,13 @@ describe('Board misc guards and banners', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /quitar chip/i }))
     await waitFor(() => expect(screen.getByTestId('chip-total')).toHaveTextContent('0'))
+
+    fireEvent.click(screen.getByRole('button', { name: /agregar chip/i }))
+    await waitFor(() => expect(screen.getByTestId('chip-total')).toHaveTextContent('500000'))
+
+    fireEvent.click(screen.getByRole('button', { name: /limpiar apuesta/i }))
+    expect(screen.getByTestId('chip-total')).toHaveTextContent('0')
+    expect(room.send.mock.calls.some(([type]: [string]) => type === 'action')).toBe(false)
 
     fireEvent.click(screen.getByRole('button', { name: /agregar chip/i }))
     await waitFor(() => expect(screen.getByTestId('chip-total')).toHaveTextContent('500000'))
@@ -278,6 +289,35 @@ describe('Board misc guards and banners', () => {
     dispatchSpy.mockRestore()
   })
 
+  it('no anima como reparto las cartas privadas recibidas durante un resync activo', () => {
+    const room = createRoom()
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
+    room.state.phase = 'PIQUE'
+    const hydratedPlayers = [{ ...players[0], cardCount: 2 }, { ...players[1] }]
+    const { rerender } = render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={hydratedPlayers} myCards="" />)
+
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={hydratedPlayers.map(player => ({ ...player }))} myCards="01-O,02-C" />)
+
+    expect(dispatchSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'animate-deal' }))
+    dispatchSpy.mockRestore()
+  })
+
+  it('no anima el resync si las cartas privadas llegan antes que cardCount', () => {
+    const room = createRoom()
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
+    room.state.phase = 'PIQUE'
+    const initialPlayers = [{ ...players[0], cardCount: 0 }, { ...players[1] }]
+    const { rerender } = render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={initialPlayers} myCards="" />)
+
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={initialPlayers.map(player => ({ ...player }))} myCards="01-O,02-C" />)
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={[
+      { ...players[0], cardCount: 2 }, { ...players[1] },
+    ]} myCards="01-O,02-C" />)
+
+    expect(dispatchSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'animate-deal' }))
+    dispatchSpy.mockRestore()
+  })
+
   it('dispara animación de descarte cuando desaparecen cartas privadas', async () => {
     const room = createRoom()
     const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
@@ -341,6 +381,65 @@ describe('Board misc guards and banners', () => {
     })
 
     dispatchSpy.mockRestore()
+  })
+
+  it('anima únicamente la carta nueva en un reveal incremental', async () => {
+    const room = createRoom()
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
+    room.state.phase = 'SHOWDOWN'
+    const initialPlayers = [{ ...players[0] }, { ...players[1], revealedCards: '03-E' }]
+    const { rerender } = render(<Board room={room} phase="SHOWDOWN" pot={0} piquePot={0} players={initialPlayers} />)
+
+    rerender(<Board room={room} phase="SHOWDOWN" pot={0} piquePot={0} players={[
+      { ...players[0] }, { ...players[1], revealedCards: '03-E,04-B' },
+    ]} />)
+
+    await waitFor(() => expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'animate-deal',
+      detail: { toPlayerId: 'player-2', cards: ['04-B'], isFaceUp: true },
+    })))
+    expect(dispatchSpy.mock.calls.filter(([event]) => event.type === 'animate-deal')).toHaveLength(1)
+    dispatchSpy.mockRestore()
+  })
+
+  it('muestra cartas rivales en sorteo de mano y oculta el ordinal preliminar', () => {
+    const room = createRoom()
+    room.state.phase = 'STARTING'
+    room.state.dealerId = 'player-2'
+    const localSecond = { ...players[0], turnOrder: 2 }
+    const rivalRevealed = { ...players[1], revealedCards: '03-E' }
+    const { rerender } = render(<Board room={room} phase="STARTING" pot={0} piquePot={0} players={[localSecond, rivalRevealed]} />)
+
+    expect(screen.queryByText('2ª')).not.toBeInTheDocument()
+
+    room.state.phase = 'SORTEO_MANO'
+    rerender(<Board room={room} phase="SORTEO_MANO" pot={0} piquePot={0} players={[{ ...localSecond }, { ...rivalRevealed }]} />)
+    const opponentCards = screen.getByText('3-E').closest('[class*="relative justify-center"]')
+    expect(opponentCards).toHaveClass('flex')
+    expect(opponentCards).not.toHaveClass('hidden')
+
+    room.state.phase = 'PIQUE'
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={[{ ...localSecond }, { ...rivalRevealed }]} />)
+    expect(screen.getByText('2ª')).toBeInTheDocument()
+  })
+
+  it('muestra Resto solo mientras el jugador no haya pasado con juego', () => {
+    const room = createRoom()
+    room.state.phase = 'PIQUE'
+    const allInPlayers = [
+      { ...players[0], isAllIn: true, passedWithJuego: true },
+      { ...players[1], isAllIn: true, passedWithJuego: false },
+    ]
+    const { rerender } = render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={allInPlayers} />)
+
+    expect(screen.queryByText('Resto')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('player-badge').find(badge => badge.textContent === 'Ana')).toHaveAttribute('data-all-in', 'true')
+
+    rerender(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={[
+      { ...allInPlayers[0], passedWithJuego: false }, { ...allInPlayers[1], passedWithJuego: true },
+    ]} />)
+    expect(screen.getByText('Resto')).toBeInTheDocument()
+    expect(screen.getAllByTestId('player-badge').find(badge => badge.textContent === 'Ana')).toHaveAttribute('data-all-in', 'false')
   })
 
   it('representa stack plegado y cartas reveladas de oponentes según estado', () => {

@@ -16,15 +16,15 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.45%` |
 | Lines | `99.45%` |
-| Functions | `97.43%` |
-| Branches | `90.97%` |
+| Functions | `97.52%` |
+| Branches | `91.08%` |
 
 Resultado de la corrida:
 
 - `218` suites en verde.
-- `1911` tests pasando.
+- `1916` tests pasando.
 - La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 146 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
+- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 147 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
 ## Meta Final
 
@@ -156,7 +156,7 @@ Riesgo:
 Estado actual:
 
 - `components/game/Lobby.tsx`: `99.71%`, branches `80.51%`, functions `93.33%`.
-- `components/game/Board.tsx`: `100%` statements/lines, ramas `89.78%`, funciones `92.85%`.
+- `components/game/Board.tsx`: `100%` statements/lines/functions y `97.05%` branches tras hardening de resync, reveal incremental, descarte, apuestas y estados especiales.
 - `app/play/[id]/page.tsx`: `99.30%` statements/lines, `89.25%` branches, `100%` functions; quedan callback de `window.location.reload`, catch defensivo de audio y el retorno de recuperación pendiente vencida.
 
 Riesgo:
@@ -586,7 +586,7 @@ Esta seccion convierte el roadmap en trabajo operable. Cada lote debe poder toma
 | L6 | Wallet modals + transferencias | Media | Completado | L5 | cubrir interacciones financieras UI |
 | L7 | Shell transversal + providers | Media | En progreso | ninguna | cubrir componentes compartidos de alto impacto |
 | L8 | Game lobby + overlays criticos | Alta | En progreso | L2 | cubrir game UI con mayor retorno |
-| L9 | Board hardening | Alta | Pendiente | L8 | subir ramas y funciones de `Board.tsx` |
+| L9 | Board hardening | Alta | Completado | L8 | subir ramas y funciones de `Board.tsx` |
 | L10 | Hooks + Supabase web infra | Media | En progreso | ninguna | cubrir adaptadores y hooks en `0%` |
 | L11 | API routes web | Media | Completado | L10 opcional | cubrir rutas App Router sin tests |
 | L12 | Barrido final de huecos residuales | Alta | En progreso | L1-L11 | preparar salto a gate final |
@@ -981,11 +981,11 @@ Criterio de salida:
 
 Checklist:
 
-- [ ] ramas de permisos;
-- [ ] ramas por fase;
-- [ ] ramas por tipo de usuario;
-- [ ] callbacks clave;
-- [ ] estados especiales no cubiertos.
+- [x] ramas de permisos;
+- [x] ramas por fase;
+- [x] ramas por tipo de usuario;
+- [x] callbacks clave;
+- [x] estados especiales no cubiertos.
 
 ### Lote L10: Hooks + Supabase web infra
 
@@ -2935,3 +2935,14 @@ Ese lote combina:
 - Nota de medición: el leve descenso global de branches refleja superficie nueva del resumen global de replays incorporada en paralelo; functions sí mejora `0.08` puntos.
 - Progreso contra la meta: faltan `0.57` puntos en functions y `7.03` en branches.
 - Siguiente lote recomendado: callbacks visibles y diferencias incrementales de `Board.tsx`, evitando guards estructuralmente inaccesibles.
+
+## Checkpoint 147
+
+- Fecha: 2026-07-18, hardening de Board realtime y gameplay visible.
+- Coverage antes: `99.45%` statements/lines, `97.43%` functions y `90.97%` branches; `218` suites y `1911` tests.
+- Coverage después: `99.45%` statements/lines, `97.52%` functions y `91.08%` branches; `218` suites y `1916` tests.
+- Archivo cubierto: `components/game/Board.tsx`, que alcanza `100%` statements/lines/functions y `97.05%` branches.
+- Riesgos cerrados: ninguno de los dos órdenes entre estado público y cartas privadas del resync simula un reparto nuevo; reveal anima solo la carta incremental, una carta se puede deseleccionar, limpiar apuesta no envía acción, sorteo muestra cartas rivales y `Resto` desaparece al pasar con juego.
+- Resultado de verificación: suites focalizadas Board verdes con `31` tests, typecheck verde y coverage global web verde.
+- Progreso contra la meta: faltan `0.48` puntos en functions y `6.92` en branches.
+- Siguiente lote recomendado: callbacks visibles de `Lobby.tsx` y `TransferModal.tsx`, priorizando cambios de estado reales sobre guards defensivos.
