@@ -45,15 +45,15 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.45%` statements, `91.08%` branches, `97.52%` functions, `99.45%` lines con `218` suites y `1916` tests pasando (`2026-07-18`).
-- Medicion game-server vigente: `93.35%` statements, `85.02%` branches, `94.79%` functions, `95.18%` lines con `34` suites y `833` tests pasando (`2026-07-18`).
+- Medicion web vigente: `99.45%` statements, `91.09%` branches, `98.03%` functions, `99.45%` lines con `218` suites y `1922` tests pasando (`2026-07-19`).
+- Medicion game-server vigente: `93.35%` statements, `84.97%` branches, `94.79%` functions, `95.18%` lines con `34` suites y `833` tests pasando (`2026-07-19`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
 - Frentes flojos actuales de game-server: `MesaRoom.ts` por volumen de reglas, `SupabaseService.ts` en catch/fail-open residuales y ramas defensivas de comandos.
-- Gate operativo actual (subido tras Fase 3 del plan de hardening de cobertura):
-  - Web: `90%` statements, `84%` branches, `86%` functions, `90%` lines.
+- Gate operativo actual:
+  - Web: `99%` statements, `91%` branches, `98%` functions, `99%` lines. Este gate fija el avance del checkpoint 148 y evita regresar por debajo de la meta estratégica ya alcanzada en statements, functions y lines.
   - Game server: `89%` statements, `80%` branches, `89%` functions, `90%` lines.
-- Objetivo final estrategico sigue siendo `98%` en ambos frentes, pero CI usa un gate escalonado para reflejar el baseline real y bloquear regresiones, no el estado final aun no alcanzado.
+- Objetivo final estrategico sigue siendo `98%` en ambos frentes. Web ya supera la meta en statements, functions y lines; branches (`91.09%`) es su frente pendiente. Game-server mantiene gates escalonados hasta acercarse a la meta sin falsos rojos.
 - Hardening de cobertura Fases 1-2 (2026-06-22): 80 tests nuevos centrados en zonas debiles criticas (auth-actions, MesaRoom.refundAllActiveBets, AdminSecurityPanel, recovery, security, password, tables, consultas). Subidas clave: `auth-actions.ts` 74.8% → 85.71% branches; `recovery/page.tsx` 11.11% → 100% branches; `AdminSecurityPanel.tsx` 26.92% → 100% branches; `password/page.tsx` 62.5% → 94.54% branches; `tables/page.tsx` 61.11% → 100% branches; `consultas/page.tsx` 63.63% → 100% branches; `security/page.tsx` 33.33% → 100% branches.
 - Hardening de cobertura Fase 3 (2026-06-24): 14 tests web y 2 tests game-server adicionales sobre replays, perfil, CSP, cliente Supabase SSR, `PlayerBadge` y `AlertService`. Subidas clave: `app/(player)/replays/page.tsx` queda en `100%`, `utils/supabase/client.ts` queda en `100%`, `PlayerBadge.tsx` sube branches a `96.87%` y `AlertService.ts` queda en `100%` statements/lines/functions con `96.07%` branches.
 - Hardening de wallet UI (2026-07-01): 4 tests web adicionales sobre `TransactionModal.tsx` cubren fallback sin `signedUrl`, modal cerrado, retiro pendiente sin comprobante, transferencias/ajustes/tipos desconocidos y mantienen el bloque financiero solo en UI con Supabase storage mockeado.
@@ -94,6 +94,7 @@ Antes de cerrar cambios relevantes:
 - Hardening de callbacks SupportChat (2026-07-18): 4 tests nuevos cubren categoría `other` sin referencias indebidas, doble submit, mensajes player→admin y tickets archivados; además se refuerzan navegación, lifecycle de socket y emisión de cierre en casos existentes. `SupportChat.tsx` queda en `100%` statements/lines, `88.46%` functions y `92.8%` branches.
 - Hardening de soporte admin (2026-07-18): `SupportConversationList` cubre selección inicial segura, ambos callbacks de cierre, autoplay bloqueado, feedback/reintento después de un rechazo de red y respuestas tardías sin cerrar otra conversación. El componente queda en `100%` statements/lines/functions y `98.38%` branches.
 - Hardening de Board realtime (2026-07-18): se cubren ambos órdenes del resync privado sin reparto falso, reveal incremental, deselección de cartas, limpieza de apuestas, sorteo de mano, ordinal y semántica de resto después de pasar con juego. `Board.tsx` queda en `100%` statements/lines/functions y `97.05%` branches.
+- Cierre de meta web functions (2026-07-19): 6 tests nuevos cubren apertura/cierre de recarga desde `Lobby`, avance por Enter con monto válido y bloqueo de montos vacío/inferior/superior en `GameTransferModal`; además se ejercitan filtros completos de recovery y el retorno de mesa personalizada a común. Web alcanza `98.03%` functions y el gate sube a `99/91/98/99` para preservar statements/branches/functions/lines.
 
 ## Roadmap de Cobertura Web
 

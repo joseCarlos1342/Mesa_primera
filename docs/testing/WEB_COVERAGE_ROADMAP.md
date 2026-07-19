@@ -8,7 +8,7 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-07-18. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+Fecha de referencia: 2026-07-19. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
 
 Cobertura actual de `apps/web`:
 
@@ -16,15 +16,15 @@ Cobertura actual de `apps/web`:
 |---|---:|
 | Statements | `99.45%` |
 | Lines | `99.45%` |
-| Functions | `97.52%` |
-| Branches | `91.08%` |
+| Functions | `98.03%` |
+| Branches | `91.09%` |
 
 Resultado de la corrida:
 
 - `218` suites en verde.
-- `1916` tests pasando.
-- La suite actual supera los gates operativos, pero no la meta estratégica en funciones y branches. El gap se concentra en ramas condicionales complejas, auth/security, infraestructura Supabase y piezas UI pesadas.
-- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-18; el checkpoint 147 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
+- `1922` tests pasando.
+- La suite actual supera la meta estratégica en statements, lines y functions. El gap pendiente se concentra exclusivamente en branches con comportamiento real, especialmente acciones admin, auth/security, infraestructura Supabase y estados UI.
+- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-19; el checkpoint 148 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
 ## Meta Final
 
@@ -40,7 +40,7 @@ Objetivo de calidad asociado:
 
 ## Realidad del Gap
 
-Mantener y extender el `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre huecos especificos y ramas dificiles, especialmente `functions` y `branches`. La web incluye:
+Mantener y extender el `98%` en la web ya no es un problema de baseline bajo; ahora es un trabajo de hardening sobre ramas específicas. Functions ya alcanzó la meta y no debe retroceder. La web incluye:
 
 - App Router de Next.js.
 - formularios publicos de auth;
@@ -1180,13 +1180,13 @@ Mientras el repo no este cerca del objetivo final, el equipo debe operar con dos
 
 Gate operativo vigente hoy en CI:
 
-- Web: `90%` statements, `84%` branches, `86%` functions, `90%` lines.
+- Web: `99%` statements, `91%` branches, `98%` functions, `99%` lines.
 - Game server: `89%` statements, `80%` branches, `89%` functions, `90%` lines.
 
 Justificacion:
 
-- elimina falsos rojos permanentes mientras la campaña de cobertura sigue en marcha;
-- mantiene presión para no retroceder respecto al baseline real alcanzado;
+- fija en CI las tres métricas web que ya superan la meta estratégica;
+- mantiene presión para no retroceder en branches mientras continúa su campaña específica;
 - permite que `publish-game-server-image` vuelva a ejecutarse cuando la validación real pase.
 
 Ejemplo de endurecimiento recomendado:
@@ -2946,3 +2946,14 @@ Ese lote combina:
 - Resultado de verificación: suites focalizadas Board verdes con `31` tests, typecheck verde y coverage global web verde.
 - Progreso contra la meta: faltan `0.48` puntos en functions y `6.92` en branches.
 - Siguiente lote recomendado: callbacks visibles de `Lobby.tsx` y `TransferModal.tsx`, priorizando cambios de estado reales sobre guards defensivos.
+
+## Checkpoint 148
+
+- Fecha: 2026-07-19, cierre de la meta estratégica de functions web.
+- Coverage antes: `99.45%` statements/lines, `97.52%` functions y `91.08%` branches; `218` suites y `1916` tests.
+- Coverage después: `99.45%` statements/lines, `98.03%` functions y `91.09%` branches; `218` suites y `1922` tests.
+- Archivos cubiertos: `components/game/Lobby.tsx`, `components/game/TransferModal.tsx`, `app/(admin)/admin/recovery/RecoveryExplorer.tsx` y `components/admin/CreateTableModal.tsx`.
+- Riesgos cerrados: recarga accesible desde el balance del lobby, avance por teclado sin envío prematuro en la transferencia de mesa, bloqueo por teclado de montos inválidos, serialización completa de filtros de recovery y retorno reversible de categoría personalizada a común. Los cuatro componentes quedan en `100%` functions focalizadas.
+- Resultado de verificación: suites focalizadas verdes con `58` tests; medición focalizada en `100%` functions y coverage global web verde con `218` suites y `1922` tests.
+- Progreso contra la meta: statements, functions y lines superan `98%`; branches queda en `91.09%` y es el único frente web pendiente. El gate global sube a `99%` statements, `91%` branches, `98%` functions y `99%` lines para impedir regresiones.
+- Siguiente lote recomendado: trabajar branches con comportamiento real en `admin-search.ts`, `admin-disputes.ts`, `DirectChat.tsx` y `FriendRequests.tsx`; evitar guards estructuralmente inaccesibles y branches defensivos que requieran mocks artificiales.

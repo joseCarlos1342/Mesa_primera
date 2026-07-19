@@ -84,6 +84,19 @@ describe('CreateTableModal', () => {
     expect(refresh).toHaveBeenCalledTimes(1)
   })
 
+  it('permite volver de una mesa personalizada a una común', () => {
+    render(<CreateTableModal />)
+
+    fireEvent.click(screen.getByRole('button', { name: /crear mesa/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Personalizada' }))
+    expect(screen.getByPlaceholderText('Ej: Mesa VIP, Premium...')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Común' }))
+
+    expect(screen.getByPlaceholderText('Ej: Mesa #3, Mesa #4...')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Ej: Mesa VIP, Premium...')).not.toBeInTheDocument()
+  })
+
   it('convierte montos personalizados en COP a centavos al crear una mesa', async () => {
     render(<CreateTableModal />)
 

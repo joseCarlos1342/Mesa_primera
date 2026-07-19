@@ -149,6 +149,19 @@ describe('Lobby', () => {
     })
   })
 
+  it('abre y cierra la recarga desde el balance del jugador', async () => {
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await screen.findByText('65,000')
+    fireEvent.click(screen.getByRole('button', { name: /recargar/i }))
+
+    expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar depósito' }))
+
+    expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:false')
+  })
+
   it('usa mesas fallback cuando no llegan tablas desde admin', async () => {
     render(<Lobby />)
 
