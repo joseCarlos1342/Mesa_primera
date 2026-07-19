@@ -109,6 +109,46 @@ describe('GameTransferModal', () => {
     })
   })
 
+  it('avanza a la confirmacion al presionar Enter con un monto valido', async () => {
+    const room = makeRoom()
+    render(<GameTransferModal isOpen onClose={jest.fn()} room={asRoom(room)} myChips={250000} />)
+
+    fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
+    fireEvent.click(screen.getByRole('button', { name: /buscar/i }))
+    room.emitMessage('lookup-result', { success: true, userId: 'user-2', name: 'Ana' })
+    fireEvent.click(await screen.findByText('Confirmar ✓'))
+
+    const amountInput = screen.getByPlaceholderText('0')
+    fireEvent.change(amountInput, { target: { value: '1000' } })
+    fireEvent.keyDown(amountInput, { key: 'Enter' })
+
+    expect(screen.getByText('Revisar datos')).toBeInTheDocument()
+    expect(screen.getByText('Esta acción es irreversible.')).toBeInTheDocument()
+    expect(room.send).not.toHaveBeenCalledWith('transfer', expect.anything())
+  })
+
+  it.each([
+    ['vacío', ''],
+    ['inferior al mínimo', '500'],
+    ['superior al balance', '3000'],
+  ])('no avanza con Enter cuando el monto es %s', async (_scenario, amount) => {
+    const room = makeRoom()
+    render(<GameTransferModal isOpen onClose={jest.fn()} room={asRoom(room)} myChips={250000} />)
+
+    fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
+    fireEvent.click(screen.getByRole('button', { name: /buscar/i }))
+    room.emitMessage('lookup-result', { success: true, userId: 'user-2', name: 'Ana' })
+    fireEvent.click(await screen.findByText('Confirmar ✓'))
+
+    const amountInput = screen.getByPlaceholderText('0')
+    if (amount) fireEvent.change(amountInput, { target: { value: amount } })
+    fireEvent.keyDown(amountInput, { key: 'Enter' })
+
+    expect(screen.getByText('Ingresar monto')).toBeInTheDocument()
+    expect(screen.queryByText('Revisar datos')).not.toBeInTheDocument()
+    expect(room.send).not.toHaveBeenCalledWith('transfer', expect.anything())
+  })
+
   it('muestra resultado exitoso, balance nuevo y cierra reseteando estado', async () => {
     const room = makeRoom()
     const onClose = jest.fn()

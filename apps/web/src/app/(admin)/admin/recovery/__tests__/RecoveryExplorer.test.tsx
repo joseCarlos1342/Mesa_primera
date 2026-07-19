@@ -57,14 +57,26 @@ describe('RecoveryExplorer', () => {
     mockUseRouter.mockReturnValue({ push, refresh } as unknown as ReturnType<typeof useRouter>)
   })
 
-  it('envía los filtros de búsqueda a la URL sin cargar todo el historial en cliente', () => {
+  it('envía todos los filtros de búsqueda a la URL sin cargar el historial en cliente', () => {
     render(<RecoveryExplorer page={page} filters={{}} />)
 
     fireEvent.change(screen.getByRole('searchbox', { name: /buscar sala o juego/i }), { target: { value: ' mesa-vip ' } })
     fireEvent.change(screen.getByRole('combobox', { name: /estado/i }), { target: { value: 'manual_review' } })
+    fireEvent.change(screen.getByLabelText('Causa'), { target: { value: 'process_restart' } })
+    fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '2026-07-01' } })
+    fireEvent.change(screen.getByLabelText('Hasta'), { target: { value: '2026-07-18' } })
     fireEvent.click(screen.getByRole('button', { name: /aplicar filtros/i }))
 
-    expect(push).toHaveBeenCalledWith('/admin/recovery?status=manual_review&q=mesa-vip')
+    expect(push).toHaveBeenCalledTimes(1)
+    const target = new URL(push.mock.calls[0][0], 'http://localhost')
+    expect(target.pathname).toBe('/admin/recovery')
+    expect(Object.fromEntries(target.searchParams)).toEqual({
+      status: 'manual_review',
+      cause: 'process_restart',
+      from: '2026-07-01',
+      to: '2026-07-18',
+      q: 'mesa-vip',
+    })
   })
 
   it('ofrece replay solo cuando existe y conserva el cursor para la siguiente página', () => {
