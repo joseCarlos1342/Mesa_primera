@@ -202,7 +202,7 @@ describe('admin table actions', () => {
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery(), roleQuery()], tables: [{ insert }, { insert }] }))
 
     await expect(createTable({ name: 'Mesa 1', lobby_slot: 2 })).resolves.toEqual({ success: true })
-    await expect(createCustomTable({ name: ' VIP ', max_players: 5, min_entry_cents: 1000, min_pique_cents: 100, disabled_chips: [100000] })).resolves.toEqual({ success: true })
+    await expect(createCustomTable({ name: ' VIP ', max_players: 5, min_entry_cents: 1_000_000, min_pique_cents: 100_000, disabled_chips: [100000] })).resolves.toEqual({ success: true })
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ name: 'Mesa 1', table_category: 'common', lobby_slot: 2 }))
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ name: 'VIP', table_category: 'custom', max_players: 5 }))
     expect(revalidatePath).toHaveBeenCalledWith('/admin/tables')
@@ -211,11 +211,11 @@ describe('admin table actions', () => {
   it('rejects invalid custom tables before insert', async () => {
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery(), roleQuery(), roleQuery(), roleQuery(), roleQuery()], tables: [{ insert: jest.fn() }] }))
 
-    await expect(createCustomTable({ name: '', max_players: 5, min_entry_cents: 1000, min_pique_cents: 100, disabled_chips: [] })).rejects.toThrow('El nombre de la mesa es requerido.')
-    await expect(createCustomTable({ name: 'Mesa', max_players: 2, min_entry_cents: 1000, min_pique_cents: 100, disabled_chips: [] })).rejects.toThrow('La capacidad debe estar entre 3 y 7 jugadores.')
-    await expect(createCustomTable({ name: 'Mesa', max_players: 5, min_entry_cents: 0, min_pique_cents: 100, disabled_chips: [] })).rejects.toThrow('El saldo mínimo de ingreso debe ser mayor a 0.')
-    await expect(createCustomTable({ name: 'Mesa', max_players: 5, min_entry_cents: 1000, min_pique_cents: 0, disabled_chips: [] })).rejects.toThrow('El pique mínimo debe ser mayor a 0.')
-    await expect(createCustomTable({ name: 'Mesa', max_players: 5, min_entry_cents: 1000, min_pique_cents: 100, disabled_chips: [100000, 200000, 500000, 1000000, 2000000, 5000000] })).rejects.toThrow('Debe haber al menos 1 ficha habilitada.')
+    await expect(createCustomTable({ name: '', max_players: 5, min_entry_cents: 1_000_000, min_pique_cents: 100_000, disabled_chips: [] })).rejects.toThrow('El nombre de la mesa es requerido.')
+    await expect(createCustomTable({ name: 'Mesa', max_players: 2, min_entry_cents: 1_000_000, min_pique_cents: 100_000, disabled_chips: [] })).rejects.toThrow('La capacidad debe estar entre 3 y 7 jugadores.')
+    await expect(createCustomTable({ name: 'Mesa', max_players: 5, min_entry_cents: 0, min_pique_cents: 100_000, disabled_chips: [] })).rejects.toThrow('El saldo mínimo de ingreso debe ser mayor a 0.')
+    await expect(createCustomTable({ name: 'Mesa', max_players: 5, min_entry_cents: 1_000_000, min_pique_cents: 0, disabled_chips: [] })).rejects.toThrow('El pique mínimo debe ser mayor a 0.')
+    await expect(createCustomTable({ name: 'Mesa', max_players: 5, min_entry_cents: 1_000_000, min_pique_cents: 100_000, disabled_chips: [100000, 200000, 500000, 1000000, 2000000, 5000000] })).rejects.toThrow('Debe haber al menos 1 ficha habilitada.')
   })
 
   it('prevents common table financial updates and toggles active state', async () => {
@@ -239,8 +239,8 @@ describe('admin table actions', () => {
     const update = jest.fn().mockReturnValue({ eq: eqUpdate })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ profiles: [roleQuery()], tables: [{ select }, { update }] }))
 
-    await expect(updateTable('t1', { min_entry_cents: 5000, min_pique_cents: 500, disabled_chips: [100000] })).resolves.toEqual({ success: true })
-    expect(update).toHaveBeenCalledWith({ min_entry_cents: 5000, min_pique_cents: 500, disabled_chips: [100000] })
+    await expect(updateTable('t1', { min_entry_cents: 5_000_000, min_pique_cents: 500_000, disabled_chips: [100000] })).resolves.toEqual({ success: true })
+    expect(update).toHaveBeenCalledWith({ min_entry_cents: 5_000_000, min_pique_cents: 500_000, disabled_chips: [100000] })
   })
 
   it('allows non-financial updates on common tables', async () => {

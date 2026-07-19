@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { logAdminAction } from "./admin-audit";
+import { TABLE_AMOUNT_STEP_CENTS } from "@/config/table-presets";
 
 // ── Valid chip denominations (in centavos) ──
 const VALID_CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as const;
@@ -90,6 +91,26 @@ function normalizeMaxPlayers(maxPlayers: number | undefined, defaultValue = 7) {
     throw new Error("La capacidad debe estar entre 3 y 7 jugadores.");
   }
   return normalizedMaxPlayers;
+}
+
+function validateCustomTableFinancials(minEntryCents: number, minPiqueCents: number) {
+  const amounts = [minEntryCents, minPiqueCents];
+
+  if (!amounts.every(Number.isSafeInteger)) {
+    throw new Error("Los montos deben ser números enteros seguros.");
+  }
+  if (minEntryCents <= 0) {
+    throw new Error("El saldo mínimo de ingreso debe ser mayor a 0.");
+  }
+  if (minPiqueCents <= 0) {
+    throw new Error("El pique mínimo debe ser mayor a 0.");
+  }
+  if (amounts.some((amount) => amount % TABLE_AMOUNT_STEP_CENTS !== 0)) {
+    throw new Error("Los montos deben ser múltiplos de $1.000 COP.");
+  }
+  if (minEntryCents < minPiqueCents) {
+    throw new Error("El saldo mínimo debe ser mayor o igual al pique mínimo.");
+  }
 }
 
 export async function getTablesList(category?: TableCategory) {
@@ -281,12 +302,7 @@ export async function createCustomTable(data: {
   if (data.max_players < 3 || data.max_players > 7) {
     throw new Error("La capacidad debe estar entre 3 y 7 jugadores.");
   }
-  if (data.min_entry_cents <= 0) {
-    throw new Error("El saldo mínimo de ingreso debe ser mayor a 0.");
-  }
-  if (data.min_pique_cents <= 0) {
-    throw new Error("El pique mínimo debe ser mayor a 0.");
-  }
+  validateCustomTableFinancials(data.min_entry_cents, data.min_pique_cents);
   // At least one chip denomination must remain enabled
   const enabledCount = VALID_CHIP_DENOMS.length - data.disabled_chips.filter(d => (VALID_CHIP_DENOMS as readonly number[]).includes(d)).length;
   if (enabledCount < 1) {
@@ -335,7 +351,7 @@ export async function updateTable(tableId: string, data: Partial<{
   // Fetch the table to check category
   const { data: table, error: fetchError } = await supabase
     .from("tables")
-    .select("id, table_category, is_active")
+    .select("id, table_category, is_active, min_entry_cents, min_pique_cents")
     .eq("id", tableId)
     .single();
 
@@ -348,6 +364,16 @@ export async function updateTable(tableId: string, data: Partial<{
       if (data[field] !== undefined) {
         throw new Error("No se pueden modificar los parámetros financieros de una mesa común.");
       }
+    }
+  }
+
+  const isUpdatingFinancials = data.min_entry_cents !== undefined || data.min_pique_cents !== undefined;
+  if (table.table_category === 'custom' && isUpdatingFinancials) {
+    const minEntryCents = data.min_entry_cents ?? table.min_entry_cents;
+    const minPiqueCents = data.min_pique_cents ?? table.min_pique_cents;
+
+    if (typeof minEntryCents === 'number' && typeof minPiqueCents === 'number') {
+      validateCustomTableFinancials(minEntryCents, minPiqueCents);
     }
   }
 

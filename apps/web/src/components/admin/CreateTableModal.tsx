@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, X, Info } from "lucide-react";
 import { createTable, createCustomTable } from "@/app/actions/admin-tables";
 import type { TableCategory } from "@/app/actions/admin-tables";
 import { useRouter } from "next/navigation";
+import {
+  COP_CENTS,
+  DEFAULT_ENTRY_PRESETS,
+  DEFAULT_PIQUE_PRESETS,
+  TABLE_AMOUNT_STEP_COP,
+} from "@/config/table-presets";
+import { formatCurrency } from "@/utils/format";
 
 const CHIP_DENOMS = [
   { value: 100000, label: "$1K" },
@@ -15,24 +22,35 @@ const CHIP_DENOMS = [
   { value: 5000000, label: "$50K" },
 ] as const;
 
-const ENTRY_PRESETS = [
-  { value: 5000000, label: "$50K" },
-  { value: 10000000, label: "$100K" },
-  { value: 20000000, label: "$200K" },
-  { value: 50000000, label: "$500K" },
-];
+type FinancialField = "entry" | "pique";
+type FinancialErrors = Partial<Record<FinancialField, string>>;
 
-const PIQUE_PRESETS = [
-  { value: 500000, label: "$5K" },
-  { value: 1000000, label: "$10K" },
-  { value: 2000000, label: "$20K" },
-  { value: 5000000, label: "$50K" },
-];
+function parseCustomCopAmount(value: string, fallbackCents: number, fieldName: string) {
+  if (!value) return { cents: fallbackCents };
+  if (!/^\d+$/.test(value)) return { error: `${fieldName} debe ser un monto entero en pesos COP.` };
+
+  const pesos = Number(value);
+  const cents = pesos * COP_CENTS;
+  if (!Number.isSafeInteger(cents) || pesos <= 0) {
+    return { error: `${fieldName} debe ser mayor a $0.` };
+  }
+  if (pesos % TABLE_AMOUNT_STEP_COP !== 0) {
+    return { error: `El monto debe ser múltiplo de $${TABLE_AMOUNT_STEP_COP.toLocaleString("es-CO")} COP.` };
+  }
+
+  return { cents };
+}
 
 export function CreateTableModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState<TableCategory>("common");
+  const [customEntryCop, setCustomEntryCop] = useState("");
+  const [customPiqueCop, setCustomPiqueCop] = useState("");
+  const [financialErrors, setFinancialErrors] = useState<FinancialErrors>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const entryInputRef = useRef<HTMLInputElement>(null);
+  const piqueInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     max_players: 7,
@@ -53,8 +71,56 @@ export function CreateTableModal() {
 
   const enabledChipCount = CHIP_DENOMS.length - formData.disabled_chips.length;
 
+  const resetForm = () => {
+    setFormData({ name: "", max_players: 7, min_entry_cents: 5_000_000, min_pique_cents: 500_000, disabled_chips: [] });
+    setCustomEntryCop("");
+    setCustomPiqueCop("");
+    setFinancialErrors({});
+    setSubmitError(null);
+  };
+
+  const selectPreset = (field: FinancialField, cents: number) => {
+    setFormData((previous) => ({
+      ...previous,
+      [field === "entry" ? "min_entry_cents" : "min_pique_cents"]: cents,
+    }));
+    if (field === "entry") setCustomEntryCop("");
+    else setCustomPiqueCop("");
+    setFinancialErrors((previous) => ({ ...previous, [field]: undefined }));
+  };
+
+  const updateCustomAmount = (field: FinancialField, value: string) => {
+    if (field === "entry") setCustomEntryCop(value);
+    else setCustomPiqueCop(value);
+    setFinancialErrors((previous) => ({ ...previous, [field]: undefined }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
+
+    let minEntryCents = formData.min_entry_cents;
+    let minPiqueCents = formData.min_pique_cents;
+    if (category === "custom") {
+      const entryResult = parseCustomCopAmount(customEntryCop, minEntryCents, "El saldo mínimo");
+      const piqueResult = parseCustomCopAmount(customPiqueCop, minPiqueCents, "El pique mínimo");
+      const errors: FinancialErrors = {};
+
+      if ("error" in entryResult) errors.entry = entryResult.error;
+      else minEntryCents = entryResult.cents;
+      if ("error" in piqueResult) errors.pique = piqueResult.error;
+      else minPiqueCents = piqueResult.cents;
+      if (!errors.entry && !errors.pique && minEntryCents < minPiqueCents) {
+        errors.entry = "El saldo mínimo debe ser mayor o igual al pique mínimo.";
+      }
+      if (Object.keys(errors).length > 0) {
+        setFinancialErrors(errors);
+        if (errors.entry) entryInputRef.current?.focus();
+        else piqueInputRef.current?.focus();
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       if (category === "common") {
@@ -63,17 +129,17 @@ export function CreateTableModal() {
         await createCustomTable({
           name: formData.name,
           max_players: formData.max_players,
-          min_entry_cents: formData.min_entry_cents,
-          min_pique_cents: formData.min_pique_cents,
+          min_entry_cents: minEntryCents,
+          min_pique_cents: minPiqueCents,
           disabled_chips: formData.disabled_chips,
         });
       }
       setIsOpen(false);
       router.refresh();
-      setFormData({ name: "", max_players: 7, min_entry_cents: 5000000, min_pique_cents: 500000, disabled_chips: [] });
+      resetForm();
       setCategory("common");
-    } catch (error: any) {
-      alert("Error al crear mesa: " + error.message);
+    } catch {
+      setSubmitError("No se pudo crear la mesa. Intenta nuevamente.");
     } finally {
       setLoading(false);
     }
@@ -105,7 +171,7 @@ export function CreateTableModal() {
               <h2 className="text-3xl font-black italic tracking-tighter text-white">NUEVA MESA</h2>
               <p className="text-slate-500 text-sm font-medium mt-1">Configuración del local para &quot;Primera&quot;.</p>
             </div>
-            <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+            <button aria-label="Cerrar modal" onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors">
               <X className="w-6 h-6 text-slate-400" />
             </button>
           </div>
@@ -136,7 +202,7 @@ export function CreateTableModal() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form noValidate onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Nombre de la Mesa</label>
@@ -191,13 +257,13 @@ export function CreateTableModal() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Saldo mínimo para ingresar</label>
                   <div className="flex flex-wrap gap-2">
-                    {ENTRY_PRESETS.map((p) => (
+                    {DEFAULT_ENTRY_PRESETS.map((p) => (
                       <button
-                        key={p.value}
+                        key={p.valueCents}
                         type="button"
-                        onClick={() => setFormData({ ...formData, min_entry_cents: p.value })}
+                        onClick={() => selectPreset("entry", p.valueCents)}
                         className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
-                          formData.min_entry_cents === p.value
+                          !customEntryCop && formData.min_entry_cents === p.valueCents
                             ? "bg-amber-600 text-white shadow-lg shadow-amber-500/20"
                             : "bg-slate-950 text-slate-400 border border-white/5 hover:bg-white/5"
                         }`}
@@ -206,19 +272,42 @@ export function CreateTableModal() {
                       </button>
                     ))}
                   </div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 px-1" htmlFor="custom-min-entry-cop">
+                    Otro saldo mínimo (COP)
+                  </label>
+                  <input
+                    id="custom-min-entry-cop"
+                    ref={entryInputRef}
+                    name="custom-min-entry-cop"
+                    type="number"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    min={TABLE_AMOUNT_STEP_COP}
+                    step={TABLE_AMOUNT_STEP_COP}
+                    value={customEntryCop}
+                    onChange={(event) => updateCustomAmount("entry", event.currentTarget.value)}
+                    aria-describedby={financialErrors.entry ? "custom-min-entry-error" : "custom-min-entry-help"}
+                    aria-invalid={Boolean(financialErrors.entry)}
+                    placeholder="Ej: 750000"
+                    className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-white font-mono tabular-nums focus:outline-none focus:border-amber-500/50 transition-colors placeholder:text-slate-700"
+                  />
+                  <p id="custom-min-entry-help" className="text-[10px] text-slate-500 px-1">
+                    Pesos COP enteros, en múltiplos de $1.000. Actual: {formatCurrency(customEntryCop ? Number(customEntryCop) * COP_CENTS : formData.min_entry_cents)}.
+                  </p>
+                  {financialErrors.entry && <p id="custom-min-entry-error" role="alert" className="text-[10px] text-red-400 px-1">{financialErrors.entry}</p>}
                 </div>
 
                 {/* Min pique */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Pique mínimo</label>
                   <div className="flex flex-wrap gap-2">
-                    {PIQUE_PRESETS.map((p) => (
+                    {DEFAULT_PIQUE_PRESETS.map((p) => (
                       <button
-                        key={p.value}
+                        key={p.valueCents}
                         type="button"
-                        onClick={() => setFormData({ ...formData, min_pique_cents: p.value })}
+                        onClick={() => selectPreset("pique", p.valueCents)}
                         className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
-                          formData.min_pique_cents === p.value
+                          !customPiqueCop && formData.min_pique_cents === p.valueCents
                             ? "bg-amber-600 text-white shadow-lg shadow-amber-500/20"
                             : "bg-slate-950 text-slate-400 border border-white/5 hover:bg-white/5"
                         }`}
@@ -227,6 +316,29 @@ export function CreateTableModal() {
                       </button>
                     ))}
                   </div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 px-1" htmlFor="custom-min-pique-cop">
+                    Otro pique mínimo (COP)
+                  </label>
+                  <input
+                    id="custom-min-pique-cop"
+                    ref={piqueInputRef}
+                    name="custom-min-pique-cop"
+                    type="number"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    min={TABLE_AMOUNT_STEP_COP}
+                    step={TABLE_AMOUNT_STEP_COP}
+                    value={customPiqueCop}
+                    onChange={(event) => updateCustomAmount("pique", event.currentTarget.value)}
+                    aria-describedby={financialErrors.pique ? "custom-min-pique-error" : "custom-min-pique-help"}
+                    aria-invalid={Boolean(financialErrors.pique)}
+                    placeholder="Ej: 15000"
+                    className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-white font-mono tabular-nums focus:outline-none focus:border-amber-500/50 transition-colors placeholder:text-slate-700"
+                  />
+                  <p id="custom-min-pique-help" className="text-[10px] text-slate-500 px-1">
+                    Pesos COP enteros, en múltiplos de $1.000. Actual: {formatCurrency(customPiqueCop ? Number(customPiqueCop) * COP_CENTS : formData.min_pique_cents)}.
+                  </p>
+                  {financialErrors.pique && <p id="custom-min-pique-error" role="alert" className="text-[10px] text-red-400 px-1">{financialErrors.pique}</p>}
                 </div>
 
                 {/* Chip denominations */}
@@ -259,8 +371,10 @@ export function CreateTableModal() {
                     <p className="text-[10px] text-amber-400 px-1">Debe haber al menos 1 ficha habilitada.</p>
                   )}
                 </div>
-              </>
+            </>
             )}
+
+            {submitError && <p role="alert" className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs font-medium text-red-300">{submitError}</p>}
 
             <button
               type="submit"
