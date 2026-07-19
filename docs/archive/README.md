@@ -12,3 +12,4 @@ Subcarpetas:
 
 - `sprints/`: bitacora historica por sprint.
 - `audits/`: auditorias, analisis y planes ya ejecutados o superados por el codigo actual.
+- `admin/`: propuestas y planes administrativos ya implementados.

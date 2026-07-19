@@ -446,6 +446,22 @@ También existe un bloque de gestión para la configuración del local, donde el
 - trabajar con categorías comunes o personalizadas,
 - eliminar configuraciones cuando corresponda.
 
+En una mesa personalizada los presets agilizan la configuración habitual. Para un evento o mesa VIP, los campos `Otro saldo mínimo (COP)` y `Otro pique mínimo (COP)` permiten escribir un monto en pesos colombianos enteros; por ejemplo, `750000` equivale a `$750.000 COP`. Ambos montos deben ser múltiplos de `$1.000`, y la entrada no puede ser menor que el pique.
+
+### Historial de recuperación terminal
+
+La ruta `/admin/recovery` permite investigar incidentes de recuperación que ya terminaron sin exponer el estado activo de una partida. El admin puede:
+
+- buscar por prefijo de sala o por `gameId` exacto;
+- filtrar por estado, causa y rango de detección;
+- navegar páginas estables mediante cursor;
+- abrir la auditoría y replay solo cuando este existe.
+- abrir el detalle terminal de refunds y su ledger asociado;
+- conciliar refunds pendientes con confirmación, motivo e idempotencia;
+- reconocer un `manual_review`, cerrarlo cuando los refunds tienen evidencia ledger y exportar el resultado filtrado a CSV.
+
+Los contadores corresponden al resultado filtrado y los refunds de la página actual. Un crash puede no tener replay; ese estado se informa explícitamente. Las acciones operativas solo aceptan incidentes terminales y aplican controles de autorización, auditoría, idempotencia y rate limit.
+
 ## 13. Supervisión y alertas en vivo
 
 ### Ruta principal
@@ -705,9 +721,9 @@ Si hay un problema en vivo, el admin puede supervisar y decidir, pero no romper 
 - [ADMIN.md](ADMIN.md): referencia funcional extensa de módulos admin.
 - [ADMIN_SECURITY.md](ADMIN_SECURITY.md): restricciones, ceguera administrativa y superficie de seguridad.
 - [ADMIN_TECHNICAL.md](ADMIN_TECHNICAL.md): rutas, server actions, RPCs y trazabilidad técnica.
-- [mejoras_summary_cards_replays.md](mejoras_summary_cards_replays.md): roadmap para que los summary cards de `/admin/replays` muestren totales reales del sistema en vez de agregados sobre la muestra de 100 partidas.
-- [mejoras_recovery_actions.md](mejoras_recovery_actions.md): roadmap para hacer accionable `/admin/recovery` con filtros, enlaces al replay, marcaje de revisado, exportación CSV y posibles acciones de mutación (con sus riesgos sobre el ledger).
-- [mejoras_create_table_personalizados.md](mejoras_create_table_personalizados.md): roadmap para que `CreateTableModal` permita definir saldo mínimo y pique mínimo personalizados, sin restringirse a los 4 valores hardcodeados por categoría.
+- [Archivo de summary cards de replays](../archive/admin/MEJORAS_SUMMARY_CARDS_REPLAYS_2026-07-18.md): implementación del agregado terminal de replays.
+- [Archivo de acciones de recovery](../archive/admin/MEJORAS_RECOVERY_ACTIONS_2026-07-18.md): implementación histórica del detalle terminal, conciliación, cierre y exportación.
+- [Archivo de valores personalizados de mesa](../archive/admin/MEJORAS_CREATE_TABLE_PERSONALIZADOS_2026-07-17.md): mejora ya implementada en `CreateTableModal`.
 
 ## Regla de mantenimiento de esta guía
 

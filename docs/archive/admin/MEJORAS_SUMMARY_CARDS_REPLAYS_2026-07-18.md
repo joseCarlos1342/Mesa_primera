@@ -1,6 +1,9 @@
-# Mejoras Futuras: Summary Cards Reales en `/admin/replays`
+# Summary cards reales en `/admin/replays` — Implementado
 
-> **Decisión 2026-07-18:** los cards resumirán juegos terminados con replay persistido, rake `completed` asociado a esos juegos y participantes observados en snapshots válidos. La implementación debe validar `public.is_admin()` dentro de la RPC, deduplicar por `game_id`, tratar `userId` como texto y pasar centavos directamente a `formatCurrency`.
+> **Archivado:** 2026-07-18
+> **Estado:** implementado y aplicado en el entorno de desarrollo enlazado.
+
+> **Implementación:** `get_admin_replays_summary()` limita el universo a juegos `finished` con replay, deduplica por `game_id`, suma rake `completed` asociado y cuenta `userId` textuales de snapshots válidos. La RPC valida `public.is_admin()` internamente y la UI mantiene explícita la muestra de 100 filas.
 
 Los tres summary cards de la pantalla `/admin/replays` ("Total Partidas", "Rake Total", "Jugadores Únicos") se calculan hoy sobre una **muestra de las últimas 100 partidas** pero se muestran bajo etiquetas absolutas. La UI induce al admin a creer que son totales del sistema cuando en realidad son agregados parciales.
 
