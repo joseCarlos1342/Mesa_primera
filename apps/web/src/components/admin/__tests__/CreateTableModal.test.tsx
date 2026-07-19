@@ -84,6 +84,50 @@ describe('CreateTableModal', () => {
     expect(refresh).toHaveBeenCalledTimes(1)
   })
 
+  it('convierte montos personalizados en COP a centavos al crear una mesa', async () => {
+    render(<CreateTableModal />)
+
+    fireEvent.click(screen.getByRole('button', { name: /crear mesa/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Personalizada' }))
+    fireEvent.change(screen.getByPlaceholderText('Ej: Mesa VIP, Premium...'), { target: { value: 'Mesa Evento' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /otro saldo mínimo/i }), { target: { value: '750000' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /otro pique mínimo/i }), { target: { value: '15000' } })
+    fireEvent.click(screen.getByRole('button', { name: /confirmar creación/i }))
+
+    await waitFor(() => expect(mockCreateCustomTable).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Mesa Evento',
+      min_entry_cents: 75_000_000,
+      min_pique_cents: 1_500_000,
+    })))
+  })
+
+  it('muestra errores inline y no envía una mesa cuando el pique supera la entrada', () => {
+    render(<CreateTableModal />)
+
+    fireEvent.click(screen.getByRole('button', { name: /crear mesa/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Personalizada' }))
+    fireEvent.change(screen.getByPlaceholderText('Ej: Mesa VIP, Premium...'), { target: { value: 'Mesa inválida' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /otro saldo mínimo/i }), { target: { value: '10000' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /otro pique mínimo/i }), { target: { value: '15000' } })
+    fireEvent.click(screen.getByRole('button', { name: /confirmar creación/i }))
+
+    expect(screen.getByText('El saldo mínimo debe ser mayor o igual al pique mínimo.')).toBeInTheDocument()
+    expect(mockCreateCustomTable).not.toHaveBeenCalled()
+  })
+
+  it('muestra validación inline cuando el monto personalizado no es múltiplo de $1.000 COP', () => {
+    render(<CreateTableModal />)
+
+    fireEvent.click(screen.getByRole('button', { name: /crear mesa/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Personalizada' }))
+    fireEvent.change(screen.getByPlaceholderText('Ej: Mesa VIP, Premium...'), { target: { value: 'Mesa inválida' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /otro saldo mínimo/i }), { target: { value: '10500' } })
+    fireEvent.click(screen.getByRole('button', { name: /confirmar creación/i }))
+
+    expect(screen.getByText('El monto debe ser múltiplo de $1.000 COP.')).toBeInTheDocument()
+    expect(mockCreateCustomTable).not.toHaveBeenCalled()
+  })
+
   it('impide deshabilitar todas las fichas y muestra mensaje minimo', () => {
     render(<CreateTableModal />)
 
@@ -113,7 +157,7 @@ describe('CreateTableModal', () => {
     expect(screen.queryByText('Debe haber al menos 1 ficha habilitada.')).not.toBeInTheDocument()
   })
 
-  it('muestra error de creacion y mantiene modal abierto', async () => {
+  it('muestra el error de creación dentro del modal y lo mantiene abierto', async () => {
     mockCreateTable.mockRejectedValueOnce(new Error('Nombre duplicado'))
     render(<CreateTableModal />)
 
@@ -121,7 +165,8 @@ describe('CreateTableModal', () => {
     fireEvent.change(screen.getByPlaceholderText('Ej: Mesa #3, Mesa #4...'), { target: { value: 'Mesa repetida' } })
     fireEvent.click(screen.getByRole('button', { name: /confirmar creación/i }))
 
-    await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Error al crear mesa: Nombre duplicado'))
+    await waitFor(() => expect(screen.getByText('No se pudo crear la mesa. Intenta nuevamente.')).toBeInTheDocument())
+    expect(window.alert).not.toHaveBeenCalled()
     expect(screen.getByText('NUEVA MESA')).toBeInTheDocument()
   })
 

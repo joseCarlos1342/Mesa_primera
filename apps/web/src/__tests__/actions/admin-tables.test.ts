@@ -254,6 +254,26 @@ describe('Admin Tables Server Actions', () => {
       })).rejects.toThrow();
     });
 
+    it('rejects a pique greater than the minimum entry', async () => {
+      await expect(createCustomTable({
+        name: 'Mesa inválida',
+        max_players: 5,
+        min_entry_cents: 1_000_000,
+        min_pique_cents: 1_500_000,
+        disabled_chips: [],
+      })).rejects.toThrow('El saldo mínimo debe ser mayor o igual al pique mínimo.');
+    });
+
+    it('rejects custom financial values that are not multiples of $1.000 COP', async () => {
+      await expect(createCustomTable({
+        name: 'Mesa inválida',
+        max_players: 5,
+        min_entry_cents: 1_050_000,
+        min_pique_cents: 500_000,
+        disabled_chips: [],
+      })).rejects.toThrow('Los montos deben ser múltiplos de $1.000 COP.');
+    });
+
     it('throws insert errors for custom tables after validation passes', async () => {
       chain.insert.mockResolvedValue({ error: { message: 'insert custom failed' } });
 
@@ -281,6 +301,17 @@ describe('Admin Tables Server Actions', () => {
       });
 
       expect(result).toEqual({ success: true });
+    });
+
+    it('rejects invalid financial values when updating a custom table', async () => {
+      chain.single
+        .mockResolvedValueOnce({ data: { role: 'admin' }, error: null })
+        .mockResolvedValueOnce({ data: { id: 't2', table_category: 'custom', is_active: true }, error: null });
+
+      await expect(updateTable('t2', {
+        min_entry_cents: 1_000_000,
+        min_pique_cents: 1_500_000,
+      })).rejects.toThrow('El saldo mínimo debe ser mayor o igual al pique mínimo.');
     });
 
     it('rejects editing a common table entry/pique/chips', async () => {
