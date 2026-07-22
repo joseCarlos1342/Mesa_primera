@@ -240,6 +240,125 @@ describe('globalSearch', () => {
     expect(result.data!.matches.some(m => m.entity === 'user')).toBe(true)
   })
 
+  it('incluye tickets, alertas y disputas relacionadas con los perfiles encontrados', async () => {
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        const profileSelect = jest.fn()
+        profileSelect.mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+          }),
+          or: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue({ data: [{ id: 'user-1', full_name: null, username: 'jugador', role: 'player' }], error: null }),
+          }),
+        })
+        return {
+          select: profileSelect,
+        }
+      }
+
+      const dataByTable: Record<string, unknown[]> = {
+        profiles: [{ id: 'user-1', full_name: null, username: 'jugador', role: 'player' }],
+        support_tickets: [{ id: 'ticket-1', status: 'open', created_at: '2026-07-19' }],
+        server_alerts: [{ id: 'alert-1', title: 'Actividad inusual', severity: 'high', created_at: '2026-07-19' }],
+        admin_dispute_cases: [{ id: 'dispute-1', title: 'Caso relacionado', status: 'open', created_at: '2026-07-19' }],
+      }
+      return {
+        select: jest.fn().mockReturnValue({
+          or: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue({ data: dataByTable[table] || [], error: null }),
+          }),
+          in: jest.fn((column: string, values: string[]) => {
+            if (column === 'support_ticket_id') {
+              expect(values).toEqual(['ticket-1'])
+            } else {
+              expect(['user_id', 'player_id']).toContain(column)
+              expect(values).toEqual(['user-1'])
+            }
+            return {
+              limit: jest.fn().mockResolvedValue({ data: dataByTable[table] || [], error: null }),
+            }
+          }),
+        }),
+      }
+    })
+
+    const result = await globalSearch('@jugador')
+
+    expect(result.data?.matches.map((match) => match.entity)).toEqual(['user', 'ticket', 'alert', 'dispute'])
+  })
+
+  it('devuelve error seguro y registra el fallo cuando una búsqueda falla', async () => {
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        const profileSelect = jest.fn()
+        profileSelect.mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+          }),
+          or: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue({ data: [{ id: 'user-1', username: 'fallo', role: 'player' }], error: null }),
+          }),
+        })
+        return {
+          select: profileSelect,
+        }
+      }
+      return {
+        select: jest.fn().mockReturnValue({
+          or: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue({ data: null, error: { message: 'detalle interno' } }),
+          }),
+        }),
+      }
+    })
+
+    const result = await globalSearch('@fallo')
+
+    expect(result).toEqual({ error: 'No fue posible completar la consulta. Inténtalo de nuevo.' })
+    expect(logAdminAction).toHaveBeenCalledWith(
+      'admin-id',
+      'global_search_failed',
+      'search',
+      '@fallo',
+      { detected_type: 'username' },
+    )
+  })
+
+  it('oculta errores de una consulta relacionada', async () => {
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        const select = jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+          }),
+          or: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue({ data: [{ id: 'user-1', username: 'jugador', role: 'player' }], error: null }),
+          }),
+        })
+        return { select }
+      }
+      if (table === 'support_tickets') {
+        return {
+          select: jest.fn().mockReturnValue({
+            in: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue({ data: null, error: { message: 'error interno' } }),
+            }),
+          }),
+        }
+      }
+      return {
+        select: jest.fn().mockReturnValue({
+          in: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }
+    })
+
+    await expect(globalSearch('jugador')).resolves.toEqual({ error: 'No fue posible completar la consulta. Inténtalo de nuevo.' })
+  })
+
   // ── Empty query ────────────────────────────────────────────
 
   it('returns error on empty query', async () => {

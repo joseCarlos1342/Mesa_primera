@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.49%` |
-| Lines | `99.49%` |
+| Statements | `99.55%` |
+| Lines | `99.55%` |
 | Functions | `98.03%` |
-| Branches | `91.24%` |
+| Branches | `91.30%` |
 
 Resultado de la corrida:
 
 - `218` suites en verde.
-- `1927` tests pasando.
+- `1930` tests pasando.
 - La suite actual supera la meta estratégica en statements, lines y functions. El gap pendiente se concentra exclusivamente en branches con comportamiento real, especialmente acciones admin, auth/security, infraestructura Supabase y estados UI.
-- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-19; el checkpoint 148 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
+- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-19; el checkpoint 150 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
 ## Meta Final
 
@@ -2969,3 +2969,14 @@ Ese lote combina:
 - Resultado de verificación: suite focalizada verde con `15` tests y coverage global web verde con `218` suites y `1927` tests. `DirectChat.tsx` queda en `100%` statements/lines/functions y `97.95%` branches; `FriendRequests.tsx` queda en `100%` focalizado.
 - Progreso contra la meta: branches sube `0.15` puntos hasta `91.24%`; statements y lines suben a `99.49%` y functions se mantiene en `98.03%`.
 - Siguiente lote recomendado: `admin-search.ts` y `admin-disputes.ts`, priorizando resultados parciales, errores de consulta y normalización de relaciones sin tocar escrituras financieras.
+
+## Checkpoint 150
+
+- Fecha: 2026-07-19, hardening de búsqueda admin y relaciones de investigación.
+- Coverage antes: `99.49%` statements/lines, `98.03%` functions y `91.24%` branches; `218` suites y `1927` tests.
+- Coverage después: `99.55%` statements/lines, `98.03%` functions y `91.30%` branches; `218` suites y `1930` tests.
+- Archivo cubierto: `app/actions/admin-search.ts` mediante `src/__tests__/actions/admin-search.test.ts`.
+- Riesgos cerrados: búsquedas por username ahora están protegidas con resultados relacionados de tickets, alertas y disputas; los fallos de consulta devuelven un mensaje seguro y registran `global_search_failed` sin filtrar detalles internos.
+- Resultado de verificación: `admin-search` y `admin-disputes` verdes con `43` tests; coverage global web verde con `218` suites y `1930` tests.
+- Progreso contra la meta: statements y lines suben a `99.55%`; branches sube a `91.30%`; functions se mantiene en `98.03%`.
+- Siguiente lote recomendado: ramas defensivas restantes de `admin-disputes.ts` (RPCs incompletas en start/resolve/compensation) o `admin-search.ts` para fallos de relaciones secundarias.
