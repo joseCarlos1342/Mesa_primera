@@ -14,15 +14,15 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.45%` |
-| Lines | `99.45%` |
+| Statements | `99.49%` |
+| Lines | `99.49%` |
 | Functions | `98.03%` |
-| Branches | `91.09%` |
+| Branches | `91.24%` |
 
 Resultado de la corrida:
 
 - `218` suites en verde.
-- `1922` tests pasando.
+- `1927` tests pasando.
 - La suite actual supera la meta estratégica en statements, lines y functions. El gap pendiente se concentra exclusivamente en branches con comportamiento real, especialmente acciones admin, auth/security, infraestructura Supabase y estados UI.
 - Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-19; el checkpoint 148 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
@@ -2957,3 +2957,15 @@ Ese lote combina:
 - Resultado de verificación: suites focalizadas verdes con `58` tests; medición focalizada en `100%` functions y coverage global web verde con `218` suites y `1922` tests.
 - Progreso contra la meta: statements, functions y lines superan `98%`; branches queda en `91.09%` y es el único frente web pendiente. El gate global sube a `99%` statements, `91%` branches, `98%` functions y `99%` lines para impedir regresiones.
 - Siguiente lote recomendado: trabajar branches con comportamiento real en `admin-search.ts`, `admin-disputes.ts`, `DirectChat.tsx` y `FriendRequests.tsx`; evitar guards estructuralmente inaccesibles y branches defensivos que requieran mocks artificiales.
+
+## Checkpoint 149
+
+- Fecha: 2026-07-19, hardening del chat y solicitudes de amistad player.
+- Coverage antes: `99.45%` statements/lines, `98.03%` functions y `91.09%` branches; `218` suites y `1922` tests.
+- Coverage después: `99.49%` statements/lines, `98.03%` functions y `91.24%` branches; `218` suites y `1927` tests.
+- Archivos cubiertos: `app/(player)/friends/_components/DirectChat.tsx` y `FriendRequests.tsx` mediante `friends-components.test.tsx`.
+- Riesgos cerrados: el chat ignora eventos realtime ajenos, incorpora mensajes entrantes y salientes, permite reintentar tras un error y representa avatar/estado en partida; las solicitudes degradan con mensajes seguros y muestran avatar cuando existe.
+- Bug corregido: `DirectChat` ya no recrea el cliente Supabase en cada render. La instancia estable evita ciclos de resuscripción/refetch que podían sobrescribir mensajes realtime recién recibidos.
+- Resultado de verificación: suite focalizada verde con `15` tests y coverage global web verde con `218` suites y `1927` tests. `DirectChat.tsx` queda en `100%` statements/lines/functions y `97.95%` branches; `FriendRequests.tsx` queda en `100%` focalizado.
+- Progreso contra la meta: branches sube `0.15` puntos hasta `91.24%`; statements y lines suben a `99.49%` y functions se mantiene en `98.03%`.
+- Siguiente lote recomendado: `admin-search.ts` y `admin-disputes.ts`, priorizando resultados parciales, errores de consulta y normalización de relaciones sin tocar escrituras financieras.
