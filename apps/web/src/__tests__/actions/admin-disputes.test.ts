@@ -15,6 +15,8 @@ import {
 } from '@/app/actions/admin-disputes'
 import { createClient } from '@/utils/supabase/server'
 import { globalSearch } from '@/app/actions/admin-search'
+import { logAdminAction } from '@/app/actions/admin-audit'
+import { revalidatePath } from 'next/cache'
 
 jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
@@ -342,6 +344,44 @@ describe('Admin Disputes Server Actions', () => {
   })
 
   describe('flujo de investigaciones internas', () => {
+    it.each([
+      ['start', () => startDispute('d-1'), 'No fue posible iniciar la investigación'],
+      ['resolve', () => resolveDispute('d-1', { outcome: 'warning', notes: 'Notas suficientemente largas.' }), 'No fue posible resolver la investigación'],
+      ['propose', () => proposeDisputeCompensation('d-1', { userId: '11111111-1111-4111-8111-111111111111', amountCents: 100000, reason: 'Compensación válida para el caso.' }), 'No fue posible proponer la compensación'],
+      ['approve', () => approveDisputeCompensation('d-1'), 'No fue posible aprobar la compensación'],
+      ['cancel', () => cancelDisputeCompensation('d-1', 'Motivo válido para cancelar.'), 'No fue posible cancelar la compensación'],
+      ['dismiss', () => dismissDispute('d-1', 'Motivo válido para descartar.'), 'No fue posible descartar la investigación'],
+    ])('mapea errores técnicos de RPC en %s', async (_operation, invoke, expected) => {
+      mockSupabase.rpc.mockResolvedValue({ data: null, error: { message: 'detalle interno postgres' } })
+
+      await expect(invoke()).resolves.toEqual({ error: expected })
+      expect(logAdminAction).not.toHaveBeenCalled()
+      expect(revalidatePath).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      ['start', () => startDispute('d-1'), 'No fue posible iniciar la investigación'],
+      ['resolve', () => resolveDispute('d-1', { outcome: 'warning', notes: 'Notas suficientemente largas.' }), 'No fue posible resolver la investigación'],
+      ['propose', () => proposeDisputeCompensation('d-1', { userId: '11111111-1111-4111-8111-111111111111', amountCents: 100000, reason: 'Compensación válida para el caso.' }), 'No fue posible proponer la compensación'],
+      ['approve', () => approveDisputeCompensation('d-1'), 'No fue posible aprobar la compensación'],
+      ['cancel', () => cancelDisputeCompensation('d-1', 'Motivo válido para cancelar.'), 'No fue posible cancelar la compensación'],
+      ['dismiss', () => dismissDispute('d-1', 'Motivo válido para descartar.'), 'No fue posible descartar la investigación'],
+    ])('mapea respuestas incompletas de RPC en %s', async (_operation, invoke, expected) => {
+      mockSupabase.rpc.mockResolvedValue({ data: { success: true }, error: null })
+
+      await expect(invoke()).resolves.toEqual({ error: expected })
+      expect(logAdminAction).not.toHaveBeenCalled()
+      expect(revalidatePath).not.toHaveBeenCalled()
+    })
+
+    it('mapea error y respuesta incompleta al crear desde una búsqueda', async () => {
+      ;(globalSearch as jest.Mock).mockResolvedValueOnce({ error: 'No fue posible buscar evidencia' })
+      await expect(createDispute({ title: 'Caso', description: 'Descripción', priority: 'medium', source_query: 'evidencia' })).resolves.toEqual({ error: 'No fue posible buscar evidencia' })
+
+      ;(globalSearch as jest.Mock).mockResolvedValueOnce({ data: { matches: [] } })
+      await expect(createDispute({ title: 'Caso', description: 'Descripción', priority: 'medium', source_query: 'evidencia' })).resolves.toEqual({ error: 'No fue posible crear la investigación' })
+    })
+
     it('resuelve la evidencia en servidor y crea una investigación mediante RPC', async () => {
       ;(globalSearch as jest.Mock).mockResolvedValue({
         data: {
