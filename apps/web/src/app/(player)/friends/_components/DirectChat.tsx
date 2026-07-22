@@ -19,7 +19,7 @@ export function DirectChat({ friend, onClose }: DirectChatProps) {
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     const fetchSession = async () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { AddFriendModal } from '../AddFriendModal'
 import { DirectChat } from '../DirectChat'
 import { FriendRequests } from '../FriendRequests'
@@ -40,7 +40,8 @@ jest.mock('@/app/actions/social-actions', () => ({
 
 const removeChannel = jest.fn()
 const subscribe = jest.fn(() => 'channel-1')
-const on = jest.fn(() => ({ subscribe }))
+type RealtimeHandler = (payload: { new: Record<string, unknown> }) => void
+const on = jest.fn((_event: string, _config: unknown, _handler: RealtimeHandler) => ({ subscribe }))
 const channel = jest.fn(() => ({ on }))
 const getUser = jest.fn()
 
@@ -215,6 +216,36 @@ describe('friends player components', () => {
     await waitFor(() => expect(onAction).toHaveBeenCalledWith('No puedes rechazar', 'error'))
   })
 
+  it('usa mensajes de error seguros cuando las solicitudes fallan sin detalle', async () => {
+    ;(acceptFriendRequest as jest.Mock).mockResolvedValue({ success: false })
+    ;(removeFriendship as jest.Mock).mockResolvedValue({ success: false })
+    const onAction = jest.fn()
+    const request = {
+      friendshipId: 'request-1',
+      profile: { username: 'solicitante', level: 3, avatar_url: null },
+    }
+
+    render(<FriendRequests requests={[request]} onAction={onAction} onRefresh={jest.fn()} />)
+
+    fireEvent.click(screen.getByTitle('Aceptar'))
+    await waitFor(() => expect(onAction).toHaveBeenCalledWith('Error al aceptar solicitud', 'error'))
+
+    fireEvent.click(screen.getByTitle('Rechazar'))
+    await waitFor(() => expect(onAction).toHaveBeenCalledWith('Error al procesar', 'error'))
+  })
+
+  it('muestra el avatar de una solicitud cuando está disponible', () => {
+    const request = {
+      friendshipId: 'request-1',
+      profile: { username: 'solicitante', level: 3, avatar_url: 'avatar-ok' },
+    }
+
+    render(<FriendRequests requests={[request]} onAction={jest.fn()} onRefresh={jest.fn()} />)
+
+    expect(screen.getByTestId('avatar-svg')).toBeInTheDocument()
+    expect(screen.getByText('solicitante')).toBeInTheDocument()
+  })
+
   it('carga mensajes directos, se suscribe al canal y envia un mensaje', async () => {
     ;(getDirectMessages as jest.Mock).mockResolvedValue([
       { id: 'msg-1', sender_id: 'me-1', receiver_id: 'friend-1', content: 'Hola rival', created_at: '2026-06-01T10:00:00.000Z' },
@@ -249,5 +280,57 @@ describe('friends player components', () => {
     fireEvent.submit(screen.getByPlaceholderText('Mensaje...').closest('form')!)
 
     expect(sendDirectMessage).not.toHaveBeenCalled()
+  })
+
+  it('incorpora solo mensajes realtime relacionados con la conversación', async () => {
+    render(<DirectChat friend={friend} onClose={jest.fn()} />)
+
+    expect(await screen.findByText(/Inicia/)).toBeInTheDocument()
+    const realtimeHandler = [...on.mock.calls].reverse().find(([event]) => event === 'postgres_changes')?.[2]
+    expect(realtimeHandler).toEqual(expect.any(Function))
+    if (!realtimeHandler) throw new Error('No se registró el handler realtime del chat')
+
+    act(() => {
+      realtimeHandler({
+        new: { id: 'ignored', sender_id: 'other-1', receiver_id: 'other-2', content: 'Mensaje ajeno', created_at: '2026-06-01T10:02:00.000Z' },
+      })
+    })
+    expect(screen.queryByText('Mensaje ajeno')).not.toBeInTheDocument()
+
+    act(() => {
+      realtimeHandler({
+        new: { id: 'incoming', sender_id: 'friend-1', receiver_id: 'me-1', content: 'Mensaje entrante', created_at: '2026-06-01T10:03:00.000Z' },
+      })
+      realtimeHandler({
+        new: { id: 'outgoing', sender_id: 'me-1', receiver_id: 'friend-1', content: 'Mensaje saliente', created_at: '2026-06-01T10:04:00.000Z' },
+      })
+    })
+
+    expect(screen.getByText('Mensaje entrante')).toBeInTheDocument()
+    expect(screen.getByText('Mensaje saliente')).toBeInTheDocument()
+  })
+
+  it('registra el error y permite reintentar cuando falla un mensaje', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    ;(sendDirectMessage as jest.Mock).mockResolvedValue({ error: 'No se pudo enviar' })
+    render(<DirectChat friend={friend} onClose={jest.fn()} />)
+
+    await screen.findByText(/Inicia/)
+    const input = screen.getByPlaceholderText('Mensaje...')
+    const submitButton = input.closest('form')!.querySelector('button')!
+    fireEvent.change(input, { target: { value: 'Mensaje con error' } })
+    fireEvent.submit(input.closest('form')!)
+
+    await waitFor(() => expect(consoleError).toHaveBeenCalledWith('No se pudo enviar'))
+    fireEvent.change(input, { target: { value: 'Intentar de nuevo' } })
+    expect(submitButton).not.toBeDisabled()
+    consoleError.mockRestore()
+  })
+
+  it('muestra avatar y estado cuando el amigo está en partida', async () => {
+    render(<DirectChat friend={{ ...friend, status: 'in-game', profile: { ...friend.profile, avatar_url: 'avatar-ok' } }} onClose={jest.fn()} />)
+
+    expect(await screen.findByText('En Partida')).toBeInTheDocument()
+    expect(screen.getByTestId('avatar-svg')).toBeInTheDocument()
   })
 })
