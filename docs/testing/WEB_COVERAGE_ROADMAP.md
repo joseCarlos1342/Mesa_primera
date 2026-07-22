@@ -17,12 +17,12 @@ Cobertura actual de `apps/web`:
 | Statements | `99.55%` |
 | Lines | `99.55%` |
 | Functions | `98.03%` |
-| Branches | `91.30%` |
+| Branches | `91.48%` |
 
 Resultado de la corrida:
 
 - `218` suites en verde.
-- `1930` tests pasando.
+- `1939` tests pasando.
 - La suite actual supera la meta estratégica en statements, lines y functions. El gap pendiente se concentra exclusivamente en branches con comportamiento real, especialmente acciones admin, auth/security, infraestructura Supabase y estados UI.
 - Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-19; el checkpoint 150 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
@@ -2980,3 +2980,14 @@ Ese lote combina:
 - Resultado de verificación: `admin-search` y `admin-disputes` verdes con `43` tests; coverage global web verde con `218` suites y `1930` tests.
 - Progreso contra la meta: statements y lines suben a `99.55%`; branches sube a `91.30%`; functions se mantiene en `98.03%`.
 - Siguiente lote recomendado: ramas defensivas restantes de `admin-disputes.ts` (RPCs incompletas en start/resolve/compensation) o `admin-search.ts` para fallos de relaciones secundarias.
+
+## Checkpoint 151
+
+- Fecha: 2026-07-19, hardening de consultas administrativas y adjuntos.
+- Coverage antes: `99.55%` statements/lines, `98.03%` functions y `91.30%` branches; `218` suites y `1930` tests.
+- Coverage después: `99.55%` statements/lines, `98.03%` functions y `91.48%` branches; `218` suites y `1939` tests.
+- Archivo cubierto: `app/actions/admin-issues.ts` mediante `app/actions/__tests__/admin-issues.test.ts`.
+- Riesgos cerrados: bandejas admin protegidas contra anonimato/rol incorrecto, respuestas RPC sin éxito o identificador, cierre rechazado, adjuntos inválidos/ajenos/cerrados, fallo real de upload, metadata de evidencia y URLs firmadas ausentes sin filtrar detalles internos.
+- Resultado de verificación: suite focalizada verde con `23` tests; coverage global web verde con `218` suites y `1939` tests.
+- Progreso contra la meta: branches sube `0.18` puntos hasta `91.48%`; statements, lines y functions se mantienen sobre el objetivo estratégico.
+- Siguiente lote recomendado: completar ramas de `admin-disputes.ts` en errores de RPC y validaciones de compensación, sin escrituras directas al ledger.
