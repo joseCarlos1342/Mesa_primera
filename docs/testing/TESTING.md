@@ -45,7 +45,7 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.55%` statements, `91.30%` branches, `98.03%` functions, `99.55%` lines con `218` suites y `1930` tests pasando (`2026-07-19`).
+- Medicion web vigente: `99.55%` statements, `91.48%` branches, `98.03%` functions, `99.55%` lines con `218` suites y `1939` tests pasando (`2026-07-19`).
 - Medicion game-server vigente: `93.35%` statements, `84.97%` branches, `94.79%` functions, `95.18%` lines con `34` suites y `833` tests pasando (`2026-07-19`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
@@ -53,7 +53,7 @@ Antes de cerrar cambios relevantes:
 - Gate operativo actual:
   - Web: `99%` statements, `91%` branches, `98%` functions, `99%` lines. Este gate fija el avance del checkpoint 148 y evita regresar por debajo de la meta estratégica ya alcanzada en statements, functions y lines.
   - Game server: `89%` statements, `80%` branches, `89%` functions, `90%` lines.
-- Objetivo final estrategico sigue siendo `98%` en ambos frentes. Web ya supera la meta en statements, functions y lines; branches (`91.30%`) es su frente pendiente. Game-server mantiene gates escalonados hasta acercarse a la meta sin falsos rojos.
+- Objetivo final estrategico sigue siendo `98%` en ambos frentes. Web ya supera la meta en statements, functions y lines; branches (`91.48%`) es su frente pendiente. Game-server mantiene gates escalonados hasta acercarse a la meta sin falsos rojos.
 - Hardening de cobertura Fases 1-2 (2026-06-22): 80 tests nuevos centrados en zonas debiles criticas (auth-actions, MesaRoom.refundAllActiveBets, AdminSecurityPanel, recovery, security, password, tables, consultas). Subidas clave: `auth-actions.ts` 74.8% → 85.71% branches; `recovery/page.tsx` 11.11% → 100% branches; `AdminSecurityPanel.tsx` 26.92% → 100% branches; `password/page.tsx` 62.5% → 94.54% branches; `tables/page.tsx` 61.11% → 100% branches; `consultas/page.tsx` 63.63% → 100% branches; `security/page.tsx` 33.33% → 100% branches.
 - Hardening de cobertura Fase 3 (2026-06-24): 14 tests web y 2 tests game-server adicionales sobre replays, perfil, CSP, cliente Supabase SSR, `PlayerBadge` y `AlertService`. Subidas clave: `app/(player)/replays/page.tsx` queda en `100%`, `utils/supabase/client.ts` queda en `100%`, `PlayerBadge.tsx` sube branches a `96.87%` y `AlertService.ts` queda en `100%` statements/lines/functions con `96.07%` branches.
 - Hardening de wallet UI (2026-07-01): 4 tests web adicionales sobre `TransactionModal.tsx` cubren fallback sin `signedUrl`, modal cerrado, retiro pendiente sin comprobante, transferencias/ajustes/tipos desconocidos y mantienen el bloque financiero solo en UI con Supabase storage mockeado.
@@ -97,6 +97,7 @@ Antes de cerrar cambios relevantes:
 - Cierre de meta web functions (2026-07-19): 6 tests nuevos cubren apertura/cierre de recarga desde `Lobby`, avance por Enter con monto válido y bloqueo de montos vacío/inferior/superior en `GameTransferModal`; además se ejercitan filtros completos de recovery y el retorno de mesa personalizada a común. Web alcanza `98.03%` functions y el gate sube a `99/91/98/99` para preservar statements/branches/functions/lines.
 - Hardening social player (2026-07-19): 5 tests nuevos cubren errores sin detalle, avatar de solicitudes, mensajes realtime entrantes/salientes, descarte de eventos ajenos, reintento tras fallo y estado en partida. `DirectChat.tsx` estabiliza su cliente Supabase para evitar resuscripciones y pérdida de mensajes; queda en `100%` statements/lines/functions y `97.95%` branches, mientras `FriendRequests.tsx` alcanza `100%` focalizado.
 - Hardening de búsqueda admin (2026-07-19): 3 tests nuevos cubren resultados relacionados de perfiles (tickets, alertas y disputas), errores primarios/secundarios y auditoría de fallo. `admin-search.ts` sube a `100%` statements/lines/functions y `82.19%` branches; la cobertura global queda en `99.55/91.30/98.03/99.55` con `1930` tests.
+- Hardening de consultas admin (2026-07-19): 9 tests nuevos cubren auth de bandeja/archivo, errores de RPC, cierre rechazado, validación de adjuntos, permisos de propietario/admin, fallo real de upload, metadata de evidencia y URLs firmadas fallidas. `admin-issues.ts` queda en `100%` statements/lines/functions y `74.72%` branches; la cobertura global queda en `91.48%` branches con `1939` tests.
 
 ## Roadmap de Cobertura Web
 
