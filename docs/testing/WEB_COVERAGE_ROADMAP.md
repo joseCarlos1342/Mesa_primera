@@ -14,17 +14,17 @@ Cobertura actual de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.55%` |
-| Lines | `99.55%` |
+| Statements | `99.57%` |
+| Lines | `99.57%` |
 | Functions | `98.03%` |
-| Branches | `91.48%` |
+| Branches | `91.67%` |
 
 Resultado de la corrida:
 
 - `218` suites en verde.
-- `1939` tests pasando.
+- `1952` tests pasando.
 - La suite actual supera la meta estratégica en statements, lines y functions. El gap pendiente se concentra exclusivamente en branches con comportamiento real, especialmente acciones admin, auth/security, infraestructura Supabase y estados UI.
-- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-19; el checkpoint 150 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
+- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-19; el checkpoint 152 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
 
 ## Meta Final
 
@@ -2991,3 +2991,14 @@ Ese lote combina:
 - Resultado de verificación: suite focalizada verde con `23` tests; coverage global web verde con `218` suites y `1939` tests.
 - Progreso contra la meta: branches sube `0.18` puntos hasta `91.48%`; statements, lines y functions se mantienen sobre el objetivo estratégico.
 - Siguiente lote recomendado: completar ramas de `admin-disputes.ts` en errores de RPC y validaciones de compensación, sin escrituras directas al ledger.
+
+## Checkpoint 152
+
+- Fecha: 2026-07-19, hardening de investigaciones y compensaciones administrativas.
+- Coverage antes: `99.55%` statements/lines, `98.03%` functions y `91.48%` branches; `218` suites y `1939` tests.
+- Coverage después: `99.57%` statements/lines, `98.03%` functions y `91.67%` branches; `218` suites y `1952` tests.
+- Archivos cubiertos: `app/actions/admin-disputes.ts` mediante `src/__tests__/actions/admin-disputes.test.ts`.
+- Riesgos cerrados: errores técnicos y respuestas incompletas de start, resolve, propose, approve, cancel y dismiss; fallos de resolución de evidencia; se mantiene el uso exclusivo de RPC para compensaciones, sin tocar directamente `wallets_ledger`.
+- Resultado de verificación: suite focalizada verde con `36` tests; coverage global web verde con `218` suites y `1952` tests.
+- Progreso contra la meta: branches sube `0.19` puntos hasta `91.67%`; statements y lines suben a `99.57%`.
+- Siguiente lote recomendado: `Lobby.tsx` para recuperar ramas visibles de catálogo realtime y apertura segura, evitando guards internos inaccesibles.
