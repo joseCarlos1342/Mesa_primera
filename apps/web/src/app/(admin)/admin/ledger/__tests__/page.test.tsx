@@ -58,7 +58,7 @@ describe('AdminLedgerPage', () => {
   })
 
   it('carga usuarios y movimientos para los filtros de libro mayor', async () => {
-    render(await AdminLedgerPage())
+    render(await AdminLedgerPage({}))
 
     expect(mockGetLedgerEntries).toHaveBeenCalledWith(50)
     expect(mockGetUsersWithBalances).toHaveBeenCalledTimes(1)
@@ -73,7 +73,7 @@ describe('AdminLedgerPage', () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockGetLedgerEntries.mockRejectedValueOnce(new Error('RPC caida'))
 
-    render(await AdminLedgerPage())
+    render(await AdminLedgerPage({}))
 
     expect(screen.getByRole('heading', { name: /error al cargar el libro mayor/i })).toBeInTheDocument()
     expect(screen.getByText('RPC caida')).toBeInTheDocument()
@@ -86,7 +86,7 @@ describe('AdminLedgerPage', () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockGetLedgerEntries.mockRejectedValueOnce('error sin message')
 
-    render(await AdminLedgerPage())
+    render(await AdminLedgerPage({}))
 
     expect(screen.getByText('Error desconocido al cargar el libro mayor')).toBeInTheDocument()
     consoleError.mockRestore()

@@ -41,6 +41,7 @@ export function buildContentSecurityPolicy({
     livekitHttps,
     'https://api.twilio.com',
     'https://verify.twilio.com',
+    'https://api.onesignal.com',
     'https://basemaps.cartocdn.com',
     'https://*.basemaps.cartocdn.com',
   ]
@@ -55,6 +56,7 @@ export function buildContentSecurityPolicy({
     `'unsafe-inline'`,
     'https://static.cloudflareinsights.com',
     'https://challenges.cloudflare.com',
+    'https://cdn.onesignal.com',
   ]
 
   if (isDevelopment) {
@@ -79,6 +81,7 @@ export function buildContentSecurityPolicy({
     'https://challenges.cloudflare.com',
     'https://primerariveradalos4ases.com/cdn-cgi/scripts/',
     'https://primerariveradalos4ases.com/cdn-cgi/challenge-platform/',
+    'https://cdn.onesignal.com',
   ]
 
   return [

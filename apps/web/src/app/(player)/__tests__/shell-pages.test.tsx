@@ -135,7 +135,7 @@ describe('player shell pages', () => {
   it('leaderboard usa categoria por defecto y tabs con enlaces', async () => {
     mockGetLeaderboard.mockResolvedValue([{ user_id: 'user-1' }] as never)
 
-    render(await LeaderboardPage({ searchParams: {} }))
+    render(await LeaderboardPage({ searchParams: Promise.resolve({}) }))
 
     expect(mockGetLeaderboard).toHaveBeenCalledWith('all-time', 'top_ganadores')
     expect(screen.getByRole('heading', { name: 'Salón de la Fama' })).toBeInTheDocument()
@@ -146,7 +146,7 @@ describe('player shell pages', () => {
   it('leaderboard respeta categoria seleccionada', async () => {
     mockGetLeaderboard.mockResolvedValue([] as never)
 
-    render(await LeaderboardPage({ searchParams: { category: 'maestro_primera' } }))
+    render(await LeaderboardPage({ searchParams: Promise.resolve({ category: 'maestro_primera' }) }))
 
     expect(mockGetLeaderboard).toHaveBeenCalledWith('all-time', 'maestro_primera')
     expect(screen.getByTestId('leaderboard-table')).toHaveTextContent('maestro_primera: 0')

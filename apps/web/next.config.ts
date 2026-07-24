@@ -12,6 +12,7 @@ const allowedDevOrigins = [
 
 const withPWA = withPWAInit({
   dest: "public",
+  customWorkerSrc: "worker",
   disable: process.env.NODE_ENV === "development",
   register: true,
 });

@@ -14,6 +14,7 @@ import { BroadcastBanner } from "@/components/BroadcastBanner";
 import { OrientationPortrait } from "@/components/OrientationPortrait";
 import { createClient } from "@/utils/supabase/server";
 import { getAvatarSvg } from "@/utils/avatars";
+import { OneSignalPushOptIn } from "@/components/OneSignalPushOptIn";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -87,6 +88,7 @@ export default async function PlayerLayout({
             {user && <SupportTrigger />}
 
             {user && <NotificationCenter userId={user.id} />}
+            {user && <OneSignalPushOptIn userId={user.id} compact />}
             <SignOutButton 
               variant="danger" 
               className="h-10 w-10 md:h-12 md:w-auto px-0 sm:px-5 flex items-center justify-center min-w-[2.5rem]" 

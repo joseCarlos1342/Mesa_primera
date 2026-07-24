@@ -1,13 +1,16 @@
 [Unit]
 Description=Mesa Primera — actualizador del game-server (pull-based)
-Documentation=file:///root/mesa-deploy/README.md
+Documentation=https://github.com/joseCarlos1342/Mesa_primera/blob/main/docs/deployment/vps_actualizacion_motor.md
 After=network-online.target docker.service
 Wants=network-online.target
+Requires=docker.service
 
 [Service]
 Type=oneshot
 EnvironmentFile=-/etc/mesa/deploy.env
+Environment=DOCKER_CONFIG=/run/mesa-deploy/docker
 ExecStart=/usr/local/bin/mesa-deploy
+TimeoutStartSec=10min
 # El script ya hace logging propio; systemd captura stderr en journald.
 StandardOutput=journal
 StandardError=journal
@@ -16,3 +19,16 @@ NoNewPrivileges=true
 ProtectSystem=full
 ProtectHome=true
 PrivateTmp=true
+PrivateDevices=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+UMask=0077
+RuntimeDirectory=mesa-deploy
+RuntimeDirectoryMode=0700

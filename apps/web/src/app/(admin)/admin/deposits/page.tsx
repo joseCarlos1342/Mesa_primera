@@ -3,8 +3,9 @@ import { formatCurrency } from '@/utils/format'
 import { User, ExternalLink, CheckCircle2, MessageSquare, Image as ImageIcon, Wallet, Clock, AlertCircle } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 import { DepositActions } from './DepositActions'
-export default async function AdminDepositsPage({ searchParams }: { searchParams: Promise<{ q?: string }> } = { searchParams: Promise.resolve({}) }) {
-  const { q } = await searchParams
+export default async function AdminDepositsPage(props: { searchParams?: Promise<{ q?: string }> }) {
+  const { searchParams } = props
+  const { q } = (await searchParams) ?? {}
   const requestId = typeof q === 'string' ? q.trim() : ''
   const result = await getPendingDeposits(requestId || undefined)
   const supabase = await createClient()

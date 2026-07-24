@@ -2,8 +2,9 @@ import { getPendingWithdrawals } from '@/app/actions/withdrawals'
 import { formatCurrency } from '@/utils/format'
 import { User, CheckCircle2, Clock, Wallet, AlertCircle } from 'lucide-react'
 import { WithdrawalActions } from './WithdrawalActions'
-export default async function AdminWithdrawalsPage({ searchParams }: { searchParams: Promise<{ q?: string }> } = { searchParams: Promise.resolve({}) }) {
-  const { q } = await searchParams
+export default async function AdminWithdrawalsPage(props: { searchParams?: Promise<{ q?: string }> }) {
+  const { searchParams } = props
+  const { q } = (await searchParams) ?? {}
   const requestId = typeof q === 'string' ? q.trim() : ''
   const result = await getPendingWithdrawals(requestId || undefined)
 

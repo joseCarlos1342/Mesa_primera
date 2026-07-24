@@ -6,8 +6,9 @@ import { LedgerUsersFilter, LedgerTransactionsFilter } from "@/components/admin/
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function AdminLedgerPage({ searchParams }: { searchParams: Promise<{ q?: string }> } = { searchParams: Promise.resolve({}) }) {
-  const { q } = await searchParams;
+export default async function AdminLedgerPage(props: { searchParams?: Promise<{ q?: string }> }) {
+  const { searchParams } = props
+  const { q } = (await searchParams) ?? {};
   const entryId = typeof q === 'string' ? q.trim() : '';
   let entries: Awaited<ReturnType<typeof getLedgerEntries>> = [];
   let users: Awaited<ReturnType<typeof getUsersWithBalances>> = [];

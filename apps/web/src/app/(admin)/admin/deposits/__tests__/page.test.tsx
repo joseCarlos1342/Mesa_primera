@@ -41,7 +41,7 @@ describe('AdminDepositsPage', () => {
       ],
     })
 
-    render(await AdminDepositsPage())
+    render(await AdminDepositsPage({}))
 
     expect(screen.getByRole('heading', { name: /depósitos pendientes/i })).toBeInTheDocument()
     expect(screen.getByText('@ana')).toBeInTheDocument()
@@ -56,7 +56,7 @@ describe('AdminDepositsPage', () => {
   it('muestra empty state y no solicita URLs si no hay depositos', async () => {
     mockGetPendingDeposits.mockResolvedValue({ deposits: [] })
 
-    render(await AdminDepositsPage())
+    render(await AdminDepositsPage({}))
 
     expect(screen.getByText('Bandeja de entrada limpia')).toBeInTheDocument()
     expect(screen.getByText(/No hay solicitudes de depósito pendientes/)).toBeInTheDocument()
@@ -65,7 +65,7 @@ describe('AdminDepositsPage', () => {
   it('muestra error de carga sin construir URLs firmadas', async () => {
     mockGetPendingDeposits.mockResolvedValue({ error: 'RPC caida' })
 
-    render(await AdminDepositsPage())
+    render(await AdminDepositsPage({}))
 
     expect(screen.getByText('Error al cargar depósitos: RPC caida')).toBeInTheDocument()
   })

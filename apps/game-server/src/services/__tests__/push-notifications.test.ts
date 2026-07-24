@@ -33,6 +33,9 @@ describe('push-notifications service', () => {
   });
 
   it('configures VAPID details and queue connection at module load', async () => {
+    vi.stubEnv('NEXT_PUBLIC_VAPID_PUBLIC_KEY', 'public-key');
+    vi.stubEnv('VAPID_PRIVATE_KEY', 'private-key');
+    vi.stubEnv('VAPID_SUBJECT', 'mailto:test@example.com');
     vi.stubEnv('REDIS_HOST', 'redis.test');
     vi.stubEnv('REDIS_PORT', '6380');
     vi.stubEnv('REDIS_PASSWORD', 'secret');
@@ -71,6 +74,9 @@ describe('push-notifications service', () => {
   });
 
   it('sends web push payload as JSON and returns true on success', async () => {
+    vi.stubEnv('NEXT_PUBLIC_VAPID_PUBLIC_KEY', 'public-key');
+    vi.stubEnv('VAPID_PRIVATE_KEY', 'private-key');
+    vi.stubEnv('VAPID_SUBJECT', 'mailto:test@example.com');
     webpushMock.sendNotification.mockResolvedValue(undefined);
     const { sendWebPush } = await import('../push-notifications');
     const subscription = { endpoint: 'https://push.test', keys: { p256dh: 'key', auth: 'auth' } };
@@ -80,6 +86,9 @@ describe('push-notifications service', () => {
   });
 
   it('returns false and logs when web push delivery fails', async () => {
+    vi.stubEnv('NEXT_PUBLIC_VAPID_PUBLIC_KEY', 'public-key');
+    vi.stubEnv('VAPID_PRIVATE_KEY', 'private-key');
+    vi.stubEnv('VAPID_SUBJECT', 'mailto:test@example.com');
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const error = new Error('expired subscription');
     webpushMock.sendNotification.mockRejectedValue(error);
