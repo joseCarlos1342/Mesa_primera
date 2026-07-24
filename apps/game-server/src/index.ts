@@ -6,10 +6,11 @@ import { startIntegrityCron } from "./cron/integrityCheck";
 import { startAntiCollusionCron } from "./cron/antiCollusion";
 import { initializeSocketIOServer } from "./services/socket";
 import { setDraining } from "./runtime-state";
-import { pushWorker } from "./workers/push.worker";
 import { ledgerQueue, ledgerQueueEvents, ledgerWorker } from "./workers";
 import { CrashRecoveryService } from "./services/CrashRecoveryService";
 import { installCrashProcessHandlers } from "./services/CrashProcessHandlers";
+import { startNotificationDispatcher } from "./services/notification-dispatcher";
+import { pushWorker } from "./workers/push.worker";
 
 // Polyfill WebSocket for Node 20 compatibility with Colyseus 0.17+
 if (typeof WebSocket === "undefined") {
@@ -20,6 +21,7 @@ if (typeof WebSocket === "undefined") {
 let socketHttpServer: HTTPServer | null = null;
 let socketIo: SocketIOServer | null = null;
 let shuttingDown = false;
+let stopNotificationDispatcher: (() => void) | null = null;
 
 listen(app, 2567).then(async () => {
     console.log("⚔️  Listening on http://0.0.0.0:2567");
@@ -33,6 +35,7 @@ listen(app, 2567).then(async () => {
     // Iniciar tareas en segundo plano (CronJobs sin costo adicional)
     startIntegrityCron();
     startAntiCollusionCron();
+    stopNotificationDispatcher = startNotificationDispatcher();
 
     // Start Socket.IO for chat and notifications
     const { io, httpServer } = initializeSocketIOServer();
@@ -65,6 +68,7 @@ async function gracefulShutdown(signal: string, exitCode = 0): Promise<void> {
             });
             console.log("[shutdown] Socket.IO cerrado");
         }
+        stopNotificationDispatcher?.();
         if (socketHttpServer && socketHttpServer.listening) {
             await new Promise<void>((resolve) => {
                 socketHttpServer!.close(() => resolve());

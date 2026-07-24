@@ -26,13 +26,16 @@ WORKDIR /app/apps/game-server
 # Build step
 RUN pnpm exec tsc
 
-# Crear directorio para almacenamiento de grabaciones
-RUN mkdir -p /data/replays
+# Crear almacenamiento persistente y ejecutar el runtime sin root.
+ENV REPLAY_DIR=/data/replays
+RUN mkdir -p /data/replays && chown -R node:node /data/replays
 
 EXPOSE 2567 2568
 
 # Volumen para persistir grabaciones entre reinicios del contenedor
 VOLUME ["/data/replays"]
+
+USER node
 
 # Start the built server
 CMD ["node", "dist/index.js"]

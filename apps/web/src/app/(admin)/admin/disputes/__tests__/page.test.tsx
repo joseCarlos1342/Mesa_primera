@@ -61,7 +61,7 @@ describe('DisputesListPage', () => {
       ],
     })
 
-    render(await DisputesListPage())
+    render(await DisputesListPage({}))
 
     expect(screen.getByRole('heading', { name: 'Investigaciones internas' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /consultas/i })).not.toBeInTheDocument()
@@ -75,7 +75,7 @@ describe('DisputesListPage', () => {
   it('muestra empty state sin disputas', async () => {
     mockListDisputes.mockResolvedValue({ data: [] })
 
-    render(await DisputesListPage())
+    render(await DisputesListPage({}))
 
     expect(screen.getByText('No hay investigaciones registradas.')).toBeInTheDocument()
   })
@@ -83,7 +83,7 @@ describe('DisputesListPage', () => {
   it('muestra error de carga', async () => {
     mockListDisputes.mockResolvedValue({ error: 'No autorizado' })
 
-    render(await DisputesListPage())
+    render(await DisputesListPage({}))
 
     expect(screen.getByRole('heading', { name: 'Investigaciones internas' })).toBeInTheDocument()
     expect(screen.getByText('No autorizado')).toBeInTheDocument()

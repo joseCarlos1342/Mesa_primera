@@ -35,6 +35,7 @@ export async function requestWithdrawal(amount: number, bankDetails: string) {
     })
 
   if (error) return { error: error.message }
+
   
   revalidatePath('/wallet')
   return { success: true }

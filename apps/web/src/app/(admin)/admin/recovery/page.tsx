@@ -34,13 +34,12 @@ function toRecoveryFilters(params: RecoverySearchParams): RecoveryIncidentFilter
   }
 }
 
-export default async function AdminRecoveryPage({
-  searchParams,
-}: {
-  searchParams: Promise<RecoverySearchParams>
-} = { searchParams: Promise.resolve({}) }) {
+export default async function AdminRecoveryPage(props: {
+  searchParams?: Promise<RecoverySearchParams>
+}) {
+  const { searchParams } = props
   try {
-    const filters = toRecoveryFilters(await searchParams)
+    const filters = toRecoveryFilters((await searchParams) ?? {})
     const page = await getAdminRecoveryIncidentPage(filters)
 
     return <RecoveryExplorer page={page} filters={filters} />

@@ -1401,6 +1401,72 @@ export type Database = {
           },
         ]
       }
+      notification_outbox: {
+        Row: {
+          accepted_at: string | null
+          attempts: number
+          available_at: string
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          failed_at: string | null
+          id: string
+          last_error: string | null
+          notification_id: string
+          provider_message_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          attempts?: number
+          available_at?: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          notification_id: string
+          provider_message_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          attempts?: number
+          available_at?: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          notification_id?: string
+          provider_message_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_outbox_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: true
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string
@@ -2202,6 +2268,19 @@ export type Database = {
         Args: { p_game_id: string; p_owner_id: string }
         Returns: Json
       }
+      claim_notification_outbox: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          body: string
+          claim_token: string
+          data: Json
+          id: string
+          notification_id: string
+          title: string
+          user_id: string
+        }[]
+      }
       close_game_recovery_incident: {
         Args: { p_incident_id: string; p_reason: string }
         Returns: Json
@@ -2586,6 +2665,24 @@ export type Database = {
       mark_game_recovery_incident_manual_review: {
         Args: { p_game_id: string; p_reason: string }
         Returns: Json
+      }
+      notify_admins: {
+        Args: { p_body: string; p_data?: Json; p_title: string; p_type: string }
+        Returns: number
+      }
+      notify_social_user: {
+        Args: { p_type: string; p_user_id: string }
+        Returns: string
+      }
+      notify_user: {
+        Args: {
+          p_body: string
+          p_data?: Json
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
       }
       open_game_recovery_incident: {
         Args: {

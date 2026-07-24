@@ -24,6 +24,7 @@ type RuntimePublicEnvName =
   | 'NEXT_PUBLIC_SUPABASE_URL'
   | PublicKeyName
   | 'NEXT_PUBLIC_TURNSTILE_SITE_KEY'
+  | 'NEXT_PUBLIC_ONESIGNAL_APP_ID'
 
 declare global {
   interface Window {
@@ -36,6 +37,7 @@ const RUNTIME_PUBLIC_ENV_NAMES: ReadonlySet<string> = new Set<RuntimePublicEnvNa
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  'NEXT_PUBLIC_ONESIGNAL_APP_ID',
 ])
 
 function getEnvValue(name: EnvName): string | null {

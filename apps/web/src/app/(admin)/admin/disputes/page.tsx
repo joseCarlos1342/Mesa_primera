@@ -29,12 +29,11 @@ function PriorityBadge({ priority }: { priority: string }) {
   )
 }
 
-export default async function DisputesListPage({
-  searchParams = Promise.resolve({}),
-}: {
+export default async function DisputesListPage(props: {
   searchParams?: Promise<{ status?: string; priority?: string; type?: string }>
-} = {}) {
-  const params = await searchParams
+}) {
+  const { searchParams } = props
+  const params = (await searchParams) ?? {}
   const status = ['open', 'investigating', 'resolved', 'dismissed'].includes(params.status || '')
     ? params.status as 'open' | 'investigating' | 'resolved' | 'dismissed'
     : undefined

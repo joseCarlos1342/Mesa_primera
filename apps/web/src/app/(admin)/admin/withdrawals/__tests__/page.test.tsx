@@ -28,7 +28,7 @@ describe('AdminWithdrawalsPage', () => {
       ],
     })
 
-    render(await AdminWithdrawalsPage())
+    render(await AdminWithdrawalsPage({}))
 
     expect(screen.getByRole('heading', { name: /retiros pendientes/i })).toBeInTheDocument()
     expect(screen.getByText('@ana')).toBeInTheDocument()
@@ -41,7 +41,7 @@ describe('AdminWithdrawalsPage', () => {
   it('muestra empty state sin retiros', async () => {
     mockGetPendingWithdrawals.mockResolvedValue({ withdrawals: [] })
 
-    render(await AdminWithdrawalsPage())
+    render(await AdminWithdrawalsPage({}))
 
     expect(screen.getByText('Sin solicitudes pendientes')).toBeInTheDocument()
     expect(screen.getByText(/Todas las transacciones han sido procesadas/)).toBeInTheDocument()
@@ -50,7 +50,7 @@ describe('AdminWithdrawalsPage', () => {
   it('muestra error de carga de retiros', async () => {
     mockGetPendingWithdrawals.mockResolvedValue({ error: 'No autorizado' })
 
-    render(await AdminWithdrawalsPage())
+    render(await AdminWithdrawalsPage({}))
 
     expect(screen.getByText('Error al cargar retiros: No autorizado')).toBeInTheDocument()
   })

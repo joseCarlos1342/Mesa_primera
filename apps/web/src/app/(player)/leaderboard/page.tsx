@@ -4,9 +4,10 @@ import { LeaderboardTable } from "./_components/leaderboard-table";
 export default async function LeaderboardPage({
   searchParams,
 }: {
-  searchParams: { category?: string };
+  searchParams: Promise<{ category?: string }>;
 }) {
-  const category = searchParams.category || "top_ganadores"; // top_ganadores, mejor_racha, maestro_primera
+  const { category: requestedCategory } = await searchParams;
+  const category = requestedCategory || "top_ganadores"; // top_ganadores, mejor_racha, maestro_primera
 
   // Defaulting to "all-time" for period in this sprint
   const data = await getLeaderboard("all-time", category);

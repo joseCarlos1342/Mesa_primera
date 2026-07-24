@@ -180,5 +180,6 @@ export async function createDepositRequest(amount: number, proofUrl: string, obs
     })
 
   if (error) return { error: error.message }
+
   return { success: true, proofUrl }
 }

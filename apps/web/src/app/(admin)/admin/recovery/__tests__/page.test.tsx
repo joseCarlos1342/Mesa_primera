@@ -40,7 +40,7 @@ describe('AdminRecoveryPage', () => {
   it('muestra únicamente el historial terminal y el progreso agregado de refunds', async () => {
     mockGetAdminRecoveryIncidentPage.mockResolvedValue(page())
 
-    render(await AdminRecoveryPage())
+    render(await AdminRecoveryPage({}))
 
     expect(screen.getByRole('heading', { name: /incidentes de recuperación/i })).toBeInTheDocument()
     expect(screen.getByText('room-original')).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('AdminRecoveryPage', () => {
       },
     ]))
 
-    render(await AdminRecoveryPage())
+    render(await AdminRecoveryPage({}))
 
     expect(screen.getByText(/coincidencias/i)).toBeInTheDocument()
     expect(screen.getByText('5 / 7')).toBeInTheDocument()
@@ -76,7 +76,7 @@ describe('AdminRecoveryPage', () => {
       { ...incident, gameId: '00000000-0000-4000-8000-000000000102', status: 'manual_review' },
     ]))
 
-    render(await AdminRecoveryPage())
+    render(await AdminRecoveryPage({}))
 
     expect(screen.getAllByText(/cancelado por caída/i).at(-1)?.closest('span')?.className ?? '').toMatch(/bg-danger|danger\/10/)
     expect(screen.getAllByText(/revisión manual/i).at(-1)?.closest('span')?.className ?? '').toMatch(/bg-warning|warning\/10/)
@@ -85,7 +85,7 @@ describe('AdminRecoveryPage', () => {
   it('explica cuando no hay incidentes terminales visibles', async () => {
     mockGetAdminRecoveryIncidentPage.mockResolvedValue(page([]))
 
-    render(await AdminRecoveryPage())
+    render(await AdminRecoveryPage({}))
 
     expect(screen.getByText(/no hay incidentes terminales visibles/i)).toBeInTheDocument()
   })
@@ -93,7 +93,7 @@ describe('AdminRecoveryPage', () => {
   it('muestra un error de carga sin revelar datos internos', async () => {
     mockGetAdminRecoveryIncidentPage.mockRejectedValue(new Error('detalle interno'))
 
-    render(await AdminRecoveryPage())
+    render(await AdminRecoveryPage({}))
 
     expect(screen.getByRole('heading', { name: /no se pudo cargar el historial/i })).toBeInTheDocument()
     expect(screen.getByText(/vuelve a intentarlo en unos minutos/i)).toBeInTheDocument()

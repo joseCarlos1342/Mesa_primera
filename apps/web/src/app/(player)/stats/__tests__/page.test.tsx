@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import StatsPage, { StatsData, StatsLoadingSkeleton } from '../page'
+import StatsPage from '../page'
+import { StatsData, StatsLoadingSkeleton } from '../stats-data'
 import { getBonusStatus } from '@/app/actions/bonus'
 import { getLeaderboard, getMyStats } from '@/app/actions/stats'
 

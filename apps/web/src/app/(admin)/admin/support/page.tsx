@@ -2,8 +2,9 @@ import { createClient } from '@/utils/supabase/server';
 import { SupportConversationList } from '@/components/admin/SupportConversationList';
 import { Headphones } from 'lucide-react';
 
-export default async function AdminSupportPage({ searchParams }: { searchParams: Promise<{ ticket?: string }> } = { searchParams: Promise.resolve({}) }) {
-  const { ticket } = await searchParams;
+export default async function AdminSupportPage(props: { searchParams?: Promise<{ ticket?: string }> }) {
+  const { searchParams } = props
+  const { ticket } = (await searchParams) ?? {};
   const selectedTicketId = typeof ticket === 'string' ? ticket : undefined;
   const supabase = await createClient();
 

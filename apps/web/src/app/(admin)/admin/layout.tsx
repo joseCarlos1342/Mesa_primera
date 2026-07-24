@@ -2,16 +2,21 @@ import type { Metadata } from "next";
 import "./admin.css";
 import Link from "next/link";
 import { AdminHeaderActions } from "@/components/admin/AdminHeaderActions";
+import { OneSignalPushOptIn } from "@/components/OneSignalPushOptIn";
+import { createClient } from "@/utils/supabase/server";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div className="admin-layout min-h-screen bg-gray-900 text-white">
       <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-gray-900/80 px-4 py-2 backdrop-blur-sm sm:px-6">
@@ -21,7 +26,10 @@ export default function AdminLayout({
         >
           Admin
         </Link>
-        <AdminHeaderActions />
+        <div className="flex items-center gap-2">
+          {user && <OneSignalPushOptIn userId={user.id} compact />}
+          <AdminHeaderActions />
+        </div>
       </header>
       <main className="p-4">{children}</main>
     </div>

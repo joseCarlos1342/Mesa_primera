@@ -3,7 +3,7 @@
 Esta es la guia viva de despliegue de Mesa Primera. El stack operativo actual es:
 
 - Web en Vercel.
-- Game Server en VPS CubePath.
+- Game Server en un VPS endurecido conforme al runbook del repositorio.
 - Base de datos, Auth y Storage en Supabase.
 - Redis para game-server, workers y colas.
 
@@ -17,7 +17,7 @@ Esta es la guia viva de despliegue de Mesa Primera. El stack operativo actual es
 
 1. Proyecto Supabase creado y migraciones aplicadas.
 2. Proyecto Vercel conectado al repo con `Root Directory = apps/web`.
-3. VPS con Docker, Redis y acceso HTTPS/WSS para el servidor de juego.
+3. VPS aprovisionado y validado con `docs/deployment/vps_actualizacion_motor.md`.
 4. Variables de entorno configuradas en cada runtime.
 
 ## Variables de Entorno
@@ -32,9 +32,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="legacy_anon_optional"
 SUPABASE_SECRET_KEY="sb_secret_..."
 SUPABASE_SERVICE_ROLE_KEY="legacy_service_optional"
 
-GAME_SERVER_URL="https://vps23830.cubepath.net"
-NEXT_PUBLIC_GAME_SERVER_URL="https://vps23830.cubepath.net"
-NEXT_PUBLIC_SOCKET_URL="https://vps23830.cubepath.net"
+GAME_SERVER_URL="https://game.example.com"
+NEXT_PUBLIC_GAME_SERVER_URL="https://game.example.com"
+NEXT_PUBLIC_SOCKET_URL="https://game.example.com"
 
 LIVEKIT_URL="..."
 LIVEKIT_API_KEY="..."
@@ -43,6 +43,7 @@ LIVEKIT_API_SECRET="..."
 INTERNAL_API_SECRET="..."
 NEXT_PUBLIC_TURNSTILE_SITE_KEY="..."
 TURNSTILE_SECRET_KEY="..."
+NEXT_PUBLIC_ONESIGNAL_APP_ID="01eec15a-d02d-46f8-be84-9a5e9c3158f0"
 
 WEBAUTHN_RP_ID="..."
 WEBAUTHN_ORIGINS="..."
@@ -66,19 +67,23 @@ SOCKET_PORT="2568"
 SUPABASE_URL="https://<project>.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="sb_secret_or_service_role"
 
-REDIS_URL="redis://localhost:6379"
-REDIS_PORT="6379"
+REDIS_URL="redis://default:<password-percent-encoded>@mesa-redis:6380"
+REDIS_HOST="mesa-redis"
+REDIS_PORT="6380"
+REDIS_PASSWORD="<redis-password>"
 
-VAPID_PUBLIC_KEY="..."
-VAPID_PRIVATE_KEY="..."
-VAPID_SUBJECT="mailto:admin@tu-dominio.com"
+# OneSignal (server-only; never expose the REST key to the web client)
+ONESIGNAL_APP_ID="01eec15a-d02d-46f8-be84-9a5e9c3158f0"
+ONESIGNAL_REST_API_KEY="<onesignal-rest-api-key>"
 ```
 
 Notas:
 
 - `PORT` es Colyseus.
 - `SOCKET_PORT` es el servidor Socket.IO auxiliar.
-- Redis respalda presencia, workers y algunas integraciones del panel admin.
+- Redis respalda presencia, BullMQ y el dispatcher de notificaciones.
+- `ONESIGNAL_REST_API_KEY` debe configurarse como secreto en el VPS. Nunca usar
+  una clave VAPID hardcodeada ni reutilizar credenciales expuestas.
 
 ## Build y Deploy
 
@@ -91,10 +96,11 @@ Notas:
 
 ### Game Server
 
-1. Desplegar `apps/game-server` en la VPS.
-2. Exponer `2567` para Colyseus y `2568` para Socket.IO.
-3. Asegurar Redis accesible desde el runtime.
-4. Verificar que el proceso tambien levante workers y cronjobs requeridos.
+1. Aprovisionar el VPS siguiendo el runbook seguro completo.
+2. Publicar únicamente `80/443`; Caddy accede a `2567/2568` por loopback.
+3. Mantener Redis sin puerto publicado en la red Docker `mesa-internal`.
+4. Desplegar mediante `mesa-deploy.service`, no ejecutando Docker manualmente.
+5. Verificar workers, cronjobs, health, WSS, backups y rollback.
 
 ## Verificacion Post-Deploy
 
@@ -107,5 +113,31 @@ Notas:
 
 ## Runbooks Relacionados
 
-- `docs/deployment/vps_actualizacion_motor.md`: operacion y actualizacion manual del motor.
+- `docs/deployment/vps_actualizacion_motor.md`: bootstrap seguro, hardening, operación y rollback.
 - `docs/deployment/email-soporte-profesional.md`: configuracion del correo de soporte.
+
+## Estado de reactivación del VPS
+
+Actualmente el VPS del game-server está desactivado. La base de notificaciones ya
+está aplicada y verificada en Supabase remoto, pero Push no podrá entregar avisos
+hasta que vuelva a existir un runtime que ejecute el dispatcher y tenga acceso a
+Redis, Supabase y OneSignal.
+
+El `NEXT_PUBLIC_ONESIGNAL_APP_ID` ya está configurado en Vercel para Production y
+Development. Las variables del game-server y el REST key siguen pendientes del
+VPS; una Preview de Vercel deberá configurarse para la rama que se use cuando se
+requiera probarla.
+
+Pendientes antes de reactivar producción:
+
+- [ ] Crear una instancia limpia; no restaurar una imagen de sistema no verificada.
+- [ ] Crear `mesaops`, verificar sudo y endurecer SSH sin acceso root/remoto por contraseña.
+- [ ] Activar firewall del proveedor, UFW, fail2ban y actualizaciones de seguridad.
+- [ ] Instalar Docker, Redis privado, Caddy y backups conforme al runbook.
+- [ ] Crear `/etc/mesa/runtime.env` con OneSignal, Supabase, Redis e internos.
+- [ ] Configurar las nuevas URLs del game-server/socket en Vercel.
+- [ ] Ejecutar `mesa-deploy.service` y validar health, WSS, Redis, logs y rollback.
+- [ ] Probar una notificación transaccional con una cuenta de prueba, nunca con una audiencia real.
+
+El procedimiento detallado y el rollback están en
+`docs/deployment/vps_actualizacion_motor.md`.

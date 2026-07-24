@@ -36,6 +36,7 @@ export default defineServer({
             let activeRooms = 0;
             let activePlayers = 0;
             let activeGames = 0;
+            let roomCountersReliable = true;
             try {
                 const rooms = await matchMaker.query({ name: "mesa" });
                 activeRooms = rooms.length;
@@ -51,6 +52,7 @@ export default defineServer({
                 // Si matchMaker no está listo aún, devolvemos contadores en cero
                 // pero no fallamos el endpoint para no romper healthchecks.
                 console.warn("[/health] matchMaker.query failed:", (err as Error).message);
+                roomCountersReliable = false;
             }
 
             res.status(draining ? 503 : 200).json({
@@ -61,6 +63,7 @@ export default defineServer({
                 activeRooms,
                 activePlayers,
                 activeGames,
+                roomCountersReliable,
                 recovery: {
                     ...getRecoveryHealth(),
                     metrics: recoveryMetrics.snapshot(),

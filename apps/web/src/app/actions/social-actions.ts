@@ -193,8 +193,16 @@ export async function removeFriendship(friendshipId: string) {
 /**
  * NOTIFICATIONS
  */
-async function createNotification(userId: string, type: string, title: string, body: string, data?: any) {
-  const supabase = await createClient();
+async function createNotification(userId: string, type: string, title: string, body: string, data?: any, client?: Awaited<ReturnType<typeof createClient>>) {
+  const supabase = client ?? await createClient();
+  if (typeof supabase.rpc === 'function') {
+    const { error: rpcError } = await supabase.rpc('notify_social_user', {
+      p_user_id: userId,
+      p_type: type,
+    });
+    return !rpcError;
+  }
+
   const { error } = await supabase
     .from("notifications")
     .insert({
@@ -205,6 +213,7 @@ async function createNotification(userId: string, type: string, title: string, b
       data
     });
   if (error) console.error("Error creating notification", error);
+  return !error;
 }
 
 export async function getNotifications() {
@@ -349,16 +358,14 @@ export async function inviteToPlay(friendId: string) {
   const senderName = profile?.username || "Un amigo";
 
   // Create a notification for the friend
-  const { error } = await supabase
-    .from("notifications")
-    .insert({
-      user_id: friendId,
-      type: "game_invite",
-      title: "🎮 ¡Invitación a Jugar!",
-      body: `${senderName} te ha invitado a una mesa. ¡Únete ahora!`,
-      data: { senderId: user.id }
-    });
-
-  if (error) return { error: "Error al enviar invitación" };
+  const notificationCreated = await createNotification(
+    friendId,
+    "game_invite",
+    "🎮 ¡Invitación a Jugar!",
+    `${senderName} te ha invitado a una mesa. ¡Únete ahora!`,
+    { senderId: user.id },
+    supabase,
+  );
+  if (!notificationCreated) return { error: "Error al enviar invitación" };
   return { success: true };
 }
