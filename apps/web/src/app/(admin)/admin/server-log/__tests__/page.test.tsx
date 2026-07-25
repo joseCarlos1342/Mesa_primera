@@ -128,6 +128,38 @@ describe('ServerLogPage', () => {
     expect(screen.getByText('3 de 3')).toBeInTheDocument()
   })
 
+  it('busca por id, juego, jugador y categoría', async () => {
+    render(<ServerLogPage />)
+    await screen.findByText('Patron sospechoso')
+    const search = screen.getByPlaceholderText('Buscar en alertas...')
+
+    fireEvent.change(search, { target: { value: 'alert-critical' } })
+    expect(screen.getByText('Patron sospechoso')).toBeInTheDocument()
+    fireEvent.change(search, { target: { value: 'game-abcdefgh1234' } })
+    expect(screen.getByText('Patron sospechoso')).toBeInTheDocument()
+    fireEvent.change(search, { target: { value: 'player-1' } })
+    expect(screen.getByText('Patron sospechoso')).toBeInTheDocument()
+    fireEvent.change(search, { target: { value: 'collusion' } })
+    expect(screen.getByText('Patron sospechoso')).toBeInTheDocument()
+  })
+
+  it('usa fallbacks para severidad y categoría desconocidas', async () => {
+    const unknownAlert = {
+      ...alerts[0],
+      id: 'alert-unknown',
+      severity: 'notice',
+      category: 'new-category',
+      title: 'Alerta futura',
+    } as unknown as ServerAlert
+    mockGetServerAlerts.mockResolvedValueOnce([unknownAlert])
+
+    render(<ServerLogPage />)
+
+    expect(await screen.findByText('Alerta futura')).toBeInTheDocument()
+    expect(screen.getAllByText('INFO').length).toBeGreaterThan(1)
+    expect(screen.getAllByText('new-category').length).toBeGreaterThan(1)
+  })
+
   it('resuelve una alerta y la oculta del listado pendiente', async () => {
     render(<ServerLogPage />)
     await screen.findByText('Patron sospechoso')
@@ -168,6 +200,25 @@ describe('ServerLogPage', () => {
 
     unmount()
     expect(removeChannel).toHaveBeenCalledWith('server-alerts-channel')
+  })
+
+  it('oculta una alerta realtime resuelta hasta activar el historial', async () => {
+    render(<ServerLogPage />)
+    await waitFor(() => expect(realtimeHandler).toBeDefined())
+
+    act(() => {
+      realtimeHandler?.({
+        new: {
+          ...alerts[2],
+          id: 'alert-live-resolved',
+          title: 'Alerta ya resuelta',
+        },
+      })
+    })
+
+    expect(screen.queryByText('Alerta ya resuelta')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /mostrar resueltas/i }))
+    expect(screen.getByText('Alerta ya resuelta')).toBeInTheDocument()
   })
 
   it('muestra empty state si la carga falla', async () => {
