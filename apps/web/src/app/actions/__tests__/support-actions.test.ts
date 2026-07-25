@@ -10,6 +10,7 @@ import {
   listAllTickets,
   listUserTickets,
   uploadSupportAttachment,
+  type SupportTicketStatus,
 } from '../support'
 import { createClient } from '@/utils/supabase/server'
 
@@ -119,6 +120,20 @@ describe('support actions', () => {
     })
   })
 
+  it('rechaza un ajuste financiero cuando el caller no es admin', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: false, error: null })
+    ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
+
+    await expect(resolveSupportIssueAdjustment({
+      ticketId: '123e4567-e89b-12d3-a456-426614174000',
+      deltaCents: 500000,
+      reason: 'Depósito confirmado no acreditado',
+    })).resolves.toEqual({ error: 'Acceso denegado' })
+
+    expect(rpc).toHaveBeenCalledWith('is_admin')
+    expect(rpc).toHaveBeenCalledTimes(1)
+  })
+
   it('rechaza crear tickets con mensajes demasiado largos', async () => {
     const supabase = queuedSupabase()
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
@@ -172,7 +187,7 @@ describe('support actions', () => {
     }))
 
     await expect(createSupportTicket('ticket-1', 'Hola soporte')).resolves.toEqual({
-      error: 'DB sin disponibilidad',
+      error: 'No fue posible crear el ticket',
     })
   })
 
@@ -189,7 +204,7 @@ describe('support actions', () => {
     }))
 
     await expect(createSupportTicket('ticket-1', 'Hola soporte')).resolves.toEqual({
-      error: 'No se guardo el mensaje',
+      error: 'No fue posible guardar el mensaje',
     })
   })
 
@@ -216,7 +231,7 @@ describe('support actions', () => {
       .mockResolvedValueOnce({ data: { success: false, error: 'Ticket cerrado' }, error: null })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
 
-    await expect(appendSupportMessage('ticket-1', 'Mensaje')).resolves.toEqual({ error: 'Ticket cerrado' })
+    await expect(appendSupportMessage('ticket-1', 'Mensaje')).resolves.toEqual({ error: 'No fue posible enviar el mensaje' })
   })
 
   it('rechaza agregar mensajes vacios antes de consultar permisos', async () => {
@@ -235,7 +250,7 @@ describe('support actions', () => {
       .mockResolvedValueOnce({ data: null, error: { message: 'RPC caida' } })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
 
-    await expect(appendSupportMessage('ticket-1', 'Mensaje')).resolves.toEqual({ error: 'RPC caida' })
+    await expect(appendSupportMessage('ticket-1', 'Mensaje')).resolves.toEqual({ error: 'No fue posible enviar el mensaje' })
   })
 
   it('usa error desconocido cuando append_support_message no devuelve payload util', async () => {
@@ -244,7 +259,7 @@ describe('support actions', () => {
       .mockResolvedValueOnce({ data: null, error: null })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
 
-    await expect(appendSupportMessage('ticket-1', 'Mensaje')).resolves.toEqual({ error: 'Error desconocido' })
+    await expect(appendSupportMessage('ticket-1', 'Mensaje')).resolves.toEqual({ error: 'No fue posible enviar el mensaje' })
   })
 
   it('usa rol admin por defecto cuando append_support_message omite from', async () => {
@@ -300,7 +315,7 @@ describe('support actions', () => {
       .mockResolvedValueOnce({ data: null, error: { message: 'No se pudo cerrar' } })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
 
-    await expect(closeSupportTicket('ticket-1')).resolves.toEqual({ error: 'No se pudo cerrar' })
+    await expect(closeSupportTicket('ticket-1')).resolves.toEqual({ error: 'No fue posible cerrar el ticket' })
   })
 
   it('usa error desconocido cuando close_support_ticket no devuelve payload util', async () => {
@@ -309,7 +324,7 @@ describe('support actions', () => {
       .mockResolvedValueOnce({ data: null, error: null })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({ rpc }))
 
-    await expect(closeSupportTicket('ticket-1')).resolves.toEqual({ error: 'Error desconocido' })
+    await expect(closeSupportTicket('ticket-1')).resolves.toEqual({ error: 'No fue posible cerrar el ticket' })
   })
 
   it('obtiene un ticket por id', async () => {
@@ -333,7 +348,7 @@ describe('support actions', () => {
       tables: { support_tickets: [{ select }] },
     }))
 
-    await expect(getSupportTicket('ticket-1')).resolves.toEqual({ error: 'Ticket no visible' })
+    await expect(getSupportTicket('ticket-1')).resolves.toEqual({ error: 'No fue posible cargar el ticket' })
   })
 
   it('obtiene historial de mensajes y adjuntos de un ticket', async () => {
@@ -392,7 +407,7 @@ describe('support actions', () => {
       },
     }))
 
-    await expect(getSupportTicketHistory('ticket-1')).resolves.toEqual({ error: 'Historial no disponible' })
+    await expect(getSupportTicketHistory('ticket-1')).resolves.toEqual({ error: 'No fue posible cargar el historial' })
   })
 
   it('lista tickets del usuario autenticado por updated_at descendente', async () => {
@@ -428,7 +443,7 @@ describe('support actions', () => {
       tables: { support_tickets: [{ select }] },
     }))
 
-    await expect(listUserTickets()).resolves.toEqual({ error: 'No se pudo listar' })
+    await expect(listUserTickets()).resolves.toEqual({ error: 'No fue posible cargar tus tickets' })
   })
 
   it('lista tickets admin filtrando por estado cuando se solicita', async () => {
@@ -438,6 +453,7 @@ describe('support actions', () => {
     const select = jest.fn().mockReturnValue({ order })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
       tables: { support_tickets: [{ select }] },
+      rpc: jest.fn().mockResolvedValue({ data: true, error: null }),
     }))
 
     await expect(listAllTickets('pending')).resolves.toEqual({ data: tickets })
@@ -452,10 +468,34 @@ describe('support actions', () => {
     const select = jest.fn().mockReturnValue({ order })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
       tables: { support_tickets: [{ select }] },
+      rpc: jest.fn().mockResolvedValue({ data: true, error: null }),
     }))
 
     await expect(listAllTickets()).resolves.toEqual({ data: tickets })
     expect(order).toHaveBeenCalledWith('updated_at', { ascending: false })
+  })
+
+  it('rechaza filtros de tickets admin inválidos antes de consultar la base', async () => {
+    const supabase = queuedSupabase({
+      rpc: jest.fn().mockResolvedValue({ data: true, error: null }),
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(listAllTickets('unknown' as SupportTicketStatus)).resolves.toEqual({
+      error: 'Filtro de tickets inválido',
+    })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('rechaza listar tickets admin para un usuario autenticado sin rol admin', async () => {
+    const supabase = queuedSupabase({
+      rpc: jest.fn().mockResolvedValue({ data: false, error: null }),
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(listAllTickets()).resolves.toEqual({ error: 'Acceso denegado' })
+    expect(supabase.rpc).toHaveBeenCalledWith('is_admin')
+    expect(supabase.from).not.toHaveBeenCalled()
   })
 
   it('propaga errores al listar tickets admin', async () => {
@@ -463,9 +503,10 @@ describe('support actions', () => {
     const select = jest.fn().mockReturnValue({ order })
     ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
       tables: { support_tickets: [{ select }] },
+      rpc: jest.fn().mockResolvedValue({ data: true, error: null }),
     }))
 
-    await expect(listAllTickets()).resolves.toEqual({ error: 'Vista no disponible' })
+    await expect(listAllTickets()).resolves.toEqual({ error: 'No fue posible cargar los tickets' })
   })
 
   it('rechaza adjuntos con tipo de archivo no permitido', async () => {
@@ -565,7 +606,7 @@ describe('support actions', () => {
     const formData = new FormData()
     formData.append('file', new File(['image'], 'proof.png', { type: 'image/png' }))
 
-    await expect(uploadSupportAttachment('ticket-1', formData)).resolves.toEqual({ error: 'Storage caído' })
+    await expect(uploadSupportAttachment('ticket-1', formData)).resolves.toEqual({ error: 'No fue posible subir el adjunto' })
   })
 
   it('sube adjunto permitido, registra metadata y actualiza contador', async () => {
@@ -673,7 +714,7 @@ describe('support actions', () => {
     const formData = new FormData()
     formData.append('file', new File(['image'], 'proof.png', { type: 'image/png' }))
 
-    await expect(uploadSupportAttachment('ticket-1', formData)).resolves.toEqual({ error: 'Metadata fallida' })
+    await expect(uploadSupportAttachment('ticket-1', formData)).resolves.toEqual({ error: 'No fue posible registrar el adjunto' })
   })
 
   it('genera URL firmada para adjuntos de soporte', async () => {
@@ -697,7 +738,7 @@ describe('support actions', () => {
     }))
 
     await expect(getSupportAttachmentUrl('user-123/ticket-1/proof.png')).resolves.toEqual({
-      error: 'No se pudo generar URL',
+      error: 'No se pudo generar la URL del adjunto',
     })
   })
 
@@ -709,7 +750,7 @@ describe('support actions', () => {
     }))
 
     await expect(getSupportAttachmentUrl('user-123/ticket-1/proof.png')).resolves.toEqual({
-      error: 'URL no disponible',
+      error: 'No se pudo generar la URL del adjunto',
     })
   })
 
@@ -724,6 +765,17 @@ describe('support actions', () => {
       error: 'Ruta de adjunto inválida',
     })
     expect(createSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it('rechaza una ruta de adjunto no textual sin lanzar una excepción', async () => {
+    const storageFrom = jest.fn()
+    const supabase = queuedSupabase({ storage: { from: storageFrom } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getSupportAttachmentUrl(null as unknown as string)).resolves.toEqual({
+      error: 'Ruta de adjunto inválida',
+    })
+    expect(storageFrom).not.toHaveBeenCalled()
   })
 
   it('rechaza appendSupportMessage cuando no hay usuario autenticado', async () => {

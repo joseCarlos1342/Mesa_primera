@@ -7,6 +7,7 @@ import { z } from 'zod'
 
 export type SupportTicketStatus = 'pending' | 'attended' | 'finalized'
 const supportIssueCategories = ['deposit_missing', 'transfer_missing', 'withdrawal_missing', 'table_error', 'other'] as const
+const supportTicketStatusSchema = z.enum(['pending', 'attended', 'finalized'])
 export type SupportIssueCategory = (typeof supportIssueCategories)[number]
 
 const supportIssueSchema = z.object({
@@ -102,7 +103,7 @@ export async function createSupportIssue(input: z.input<typeof supportIssueSchem
   }) as { data: { success: boolean; error?: string; ticket_id?: string; message_id?: string } | null; error: { message: string } | null }
 
   if (error) return { error: 'No fue posible registrar el reclamo' }
-  if (!data?.success || !data.ticket_id || !data.message_id) return { error: data?.error || 'No fue posible registrar el reclamo' }
+  if (!data?.success || !data.ticket_id || !data.message_id) return { error: 'No fue posible registrar el reclamo' }
   return { data: { ticket_id: data.ticket_id, message_id: data.message_id } }
 }
 
@@ -122,7 +123,7 @@ export async function resolveSupportIssueAdjustment(input: z.input<typeof suppor
   }) as { data: { success: boolean; error?: string; ledger_id?: string; balance_after?: number } | null; error: { message: string } | null }
 
   if (error) return { error: 'No fue posible aplicar el ajuste' }
-  if (!data?.success || !data.ledger_id || data.balance_after === undefined) return { error: data?.error || 'No fue posible aplicar el ajuste' }
+  if (!data?.success || !data.ledger_id || data.balance_after === undefined) return { error: 'No fue posible aplicar el ajuste' }
   return { data: { ledger_id: data.ledger_id, balance_after: data.balance_after } }
 }
 
@@ -148,7 +149,7 @@ export async function createSupportTicket(ticketId: string, message: string): Pr
       message_count: 1,
     })
 
-  if (tError) return { error: tError.message }
+  if (tError) return { error: 'No fue posible crear el ticket' }
 
   // Insert first message
   const { data: msg, error: mError } = await supabase
@@ -163,7 +164,7 @@ export async function createSupportTicket(ticketId: string, message: string): Pr
     .select('id')
     .single()
 
-  if (mError) return { error: mError.message }
+  if (mError) return { error: 'No fue posible guardar el mensaje' }
 
   return { data: { ticket_id: ticketId, message_id: msg.id } }
 }
@@ -190,8 +191,8 @@ export async function appendSupportMessage(
     p_from_admin: admin,
   }) as { data: { success: boolean; error?: string; message_id?: string; from?: string } | null; error: any }
 
-  if (error) return { error: error.message }
-  if (!data?.success) return { error: data?.error || 'Error desconocido' }
+  if (error) return { error: 'No fue posible enviar el mensaje' }
+  if (!data?.success) return { error: 'No fue posible enviar el mensaje' }
 
   return {
     data: {
@@ -216,8 +217,8 @@ export async function closeSupportTicket(
     p_role: admin ? 'admin' : 'player',
   }) as { data: { success: boolean; error?: string; closed_by_role?: string } | null; error: any }
 
-  if (error) return { error: error.message }
-  if (!data?.success) return { error: data?.error || 'Error desconocido' }
+  if (error) return { error: 'No fue posible cerrar el ticket' }
+  if (!data?.success) return { error: 'No fue posible cerrar el ticket' }
 
   return { data: { closed_by_role: (data.closed_by_role as 'player' | 'admin') || (admin ? 'admin' : 'player') } }
 }
@@ -234,7 +235,7 @@ export async function getSupportTicket(ticketId: string): Promise<ActionResult<S
     .eq('id', ticketId)
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: 'No fue posible cargar el ticket' }
   return { data: data as SupportTicket }
 }
 
@@ -260,7 +261,7 @@ export async function getSupportTicketHistory(ticketId: string): Promise<ActionR
       .order('created_at', { ascending: true }),
   ])
 
-  if (msgResult.error) return { error: msgResult.error.message }
+  if (msgResult.error) return { error: 'No fue posible cargar el historial' }
 
   return {
     data: {
@@ -282,7 +283,7 @@ export async function listUserTickets(): Promise<ActionResult<SupportTicket[]>> 
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
 
-  if (error) return { error: error.message }
+  if (error) return { error: 'No fue posible cargar tus tickets' }
   return { data: (data || []) as SupportTicket[] }
 }
 
@@ -291,6 +292,10 @@ export async function listUserTickets(): Promise<ActionResult<SupportTicket[]>> 
 export async function listAllTickets(filter?: SupportTicketStatus): Promise<ActionResult<Array<SupportTicket & { user: { username: string; full_name: string; avatar_url: string | null } }>>> {
   const { supabase, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase) return { error: authError || 'No autenticado' }
+  if (!await isCallerAdmin(supabase)) return { error: 'Acceso denegado' }
+  if (filter !== undefined && !supportTicketStatusSchema.safeParse(filter).success) {
+    return { error: 'Filtro de tickets inválido' }
+  }
 
   let query = supabase
     .from('support_tickets')
@@ -303,7 +308,7 @@ export async function listAllTickets(filter?: SupportTicketStatus): Promise<Acti
 
   const { data, error } = await query
 
-  if (error) return { error: error.message }
+  if (error) return { error: 'No fue posible cargar los tickets' }
   return { data: data as any }
 }
 
@@ -353,7 +358,7 @@ export async function uploadSupportAttachment(
     .from('support-attachments')
     .upload(storagePath, file)
 
-  if (uploadError) return { error: uploadError.message }
+  if (uploadError) return { error: 'No fue posible subir el adjunto' }
 
   // Record metadata
   const { data: attachment, error: insertError } = await supabase
@@ -369,7 +374,7 @@ export async function uploadSupportAttachment(
     .select()
     .single()
 
-  if (insertError) return { error: insertError.message }
+  if (insertError) return { error: 'No fue posible registrar el adjunto' }
 
   // Update counter
   await supabase
@@ -386,19 +391,21 @@ export async function getSupportAttachmentUrl(storagePath: string): Promise<Acti
   const { supabase, error: authError } = await getAuthenticatedUser()
   if (authError || !supabase) return { error: authError || 'No autenticado' }
 
+  if (!storagePath || typeof storagePath !== 'string' || storagePath.includes('..')) {
+    return { error: 'Ruta de adjunto inválida' }
+  }
+
   const hasControlChars = Array.from(storagePath).some((c) => {
     const codePoint = c.codePointAt(0) ?? 0;
     return codePoint <= 31;
   });
 
-  if (!storagePath || typeof storagePath !== 'string' || storagePath.includes('..') || hasControlChars) {
-    return { error: 'Ruta de adjunto inválida' }
-  }
+  if (hasControlChars) return { error: 'Ruta de adjunto inválida' }
 
   const { data, error } = await supabase.storage
     .from('support-attachments')
     .createSignedUrl(storagePath, 3600)
 
-  if (error || !data?.signedUrl) return { error: error?.message || 'No se pudo generar URL' }
+  if (error || !data?.signedUrl) return { error: 'No se pudo generar la URL del adjunto' }
   return { data: data.signedUrl }
 }
