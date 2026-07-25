@@ -793,14 +793,14 @@ export class SupabaseService {
   ): Promise<{ valid: boolean; adminId?: string }> {
     if (!token) return { valid: false };
     try {
-      const raw = await redis.get(`supervision:${token}`);
+      // GETDEL makes validation and one-time consumption a single Redis
+      // operation, so two concurrent joins cannot reuse the same token.
+      const raw = await redis.getdel(`supervision:${roomId}:${token}`);
       if (!raw) return { valid: false };
 
       const payload = JSON.parse(raw);
       if (payload.roomId !== roomId) return { valid: false };
 
-      // Consume the token (one-time use)
-      await redis.del(`supervision:${token}`);
       return { valid: true, adminId: payload.adminId };
     } catch (e) {
       console.error('[SupabaseService] Error validating supervision token:', e);
@@ -810,17 +810,24 @@ export class SupabaseService {
 
   /**
    * Checks if a user has an active sanction that blocks table access.
-   * Fail-open: if the RPC call fails, the player is allowed through.
+   * Access is denied when the sanction check cannot be completed.
    */
   static async checkTableAccess(
     userId: string
   ): Promise<{ blocked: boolean; sanctionType?: string; reason?: string; expiresAt?: string }> {
-    if (!supabaseKey || !userId) return { blocked: false };
+    const unavailable = {
+      blocked: true,
+      sanctionType: 'access_check_unavailable',
+      reason: 'No se pudo verificar el acceso a la mesa',
+    } as const;
+
+    if (!supabaseKey || !userId) return unavailable;
     try {
       const { data, error } = await supabase.rpc('check_table_access', {
         p_user_id: userId,
       });
       if (error) throw error;
+      if (!data || typeof data.blocked !== 'boolean') throw new Error('Respuesta inválida de check_table_access');
       if (data && data.blocked) {
         return {
           blocked: true,
@@ -831,8 +838,8 @@ export class SupabaseService {
       }
       return { blocked: false };
     } catch (e) {
-      console.error('[SupabaseService] Error checking table access (fail-open):', e);
-      return { blocked: false };
+      console.error('[SupabaseService] Error checking table access (fail-closed):', e);
+      return unavailable;
     }
   }
 }

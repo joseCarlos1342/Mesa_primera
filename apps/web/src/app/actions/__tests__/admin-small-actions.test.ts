@@ -329,7 +329,7 @@ describe('admin supervision actions', () => {
 
     await expect(generateSupervisionToken('room-1')).resolves.toEqual({ token: 'token-123' })
     expect(redis.setex).toHaveBeenCalledWith(
-      'supervision:token-123',
+      'supervision:room-1:token-123',
       60,
       JSON.stringify({ adminId: 'admin-123', roomId: 'room-1' })
     )

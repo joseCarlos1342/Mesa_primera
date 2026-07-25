@@ -375,7 +375,7 @@ describe('OTP y PIN auth actions', () => {
     expect(enforceSessionPolicy).not.toHaveBeenCalled()
   })
 
-  it('verifyOtp continua con el login cuando la RPC check_account_eligibility lanza excepción (fail-open)', async () => {
+  it('verifyOtp bloquea el login cuando no puede verificar la elegibilidad', async () => {
     const supabase = buildSupabase({
       rpc: jest.fn().mockImplementation((name: string) => {
         if (name === 'check_account_eligibility') {
@@ -390,11 +390,12 @@ describe('OTP y PIN auth actions', () => {
       phone: TEST_PHONE_E164,
       token: '123456',
       flow: 'login',
-    }))).rejects.toThrow('NEXT_REDIRECT')
+    }))).resolves.toEqual({
+      error: 'No pudimos contactar al servidor de autenticación. Inténtalo de nuevo en unos minutos o contacta soporte si el problema persiste.',
+    })
 
-    expect(redirect).toHaveBeenCalledWith('/')
-    expect(enforceSessionPolicy).toHaveBeenCalledWith('user-123')
-    expect(supabase.auth.signOut).not.toHaveBeenCalled()
+    expect(redirect).not.toHaveBeenCalled()
+    expect(enforceSessionPolicy).not.toHaveBeenCalled()
   })
 
   it('verifyOtp bloquea login cuando la cuenta tiene sanción activa', async () => {

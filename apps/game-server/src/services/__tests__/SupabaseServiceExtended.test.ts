@@ -10,10 +10,11 @@ const { mockRpc, mockFrom, mockReplayFileSave, mockReplayGetMonthDir, mockRedis 
     mockFrom: vi.fn(),
     mockReplayFileSave: vi.fn().mockReturnValue(true),
     mockReplayGetMonthDir: vi.fn().mockReturnValue('2026-04'),
-    mockRedis: {
-      get: vi.fn(),
-      del: vi.fn(),
-    },
+      mockRedis: {
+        get: vi.fn(),
+        getdel: vi.fn(),
+        del: vi.fn(),
+      },
   };
 });
 
@@ -733,24 +734,24 @@ describe('SupabaseService — Extended Coverage', () => {
       });
     });
 
-    it('validateSupervisionToken consumes a matching token', async () => {
-      mockRedis.get.mockResolvedValue(JSON.stringify({ adminId: 'admin-1', roomId: 'room-1' }));
-      mockRedis.del.mockResolvedValue(1);
+    it('validateSupervisionToken consumes a matching token atomically', async () => {
+      mockRedis.getdel.mockResolvedValue(JSON.stringify({ adminId: 'admin-1', roomId: 'room-1' }));
 
       await expect(SupabaseService.validateSupervisionToken('token-1', 'room-1')).resolves.toEqual({
         valid: true,
         adminId: 'admin-1',
       });
-      expect(mockRedis.get).toHaveBeenCalledWith('supervision:token-1');
-      expect(mockRedis.del).toHaveBeenCalledWith('supervision:token-1');
+      expect(mockRedis.getdel).toHaveBeenCalledWith('supervision:room-1:token-1');
+      expect(mockRedis.get).not.toHaveBeenCalled();
+      expect(mockRedis.del).not.toHaveBeenCalled();
     });
 
     it('validateSupervisionToken rejects missing or room-mismatched tokens without consuming them', async () => {
       await expect(SupabaseService.validateSupervisionToken('', 'room-1')).resolves.toEqual({ valid: false });
-      mockRedis.get.mockResolvedValue(JSON.stringify({ adminId: 'admin-1', roomId: 'other-room' }));
+      mockRedis.getdel.mockResolvedValue(JSON.stringify({ adminId: 'admin-1', roomId: 'other-room' }));
 
       await expect(SupabaseService.validateSupervisionToken('token-1', 'room-1')).resolves.toEqual({ valid: false });
-      expect(mockRedis.del).not.toHaveBeenCalled();
+      expect(mockRedis.getdel).toHaveBeenCalledWith('supervision:room-1:token-1');
     });
 
     it('checkTableAccess returns blocked sanction details', async () => {
@@ -772,10 +773,32 @@ describe('SupabaseService — Extended Coverage', () => {
       });
     });
 
-    it('checkTableAccess fails open on RPC errors', async () => {
+    it('checkTableAccess fails closed on RPC errors', async () => {
       mockRpc.mockResolvedValue({ data: null, error: { message: 'db down' } });
 
-      await expect(SupabaseService.checkTableAccess('user-1')).resolves.toEqual({ blocked: false });
+      await expect(SupabaseService.checkTableAccess('user-1')).resolves.toEqual({
+        blocked: true,
+        sanctionType: 'access_check_unavailable',
+        reason: 'No se pudo verificar el acceso a la mesa',
+      });
+    });
+
+    it('checkTableAccess fails closed when the user identity is missing', async () => {
+      await expect(SupabaseService.checkTableAccess('')).resolves.toEqual({
+        blocked: true,
+        sanctionType: 'access_check_unavailable',
+        reason: 'No se pudo verificar el acceso a la mesa',
+      });
+    });
+
+    it('checkTableAccess fails closed on malformed RPC responses', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: null });
+
+      await expect(SupabaseService.checkTableAccess('user-1')).resolves.toEqual({
+        blocked: true,
+        sanctionType: 'access_check_unavailable',
+        reason: 'No se pudo verificar el acceso a la mesa',
+      });
     });
   });
 });

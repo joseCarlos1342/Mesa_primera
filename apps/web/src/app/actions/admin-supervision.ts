@@ -36,7 +36,7 @@ export async function generateSupervisionToken(roomId: string): Promise<{
   const token = crypto.randomUUID();
   const payload = JSON.stringify({ adminId, roomId });
 
-  await redis.setex(`supervision:${token}`, TOKEN_TTL_SECONDS, payload);
+  await redis.setex(`supervision:${roomId}:${token}`, TOKEN_TTL_SECONDS, payload);
 
   await logAdminAction(adminId, "supervision_token_generated", "room", roomId, {
     token_ttl: TOKEN_TTL_SECONDS,
