@@ -42,6 +42,11 @@ const update = jest.fn()
 let helpRequests: HelpRequest[] = []
 let profiles: Array<{ id: string; username: string }> = []
 let realtimeHandler: ((payload: { eventType: string; new: Record<string, unknown> }) => Promise<void>) | undefined
+let holdHelpLoads = false
+let pendingHelpLoads: Array<(data: HelpRequest[]) => void> = []
+let profileSingleError = false
+let holdProfileLookups = false
+let pendingProfileLookups: Array<(profile: { id: string; username: string } | null) => void> = []
 
 function makeHelpQuery() {
   const query: Record<string, unknown> = {
@@ -49,7 +54,14 @@ function makeHelpQuery() {
     order: jest.fn(() => query),
     limit: jest.fn(() => query),
     in: jest.fn(() => query),
-    then: (resolve: (value: { data: HelpRequest[] }) => void) => Promise.resolve({ data: helpRequests }).then(resolve),
+    then: (resolve: (value: { data: HelpRequest[] }) => void) => {
+      if (holdHelpLoads) {
+        return new Promise<{ data: HelpRequest[] }>((finish) => {
+          pendingHelpLoads.push((data) => finish({ data }))
+        }).then(resolve)
+      }
+      return Promise.resolve({ data: helpRequests }).then(resolve)
+    },
   }
   return query
 }
@@ -59,7 +71,14 @@ function makeProfilesQuery() {
     select: jest.fn(() => query),
     in: jest.fn(() => Promise.resolve({ data: profiles })),
     eq: jest.fn(() => query),
-    single: jest.fn(() => Promise.resolve({ data: profiles[0] ?? null })),
+     single: jest.fn(() => {
+       if (holdProfileLookups) {
+         return new Promise<{ data: { id: string; username: string } | null }>((resolve) => {
+           pendingProfileLookups.push((profile) => resolve({ data: profile }))
+         })
+       }
+       return Promise.resolve({ data: profileSingleError ? null : profiles[0] ?? null, error: profileSingleError ? new Error('profile missing') : null })
+     }),
   }
   return query
 }
@@ -114,6 +133,11 @@ describe('AdminAlertsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     realtimeHandler = undefined
+    holdHelpLoads = false
+    pendingHelpLoads = []
+    profileSingleError = false
+    holdProfileLookups = false
+    pendingProfileLookups = []
     jest.spyOn(Date, 'now').mockReturnValue(new Date('2026-05-25T12:00:00.000Z').getTime())
     helpRequests = baseRequests
     profiles = [
@@ -179,6 +203,45 @@ describe('AdminAlertsPage', () => {
     expect(consoleWarn).toHaveBeenCalledWith('[Alerts] Error fetching rooms:', expect.any(Error))
   })
 
+  it('muestra fallback de usuario y antigüedad en días para datos incompletos', async () => {
+    profiles = []
+    helpRequests = [
+      ...baseRequests,
+      {
+        ...baseRequests[0],
+        id: 'req-old',
+        user_id: 'unknown-user',
+        created_at: '2026-05-23T12:00:00.000Z',
+        reason: 'unrecognized-reason',
+        status: 'unknown-status',
+      },
+    ]
+
+    render(<AdminAlertsPage />)
+
+    expect((await screen.findAllByText('Desconocido')).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Otro')).toBeInTheDocument()
+    expect(screen.getAllByText('Pendiente').length).toBeGreaterThan(0)
+    expect(screen.getByText('2d')).toBeInTheDocument()
+  })
+
+  it('tolera que el catálogo de salas no tenga datos', async () => {
+    mockRoomList.mockResolvedValue({ data: undefined } as Awaited<ReturnType<typeof colyseusClient.http.get>>)
+
+    render(<AdminAlertsPage />)
+
+    expect(await screen.findByText('Sin mesas activas')).toBeInTheDocument()
+  })
+
+  it('permite refrescar manualmente el catálogo de salas', async () => {
+    render(<AdminAlertsPage />)
+    await screen.findByText('1 EN VIVO')
+
+    fireEvent.click(screen.getByRole('button', { name: /actualizar/i }))
+
+    await waitFor(() => expect(mockRoomList).toHaveBeenCalledTimes(2))
+  })
+
   it('incorpora eventos realtime de insert y update', async () => {
     const play = jest.fn(() => Promise.resolve())
     const audioMock = jest.fn().mockImplementation(() => ({ volume: 0, play }))
@@ -213,14 +276,230 @@ describe('AdminAlertsPage', () => {
 
     await act(async () => {
       await realtimeHandler?.({
+        eventType: 'INSERT',
+        new: {
+          id: 'req-new',
+          user_id: 'user-3',
+          room_id: 'room-gamma-1',
+          reason: 'unfair_play',
+          message: 'Sospecha de colusion',
+          status: 'pending',
+          created_at: '2026-05-25T11:59:00.000Z',
+          resolved_at: null,
+          resolved_by: null,
+          admin_notes: null,
+        },
+      })
+    })
+    expect(screen.getAllByText('carla')).toHaveLength(1)
+
+    await act(async () => {
+      await realtimeHandler?.({
         eventType: 'UPDATE',
         new: { id: 'req-new', status: 'resolved', admin_notes: 'Cerrado por admin' },
       })
     })
 
-    const carlaCard = screen.getByText('carla').closest('div[class*="backdrop-blur"]')
-    expect(carlaCard).not.toBeNull()
-    await waitFor(() => expect(within(carlaCard as HTMLElement).getByText('Resuelto')).toBeInTheDocument())
-    expect(within(carlaCard as HTMLElement).getByText('Nota admin: Cerrado por admin')).toBeInTheDocument()
+    expect(screen.queryByText('carla')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /historial/i }))
+    const carlaCard = await screen.findByText('carla')
+    const card = carlaCard.closest('div[class*="backdrop-blur"]')
+    expect(card).not.toBeNull()
+    await waitFor(() => expect(within(card as HTMLElement).getByText('Resuelto')).toBeInTheDocument())
+    expect(within(card as HTMLElement).getByText('Nota admin: Cerrado por admin')).toBeInTheDocument()
+
+    await act(async () => {
+      await realtimeHandler?.({ eventType: 'UPDATE', new: { id: 'req-new', status: 'attending' } })
+    })
+    expect(within(card as HTMLElement).getByText('Atendiendo')).toBeInTheDocument()
+  })
+
+  it('no muestra en activas una alerta realtime que ya llega resuelta', async () => {
+    const play = jest.fn(() => Promise.resolve())
+    jest.spyOn(window, 'Audio').mockImplementation(() => ({ volume: 0, play }) as unknown as HTMLAudioElement)
+    render(<AdminAlertsPage />)
+    await waitFor(() => expect(realtimeHandler).toBeDefined())
+    await waitFor(() => expect(screen.getByText('ana')).toBeInTheDocument())
+
+    await act(async () => {
+      await realtimeHandler?.({
+        eventType: 'INSERT',
+        new: {
+          id: 'req-resolved',
+          user_id: 'user-1',
+          room_id: 'room-resolved',
+          reason: 'technical',
+          message: null,
+          status: 'resolved',
+          created_at: '2026-05-25T11:59:00.000Z',
+          resolved_at: '2026-05-25T12:00:00.000Z',
+          resolved_by: 'admin-1',
+          admin_notes: null,
+        },
+      })
+    })
+
+    expect(screen.queryByText(/room-resolved/)).not.toBeInTheDocument()
+  })
+
+  it('deduplica INSERT realtime concurrente antes de resolver el perfil', async () => {
+    const play = jest.fn(() => Promise.resolve())
+    const audioMock = jest.fn().mockImplementation(() => ({ volume: 0, play }))
+    jest.spyOn(window, 'Audio').mockImplementation(audioMock)
+    profiles = [{ id: 'user-3', username: 'carla' }]
+    render(<AdminAlertsPage />)
+    await waitFor(() => expect(realtimeHandler).toBeDefined())
+
+    const payload = {
+      eventType: 'INSERT' as const,
+      new: {
+        id: 'req-concurrent', user_id: 'user-3', room_id: 'room-concurrent', reason: 'technical',
+        message: null, status: 'pending', created_at: '2026-05-25T11:59:00.000Z',
+        resolved_at: null, resolved_by: null, admin_notes: null,
+      },
+    }
+    await act(async () => {
+      await Promise.all([realtimeHandler?.(payload), realtimeHandler?.(payload)])
+    })
+
+    expect(screen.getAllByText('carla')).toHaveLength(1)
+    expect(audioMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('muestra una alerta aunque falle la consulta realtime del perfil', async () => {
+    const play = jest.fn(() => Promise.resolve())
+    const audioMock = jest.fn().mockImplementation(() => ({ volume: 0, play }))
+    jest.spyOn(window, 'Audio').mockImplementation(audioMock)
+    profileSingleError = true
+    render(<AdminAlertsPage />)
+    await waitFor(() => expect(realtimeHandler).toBeDefined())
+
+    await act(async () => {
+      await realtimeHandler?.({
+        eventType: 'INSERT',
+        new: {
+          id: 'req-profile-error', user_id: 'missing-user', room_id: 'room-profile-error', reason: 'technical',
+          message: null, status: 'pending', created_at: '2026-05-25T11:59:00.000Z',
+          resolved_at: null, resolved_by: null, admin_notes: null,
+        },
+      })
+    })
+
+    expect(screen.getByText('Desconocido')).toBeInTheDocument()
+    expect(screen.getByText(/room-profile-error/)).toBeInTheDocument()
+  })
+
+  it('conserva UPDATE recibido mientras el INSERT aún consulta el perfil', async () => {
+    const play = jest.fn(() => Promise.resolve())
+    jest.spyOn(window, 'Audio').mockImplementation(() => ({ volume: 0, play }) as unknown as HTMLAudioElement)
+    holdProfileLookups = true
+    profiles = [{ id: 'user-3', username: 'carla' }]
+    render(<AdminAlertsPage />)
+    await waitFor(() => expect(realtimeHandler).toBeDefined())
+
+    const insertPromise = realtimeHandler?.({
+      eventType: 'INSERT',
+      new: {
+        id: 'req-order', user_id: 'user-3', room_id: 'room-order', reason: 'technical',
+        message: null, status: 'pending', created_at: '2026-05-25T11:59:00.000Z',
+        resolved_at: null, resolved_by: null, admin_notes: null,
+      },
+    })
+    await waitFor(() => expect(pendingProfileLookups).toHaveLength(1))
+
+    await act(async () => {
+      await realtimeHandler?.({ eventType: 'UPDATE', new: { id: 'req-order', status: 'attending' } })
+    })
+    pendingProfileLookups[0](profiles[0])
+    await act(async () => { await insertPromise })
+
+    expect(screen.getAllByText('Atendiendo').length).toBeGreaterThan(1)
+  })
+
+  it('ignora UPDATE parcial de una alerta desconocida al cambiar a historial', async () => {
+    render(<AdminAlertsPage />)
+    await waitFor(() => expect(realtimeHandler).toBeDefined())
+    await waitFor(() => expect(screen.getByText('ana')).toBeInTheDocument())
+
+    await act(async () => {
+      await realtimeHandler?.({ eventType: 'UPDATE', new: { id: 'unknown-request', status: 'resolved' } })
+    })
+    fireEvent.click(screen.getByRole('button', { name: /historial/i }))
+
+    await waitFor(() => expect(screen.getByText('ana')).toBeInTheDocument())
+    expect(screen.queryByText(/unknown-request/)).not.toBeInTheDocument()
+  })
+
+  it('ignora una carga anterior cuando el filtro cambia rápidamente', async () => {
+    holdHelpLoads = true
+    render(<AdminAlertsPage />)
+    await waitFor(() => expect(pendingHelpLoads).toHaveLength(1))
+
+    fireEvent.click(screen.getByRole('button', { name: /historial/i }))
+    await waitFor(() => expect(pendingHelpLoads).toHaveLength(2))
+
+    const historicalRequest = { ...baseRequests[0], id: 'historical-request', status: 'resolved', admin_notes: 'Histórico' }
+    pendingHelpLoads[1]([historicalRequest])
+    await waitFor(() => expect(screen.getByText(/Histórico/)).toBeInTheDocument())
+
+    pendingHelpLoads[0](baseRequests)
+    await waitFor(() => expect(screen.getByText(/Histórico/)).toBeInTheDocument())
+  })
+
+  it('continúa si el audio de una alerta falla al construirse', async () => {
+    const audioMock = jest.fn(() => { throw new Error('audio unavailable') })
+    jest.spyOn(window, 'Audio').mockImplementation(audioMock)
+    profiles = []
+
+    render(<AdminAlertsPage />)
+    await waitFor(() => expect(realtimeHandler).toBeDefined())
+    await waitFor(() => expect(screen.getAllByText('Desconocido').length).toBeGreaterThan(0))
+
+    await act(async () => {
+      await realtimeHandler?.({
+        eventType: 'INSERT',
+        new: {
+          id: 'req-audio-error',
+          user_id: 'user-missing',
+          room_id: 'room-audio',
+          reason: 'technical',
+          message: null,
+          status: 'pending',
+          created_at: '2026-05-25T11:59:00.000Z',
+          resolved_at: null,
+          resolved_by: null,
+          admin_notes: null,
+        },
+      })
+    })
+
+    expect(await screen.findByText(/room-audio/)).toBeInTheDocument()
+    expect(audioMock).toHaveBeenCalledWith('/sounds/alert.mp3')
+  })
+
+  it('descarta una alerta sin nota administrativa', async () => {
+    render(<AdminAlertsPage />)
+    await screen.findByText('ana')
+
+    fireEvent.click(screen.getAllByRole('button', { name: /descartar/i })[0])
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'dismissed',
+      resolved_at: expect.any(String),
+    })))
+    expect(update.mock.calls.at(-1)?.[0]).not.toHaveProperty('admin_notes')
+  })
+
+  it('libera el estado de actualización si Supabase rechaza el cambio', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    update.mockReturnValueOnce({ eq: jest.fn(() => Promise.resolve({ error: new Error('update failed') })) })
+    render(<AdminAlertsPage />)
+    await screen.findByText('ana')
+
+    fireEvent.click(screen.getAllByRole('button', { name: /atender/i })[0])
+
+    await waitFor(() => expect(consoleError).toHaveBeenCalledWith('[Alerts] Error updating request:', expect.any(Error)))
+    expect(screen.getAllByRole('button', { name: /atender/i })[0]).toBeEnabled()
   })
 })

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { client as colyseusClient } from '@/lib/colyseus';
 import { AlertTriangle, ShieldAlert, Wrench, HelpCircle, Clock, CheckCircle2, XCircle, Eye, Tv, Users, Gamepad2, RefreshCw } from 'lucide-react';
@@ -45,6 +45,10 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
+function isCompleteHelpRequest(request: Partial<HelpRequest>): request is HelpRequest {
+  return Boolean(request.id && request.user_id && request.room_id && request.reason && request.status && request.created_at);
+}
+
 export default function AdminAlertsPage() {
   const [requests, setRequests] = useState<HelpRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +57,11 @@ export default function AdminAlertsPage() {
   const [notesInput, setNotesInput] = useState<Record<string, string>>({});
   const [activeRooms, setActiveRooms] = useState<any[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(true);
+  const filterRef = useRef(filter);
+  const realtimeRequestsRef = useRef(new Map<string, Partial<HelpRequest>>());
+  const realtimeInFlightRef = useRef(new Set<string>());
+  const loadRequestIdRef = useRef(0);
+  filterRef.current = filter;
 
   const supabase = createClient();
 
@@ -79,6 +88,7 @@ export default function AdminAlertsPage() {
   // Initial fetch
   useEffect(() => {
     async function load() {
+      const loadRequestId = ++loadRequestIdRef.current;
       setLoading(true);
       const query = supabase
         .from('table_help_requests')
@@ -91,6 +101,7 @@ export default function AdminAlertsPage() {
       }
 
       const { data } = await query;
+      if (loadRequestId !== loadRequestIdRef.current) return;
       if (data) {
         // Fetch usernames
         const userIds = [...new Set(data.map((r: HelpRequest) => r.user_id))];
@@ -100,8 +111,23 @@ export default function AdminAlertsPage() {
           .in('id', userIds);
 
         const profileMap = new Map((profiles || []).map((p: { id: string; username: string }) => [p.id, p.username] as const));
-        setRequests(data.map((r: HelpRequest) => ({ ...r, username: profileMap.get(r.user_id) || 'Desconocido' })));
+        const loaded = data.map((r: HelpRequest) => ({ ...r, username: profileMap.get(r.user_id) || 'Desconocido' }));
+        const reconciled = new Map<string, HelpRequest>(loaded.map((request: HelpRequest) => [request.id, request] as const));
+        realtimeRequestsRef.current.forEach((eventRequest, id) => {
+          const current = reconciled.get(id);
+          if (current) {
+            reconciled.set(id, { ...current, ...eventRequest });
+          } else if (isCompleteHelpRequest(eventRequest)) {
+            reconciled.set(id, eventRequest);
+          }
+        });
+        const reconciledRequests: HelpRequest[] = [...reconciled.values()];
+        setRequests(reconciledRequests.filter((request) => {
+          const hasRealtimeUpdate = realtimeRequestsRef.current.has(request.id);
+          return !hasRealtimeUpdate || filterRef.current === 'all' || request.status === 'pending' || request.status === 'attending';
+        }));
       }
+      if (loadRequestId !== loadRequestIdRef.current) return;
       setLoading(false);
     }
     load();
@@ -117,26 +143,57 @@ export default function AdminAlertsPage() {
         async (payload: { eventType: string; new: Record<string, unknown> }) => {
           if (payload.eventType === 'INSERT') {
             const newReq = payload.new as unknown as HelpRequest;
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username')
-              .eq('id', newReq.user_id)
-              .single();
-            newReq.username = profile?.username || 'Desconocido';
-
-            setRequests(prev => [newReq, ...prev]);
-
-            // Play alert sound
+            const existing = realtimeRequestsRef.current.get(newReq.id);
+            if ((existing && isCompleteHelpRequest(existing)) || realtimeInFlightRef.current.has(newReq.id)) return;
+            realtimeInFlightRef.current.add(newReq.id);
             try {
-              const audio = new Audio('/sounds/alert.mp3');
-              audio.volume = 0.5;
-              audio.play().catch(() => {});
-            } catch { /* audio play not critical */ }
+              let profile: { username: string } | null = null;
+              try {
+                const result = await supabase
+                  .from('profiles')
+                  .select('username')
+                  .eq('id', newReq.user_id)
+                  .single();
+                profile = result.data;
+              } catch {
+                // La alerta sigue siendo visible aunque el perfil ya no exista.
+              }
+              const latestEvent = realtimeRequestsRef.current.get(newReq.id) || existing;
+              const mergedRequest = {
+                ...newReq,
+                ...latestEvent,
+                username: profile?.username || latestEvent?.username || 'Desconocido',
+              } as HelpRequest;
+              realtimeRequestsRef.current.set(newReq.id, mergedRequest);
+
+              setRequests(prev => {
+                const withoutDuplicate = prev.filter((request) => request.id !== newReq.id);
+                if (filterRef.current === 'active' && mergedRequest.status !== 'pending' && mergedRequest.status !== 'attending') {
+                  return withoutDuplicate;
+                }
+                return [mergedRequest, ...withoutDuplicate];
+              });
+
+              // Play alert sound
+              try {
+                const audio = new Audio('/sounds/alert.mp3');
+                audio.volume = 0.5;
+                audio.play().catch(() => {});
+              } catch { /* audio play not critical */ }
+            } finally {
+              realtimeInFlightRef.current.delete(newReq.id);
+            }
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as unknown as HelpRequest;
-            setRequests(prev =>
-              prev.map(r => r.id === updated.id ? { ...r, ...updated } : r)
-            );
+            const previousEvent = realtimeRequestsRef.current.get(updated.id as string) || {};
+            realtimeRequestsRef.current.set(updated.id as string, { ...previousEvent, ...updated } as Partial<HelpRequest>);
+            setRequests(prev => {
+              const next = prev.map(r => r.id === updated.id ? { ...r, ...updated } : r);
+              if (filterRef.current === 'active') {
+                return next.filter((request) => request.status === 'pending' || request.status === 'attending');
+              }
+              return next;
+            });
           }
         }
       )
@@ -154,11 +211,17 @@ export default function AdminAlertsPage() {
         updateData.admin_notes = notesInput[id].trim();
       }
     }
-    await supabase
-      .from('table_help_requests')
-      .update(updateData)
-      .eq('id', id);
-    setUpdating(null);
+    try {
+      const { error } = await supabase
+        .from('table_help_requests')
+        .update(updateData)
+        .eq('id', id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('[Alerts] Error updating request:', error);
+    } finally {
+      setUpdating(null);
+    }
   }
 
   const pendingCount = requests.filter(r => r.status === 'pending').length;
