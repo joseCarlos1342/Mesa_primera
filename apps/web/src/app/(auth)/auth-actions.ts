@@ -125,7 +125,8 @@ function isOtpProviderDisabled(errorMessage: string): boolean {
 /**
  * Checks if a user has an active account-level sanction (full_suspension or permanent_ban).
  * If blocked, signs out the user and returns a Spanish error message.
- * Fail-open: if the RPC call fails, login proceeds normally.
+ * Fail-closed: if the RPC call fails, login cannot complete until eligibility
+ * is verified successfully.
  */
 async function checkAccountSanction(
   supabase: any,
@@ -136,6 +137,7 @@ async function checkAccountSanction(
       p_user_id: userId,
     })
     if (error) throw error
+    if (!data || typeof data.blocked !== 'boolean') throw new Error('Respuesta inválida de check_account_eligibility')
     if (data && data.blocked) {
       await supabase.auth.signOut()
       const expiresAt = data.expires_at
@@ -152,8 +154,7 @@ async function checkAccountSanction(
     }
     return { blocked: false }
   } catch {
-    // Fail-open: don't block login on DB errors
-    return { blocked: false }
+    return { blocked: true, error: SUPABASE_KEY_OUTAGE_MESSAGE }
   }
 }
 
