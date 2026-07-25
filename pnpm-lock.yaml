@@ -74,6 +74,9 @@ importers:
       ioredis:
         specifier: ^5.10.0
         version: 5.10.1
+      livekit-server-sdk:
+        specifier: ^2.15.2
+        version: 2.15.2
       node-cron:
         specifier: ^4.2.1
         version: 4.2.1

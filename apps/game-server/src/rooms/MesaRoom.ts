@@ -8,7 +8,7 @@ import * as crypto from "crypto";
 import { evaluateHand, compareHands, HandEvaluation } from "./combinations";
 import { createDeck as createDeckPure, shuffleDeck as shuffleDeckPure } from "./core/DeckManager";
 import { calculateSidePots as calculateSidePotsPure } from "./core/PotManager";
-import { handleAdminKick, handleAdminMute, handleAdminBan, handleDeleteRoom } from "./commands/AdminCommand";
+import { handleAdminKick, handleAdminMute, handleAdminUnmute, handleAdminBan, handleDeleteRoom } from "./commands/AdminCommand";
 import { handleProposePique, handleVotePique } from "./commands/PiqueVotingCommand";
 import { handleLookupPlayer } from "./commands/LookupCommand";
 import { handleTransfer } from "./commands/TransferCommand";
@@ -133,6 +133,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   public clientMap = new Map<string, Client>();
   /** Espectadores admin (no reciben cartas, solo observan estado público). */
   public spectators = new Map<string, Client>();
+  /** Jugadores silenciados por moderación durante la vida de la sala. */
+  public mutedPlayerIds = new Set<string>();
   /** Jugadores que ganaron el pique por doble-paso con juego. */
   public juegoCallers: string[] = [];
   /** ID del ganador del pique pendiente de decidir mostrar/ocultar cartas. */
@@ -330,9 +332,14 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       handleAdminKick(this, client, message);
     });
 
-    this.onMessage("admin:mute", (client, message) => {
+    this.onMessage("admin:mute", async (client, message) => {
       if (this.recoveryLocked) return;
-      handleAdminMute(this, client, message);
+      await handleAdminMute(this, client, message);
+    });
+
+    this.onMessage("admin:unmute", async (client, message) => {
+      if (this.recoveryLocked) return;
+      await handleAdminUnmute(this, client, message);
     });
 
     this.onMessage("admin:ban", (client, message) => {
@@ -533,6 +540,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   }
 
   async onAuth(_client: Client, options: any) {
+    if (process.env.NODE_ENV !== "test" && !process.env.VITEST && options?.spectator !== true) {
+      if (!options?.userId || !options?.accessToken) {
+        throw new Error("Identidad de jugador no verificada");
+      }
+      const identityIsValid = await SupabaseService.validateRecoveryIdentity(options.accessToken, options.userId);
+      if (!identityIsValid) {
+        throw new Error("Identidad de jugador no verificada");
+      }
+    }
+
     if (this.recoveryLocked && options?.spectator !== true) {
       if (!options?.userId || !this.recoveryRosterUserIds.includes(options.userId)) {
         throw new Error("Sala en recuperación: solo puede volver el roster original");

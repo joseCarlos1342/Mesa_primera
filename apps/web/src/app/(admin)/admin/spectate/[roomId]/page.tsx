@@ -22,6 +22,7 @@ export default function SpectatePage() {
   const roomId = params.roomId as string;
 
   const [room, setRoom] = useState<Room | null>(null);
+  const [mutedPlayerIds, setMutedPlayerIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [gameState, setGameState] = useState({
@@ -88,6 +89,17 @@ export default function SpectatePage() {
           setError(message || 'Error de conexión');
         });
 
+        joinedRoom.onMessage('admin:moderation-state', (data: { mutedPlayerIds?: string[] }) => {
+          setMutedPlayerIds(new Set(data.mutedPlayerIds || []));
+        });
+        joinedRoom.onMessage('admin:unmuted', (data: { playerId: string }) => {
+          setMutedPlayerIds((current) => {
+            const next = new Set(current);
+            next.delete(data.playerId);
+            return next;
+          });
+        });
+
         joinedRoom.onLeave(() => {
           setError('Desconectado de la sala');
         });
@@ -114,7 +126,7 @@ export default function SpectatePage() {
 
   function handleMute(playerId: string) {
     if (!room) return;
-    room.send('admin:mute', { playerId, reason: 'Silenciado por moderador' });
+    room.send(mutedPlayerIds.has(playerId) ? 'admin:unmute' : 'admin:mute', { playerId, reason: 'Moderación de voz' });
   }
 
   function handleBan(playerId: string) {
@@ -291,10 +303,10 @@ export default function SpectatePage() {
                   <button
                     onClick={() => handleMute(p.id)}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/15 text-amber-400 text-xs font-bold uppercase tracking-wider transition-all active:scale-95"
-                    title="Silenciar voz"
+                     title={mutedPlayerIds.has(p.id) ? 'Reactivar voz' : 'Silenciar voz'}
                   >
                     <VolumeX className="w-3.5 h-3.5" />
-                    Mute
+                     {mutedPlayerIds.has(p.id) ? 'Unmute' : 'Mute'}
                   </button>
                   <button
                     onClick={() => handleKick(p.id)}

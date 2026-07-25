@@ -475,6 +475,17 @@ export default function GameRoomPage() {
           setIsReconnecting(false);
         })
 
+        // Moderación de voz: apagar la publicación local de LiveKit.
+        joinedRoom.onMessage("admin:muted", (data: { muted?: boolean; reason?: string }) => {
+          if (data?.muted !== true) return;
+          window.dispatchEvent(new CustomEvent('admin-voice-muted', {
+            detail: { reason: data.reason || 'Silenciado por admin' },
+          }));
+        })
+        joinedRoom.onMessage("admin:unmuted", () => {
+          window.dispatchEvent(new CustomEvent('admin-voice-unmuted'));
+        })
+
         // Opción válida de juego derivada por el servidor
         joinedRoom.onMessage("declarar-juego-option", (data: { hasJuego: boolean; handType: string }) => {
           setValidJuegoOption(data);
