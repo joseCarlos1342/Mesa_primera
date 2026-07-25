@@ -180,6 +180,36 @@ describe('Lobby', () => {
     })
   })
 
+  it('libera la sala lobby al desmontar', async () => {
+    const { unmount } = render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
+    unmount()
+
+    expect(leaveMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('mantiene el lobby funcional cuando no hay usuario autenticado', async () => {
+    authGetUserMock.mockResolvedValueOnce({ data: { user: null } })
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
+    expect(screen.getByText('Lobby')).toBeInTheDocument()
+    expect(screen.queryByText('65,000')).not.toBeInTheDocument()
+  })
+
+  it('usa balance cero cuando el perfil no tiene wallet', async () => {
+    singleMock.mockReset()
+    singleMock
+      .mockResolvedValueOnce({ data: { id: 'user-1', role: 'player', username: 'Chepe', avatar_url: null } })
+      .mockResolvedValueOnce({ data: null })
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await waitFor(() => expect(screen.getByText('Mi Balance').parentElement).toHaveTextContent('0'))
+  })
+
   it('usa avatar de metadata cuando el perfil no trae avatar_url', async () => {
     singleMock.mockReset()
     authGetUserMock.mockResolvedValueOnce({ data: { user: { id: 'user-1', user_metadata: { avatar_url: 'metadata-avatar' } } } })
@@ -217,6 +247,20 @@ describe('Lobby', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ENTRAR' }))
 
     expect(push).toHaveBeenCalledWith('/play/live-room-1')
+  })
+
+  it('usa clients y maxClients por defecto para una sala activa incompleta', async () => {
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+    await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
+    const roomsHandler = onMessageMock.mock.calls.find(([type]) => type === 'rooms')?.[1]
+
+    act(() => {
+      roomsHandler([{ roomId: 'partial-room', clients: 2, metadata: { tableName: 'Mesa #1' } }])
+    })
+
+    expect(screen.getByText(/REF: partial/)).toBeInTheDocument()
+    expect(screen.getByText('2').parentElement).toHaveTextContent('/7')
+    expect(screen.getByRole('button', { name: 'ENTRAR' })).toBeEnabled()
   })
 
   it('actualiza y elimina rooms con mensajes incrementales del lobby', async () => {
@@ -293,6 +337,25 @@ describe('Lobby', () => {
       expect(sessionStorage.getItem('reconnectionToken_created-room')).toBe('created-token')
       expect(push).toHaveBeenCalledWith('/play/created-room')
     })
+  })
+
+  it('evita crear dos veces una mesa placeholder con doble click', async () => {
+    let resolveCreate: ((value: { roomId: string; reconnectionToken: string }) => void) | undefined
+    createMock.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveCreate = resolve
+    }))
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+    await screen.findByText('65,000')
+    const openButton = screen.getAllByRole('button', { name: 'ABRIR MESA' })[0]
+
+    act(() => {
+      fireEvent.click(openButton)
+      fireEvent.click(openButton)
+    })
+
+    expect(createMock).toHaveBeenCalledTimes(1)
+    resolveCreate?.({ roomId: 'created-room', reconnectionToken: 'created-token' })
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/play/created-room'))
   })
 
   it('crea mesa normal desde botón admin flotante y genera nickname/device si faltan', async () => {

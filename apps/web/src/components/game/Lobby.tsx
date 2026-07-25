@@ -27,6 +27,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
   const [userProfile, setUserProfile] = useState<any>(null)
   const router = useRouter()
   const lobbyRoomRef = useRef<Room | null>(null)
+  const creatingRef = useRef(false)
 
   const [showDeposit, setShowDeposit] = useState(false)
   const [showCustomMesa, setShowCustomMesa] = useState(false)
@@ -138,7 +139,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
   }, [connectToLobby, router])
 
   const createTable = async () => {
-    if (creating) return
+    if (creating || creatingRef.current) return
 
     // VALIDACIÓN DE SALDO MÍNIMO ($50,000)
     const balance = userProfile?.balance_cents || 0;
@@ -148,6 +149,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
       return;
     }
 
+    creatingRef.current = true
     setCreating(true)
     setError(null)
     try {
@@ -188,6 +190,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
     } catch (e: any) {
       console.error("Room Creation Error:", e)
       setError("Error al crear la mesa. Asegúrate de que el servidor esté activo.")
+      creatingRef.current = false
       setCreating(false)
     }
   }
@@ -217,7 +220,8 @@ export function Lobby({ lobbyTables }: LobbyProps) {
     disabledChips: number[]
     isCustom: boolean
   }) => {
-    if (creating) return
+    if (creating || creatingRef.current) return
+    creatingRef.current = true
     setCreating(true)
     setError(null)
     try {
@@ -248,6 +252,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
     } catch (e: any) {
       console.error("Custom mesa creation error:", e)
       setError("Error al crear la mesa personalizada.")
+      creatingRef.current = false
       setCreating(false)
     }
   }
@@ -532,6 +537,7 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
   userProfile: any
 }) {
   const isPlaceholder = room.metadata?.isPlaceholder;
+  const creatingRef = useRef(false)
   const dbConfig = room._dbConfig as LobbyTable | undefined;
   const meta = room.metadata as any;
   const isCustom = meta?.isCustom === true || dbConfig?.table_category === 'custom';
@@ -548,7 +554,8 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
     }
 
     if (isPlaceholder) {
-      if (creating) return;
+      if (creating || creatingRef.current) return;
+      creatingRef.current = true
       setCreating(true);
       try {
         const nick = localStorage.getItem('nickname') || 'Jugador';
@@ -590,6 +597,7 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
         onJoin(newRoom.roomId);
       } catch (e) {
         console.error("Error creating fixed table:", e);
+        creatingRef.current = false
         setCreating(false);
       }
     } else {
