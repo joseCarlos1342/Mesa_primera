@@ -425,7 +425,17 @@ export class CrashRecoveryService {
       gameId: checkpoint.gameId,
       phase: checkpointPhase(checkpoint),
     });
-    const derived = await this.dependencies.deriveRecoveryRefunds(checkpoint.gameId);
+    let derived: Awaited<ReturnType<CrashRecoveryDependencies["deriveRecoveryRefunds"]>>;
+    try {
+      derived = await this.dependencies.deriveRecoveryRefunds(checkpoint.gameId);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      const result = await this.markManualReview(checkpoint, reason);
+      if (result.status === "manual_review") {
+        await this.disposeReplacementRoom(checkpoint.gameId);
+      }
+      return;
+    }
     if (!derived.success || !derived.refunds) {
       const result = await this.markManualReview(checkpoint, derived.error ?? "No se pudieron derivar refunds desde el ledger");
       if (result.status === "manual_review") {
@@ -434,13 +444,23 @@ export class CrashRecoveryService {
       return;
     }
 
-    const result = await this.dependencies.expireRecoveryIncidentAndRefund({
-      gameId: checkpoint.gameId,
-      refunds: derived.refunds.map((refund) => ({
-        ...refund,
-        operationId: stableRecoveryRefundOperationId(checkpoint.gameId, refund.userId),
-      })),
-    });
+    let result: Awaited<ReturnType<CrashRecoveryDependencies["expireRecoveryIncidentAndRefund"]>>;
+    try {
+      result = await this.dependencies.expireRecoveryIncidentAndRefund({
+        gameId: checkpoint.gameId,
+        refunds: derived.refunds.map((refund) => ({
+          ...refund,
+          operationId: stableRecoveryRefundOperationId(checkpoint.gameId, refund.userId),
+        })),
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      const manualReview = await this.markManualReview(checkpoint, reason);
+      if (manualReview.status === "manual_review") {
+        await this.disposeReplacementRoom(checkpoint.gameId);
+      }
+      return;
+    }
     if (!result.success) {
       const manualReview = await this.markManualReview(checkpoint, result.error ?? "La expiración del incidente falló");
       if (manualReview.status === "manual_review") {

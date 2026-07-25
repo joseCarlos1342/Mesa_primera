@@ -540,6 +540,54 @@ describe("CrashRecoveryService", () => {
     });
   });
 
+  it("escala a revisión manual cuando derivar refunds lanza una excepción", async () => {
+    let expiration: (() => Promise<void>) | undefined;
+    const dependencies = createDependencies({
+      deriveRecoveryRefunds: vi.fn().mockRejectedValue(new Error("ledger timeout")),
+      schedule: vi.fn((callback, delayMs) => {
+        if (delayMs !== 10_000) expiration = callback;
+      }),
+    });
+
+    await new CrashRecoveryService(dependencies).recoverPendingCheckpoints();
+
+    await expect(expiration?.()).resolves.toBeUndefined();
+    expect(dependencies.expireRecoveryIncidentAndRefund).not.toHaveBeenCalled();
+    expect(dependencies.markRecoveryIncidentManualReview).toHaveBeenCalledWith({
+      gameId: "game-1",
+      reason: "ledger timeout",
+    });
+    expect(dependencies.emitRecoveryManualReviewAlert).toHaveBeenCalledWith({
+      gameId: "game-1",
+      roomId: "original-room-1",
+      reason: "ledger timeout",
+    });
+  });
+
+  it("escala a revisión manual cuando persistir la expiración lanza una excepción", async () => {
+    let expiration: (() => Promise<void>) | undefined;
+    const dependencies = createDependencies({
+      expireRecoveryIncidentAndRefund: vi.fn().mockRejectedValue(new Error("ledger write timeout")),
+      schedule: vi.fn((callback, delayMs) => {
+        if (delayMs !== 10_000) expiration = callback;
+      }),
+    });
+
+    await new CrashRecoveryService(dependencies).recoverPendingCheckpoints();
+
+    await expect(expiration?.()).resolves.toBeUndefined();
+    expect(dependencies.markRecoveryIncidentManualReview).toHaveBeenCalledWith({
+      gameId: "game-1",
+      reason: "ledger write timeout",
+    });
+    expect(dependencies.emitRecoveryManualReviewAlert).toHaveBeenCalledWith({
+      gameId: "game-1",
+      roomId: "original-room-1",
+      reason: "ledger write timeout",
+    });
+    expect(dependencies.disposeReplacementRoom).toHaveBeenCalledWith("recovered-room-1");
+  });
+
   it("reintenta la alerta idempotente cuando manual_review ya estaba persistido", async () => {
     let expiration: (() => Promise<void>) | undefined;
     const dependencies = createDependencies({
@@ -585,6 +633,26 @@ describe("CrashRecoveryService", () => {
     await service.recoverPendingCheckpoints();
     await expiration?.();
 
+    expect(dependencies.disposeReplacementRoom).not.toHaveBeenCalled();
+  });
+
+  it("reprograma la expiración si la base todavía considera pendiente el recovery", async () => {
+    const scheduled: Array<{ callback: () => Promise<void>; delayMs: number }> = [];
+    const dependencies = createDependencies({
+      expireRecoveryIncidentAndRefund: vi.fn().mockResolvedValue({
+        success: true,
+        status: "recovery_pending",
+      }),
+      schedule: vi.fn((callback, delayMs) => {
+        scheduled.push({ callback, delayMs });
+      }),
+    });
+
+    await new CrashRecoveryService(dependencies).recoverPendingCheckpoints();
+    await scheduled.find(({ delayMs }) => delayMs === 120_000)?.callback();
+
+    expect(dependencies.expireRecoveryIncidentAndRefund).toHaveBeenCalledTimes(1);
+    expect(scheduled.some(({ delayMs }) => delayMs === 1_000)).toBe(true);
     expect(dependencies.disposeReplacementRoom).not.toHaveBeenCalled();
   });
 });
