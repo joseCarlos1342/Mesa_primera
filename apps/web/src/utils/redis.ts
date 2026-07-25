@@ -67,6 +67,11 @@ export const redis = {
 
     return redisClient.setex(key, seconds, value)
   },
+
+  async get(key: string) {
+    if (!redisClient) return null
+    return redisClient.get(key)
+  },
 }
 
 /**

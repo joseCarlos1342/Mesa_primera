@@ -304,6 +304,23 @@ describe('GameRoomPage', () => {
     expect(consoleError).toHaveBeenCalledWith('Join Error:', originalJoinError)
   })
 
+  it('muestra revisión manual cuando el join falla y el mapping pendiente ya venció', async () => {
+    sessionStorage.removeItem('reconnectionToken_room-123')
+    mockJoinById.mockRejectedValueOnce(new Error('Mesa original no disponible'))
+    mockResolveRecoveredRoom.mockResolvedValue({
+      status: 'recovery_pending',
+      recoveredRoomId: 'recovered-room-456',
+      deadline: new Date(Date.now() - 1_000).toISOString(),
+    })
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    expect(await screen.findByText(/recuperación fue cancelada/i)).toBeInTheDocument()
+    expect(screen.getByText(/revisión manual/i)).toBeInTheDocument()
+    expect(mockJoinById).toHaveBeenCalledTimes(1)
+  })
+
   it('recupera el asiento aunque el saldo actual no alcance el mínimo de una mesa nueva', async () => {
     sessionStorage.setItem('reconnectionToken_room-123', 'expired-token')
     mockReconnect.mockRejectedValue(new Error('expired'))
@@ -556,6 +573,27 @@ describe('GameRoomPage', () => {
     expect(gain.disconnect).toHaveBeenCalled()
   })
 
+  it('continúa el countdown si el navegador bloquea Web Audio', async () => {
+    Object.defineProperty(window, 'AudioContext', {
+      configurable: true,
+      value: jest.fn(() => { throw new Error('audio blocked') }),
+    })
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState({
+      countdown: 4,
+      players: new Map([
+        ['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 0 }],
+        ['player-2', { id: 'player-2', nickname: 'Beto', connected: true, chips: 5_500_000, isReady: true, cardCount: 0 }],
+        ['player-3', { id: 'player-3', nickname: 'Caro', connected: true, chips: 5_500_000, isReady: true, cardCount: 0 }],
+      ]),
+    })
+
+    expect(screen.getByText('Iniciando partida')).toBeInTheDocument()
+    expect(screen.getByText('4')).toBeInTheDocument()
+  })
+
   it('reanuda audio suspendido durante el countdown', async () => {
     const resume = jest.fn(() => Promise.resolve())
     const oscillator = {
@@ -775,7 +813,7 @@ describe('GameRoomPage', () => {
     expect(sessionStorage.getItem('reconnectionToken_room-123')).toBe('fresh-token')
   })
 
-  it('muestra overlay de reconexion y recarga si la sala se cierra inesperadamente', async () => {
+  it('muestra overlay de reconexion y programa recarga si la sala se cierra inesperadamente', async () => {
     render(<GameRoomPage />)
     await flushJoinDelay()
 
@@ -786,6 +824,14 @@ describe('GameRoomPage', () => {
     expect(await screen.findByText('Sincronizando tu mesa...')).toBeInTheDocument()
     expect(jest.getTimerCount()).toBeGreaterThan(0)
     jest.clearAllTimers()
+  })
+
+  it('usa Jugador como fallback cuando una propuesta apunta a un jugador ausente', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState({ proposedPique: 1_000_000, proposedPiqueBy: 'missing-player' })
+
+    expect(await screen.findByText('Jugador propone:')).toBeInTheDocument()
   })
 
   it('muestra error si no puede unirse a Colyseus', async () => {

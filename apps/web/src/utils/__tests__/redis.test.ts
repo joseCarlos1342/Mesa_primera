@@ -4,6 +4,7 @@ let mockHeadersImpl: () => Promise<{ get: (name: string) => string | null }>
 class MockRedis {
   static publish = jest.fn()
   static setex = jest.fn()
+  static get = jest.fn()
   static incr = jest.fn()
   static expire = jest.fn()
 
@@ -24,6 +25,10 @@ class MockRedis {
 
   setex(key: string, seconds: number, value: string) {
     return MockRedis.setex(key, seconds, value)
+  }
+
+  get(key: string) {
+    return MockRedis.get(key)
   }
 
   incr(key: string) {
@@ -96,6 +101,8 @@ describe('redis utils', () => {
     })
     await expect(redis.publish('support', 'hola')).resolves.toBe(1)
     await expect(redis.setex('session', 30, '1')).resolves.toBe('OK')
+    MockRedis.get.mockResolvedValue('1')
+    await expect(redis.get('session')).resolves.toBe('1')
     await expect(checkRateLimit('ip:2', 2, 60)).resolves.toEqual({ success: true, limit: 2, remaining: 1, reset: 60 })
     expect(MockRedis.expire).toHaveBeenCalledWith('ip:2', 60)
     await expect(checkRateLimit('ip:2', 2, 60)).resolves.toEqual({ success: false, limit: 2, remaining: 0, reset: 60 })

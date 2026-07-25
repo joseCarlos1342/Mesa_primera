@@ -4,6 +4,7 @@
 import { AccessToken } from 'livekit-server-sdk'
 import { POST } from '../route'
 import { createClient } from '@/utils/supabase/server'
+import { redis } from '@/utils/redis'
 
 const addGrant = jest.fn()
 const toJwt = jest.fn(async () => 'livekit-jwt')
@@ -16,13 +17,19 @@ jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
 }))
 
+jest.mock('@/utils/redis', () => ({
+  redis: { get: jest.fn().mockResolvedValue(null) },
+}))
+
 const mockCreateClient = createClient as jest.Mock
+const mockRedisGet = redis.get as jest.Mock
 
 describe('POST /api/livekit', () => {
   const originalEnv = process.env
 
   beforeEach(() => {
     jest.clearAllMocks()
+    mockRedisGet.mockResolvedValue(null)
     mockCreateClient.mockResolvedValue({
       auth: {
         getUser: jest.fn().mockResolvedValue({
@@ -65,7 +72,7 @@ describe('POST /api/livekit', () => {
       name: 'Ana Mesa',
       ttl: '2h',
     })
-    expect(addGrant).toHaveBeenCalledWith({ roomJoin: true, room: 'mesa-1' })
+    expect(addGrant).toHaveBeenCalledWith({ roomJoin: true, room: 'mesa-1', canPublish: true })
   })
 
   it('rechaza requests no autenticados antes de generar tokens', async () => {
@@ -85,6 +92,18 @@ describe('POST /api/livekit', () => {
     expect(response.status).toBe(401)
     expect(body).toEqual({ error: 'No autenticado' })
     expect(AccessToken).not.toHaveBeenCalled()
+  })
+
+  it('emite un token sin permiso de publicación para jugadores silenciados', async () => {
+    mockRedisGet.mockResolvedValueOnce('1')
+    const request = new Request('https://mesa.test/api/livekit', {
+      method: 'POST',
+      body: JSON.stringify({ room: 'mesa-1' }),
+    })
+
+    await POST(request as any)
+
+    expect(addGrant).toHaveBeenCalledWith({ roomJoin: true, room: 'mesa-1', canPublish: false })
   })
 
   it('rechaza nombres de sala invalidos sin usar fallback permisivo', async () => {

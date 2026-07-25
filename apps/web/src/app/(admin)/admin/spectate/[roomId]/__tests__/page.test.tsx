@@ -63,10 +63,11 @@ function makeRoom() {
     onLeave: jest.fn((handler) => {
       leaveHandler = handler
     }),
+    onMessage: jest.fn(),
   }
 }
 
-function emitState() {
+function emitState(overrides: Record<string, unknown> = {}) {
   act(() => {
     stateHandler?.({
       phase: 'PIQUE',
@@ -95,6 +96,7 @@ function emitState() {
           isFolded: true,
         }],
       ]),
+      ...overrides,
     })
   })
 }
@@ -156,11 +158,42 @@ describe('SpectatePage', () => {
     emitState()
 
     fireEvent.click(screen.getAllByRole('button', { name: /mute/i })[0])
-    expect(send).toHaveBeenCalledWith('admin:mute', { playerId: 'player-1', reason: 'Silenciado por moderador' })
+    expect(send).toHaveBeenCalledWith('admin:mute', { playerId: 'player-1', reason: 'Moderación de voz' })
 
     fireEvent.click(screen.getAllByRole('button', { name: /kick/i })[0])
     expect(window.confirm).toHaveBeenCalledWith('¿Retirar a este jugador de la mesa?')
     expect(send).toHaveBeenCalledWith('admin:kick', { playerId: 'player-1' })
+  })
+
+  it('no expulsa al jugador si el admin cancela la confirmación', async () => {
+    ;(window.confirm as jest.Mock).mockReturnValueOnce(false)
+    render(<SpectatePage />)
+    await waitFor(() => expect(stateHandler).toBeDefined())
+    emitState()
+
+    fireEvent.click(screen.getAllByRole('button', { name: /kick/i })[0])
+
+    expect(send).not.toHaveBeenCalledWith('admin:kick', expect.anything())
+  })
+
+  it('usa valores por defecto cuando el estado no trae acción ni pique', async () => {
+    render(<SpectatePage />)
+    await waitFor(() => expect(stateHandler).toBeDefined())
+    emitState({
+      phase: 'LOBBY',
+      piquePot: 0,
+      dealerId: 'missing-player',
+      lastAction: '',
+      players: new Map([['player-1', {
+        id: 'player-1', nickname: 'Ana', supabaseUserId: 'user-1', connected: true,
+        chips: 5000, cardCount: 0, isFolded: false,
+      }]]),
+    })
+
+    expect(screen.getByText('LOBBY')).toBeInTheDocument()
+    expect(screen.getByText('$1000')).toBeInTheDocument()
+    expect(screen.queryByText('Ana subió la apuesta')).not.toBeInTheDocument()
+    expect(screen.queryByText('MANO')).not.toBeInTheDocument()
   })
 
   it('aplica sancion temporal, expulsa al jugador y cierra el modal', async () => {
@@ -270,12 +303,31 @@ describe('SpectatePage', () => {
     expect(await screen.findByText('Desconectado de la sala')).toBeInTheDocument()
   })
 
+  it('usa mensajes de fallback para errores sin detalle', async () => {
+    render(<SpectatePage />)
+    await waitFor(() => expect(errorHandler).toBeDefined())
+
+    act(() => {
+      errorHandler?.(4001)
+    })
+
+    expect(await screen.findByText('Error de conexión')).toBeInTheDocument()
+  })
+
   it('muestra error si no puede conectarse', async () => {
     mockJoinById.mockRejectedValue(new Error('token inválido'))
 
     render(<SpectatePage />)
 
     expect(await screen.findByText('token inválido')).toBeInTheDocument()
+  })
+
+  it('usa mensaje de fallback si la conexión rechaza sin error', async () => {
+    mockJoinById.mockRejectedValue({})
+
+    render(<SpectatePage />)
+
+    expect(await screen.findByText('No se pudo conectar a la sala')).toBeInTheDocument()
   })
 
   it('abandona la sala al desmontar', async () => {

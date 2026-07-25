@@ -92,6 +92,30 @@ describe('VoiceChat', () => {
     expect(await screen.findByTitle('Activar o desactivar micrófono')).toBeDisabled()
   })
 
+  it('apaga y bloquea el microfono cuando moderacion silencia al jugador', async () => {
+    render(<VoiceChat roomName="mesa-1" username="Jose" />)
+
+    await screen.findByTitle('Activar o desactivar micrófono')
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('admin-voice-muted'))
+    })
+
+    expect(setMicrophoneEnabled).toHaveBeenCalledWith(false)
+    expect(screen.getByTitle('Micrófono silenciado por administración')).toBeDisabled()
+  })
+
+  it('reactiva el control cuando administración retira el mute', async () => {
+    render(<VoiceChat roomName="mesa-1" username="Jose" />)
+
+    await screen.findByTitle('Activar o desactivar micrófono')
+    await act(async () => {
+      window.dispatchEvent(new Event('admin-voice-muted'))
+      window.dispatchEvent(new Event('admin-voice-unmuted'))
+    })
+
+    expect(screen.getByTitle('Activar o desactivar micrófono')).toBeEnabled()
+  })
+
   it('muestra participantes activos cuando showSpeakers esta habilitado', async () => {
     participants = [
       { identity: 'p1', name: 'Ana', isSpeaking: true },

@@ -18,7 +18,7 @@ import * as AdminCommand from '../commands/AdminCommand';
 vi.mock('../../services/redis', () => {
   const { EventEmitter } = require('events');
   return {
-    redis: { on: vi.fn(), publish: vi.fn().mockResolvedValue(undefined), disconnect: vi.fn() },
+    redis: { on: vi.fn(), publish: vi.fn().mockResolvedValue(undefined), setex: vi.fn().mockResolvedValue('OK'), del: vi.fn().mockResolvedValue(1), disconnect: vi.fn() },
     createRedisSubscriber: vi.fn(() => {
       const sub = new EventEmitter();
       (sub as any).subscribe = vi.fn().mockResolvedValue(undefined);
@@ -28,6 +28,12 @@ vi.mock('../../services/redis', () => {
     }),
   };
 });
+
+vi.mock('../../services/LiveKitModerationService', () => ({
+  LiveKitModerationService: {
+    muteParticipant: vi.fn().mockResolvedValue(true),
+  },
+}));
 
 // Mock AlertService to track refund-failure alerts
 vi.mock('../../services/AlertService', () => ({

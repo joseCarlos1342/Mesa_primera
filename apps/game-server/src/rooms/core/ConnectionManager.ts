@@ -3,6 +3,8 @@ import type { MesaRoom } from "../MesaRoom";
 import { Player } from "../../schemas/GameState";
 import { SupabaseService } from "../../services/SupabaseService";
 import { AlertService } from "../../services/AlertService";
+import { LiveKitModerationService } from "../../services/LiveKitModerationService";
+import { redis } from "../../services/redis";
 import { MIN_BALANCE_CENTS, COLYSEUS_CONSENTED_CLOSE_CODE } from "./constants";
 
 /**
@@ -12,6 +14,29 @@ import { MIN_BALANCE_CENTS, COLYSEUS_CONSENTED_CLOSE_CODE } from "./constants";
  */
 
 type RoomCtx = MesaRoom;
+
+async function reapplyVoiceMute(room: MesaRoom, player: Player, client: Client): Promise<void> {
+  const identity = player.supabaseUserId;
+  if (!identity || !room.mutedPlayerIds.has(identity)) return;
+  if (!process.env.REDIS_URL) {
+    room.mutedPlayerIds.delete(identity);
+    return;
+  }
+  let persisted = false;
+  try {
+    persisted = Boolean(await redis.get(`voice-muted:${room.roomId}:${identity}`));
+  } catch {
+    return;
+  }
+  if (!persisted) {
+    room.mutedPlayerIds.delete(identity);
+    await LiveKitModerationService.unmuteParticipant(room.roomId, identity);
+    client.send("admin:unmuted", { playerId: client.sessionId });
+    return;
+  }
+  await LiveKitModerationService.muteParticipant(room.roomId, identity);
+  client.send("admin:muted", { reason: "Silenciado por admin", muted: true });
+}
 
 interface MesaMetadataLike {
   tableName?: string;
@@ -67,6 +92,10 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
     r.spectators.set(client.sessionId, client);
     // Spectators do NOT get a Player schema entry and NEVER receive private cards (Admin Blindness)
     client.send("spectator:joined", { roomId: r.roomId, phase: r.state.phase });
+    const mutedPlayerIds = Array.from(r.state.players.values())
+      .filter((player) => r.mutedPlayerIds.has(player.supabaseUserId || player.id))
+      .map((player) => player.id);
+    client.send("admin:moderation-state", { mutedPlayerIds });
     // Notify all players that an admin is watching
     r.broadcast("admin:status", { active: true, count: r.spectators.size });
     return;
@@ -177,6 +206,7 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
     // Re-enviar las cartas privadas al cliente reconectado (solo si hay partida activa)
     // Actualizar clientMap primero: el client del ghost restore tiene transport nuevo
     r.clientMap.set(client.sessionId, client);
+    await reapplyVoiceMute(r, newPlayer, client);
     if (r.state.phase !== "LOBBY") {
       const cards = newPlayer.cards ? newPlayer.cards.split(',').filter(Boolean) : [];
       client.send("private-cards", cards);
@@ -226,6 +256,8 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
   }
 
   r.state.players.set(client.sessionId, newPlayer);
+  r.clientMap.set(client.sessionId, client);
+  await reapplyVoiceMute(r, newPlayer, client);
 
   // Solo agregar al seatOrder si no está esperando (los que esperan se agregan al volver a LOBBY)
   if (!newPlayer.isWaiting) {
@@ -331,6 +363,7 @@ export async function handleConnectionLeave(room: MesaRoom, client: Client, code
 
     player.connected = true;
     r.clientMap.set(client.sessionId, client);
+    await reapplyVoiceMute(r, player, client);
     r.updateLobbyMetadata();
     console.log(`[RECONNECT:NATIVE] ${player.nickname} (${client.sessionId}), phase=${r.state.phase}, hasCards=${!!player.cards}, dealerId=${r.state.dealerId}, activeManoId=${r.state.activeManoId}`);
 

@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Client } from 'colyseus';
 import { handleAdminBan, handleAdminKick, handleAdminMute } from '../AdminCommand';
 
+vi.mock('../../../services/redis', () => ({
+  redis: { setex: vi.fn().mockResolvedValue('OK'), del: vi.fn().mockResolvedValue(1) },
+}));
+
 type AdminRoom = Parameters<typeof handleAdminKick>[0];
 type AdminPayload = Parameters<typeof handleAdminKick>[2];
 
@@ -19,12 +23,13 @@ interface TestRoom {
   };
   clients: TestClient[];
   clientMap: Map<string, TestClient>;
+  mutedPlayerIds: Set<string>;
   removePlayer: ReturnType<typeof vi.fn>;
   targetClient: TestClient;
 }
 
 function player(id: string, nickname: string) {
-  return { id, nickname };
+  return { id, nickname, supabaseUserId: `user-${id}` };
 }
 
 function client(sessionId: string, overrides: Partial<TestClient> = {}): TestClient {
@@ -49,6 +54,7 @@ function room(overrides: Partial<TestRoom> = {}): TestRoom {
     },
     clients: [targetClient],
     clientMap: new Map<string, ReturnType<typeof client>>([['p1', targetClient]]),
+    mutedPlayerIds: new Set<string>(),
     removePlayer: vi.fn(),
     targetClient,
     ...overrides,
@@ -59,8 +65,8 @@ function kick(r: TestRoom, c: TestClient, message: AdminPayload) {
   handleAdminKick(r as unknown as AdminRoom, c as unknown as Client, message);
 }
 
-function mute(r: TestRoom, c: TestClient, message: AdminPayload) {
-  handleAdminMute(r as unknown as AdminRoom, c as unknown as Client, message);
+async function mute(r: TestRoom, c: TestClient, message: AdminPayload) {
+  await handleAdminMute(r as unknown as AdminRoom, c as unknown as Client, message);
 }
 
 function ban(r: TestRoom, c: TestClient, message: AdminPayload) {
@@ -70,6 +76,7 @@ function ban(r: TestRoom, c: TestClient, message: AdminPayload) {
 describe('AdminCommand moderation guards', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    process.env.REDIS_URL = 'redis://test';
     vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
@@ -105,28 +112,32 @@ describe('AdminCommand moderation guards', () => {
     expect(r.state.lastAction).toBe('Player 1 fue retirado por el admin');
   });
 
-  it('mute usa la razón por defecto cuando el admin no envía una', () => {
+  it('mute usa la razón por defecto cuando el admin no envía una', async () => {
     const r = room();
 
-    mute(r, client('admin-session'), { playerId: 'p1' });
+    await mute(r, client('admin-session'), { playerId: 'p1' });
 
-    expect(r.targetClient.send).toHaveBeenCalledWith('admin:muted', { reason: 'Silenciado por admin' });
+    expect(r.targetClient.send).toHaveBeenCalledWith('admin:muted', {
+      reason: 'Silenciado por admin',
+      muted: true,
+    });
+    expect(r.mutedPlayerIds).toEqual(new Set(['user-p1']));
   });
 
-  it('ignora mute si falta playerId o el jugador objetivo no existe', () => {
+  it('ignora mute si falta playerId o el jugador objetivo no existe', async () => {
     const r = room();
     const admin = client('admin-session');
 
-    mute(r, admin, {});
-    mute(r, admin, { playerId: 'missing-player', reason: 'spam' });
+    await mute(r, admin, {});
+    await mute(r, admin, { playerId: 'missing-player', reason: 'spam' });
 
     expect(r.targetClient.send).not.toHaveBeenCalled();
   });
 
-  it('mute no falla si el jugador no tiene cliente conectado', () => {
+  it('mute no falla si el jugador no tiene cliente conectado', async () => {
     const r = room({ clientMap: new Map() });
 
-    mute(r, client('admin-session'), { playerId: 'p1', reason: 'spam' });
+    await mute(r, client('admin-session'), { playerId: 'p1', reason: 'spam' });
 
     expect(r.targetClient.send).not.toHaveBeenCalled();
   });

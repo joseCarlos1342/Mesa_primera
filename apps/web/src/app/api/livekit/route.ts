@@ -2,6 +2,7 @@ import { AccessToken } from 'livekit-server-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { createClient } from '@/utils/supabase/server';
+import { redis } from '@/utils/redis';
 
 type LiveKitRequestBody = {
   room?: unknown;
@@ -56,6 +57,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let isMuted = false;
+    if (process.env.REDIS_URL) {
+      try {
+        isMuted = Boolean(await redis.get(`voice-muted:${roomName}:${user.id}`));
+      } catch (error) {
+        console.error('[LiveKit] No se pudo verificar el mute de voz:', error instanceof Error ? error.name : 'unknown');
+        return NextResponse.json({ error: 'No se pudo verificar el estado de moderación.' }, { status: 503 });
+      }
+    }
+
     const at = new AccessToken(apiKey, apiSecret, {
       identity: user.id,
       name: participantName,
@@ -63,7 +74,7 @@ export async function POST(request: NextRequest) {
       ttl: '2h',
     });
 
-    at.addGrant({ roomJoin: true, room: roomName });
+    at.addGrant({ roomJoin: true, room: roomName, canPublish: !isMuted });
 
     const token = await at.toJwt();
 

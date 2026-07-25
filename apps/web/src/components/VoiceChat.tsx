@@ -26,12 +26,26 @@ export function VoiceChat({ roomName, username, showSpeakers = false }: VoiceCha
   const [url, setUrl] = useState('');
   const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isAdminMuted, setIsAdminMuted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     const handleOpenModal = () => setIsAudioModalOpen(true);
     window.addEventListener('open-player-audio-modal', handleOpenModal);
     return () => window.removeEventListener('open-player-audio-modal', handleOpenModal);
+  }, []);
+
+  // Register before requesting the LiveKit token so moderation cannot race
+  // with the initial mount or a reconnect.
+  useEffect(() => {
+    const handleAdminMute = () => setIsAdminMuted(true);
+    const handleAdminUnmute = () => setIsAdminMuted(false);
+    window.addEventListener('admin-voice-muted', handleAdminMute);
+    window.addEventListener('admin-voice-unmuted', handleAdminUnmute);
+    return () => {
+      window.removeEventListener('admin-voice-muted', handleAdminMute);
+      window.removeEventListener('admin-voice-unmuted', handleAdminUnmute);
+    };
   }, []);
 
   useEffect(() => {
@@ -105,24 +119,29 @@ export function VoiceChat({ roomName, username, showSpeakers = false }: VoiceCha
         </div>
       </StartAudio>
 
-      <CustomMicToggle />
+       <CustomMicToggle forcedMuted={isAdminMuted} />
 
       {mounted && <PlayerAudioModal isOpen={isAudioModalOpen} onClose={() => setIsAudioModalOpen(false)} />}
     </LiveKitRoom>
   );
 }
 
-function CustomMicToggle() {
+function CustomMicToggle({ forcedMuted }: { forcedMuted: boolean }) {
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const connectionState = useConnectionState();
   const { microphone: micPermission } = useGamePermissions();
   const [isPending, setIsPending] = useState(false);
+  const isAdminMuted = forcedMuted;
 
   const isConnected = connectionState === ConnectionState.Connected;
   const micUnavailable = micPermission === 'unavailable' || micPermission === 'denied';
 
+  useEffect(() => {
+    if (forcedMuted) void localParticipant?.setMicrophoneEnabled(false);
+  }, [forcedMuted, localParticipant]);
+
   const toggleMic = async () => {
-    if (!localParticipant || isPending || !isConnected) return;
+    if (!localParticipant || isPending || !isConnected || isAdminMuted) return;
 
     if (micUnavailable) {
       alert(
@@ -150,14 +169,14 @@ function CustomMicToggle() {
 
       <button 
         onClick={toggleMic}
-        disabled={isPending || !isConnected || micUnavailable}
+        disabled={isPending || !isConnected || micUnavailable || isAdminMuted}
         className={`group relative flex items-center justify-center w-10 h-10 md:w-14 md:h-14 landscape:w-9 landscape:h-9 md:landscape:w-14 md:landscape:h-14 rounded-full transition-all hover:-translate-y-0.5 active:translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed uppercase shadow-[0_10px_20px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)]
           ${isMicrophoneEnabled 
             ? 'bg-gradient-to-b from-[#4ade80] via-[#16a34a] to-[#14532d] hover:from-[#86efac] hover:via-[#22c55e] border border-[#86efac]/50 border-b-[4px] border-b-[#064e3b] text-white' 
             : 'bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] hover:from-[#fca5a5] hover:via-[#ef4444] border border-[#fca5a5]/50 border-b-[4px] border-b-[#7f1d1d] text-white'
           }`}
         style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
-        title="Activar o desactivar micrófono"
+        title={isAdminMuted ? 'Micrófono silenciado por administración' : 'Activar o desactivar micrófono'}
       >
         {/* OFF STATE */}
         {!isMicrophoneEnabled && (
