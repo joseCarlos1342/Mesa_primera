@@ -21,24 +21,24 @@ Cobertura vigente conocida de `apps/web`:
 | Statements | `99.27%` |
 | Lines | `99.27%` |
 | Functions | `98.04%` |
-| Branches | `91.96%` |
+| Branches | `92.08%` |
 
 Resultado de la corrida:
 
 - `218` suites en verde.
-- `1989` tests pasando en la última verificación documentada.
+- `2000` tests pasando en la última verificación documentada.
 - La suite supera la meta estratégica en statements, lines y functions, pero
-  functions solo tiene `0.04` puntos de margen y branches queda `6.07` puntos
+  functions solo tiene `0.04` puntos de margen y branches queda `5.92` puntos
   por debajo del objetivo final.
 - No se debe afirmar cobertura global actualizada sin guardar la corrida
   asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
   es una fuente global suficiente.
 - La corrida del Checkpoint 163 genera `coverage-summary.json` global con
-  `41119` statements, `1176` funciones y `7493` branches.
+  `41119` statements, `1176` funciones y `7504` branches.
 
 ### Lectura de la deuda restante
 
-La cobertura global tiene `602` ramas faltantes sobre `7480` conocidas. El
+La cobertura global tiene `594` ramas faltantes sobre `7504` conocidas. El
 próximo objetivo no es perseguir `98%` con fallbacks imposibles, sino clasificar
 cada rama como:
 
@@ -3192,8 +3192,8 @@ Criterios de salida:
 - Fecha: `2026-07-25`, hardening de autorización y errores en soporte.
 - Coverage antes: `99.27%` statements/lines, `98.04%` functions y `91.93%`
   branches; `218` suites y `1982` tests.
-- Coverage después: `99.27%` statements/lines, `98.04%` functions y `91.96%`
-  branches; `218` suites y `1989` tests.
+- Coverage después: `99.27%` statements/lines, `98.04%` functions y `92.08%`
+  branches; `218` suites y `2000` tests.
 - Archivos foco: `app/actions/support.ts`,
   `app/actions/__tests__/support-actions.test.ts`,
   `app/actions/admin-disputes.ts`,
@@ -3202,7 +3202,7 @@ Criterios de salida:
   Storage y RPC no se filtran al cliente; filtros admin inválidos y rutas de
   adjuntos no textuales se rechazan sin lanzar excepciones; el resumen JSON de
   coverage vuelve a ser global y reproducible.
-- Verificación: suite web `218/1989` verde, coverage global verde, lint,
+- Verificación: suite web `218/2000` verde, coverage global verde, lint,
   typecheck y `git diff --check` verdes.
 - Riesgos abiertos: contratos financieros reales contra staging, fixture AAL2,
   smoke E2E en CI y ramas B1 de `admin-issues`, `admin-disputes` y recovery.
