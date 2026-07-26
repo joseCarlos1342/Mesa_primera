@@ -21,6 +21,7 @@
     "dev:game": "pnpm --filter game-server dev",
     "test": "pnpm --filter web exec jest --ci --forceExit && pnpm --filter game-server test",
     "test:coverage": "pnpm --filter web exec jest --coverage --ci --forceExit && pnpm --filter game-server test:coverage",
+    "test:e2e": "pnpm --filter web exec playwright test --config ../../playwright.config.ts",
     "prepare": "husky"
   },
   "pnpm": {

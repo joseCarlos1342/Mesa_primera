@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { requireE2EAdminCredentials } from './credentials';
 
 /**
  * E2E tests: Admin Security Hardening.
@@ -14,19 +15,20 @@ import { test, expect, Page } from '@playwright/test';
  * Requirements: Supabase local running, web dev server on :3000.
  */
 
-const BASE = 'http://localhost:3000';
+const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
 async function loginAsAdmin(page: Page) {
+  const { email, password } = requireE2EAdminCredentials();
   await page.goto(`${BASE}/login/admin`);
-  await page.fill('input[name="email"]', 'gomezjose7042@gmail.com');
-  await page.fill('input[name="password"]', 'Bvf79h1010152653');
+  await page.fill('input[name="email"]', email);
+  await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
   // Admin login should redirect to MFA page or admin dashboard
-  await page.waitForURL(/\/(admin|login\/admin\/mfa)/, { timeout: 15_000 });
+  await page.waitForURL(/\/admin(?:\/|$)/, { timeout: 15_000 });
 }
 
 /* ------------------------------------------------------------------ */
@@ -34,6 +36,10 @@ async function loginAsAdmin(page: Page) {
 /* ------------------------------------------------------------------ */
 
 test.describe('Admin Password Recovery', () => {
+  test.beforeAll(() => {
+    requireE2EAdminCredentials();
+  });
+
   test('recovery page renders and accepts email submission', async ({ page }) => {
     await page.goto(`${BASE}/login/admin/recovery`);
 
@@ -46,7 +52,7 @@ test.describe('Admin Password Recovery', () => {
     await expect(backLink).toHaveCount(0);
 
     // Submit with a valid admin email
-    await page.fill('input[name="email"]', 'gomezjose7042@gmail.com');
+    await page.fill('input[name="email"]', requireE2EAdminCredentials().email);
     await page.click('button[type="submit"]');
 
     // Should show either success or a backend error message, but not leave the flow hanging
@@ -218,7 +224,9 @@ test.describe('Admin Security Panel', () => {
 /* ------------------------------------------------------------------ */
 
 test.describe('Admin Security Panel Structure', () => {
-  test.skip(true, 'Requires fully authenticated admin with MFA — run manually');
+  test.beforeAll(() => {
+    requireE2EAdminCredentials();
+  });
 
   test('panel renders all 5 security sections', async ({ page }) => {
     // This test requires a fully authenticated admin session with AAL2
