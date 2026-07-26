@@ -1,6 +1,7 @@
 import { acknowledgeRecoveryIncident, closeRecoveryIncident, getAdminRecoveryIncidentExport, getAdminRecoveryIncidentPage, getAdminRecoveryIncidents, getAdminRecoveryRefunds, reconcileRecoveryRefund, type RecoveryIncidentFilters } from '../admin-recovery'
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkRateLimit } from '@/utils/redis'
 
 jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
@@ -8,6 +9,10 @@ jest.mock('@/utils/supabase/server', () => ({
 
 jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
+}))
+
+jest.mock('@/utils/redis', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ success: true }),
 }))
 
 const adminUser = { id: 'admin-1' }
@@ -108,6 +113,13 @@ describe('getAdminRecoveryIncidents', () => {
 
     await expect(getAdminRecoveryIncidents()).rejects.toThrow('No se pudo cargar el historial de recuperación')
   })
+
+  it('devuelve una lista vacía cuando la RPC no devuelve filas', async () => {
+    const supabase = buildSupabase({ rpcResult: { data: null, error: null } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getAdminRecoveryIncidents()).resolves.toEqual([])
+  })
 })
 
 describe('getAdminRecoveryIncidentPage', () => {
@@ -197,6 +209,21 @@ describe('getAdminRecoveryIncidentPage', () => {
     expect(supabase.rpc).toHaveBeenCalledWith('list_admin_recovery_incidents_v2', expect.objectContaining({
       p_cursor_detected_at: '2026-07-18T04:00:00.000+00:00',
     }))
+  })
+
+  it('falla de forma segura si la RPC paginada devuelve un error', async () => {
+    const supabase = buildSupabase({ rpcResult: { data: null, error: { message: 'detalle interno' } } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getAdminRecoveryIncidentPage()).rejects.toThrow('No se pudo cargar el historial de recuperación')
+  })
+
+  it('devuelve una página vacía sin consultar reconocimientos', async () => {
+    const supabase = buildSupabase({ rpcResult: { data: null, error: null } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getAdminRecoveryIncidentPage()).resolves.toEqual({ incidents: [], total: 0, nextCursor: null })
+    expect(supabase.from).toHaveBeenCalledTimes(1)
   })
 
   it('conserva el total filtrado y genera el cursor desde la última fila visible', async () => {
@@ -338,6 +365,21 @@ describe('getAdminRecoveryIncidentExport', () => {
     await expect(getAdminRecoveryIncidentExport()).rejects.toThrow('No se pudo exportar el historial de recuperación')
   })
 
+  it('rechaza filtros de exportación inválidos antes de autenticar', async () => {
+    await expect(getAdminRecoveryIncidentExport({ cursor: {
+      detectedAt: '2026-07-18T04:00:00.000+00:00',
+      gameId: '00000000-0000-4000-8000-000000000110',
+    } } as unknown as Omit<RecoveryIncidentFilters, 'cursor'>)).rejects.toThrow('Filtros de recuperación inválidos')
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('devuelve una exportación vacía cuando la RPC no devuelve filas', async () => {
+    const supabase = buildSupabase({ rpcResult: { data: null, error: null } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getAdminRecoveryIncidentExport()).resolves.toEqual([])
+  })
+
   it('exige acotar filtros cuando la exportación supera el máximo seguro', async () => {
     const row = {
       game_id: 'game-1',
@@ -428,6 +470,31 @@ describe('reconcileRecoveryRefund', () => {
       reason: 'Validación operativa de refund pendiente tras caída.',
     })).resolves.toEqual({ error: 'No fue posible reconciliar el refund' })
   })
+
+  it('rechaza la conciliación cuando el rate limit está agotado', async () => {
+    const supabase = buildSupabase()
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+    ;(checkRateLimit as jest.Mock).mockResolvedValueOnce({ success: false })
+
+    await expect(reconcileRecoveryRefund({
+      refundId: '00000000-0000-4000-8000-000000000121',
+      reason: 'Validación operativa de refund pendiente tras caída.',
+    })).resolves.toEqual({ error: 'Demasiados intentos de conciliación. Inténtalo más tarde.' })
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('rechaza respuestas exitosas sin identificadores financieros completos', async () => {
+    const supabase = buildSupabase({
+      rpcResult: { data: { success: true, refund_id: 'refund-1', already_reconciled: false }, error: null },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(reconcileRecoveryRefund({
+      refundId: '00000000-0000-4000-8000-000000000121',
+      reason: 'Validación operativa de refund pendiente tras caída.',
+    })).resolves.toEqual({ error: 'No fue posible reconciliar el refund' })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
 })
 
 describe('acknowledgeRecoveryIncident', () => {
@@ -478,6 +545,28 @@ describe('acknowledgeRecoveryIncident', () => {
       error: 'No fue posible reconocer el incidente',
     })
   })
+
+  it('devuelve un error seguro si la RPC de reconocimiento falla', async () => {
+    const supabase = buildSupabase({ rpcResult: { data: null, error: { message: 'detalle interno' } } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(acknowledgeRecoveryIncident('00000000-0000-4000-8000-000000000131')).resolves.toEqual({
+      error: 'No fue posible reconocer el incidente',
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rechaza respuestas exitosas sin timestamp de reconocimiento', async () => {
+    const supabase = buildSupabase({
+      rpcResult: { data: { success: true, incident_id: 'incident-1', already_acknowledged: false }, error: null },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(acknowledgeRecoveryIncident('00000000-0000-4000-8000-000000000131')).resolves.toEqual({
+      error: 'No fue posible reconocer el incidente',
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
 })
 
 describe('getAdminRecoveryRefunds', () => {
@@ -524,6 +613,13 @@ describe('getAdminRecoveryRefunds', () => {
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
     await expect(getAdminRecoveryRefunds('00000000-0000-4000-8000-000000000140')).rejects.toThrow('No se pudo cargar el detalle de refunds')
+  })
+
+  it('devuelve una lista vacía cuando la RPC de refunds no devuelve filas', async () => {
+    const supabase = buildSupabase({ rpcResult: { data: null, error: null } })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getAdminRecoveryRefunds('00000000-0000-4000-8000-000000000140')).resolves.toEqual([])
   })
 })
 
@@ -597,5 +693,19 @@ describe('closeRecoveryIncident', () => {
       reason: 'Cierre tras validar refunds y evidencia terminal.',
       confirmed: true,
     })).resolves.toEqual({ error: 'No fue posible cerrar el incidente' })
+  })
+
+  it('rechaza respuestas exitosas sin timestamp de cierre', async () => {
+    const supabase = buildSupabase({
+      rpcResult: { data: { success: true, incident_id: 'incident-1', already_closed: false }, error: null },
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(closeRecoveryIncident({
+      incidentId: '00000000-0000-4000-8000-000000000150',
+      reason: 'Cierre tras validar refunds y evidencia terminal.',
+      confirmed: true,
+    })).resolves.toEqual({ error: 'No fue posible cerrar el incidente' })
+    expect(revalidatePath).not.toHaveBeenCalled()
   })
 })
