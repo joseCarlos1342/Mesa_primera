@@ -41,6 +41,12 @@ const investigationSchema = z.object({
   game_id: z.uuid('La partida no es válida').optional(),
   room_id: z.string().trim().max(160).optional(),
 })
+const disputeListFiltersSchema = z.object({
+  status: z.enum(['open', 'investigating', 'resolved', 'dismissed']).optional(),
+  priority: z.enum(DISPUTE_PRIORITIES).optional(),
+  investigationType: z.enum(['game_integrity', 'collusion', 'fraud', 'bonus_abuse', 'conduct']).optional(),
+  limit: z.number().int().positive().max(100).optional(),
+}).strict()
 
 type RpcMutationResult = {
   success?: boolean
@@ -244,6 +250,9 @@ export async function cancelDisputeCompensation(
   disputeId: string,
   reason: string
 ): Promise<ActionResult<{ id: string; status: string }>> {
+  if (typeof reason !== 'string') {
+    return { error: 'El motivo de cancelación debe tener entre 10 y 500 caracteres' }
+  }
   const trimmedReason = reason.trim()
   if (trimmedReason.length < 10 || trimmedReason.length > 500) {
     return { error: 'El motivo de cancelación debe tener entre 10 y 500 caracteres' }
@@ -267,6 +276,7 @@ export async function dismissDispute(
   disputeId: string,
   reason: string
 ): Promise<ActionResult<{ id: string; status: string }>> {
+  if (typeof reason !== 'string') return { error: 'La razón de descarte es obligatoria' }
   if (!reason.trim()) return { error: 'La razón de descarte es obligatoria' }
 
   const { supabase, adminId, error: authError } = await verifyAdmin()
@@ -317,6 +327,12 @@ export async function listDisputes(
     limit?: number
   } = 50
 ): Promise<ActionResult<AdminDisputeCase[]>> {
+  if (typeof filters !== 'number') {
+    const parsedFilters = disputeListFiltersSchema.safeParse(filters)
+    if (!parsedFilters.success) return { error: 'Filtros de investigaciones inválidos' }
+    filters = parsedFilters.data
+  }
+
   const { supabase, error: authError } = await verifyAdmin()
   if (authError || !supabase) return { error: authError || 'No autenticado' }
 
