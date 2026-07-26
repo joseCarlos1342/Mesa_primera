@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } from 'vitest';
 import { ColyseusTestServer, boot } from '@colyseus/testing';
 import { CloseCode } from '@colyseus/sdk';
 import { MesaRoom, type RecoverySnapshotV1 } from '../MesaRoom';
@@ -4788,6 +4788,20 @@ describe('MesaRoom via Colyseus Testing', () => {
   // ───────────────────────────────────────────────────────────
 
   describe('admin:mute', () => {
+    const originalRedisUrl = process.env.REDIS_URL;
+
+    beforeEach(() => {
+      process.env.REDIS_URL = 'redis://test';
+    });
+
+    afterEach(() => {
+      if (originalRedisUrl === undefined) {
+        delete process.env.REDIS_URL;
+      } else {
+        process.env.REDIS_URL = originalRedisUrl;
+      }
+    });
+
     it('sends admin:muted message to targeted player', async () => {
       const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-mute-1' });
 
