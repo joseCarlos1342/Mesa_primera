@@ -5,10 +5,15 @@ SET LOCAL ROLE postgres;
 GRANT USAGE ON SCHEMA extensions TO PUBLIC;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(8);
+SELECT plan(9);
 
 SELECT ok(
-  (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.support_attachments'::regclass),
+  to_regclass('public.support_attachments') IS NOT NULL,
+  'La tabla de metadatos de adjuntos existe'
+);
+
+SELECT ok(
+  COALESCE((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.support_attachments')), false),
   'Los metadatos de adjuntos tienen RLS habilitado'
 );
 
