@@ -9,6 +9,7 @@ const createJestConfig = nextJest({
 /** @type {import('jest').Config} */
 const config = {
   coverageProvider: 'v8',
+  coverageReporters: ['text', 'json', 'json-summary', 'lcov'],
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
