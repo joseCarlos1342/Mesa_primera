@@ -216,6 +216,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 | `notifications` | — | ✅ | — | — | Solo inserción masiva (broadcast) |
 | `site_settings` | ✅ | — | ✅ | — | Edición del reglamento |
 | `support_messages` | ✅ Todos | ✅ | ✅ (`is_resolved`) | — | Chat de soporte bidireccional |
+| `support_attachments` | ✅ Propios + admin | ✅ Propios/admin en tickets abiertos | ❌ | ❌ | Metadatos append-only; storage privado por prefijo de usuario |
 | `server_alerts` | ✅ Todos | — | ✅ (status) | — | Resolución de alertas del sistema |
 
 ### Lectura importante sobre tablas sin política admin
@@ -244,6 +245,14 @@ No se crea ninguna política SELECT para el admin en:
 - `game_actions`: registro acción-por-acción de lo que hace cada jugador durante una mano.
 
 Resultado: cualquier consulta del SDK cliente con sesión admin devuelve `[]` sin error.
+
+### Adjuntos de soporte
+
+`support_attachments` mantiene únicamente metadatos del archivo y es
+append-only: no se permiten `UPDATE` ni `DELETE`. Los jugadores solo pueden
+leer o insertar adjuntos de sus propios tickets no finalizados; el admin puede
+leer e insertar en tickets abiertos. El bucket privado `support-attachments`
+aplica la misma separación mediante el primer segmento de `storage.objects.name`.
 
 #### Nivel 2 — Servidor de Juego (Colyseus)
 
@@ -528,13 +537,23 @@ Si el rol temporal remoto `cli_login_postgres` falla, configurar `SUPABASE_DB_PA
 
 **Descripción:** PostgreSQL concede `EXECUTE` a `PUBLIC` para funciones nuevas si no se revoca explícitamente. Eso hacía que varias RPCs `SECURITY DEFINER` aparecieran como invocables por `anon` aunque tuvieran guard interno.
 
-**Corrección aplicada:** Migración `20260528005000_revoke_anon_rpc_surface.sql`.
+**Correcciones aplicadas:** Migraciones `20260528005000_revoke_anon_rpc_surface.sql` y
+`20260726010001_harden_anon_security_definer_grants.sql`.
 
 - Se revoca `EXECUTE` por defecto en funciones futuras del schema `public`.
 - Se revoca `PUBLIC`/`anon` de las RPCs de replay, admin, soporte, sanciones, bonus, transferencias y agregados.
 - Se re-concede `authenticated` solo a RPCs usadas por la app con sesión.
 - Se re-concede `service_role` solo a primitivas de game-server/finanzas.
 - Se mantienen como excepción pre-auth mínima `check_phone_exists`, `user_has_pin`, `is_device_trusted` y `lookup_passkey_device` porque se usan antes de iniciar sesión.
+- Se eliminan grants heredados de `anon` en consultas admin/replay, soporte,
+  recovery, checkpoints, ajustes y triggers de notificaciones.
+
+El advisor mantiene advertencias esperadas para esas cuatro RPCs pre-auth y
+para funciones `SECURITY DEFINER` que requieren sesión autenticada y validan el
+rol dentro de la propia función. También reporta `uuid_generate_v4`/`pg_trgm`
+por pertenecer a extensiones existentes. La protección de contraseñas filtradas
+queda limitada por el plan FREE de Supabase (el dashboard la marca disponible
+solo en Pro o superior).
 
 ---
 
