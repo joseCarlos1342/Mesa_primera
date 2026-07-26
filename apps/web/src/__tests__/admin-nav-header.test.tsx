@@ -15,6 +15,16 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }))
 
+jest.mock('@/utils/supabase/server', () => ({
+  createClient: jest.fn().mockResolvedValue({
+    auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null } }) },
+  }),
+}))
+
+jest.mock('@/components/OneSignalPushOptIn', () => ({
+  OneSignalPushOptIn: () => null,
+}))
+
 // ────────────────────────────────────────────────
 // 1. Admin layout — clickable home title
 // ────────────────────────────────────────────────
@@ -28,7 +38,7 @@ describe('Admin layout header home link', () => {
     const { default: AdminLayout } = await import(
       '@/app/(admin)/admin/layout'
     )
-    render(<AdminLayout><p>dashboard</p></AdminLayout>)
+    render(await AdminLayout({ children: <p>dashboard</p> }))
     const link = screen.getByRole('link', { name: /^admin$/i })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute('href', '/admin')
@@ -38,7 +48,7 @@ describe('Admin layout header home link', () => {
     const { default: AdminLayout } = await import(
       '@/app/(admin)/admin/layout'
     )
-    render(<AdminLayout><p>dashboard</p></AdminLayout>)
+    render(await AdminLayout({ children: <p>dashboard</p> }))
 
     const broadcastLink = screen.getByRole('link', { name: /nuevo broadcast/i })
     expect(broadcastLink).toBeInTheDocument()
@@ -49,7 +59,7 @@ describe('Admin layout header home link', () => {
     const { default: AdminLayout } = await import(
       '@/app/(admin)/admin/layout'
     )
-    render(<AdminLayout><p>dashboard</p></AdminLayout>)
+    render(await AdminLayout({ children: <p>dashboard</p> }))
 
     const broadcastLink = screen.getByRole('link', { name: /nuevo broadcast/i })
     const signOutButton = screen.getByRole('button', { name: /cerrar sesión/i })
@@ -66,7 +76,7 @@ describe('Admin layout header home link', () => {
     const { default: AdminLayout } = await import(
       '@/app/(admin)/admin/layout'
     )
-    render(<AdminLayout><p>dashboard</p></AdminLayout>)
+    render(await AdminLayout({ children: <p>dashboard</p> }))
 
     expect(screen.queryByRole('link', { name: /nuevo broadcast/i })).not.toBeInTheDocument()
   })
@@ -77,7 +87,7 @@ describe('Admin layout header home link', () => {
     const { default: AdminLayout } = await import(
       '@/app/(admin)/admin/layout'
     )
-    render(<AdminLayout><p>detalle</p></AdminLayout>)
+    render(await AdminLayout({ children: <p>detalle</p> }))
 
     const backLink = screen.getByRole('link', { name: /volver al libro mayor/i })
     const signOutButton = screen.getByRole('button', { name: /cerrar sesión/i })
@@ -97,7 +107,7 @@ describe('Admin layout header home link', () => {
     const { default: AdminLayout } = await import(
       '@/app/(admin)/admin/layout'
     )
-    render(<AdminLayout><p>historial</p></AdminLayout>)
+    render(await AdminLayout({ children: <p>historial</p> }))
 
     const backLink = screen.getByRole('link', { name: /volver a broadcast/i })
     const signOutButton = screen.getByRole('button', { name: /cerrar sesión/i })

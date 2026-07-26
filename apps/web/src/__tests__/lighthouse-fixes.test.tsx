@@ -329,8 +329,8 @@ describe('Stats page server-side rendering', () => {
       path.resolve(__dirname, '../app/(player)/stats/page.tsx'),
       'utf-8'
     )
-    expect(source).toMatch(/getMyStats\(\)/)
-    expect(source).toMatch(/getLeaderboard/)
+    expect(source).toMatch(/<StatsData\s*\/>/)
+    expect(source).toMatch(/<Suspense/)
   })
 
   it('StatsShell renders header instantly without data dependency', () => {
