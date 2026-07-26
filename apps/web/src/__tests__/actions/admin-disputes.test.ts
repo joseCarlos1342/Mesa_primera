@@ -158,10 +158,24 @@ describe('Admin Disputes Server Actions', () => {
       expect(createClient).not.toHaveBeenCalled()
     })
 
+    it('rechaza una razón no textual sin lanzar una excepción', async () => {
+      await expect(dismissDispute('d-1', null as unknown as string)).resolves.toEqual({
+        error: 'La razón de descarte es obligatoria',
+      })
+      expect(createClient).not.toHaveBeenCalled()
+    })
+
     it('propaga errores al descartar una disputa', async () => {
       mockSupabase.rpc.mockResolvedValue({ data: null, error: { message: 'No se pudo descartar' } })
 
       await expect(dismissDispute('d-1', 'Falsa alarma')).resolves.toEqual({ error: 'No fue posible descartar la investigación' })
+    })
+
+    it('rechaza una razón no textual al cancelar compensación sin lanzar una excepción', async () => {
+      await expect(cancelDisputeCompensation('d-1', null as unknown as string)).resolves.toEqual({
+        error: 'El motivo de cancelación debe tener entre 10 y 500 caracteres',
+      })
+      expect(createClient).not.toHaveBeenCalled()
     })
   })
 
@@ -340,6 +354,13 @@ describe('Admin Disputes Server Actions', () => {
       expect(builder.eq).toHaveBeenNthCalledWith(1, 'status', 'investigating')
       expect(builder.eq).toHaveBeenNthCalledWith(2, 'priority', 'high')
       expect(builder.eq).toHaveBeenNthCalledWith(3, 'investigation_type', 'collusion')
+    })
+
+    it('rechaza filtros de investigación malformados antes de consultar la base', async () => {
+      await expect(listDisputes({ status: 'active' } as never)).resolves.toEqual({
+        error: 'Filtros de investigaciones inválidos',
+      })
+      expect(createClient).not.toHaveBeenCalled()
     })
   })
 
