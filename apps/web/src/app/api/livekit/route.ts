@@ -57,14 +57,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!process.env.REDIS_URL?.trim()) {
+      return NextResponse.json({ error: 'No se pudo verificar el estado de moderación.' }, { status: 503 });
+    }
+
     let isMuted = false;
-    if (process.env.REDIS_URL) {
-      try {
-        isMuted = Boolean(await redis.get(`voice-muted:${roomName}:${user.id}`));
-      } catch (error) {
-        console.error('[LiveKit] No se pudo verificar el mute de voz:', error instanceof Error ? error.name : 'unknown');
-        return NextResponse.json({ error: 'No se pudo verificar el estado de moderación.' }, { status: 503 });
-      }
+    try {
+      isMuted = Boolean(await redis.get(`voice-muted:${roomName}:${user.id}`));
+    } catch (error) {
+      console.error('[LiveKit] No se pudo verificar el mute de voz:', error instanceof Error ? error.name : 'unknown');
+      return NextResponse.json({ error: 'No se pudo verificar el estado de moderación.' }, { status: 503 });
     }
 
     const at = new AccessToken(apiKey, apiSecret, {

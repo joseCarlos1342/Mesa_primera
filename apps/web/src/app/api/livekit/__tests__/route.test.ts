@@ -49,6 +49,7 @@ describe('POST /api/livekit', () => {
       LIVEKIT_API_KEY: 'api-key',
       LIVEKIT_API_SECRET: 'api-secret',
       LIVEKIT_URL: 'wss://voice.example.test',
+      REDIS_URL: 'redis://voice.example.test',
     }
   })
 
@@ -104,6 +105,36 @@ describe('POST /api/livekit', () => {
     await POST(request as any)
 
     expect(addGrant).toHaveBeenCalledWith({ roomJoin: true, room: 'mesa-1', canPublish: false })
+  })
+
+  it('falla cerrado si Redis no está configurado', async () => {
+    delete process.env.REDIS_URL
+    const request = new Request('https://mesa.test/api/livekit', {
+      method: 'POST',
+      body: JSON.stringify({ room: 'mesa-1' }),
+    })
+
+    const response = await POST(request as any)
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(body).toEqual({ error: 'No se pudo verificar el estado de moderación.' })
+    expect(AccessToken).not.toHaveBeenCalled()
+  })
+
+  it('falla cerrado si Redis rechaza la consulta de moderación', async () => {
+    mockRedisGet.mockRejectedValueOnce(new Error('Redis unavailable'))
+    const request = new Request('https://mesa.test/api/livekit', {
+      method: 'POST',
+      body: JSON.stringify({ room: 'mesa-1' }),
+    })
+
+    const response = await POST(request as any)
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(body).toEqual({ error: 'No se pudo verificar el estado de moderación.' })
+    expect(AccessToken).not.toHaveBeenCalled()
   })
 
   it('rechaza nombres de sala invalidos sin usar fallback permisivo', async () => {
