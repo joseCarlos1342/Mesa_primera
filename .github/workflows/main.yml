@@ -41,6 +41,8 @@ jobs:
         run: pnpm exec tsc --noEmit -p apps/web/tsconfig.json
       - name: Typecheck game-server
         run: pnpm exec tsc --noEmit -p apps/game-server/tsconfig.json
+      - name: Validate Playwright discovery
+        run: pnpm test:e2e --list
       - name: Web coverage gate
         run: pnpm --filter web test:coverage
       - name: Game server coverage gate

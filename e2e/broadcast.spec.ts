@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { requireE2EAdminCredentials, requireE2EPlayerCredentials } from './credentials';
 
 /**
  * E2E test: Admin sends a global broadcast → player sees the GSAP banner.
@@ -7,20 +8,22 @@ import { test, expect, Page } from '@playwright/test';
  * Requires: Supabase local running, game-server running, web dev server.
  */
 
-const BASE = 'http://localhost:3000';
+const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000';
 
 async function loginAsAdmin(page: Page) {
+  const { email, password } = requireE2EAdminCredentials();
   await page.goto(`${BASE}/login/admin`);
-  await page.fill('input[type="email"], input[name="email"]', 'gomezjose7042@gmail.com');
-  await page.fill('input[type="password"], input[name="password"]', 'Bvf79h1010152653');
+  await page.fill('input[type="email"], input[name="email"]', email);
+  await page.fill('input[type="password"], input[name="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/admin/, { timeout: 15_000 });
+  await page.waitForURL(/\/admin(?:\/|$)/, { timeout: 15_000 });
 }
 
 async function loginAsPlayer(page: Page) {
+  const { phone, pin } = requireE2EPlayerCredentials();
   await page.goto(`${BASE}/login`);
   // Phone login: enter phone number
-  await page.fill('input[type="tel"], input[name="phone"]', '0000000002');
+  await page.fill('input[type="tel"], input[name="phone"]', phone);
   // Submit phone to get OTP
   const submitBtn = page.locator('button[type="submit"]');
   await submitBtn.click();
@@ -37,7 +40,7 @@ async function loginAsPlayer(page: Page) {
     }
   } else {
     // Single input for the full code
-    await otpInputs.first().fill('123456');
+    await otpInputs.first().fill(pin);
   }
   // Submit OTP
   const verifyBtn = page.locator('button:has-text("Verificar"), button:has-text("Confirmar"), button[type="submit"]');
@@ -46,6 +49,11 @@ async function loginAsPlayer(page: Page) {
 }
 
 test.describe('Broadcast System E2E', () => {
+  test.beforeAll(() => {
+    requireE2EAdminCredentials();
+    requireE2EPlayerCredentials();
+  });
+
   test('Admin sends broadcast → player sees banner', async ({ browser }) => {
     // Create two independent browser contexts
     const adminContext = await browser.newContext();

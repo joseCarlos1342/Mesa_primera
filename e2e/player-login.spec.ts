@@ -1,7 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-
-const PLAYER_PHONE = process.env.E2E_PLAYER_PHONE ?? '3000000000'
-const PLAYER_PIN = process.env.E2E_PLAYER_PIN ?? '123456'
+import { requireE2EPlayerCredentials } from './credentials'
 
 async function injectTurnstileToken(page: Page, token = 'e2e-turnstile-token') {
   await page.locator('form').evaluate((form, value) => {
@@ -14,27 +12,29 @@ async function injectTurnstileToken(page: Page, token = 'e2e-turnstile-token') {
 }
 
 async function fillPlayerLogin(page: Page) {
+  const { phone, pin } = requireE2EPlayerCredentials()
   await page.goto('/login/player')
   await expect(page.getByRole('heading', { name: 'Bienvenido' })).toBeVisible()
 
-  await page.getByPlaceholder('3001234567').fill(PLAYER_PHONE)
+  await page.getByPlaceholder('3001234567').fill(phone)
   await page.getByPlaceholder('3001234567').blur()
 
   const pinInput = page.locator('input[name="pin"]')
   await expect(pinInput).toBeVisible()
-  await pinInput.fill(PLAYER_PIN)
+  await pinInput.fill(pin)
 
   await injectTurnstileToken(page)
 }
 
 test.describe('Player Login Journey', () => {
   test('login exitoso setea cookies y navega al dashboard', async ({ page, context, baseURL }) => {
+    const { trustedDeviceId } = requireE2EPlayerCredentials()
     const targetHost = new URL(baseURL ?? 'http://127.0.0.1:3000').hostname
 
     await context.addCookies([
       {
         name: 'device_trusted_id',
-        value: process.env.E2E_TRUSTED_DEVICE_ID ?? 'trusted-device-e2e',
+        value: trustedDeviceId,
         domain: targetHost,
         path: '/',
         httpOnly: true,
@@ -59,8 +59,9 @@ test.describe('Player Login Journey', () => {
   })
 
   test('credenciales inválidas mantienen al usuario en login con mensaje accionable', async ({ page }) => {
+    const { phone } = requireE2EPlayerCredentials()
     await page.goto('/login/player')
-    await page.getByPlaceholder('3001234567').fill(PLAYER_PHONE)
+    await page.getByPlaceholder('3001234567').fill(phone)
     await page.getByPlaceholder('3001234567').blur()
     await page.locator('input[name="pin"]').fill('000000')
     await injectTurnstileToken(page)
