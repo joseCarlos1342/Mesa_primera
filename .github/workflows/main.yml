@@ -24,13 +24,13 @@ jobs:
       NEXT_PUBLIC_SOCKET_URL: http://localhost:2567
       TURNSTILE_SECRET_KEY: ci-turnstile-secret
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 2
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           run_install: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: "pnpm"
@@ -50,14 +50,14 @@ jobs:
       - name: Build web
         run: pnpm --filter web build
       - name: Upload web coverage
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('apps/web/coverage/**') != ''
+        uses: actions/upload-artifact@v7
         with:
           name: web-coverage
           path: apps/web/coverage
       - name: Upload game-server coverage
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('apps/game-server/coverage/**') != ''
+        uses: actions/upload-artifact@v7
         with:
           name: game-server-coverage
           path: apps/game-server/coverage
