@@ -46,6 +46,16 @@ pnpm exec supabase gen types typescript --linked > apps/web/src/types/supabase.t
 
 # Mesa Primera - Reglas globales (nucleo)
 
+## Contexto del entorno remoto actual
+- El proyecto remoto de Supabase `mesa-primera` usa la rama `main`, que el
+  dashboard puede mostrar con la etiqueta `PRODUCTION`, pero actualmente se
+  utiliza como entorno de desarrollo y promoción.
+- La publicación online sirve principalmente la landing; el juego todavía no
+  está terminado ni en uso operativo.
+- No interpretar la etiqueta `PRODUCTION` del dashboard como producción activa
+  del producto. Aun así, mantener backups, revisar `dry-run` y evitar cambios
+  destructivos innecesarios.
+
 > Este archivo es el nucleo minimo. El detalle vive en `.github/instructions/*.instructions.md`
 > y se carga automaticamente cuando se trabaja en cada area (segun `applyTo`).
 > No dupliques contenido aqui: si una regla aplica solo a un dominio, va al instruction file correspondiente.
