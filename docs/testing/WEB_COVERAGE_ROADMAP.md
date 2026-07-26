@@ -8,23 +8,57 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 
 ## Estado Actual Medido
 
-Fecha de referencia: 2026-07-19. Medicion ejecutada localmente sobre `apps/web` con `pnpm --filter web test:coverage`.
+> **Fuente de verdad operativa:** este bloque debe actualizarse con una corrida
+> completa asociada a un commit SHA. Los checkpoints históricos de este archivo
+> no sustituyen una medición reproducible.
 
-Cobertura actual de `apps/web`:
+Fecha de referencia documentada: `2026-07-25` (Checkpoint 163).
+
+Cobertura vigente conocida de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.57%` |
-| Lines | `99.57%` |
-| Functions | `98.03%` |
-| Branches | `91.67%` |
+| Statements | `99.27%` |
+| Lines | `99.27%` |
+| Functions | `98.04%` |
+| Branches | `91.96%` |
 
 Resultado de la corrida:
 
 - `218` suites en verde.
-- `1952` tests pasando.
-- La suite actual supera la meta estratégica en statements, lines y functions. El gap pendiente se concentra exclusivamente en branches con comportamiento real, especialmente acciones admin, auth/security, infraestructura Supabase y estados UI.
-- Ultimo reporte completo revisado por OpenCode: corrida local verde de `pnpm --filter web test:coverage` del 2026-07-19; el checkpoint 152 conserva métricas y conteos reproducibles sin depender de rutas locales efímeras.
+- `1989` tests pasando en la última verificación documentada.
+- La suite supera la meta estratégica en statements, lines y functions, pero
+  functions solo tiene `0.04` puntos de margen y branches queda `6.07` puntos
+  por debajo del objetivo final.
+- No se debe afirmar cobertura global actualizada sin guardar la corrida
+  asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
+  es una fuente global suficiente.
+- La corrida del Checkpoint 163 genera `coverage-summary.json` global con
+  `41119` statements, `1176` funciones y `7493` branches.
+
+### Lectura de la deuda restante
+
+La cobertura global tiene `602` ramas faltantes sobre `7480` conocidas. El
+próximo objetivo no es perseguir `98%` con fallbacks imposibles, sino clasificar
+cada rama como:
+
+- `B1`: comportamiento real alcanzable y de riesgo;
+- `B2`: defensa legítima de bajo riesgo;
+- `B3`: código muerto o redundante que conviene eliminar;
+- `B4`: limitación del entorno de test que requiere un seam o E2E.
+
+Solo las ramas `B1` deben impulsar nuevos tests unitarios por defecto.
+
+### Campaña activa: Confianza Operativa 93.5
+
+1. Contener secretos y hacer que los E2E fallen ante fixtures incompletos.
+2. Crear un baseline único, reproducible y publicado como artifact de CI.
+3. Atacar autorización, recovery, soporte, disputas y LiveKit fail-closed.
+4. Añadir pruebas de protocolo realtime y contratos financieros reales en
+   staging, sin confundir mocks de Supabase con evidencia de atomicidad.
+5. Retirar `--forceExit` cuando la suite no deje handles abiertos.
+6. Elevar el gate de branches solo después de alcanzar margen real sobre el
+   nuevo umbral.
 
 ## Meta Final
 
@@ -155,9 +189,10 @@ Riesgo:
 
 Estado actual:
 
-- `components/game/Lobby.tsx`: `99.71%`, branches `80.51%`, functions `93.33%`.
+- `components/game/Lobby.tsx`: `99.71%`, branches `87.19%`, functions `100%`.
 - `components/game/Board.tsx`: `100%` statements/lines/functions y `97.05%` branches tras hardening de resync, reveal incremental, descarte, apuestas y estados especiales.
-- `app/play/[id]/page.tsx`: `99.30%` statements/lines, `89.25%` branches, `100%` functions; quedan callback de `window.location.reload`, catch defensivo de audio y el retorno de recuperación pendiente vencida.
+- `app/play/[id]/page.tsx`: `99.90%` statements/lines, `90.57%` branches, `100%` functions; queda únicamente el callback de `window.location.reload` en jsdom.
+- `app/(admin)/admin/alerts/page.tsx`: `100%` statements/lines, `92.71%` branches, `90%` functions tras cubrir fallbacks de catálogo, perfiles, estados, acciones y reconciliación realtime.
 
 Riesgo:
 
@@ -223,11 +258,12 @@ Estas areas ya tienen una base razonable sobre la que construir:
 
 Estas zonas no estan "terminadas", pero no son el primer cuello de botella del coverage global.
 
-## Objetivo Intermedio por Fases
+## Objetivo Intermedio por Fases (histórico)
 
-No debemos trabajar solo contra la meta final. Se proponen hitos de madurez:
+Estos hitos describen la evolución histórica del programa; no son el baseline
+operativo vigente. La campaña actual se gobierna por riesgo y ramas absolutas.
 
-| Fase | Objetivo global web | Resultado esperado |
+| Fase histórica | Objetivo global web | Resultado esperado |
 |---|---:|---|
 | Fase 0 | `98.85%` statements/lines, `93.08%` functions y `86.59%` branches actual | baseline real ya medido con `188` suites y `1418` tests |
 | Fase 1 | `98%` statements/lines | recuperado con `app/og-image/route.tsx` sin snapshot visual fragil |
@@ -1228,7 +1264,16 @@ pnpm exec tsc --noEmit -p apps/web/tsconfig.json
 Playwright para journeys criticos:
 
 ```bash
-pnpm --filter web exec playwright test --config "../../playwright.config.ts"
+pnpm test:e2e
+```
+
+Para flujos admin, inyectar credenciales de un proyecto Supabase de staging;
+nunca usar cuentas de producción:
+
+```bash
+E2E_ADMIN_EMAIL=admin-e2e@staging.example.com \
+E2E_ADMIN_PASSWORD='valor-proporcionado-por-ci' \
+pnpm test:e2e --grep 'Admin'
 ```
 
 ## Procedimiento de Trabajo para Cada Lote
@@ -3002,3 +3047,164 @@ Ese lote combina:
 - Resultado de verificación: suite focalizada verde con `36` tests; coverage global web verde con `218` suites y `1952` tests.
 - Progreso contra la meta: branches sube `0.19` puntos hasta `91.67%`; statements y lines suben a `99.57%`.
 - Siguiente lote recomendado: `Lobby.tsx` para recuperar ramas visibles de catálogo realtime y apertura segura, evitando guards internos inaccesibles.
+
+## Checkpoint 153
+
+- Fecha: 2026-07-19, hardening del lobby realtime y apertura de mesas.
+- Coverage antes: `99.57%` statements/lines, `98.03%` functions y `91.67%` branches; `218` suites y `1952` tests.
+- Coverage después: `99.57%` statements/lines, `98.03%` functions y `91.81%` branches; `218` suites y `1957` tests.
+- Archivo cubierto: `components/game/Lobby.tsx` mediante `components/game/__tests__/Lobby.test.tsx`.
+- Riesgos cerrados: cleanup de la sala lobby al desmontar, degradación segura sin usuario o wallet, ocupación con metadata incompleta y bloqueo de doble apertura de placeholder.
+- Resultado de verificación: suite focalizada verde con `29` tests; coverage global web verde con `218` suites y `1957` tests. `Lobby.tsx` queda en `99.71%` statements/lines, `100%` functions y `87.19%` branches.
+- Progreso contra la meta: branches sube `0.14` puntos hasta `91.81%`; el siguiente umbral de `92%` requiere aproximadamente `52` ramas adicionales desde el baseline total.
+
+## Checkpoint 154
+
+- Fecha: 2026-07-19, segunda pasada de recovery y defensas de audio en la sala.
+- Coverage antes: `99.57%` statements/lines, `98.03%` functions y `91.81%` branches; `218` suites y `1957` tests.
+- Coverage después: `99.59%` statements/lines, `98.03%` functions y `91.85%` branches; `218` suites y `1960` tests.
+- Archivo cubierto: `app/play/[id]/page.tsx` mediante `app/play/[id]/__tests__/page.test.tsx`.
+- Riesgos cerrados: recovery pendiente vencida después de fallo del join original, fallback de nombre cuando el jugador de una propuesta no está en el roster y continuidad del countdown cuando Web Audio lanza una excepción.
+- Resultado de verificación: suite focalizada verde con `40` tests; coverage global web verde con `218` suites y `1960` tests. La ruta queda en `99.90%` statements/lines, `100%` functions y `90.57%` branches.
+- Progreso contra la meta: branches sube `0.04` puntos hasta `91.85%`; queda pendiente únicamente el callback de recarga de `window.location` no ejecutable de forma segura en jsdom.
+- Siguiente lote recomendado: `admin/alerts` o `admin/server-log` para continuar con UI operativa sin tocar ledger.
+
+## Checkpoint 155
+
+- Fecha: 2026-07-19, hardening de supervisión de mesas y alertas admin.
+- Coverage antes: `99.59%` statements/lines, `98.03%` functions y `91.85%` branches; `218` suites y `1960` tests.
+- Coverage después: `99.59%` statements/lines, `98.12%` functions y `91.91%` branches; `218` suites y `1972` tests.
+- Archivo cubierto: `app/(admin)/admin/alerts/page.tsx` mediante `app/(admin)/admin/alerts/__tests__/page.test.tsx`.
+- Riesgos cerrados: antigüedad de alertas en días, perfiles inexistentes, estados/razones desconocidos, catálogo de salas sin datos, refresco manual, duplicados y cambios de estado realtime, fallo de audio y descarte sin nota administrativa.
+- Resultado de verificación: suite focalizada verde con `16` tests; coverage global web verde con `218` suites y `1972` tests. La página queda en `100%` statements/lines, `92.71%` branches y `90%` functions.
+- Progreso contra la meta: branches globales quedan en `91.91%`; el siguiente umbral de `92%` queda a `0.09` puntos.
+- Siguiente lote recomendado: `admin/server-log` para continuar con UI operativa y realtime sin tocar ledger.
+
+## Checkpoint 157
+
+- Fecha: 2026-07-19, hardening de supervisión de mesa y moderación admin.
+- Coverage antes: `99.59%` statements/lines, `98.12%` functions y `91.91%` branches; `218` suites y `1975` tests.
+- Coverage después: `99.58%` statements/lines, `98.12%` functions y `91.99%` branches; `218` suites y `1979` tests.
+- Archivo cubierto: `app/(admin)/admin/spectate/[roomId]/page.tsx` mediante `app/(admin)/admin/spectate/[roomId]/__tests__/page.test.tsx`.
+- Riesgos cerrados: kick cancelado, defaults de estado sin acción/dealer/pique, errores de conexión sin mensaje y rechazo de conexión sin error estructurado.
+- Resultado de verificación: suite focalizada verde con `13` tests; coverage global web verde con `218` suites y `1979` tests. La página queda en `99.78%` statements, `84.62%` branches y `93.33%` functions.
+- Progreso contra la meta: branches globales suben `0.08` puntos hasta `91.99%`; el umbral de `92%` queda a `0.01` puntos.
+- Siguiente lote recomendado: cerrar el umbral de `92%` con ramas residuales de UI admin antes de ampliar el alcance.
+
+## Checkpoint 158
+
+- Fecha: 2026-07-19, hardening de autenticación y moderación de voz.
+- Coverage: `99.57%` statements/lines, `98.12%` functions y `92.00%` branches; `218` suites y `1980` tests.
+- Cambios: consumo atómico de tokens de supervisión con `GETDEL`; chequeos de acceso y elegibilidad fail-closed, incluyendo respuestas RPC malformadas; mute reaplicado en joins/reconexiones y bloqueo temprano del control de micrófono.
+- Tests añadidos o actualizados: token atómico, RPC no disponible/malformada, autenticación bloqueada ante outage y mute de voz recibido antes/después del montaje de LiveKit.
+- Verificación: suite web completa verde; suites focales de game-server y VoiceChat verdes; lint, typecheck y diff-check verdes.
+- Riesgos pendientes: el mute todavía necesita enforcement autoritativo en LiveKit y el servidor debe validar la identidad del jugador contra el token de sesión, no confiar solo en `options.userId`.
+- Siguiente lote recomendado: cerrar esos dos límites de autorización antes de considerar la moderación de voz lista para producción.
+
+## Checkpoint 159
+
+- Fecha: 2026-07-19, integración de moderación LiveKit e identidad de jugador.
+- Game-server: `35` suites y `837` tests pasando.
+- Cambios: `RoomServiceClient` silencia las pistas publicadas y revoca `canPublish` del participante; el resultado fallido se informa al admin; las reconexiones reaplican el mute; `onAuth` valida `userId` contra `accessToken` fuera de fixtures de Vitest.
+- Verificación: suite completa del game-server verde; suites web focales, lint, typecheck y diff-check verdes.
+- Riesgo pendiente: un jugador completamente desconectado puede solicitar un nuevo token LiveKit antes de que el estado de mute de la sala se consulte desde el endpoint `/api/livekit`; requiere persistir/consultar el estado de moderación entre procesos.
+
+## Checkpoint 160
+
+- Fecha: 2026-07-19, persistencia compartida del mute de voz.
+- Coverage web: `99.31%` statements/lines, `98.04%` functions y `91.96%` branches; `218` suites y `1981` tests.
+- Cambios: el mute se guarda en Redis con TTL de 2 horas; `/api/livekit` consulta `voice-muted:<room>:<user>` y emite `canPublish: false`; Redis no disponible bloquea la emisión del token en producción.
+- Verificación: suite web completa verde; endpoint LiveKit focal `6` tests verdes; game-server focal `10` tests verdes; lint, typecheck y diff-check verdes.
+- Riesgo pendiente: mantener un flujo explícito de desmute y auditar expiración/limpieza de las claves Redis.
+
+## Checkpoint 161
+
+- Fecha: 2026-07-19, cierre de moderación de voz.
+- Cambios: añadido `admin:unmute`, eliminación de la clave Redis de mute, reactivación de pistas y permiso `canPublish`, estado de moderación enviado al espectador al conectar y controles UI Mute/Unmute.
+- Verificación: web `218` suites / `1981` tests verdes; game-server `37` suites / `843` tests verdes; endpoint focal, lint, typecheck y diff-check verdes.
+- Coverage web vigente: `99.27%` statements/lines, `98.04%` functions y `91.93%` branches.
+- Estado: no quedan acciones de moderación de voz pendientes dentro de este alcance.
+
+## Checkpoint 162
+
+- Fecha: 2026-07-19, corrección de expiración y sincronización del estado de moderación.
+- Redis es ahora autoritativo para reconexiones: al expirar la clave se limpia el estado de sala y se reactiva LiveKit.
+- `admin:moderation-state` se difunde a todos los espectadores; `admin:unmuted` llega también al jugador para reactivar su control local.
+- Sin Redis o sin identidad autenticada, mute/desmute falla cerrado.
+- Verificación final: web `218` suites / `1982` tests; game-server `37` suites / `843` tests; lint, typecheck y diff-check verdes.
+- Estado: no quedan pendientes funcionales de este alcance.
+
+## Checkpoint 156
+
+- Fecha: 2026-07-19, hardening de log de servidor y filtros de supervisión.
+- Coverage antes: `99.59%` statements/lines, `98.12%` functions y `91.91%` branches; `218` suites y `1972` tests.
+- Coverage después: `99.59%` statements/lines, `98.12%` functions y `91.91%` branches; `218` suites y `1975` tests.
+- Archivo cubierto: `app/(admin)/admin/server-log/page.tsx` mediante `app/(admin)/admin/server-log/__tests__/page.test.tsx`.
+- Riesgos cerrados: búsqueda por id/juego/jugador/categoría, fallback de severidad y categoría desconocidas, alertas realtime ya resueltas y filtros de visibilidad.
+- Resultado de verificación: suite focalizada verde con `9` tests; coverage global web verde con `218` suites y `1975` tests. La página queda en `100%` statements/lines, `91.3%` branches y `100%` functions.
+- Progreso contra la meta: se añaden `3` tests netos al baseline global y se mantiene `91.91%` branches; el siguiente lote recomendado es `admin/spectate` o ramas residuales de UI admin.
+
+## Estado Operativo Posterior a Checkpoint 162
+
+El contenido anterior conserva la historia de ejecución del programa. Para
+trabajo nuevo, esta sección prevalece sobre recomendaciones históricas que
+aparezcan antes o después por el orden de incorporación del documento.
+
+### Paquete P0 — Seguridad de E2E
+
+- [x] eliminar credenciales administrativas embebidas de los tests;
+- [x] exigir `E2E_ADMIN_EMAIL` y `E2E_ADMIN_PASSWORD` para flujos admin;
+- [x] unificar el comando `pnpm test:e2e`;
+- [x] validar descubrimiento Playwright desde CI;
+- [ ] conectar fixtures AAL2 de admin contra staging aislado;
+- [ ] ejecutar smoke E2E real en CI.
+
+### Siguiente paquete P1 — Baseline Y Ramas Críticas
+
+Prioridad de implementación:
+
+1. `app/actions/support.ts` y `admin-disputes.ts`;
+2. `app/actions/admin-issues.ts` y `admin-recovery.ts`;
+3. `app/(auth)/auth-actions.ts` y `src/proxy.ts`;
+4. `app/api/livekit/route.ts` con autorización de sala y rate limit;
+5. `components/game/Lobby.tsx` y `app/play/[id]/page.tsx`.
+
+Criterios de salida:
+
+- cada rama B1 queda cubierta por un test semántico;
+- branches globales alcanzan al menos `93.25%` antes de subir el gate;
+- functions mantiene un margen mínimo de `0.15` puntos sobre el gate;
+- no se añaden tests para estados B2/B4 artificiales;
+- la medición final incluye commit SHA, conteos absolutos y artifact CI.
+
+### Riesgos Que Requieren Infraestructura Antes De Implementar
+
+- Las pruebas de atomicidad, idempotencia y concurrencia financiera requieren un
+  proyecto Supabase de staging aislado; los mocks actuales no son evidencia de
+  esas propiedades.
+- Las pruebas de Admin Blindness requieren fixtures de rol admin y participante
+  con políticas RLS reales.
+- La retirada de `--forceExit` requiere primero una corrida con
+  `--detectOpenHandles --runInBand` y corrección de sockets/timers pendientes.
+
+## Checkpoint 163
+
+- Fecha: `2026-07-25`, hardening de autorización y errores en soporte.
+- Coverage antes: `99.27%` statements/lines, `98.04%` functions y `91.93%`
+  branches; `218` suites y `1982` tests.
+- Coverage después: `99.27%` statements/lines, `98.04%` functions y `91.96%`
+  branches; `218` suites y `1989` tests.
+- Archivos foco: `app/actions/support.ts`,
+  `app/actions/__tests__/support-actions.test.ts`,
+  `app/actions/admin-disputes.ts`,
+  `src/__tests__/actions/admin-disputes.test.ts` y `jest.config.mjs`.
+- Riesgos cerrados: `listAllTickets` exige rol admin; errores de Supabase,
+  Storage y RPC no se filtran al cliente; filtros admin inválidos y rutas de
+  adjuntos no textuales se rechazan sin lanzar excepciones; el resumen JSON de
+  coverage vuelve a ser global y reproducible.
+- Verificación: suite web `218/1989` verde, coverage global verde, lint,
+  typecheck y `git diff --check` verdes.
+- Riesgos abiertos: contratos financieros reales contra staging, fixture AAL2,
+  smoke E2E en CI y ramas B1 de `admin-issues`, `admin-disputes` y recovery.
+- Siguiente lote: completar autorización y errores de `admin-disputes` y
+  `admin-recovery` sin tocar todavía el ledger real.
