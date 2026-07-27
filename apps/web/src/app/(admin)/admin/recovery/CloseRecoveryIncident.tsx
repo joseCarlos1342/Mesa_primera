@@ -16,12 +16,16 @@ export function CloseRecoveryIncident({ incidentId }: { incidentId: string }) {
     if (!canClose) return
     setError(null)
     startTransition(async () => {
-      const result = await closeRecoveryIncident({ incidentId, reason: reason.trim(), confirmed })
-      if ('error' in result) {
-        setError(result.error)
-        return
+      try {
+        const result = await closeRecoveryIncident({ incidentId, reason: reason.trim(), confirmed })
+        if ('error' in result) {
+          setError(result.error)
+          return
+        }
+        router.refresh()
+      } catch {
+        setError('No fue posible cerrar el incidente. Inténtalo de nuevo.')
       }
-      router.refresh()
     })
   }
 
