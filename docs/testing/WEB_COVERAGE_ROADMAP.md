@@ -12,33 +12,35 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 > completa asociada a un commit SHA. Los checkpoints históricos de este archivo
 > no sustituyen una medición reproducible.
 
-Fecha de referencia documentada: `2026-07-25` (Checkpoint 163).
+Fecha de referencia documentada: `2026-07-26` (Checkpoint 164).
+Commit de evidencia: `898adfc`.
 
 Cobertura vigente conocida de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.27%` |
-| Lines | `99.27%` |
-| Functions | `98.04%` |
-| Branches | `92.08%` |
+| Statements | `99.61%` |
+| Lines | `99.61%` |
+| Functions | `98.22%` |
+| Branches | `92.10%` |
 
 Resultado de la corrida:
 
-- `218` suites en verde.
-- `2000` tests pasando en la última verificación documentada.
+- `220` suites en verde.
+- `2014` tests pasando en la última verificación documentada.
 - La suite supera la meta estratégica en statements, lines y functions, pero
-  functions solo tiene `0.04` puntos de margen y branches queda `5.92` puntos
+  functions tiene `0.22` puntos de margen y branches queda `5.90` puntos
   por debajo del objetivo final.
 - No se debe afirmar cobertura global actualizada sin guardar la corrida
   asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
   es una fuente global suficiente.
-- La corrida del Checkpoint 163 genera `coverage-summary.json` global con
-  `41119` statements, `1176` funciones y `7504` branches.
+- La corrida del Checkpoint 164 genera `coverage-summary.json` global con
+  `40977` statements, `1183` funciones y `7551` branches; quedan `596` ramas
+  sin cubrir.
 
 ### Lectura de la deuda restante
 
-La cobertura global tiene `594` ramas faltantes sobre `7504` conocidas. El
+La cobertura global tiene `596` ramas faltantes sobre `7550` conocidas. El
 próximo objetivo no es perseguir `98%` con fallbacks imposibles, sino clasificar
 cada rama como:
 
@@ -208,6 +210,12 @@ Estado actual:
 - `NotificationCenter.tsx`: `100%`, ramas `97.18%`, funciones `100%`.
 - `SupportChat.tsx`: `100%` statements/lines, `92.8%` branches y `88.46%` functions; quedan callbacks de adjuntos/navegación y guards estructuralmente inaccesibles de socket/SSR.
 - `components/providers/AppLockProvider.tsx`: `95.92%`, con ramas de browser/session aun pendientes.
+- `components/OneSignalPushOptIn.tsx`: `100%` statements/lines/functions y
+  `93.1%` branches tras cubrir carga diferida del SDK, permisos, suscripción y
+  rechazo de activación sin promesas huérfanas.
+- `app/(admin)/admin/recovery/CloseRecoveryIncident.tsx`: `100%`
+  statements/lines/functions y `91.66%` branches tras cubrir validación,
+  cierre exitoso y error de dominio.
 - Varios hooks estan sobre `88%`, pero branches siguen bajos.
 
 Riesgo:
@@ -3208,3 +3216,25 @@ Criterios de salida:
   smoke E2E en CI y ramas B1 de `admin-issues`, `admin-disputes` y recovery.
 - Siguiente lote: completar autorización y errores de `admin-disputes` y
   `admin-recovery` sin tocar todavía el ledger real.
+
+## Checkpoint 164
+
+- Fecha: `2026-07-26`, cobertura de shell push y cierre operativo de recovery.
+- Commit de evidencia: `898adfc`.
+- Coverage antes: `99.27%` statements/lines, `98.04%` functions y `92.09%`
+  branches; `218` suites y `2002` tests.
+- Coverage después: `99.61%` statements/lines, `98.22%` functions y `92.10%`
+  branches; `220` suites y `2014` tests.
+- Archivos foco: `components/OneSignalPushOptIn.tsx`,
+  `components/__tests__/OneSignalPushOptIn.test.tsx`,
+  `app/(admin)/admin/recovery/CloseRecoveryIncident.tsx` y su suite adyacente.
+- Riesgos cerrados: carga diferida del SDK, ausencia de usuario/app id, script
+  duplicado, permisos push, rechazo de suscripción sin promesa huérfana y
+  validación/error/reintento del cierre irreversible de recovery.
+- Verificación: suite web completa `220/2014`, cobertura global, lint y
+  typecheck verdes; game-server `37/846` y cobertura `91.65/83.16/93.41/93.56`.
+- Riesgos abiertos: ramas B1 de `admin-disputes`, `admin-issues` y recovery;
+  contratos financieros reales contra staging, fixture AAL2 y smoke E2E en CI.
+- Siguiente lote: completar ramas semánticas de `DisputeActions` y
+  `RefundReconciliation`, manteniendo fuera del alcance las escrituras reales
+  del ledger.
