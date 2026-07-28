@@ -12,35 +12,35 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 > completa asociada a un commit SHA. Los checkpoints históricos de este archivo
 > no sustituyen una medición reproducible.
 
-Fecha de referencia documentada: `2026-07-26` (Checkpoint 164).
-Commit de evidencia: `898adfc`.
+Fecha de referencia documentada: `2026-07-27` (Checkpoint 165).
+Commit de evidencia: `09fee88`.
 
 Cobertura vigente conocida de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.61%` |
-| Lines | `99.61%` |
+| Statements | `99.62%` |
+| Lines | `99.62%` |
 | Functions | `98.22%` |
-| Branches | `92.10%` |
+| Branches | `92.25%` |
 
 Resultado de la corrida:
 
 - `220` suites en verde.
-- `2014` tests pasando en la última verificación documentada.
+- `2023` tests pasando en la última verificación documentada.
 - La suite supera la meta estratégica en statements, lines y functions, pero
-  functions tiene `0.22` puntos de margen y branches queda `5.90` puntos
+  functions tiene `0.22` puntos de margen y branches queda `5.75` puntos
   por debajo del objetivo final.
 - No se debe afirmar cobertura global actualizada sin guardar la corrida
   asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
   es una fuente global suficiente.
-- La corrida del Checkpoint 164 genera `coverage-summary.json` global con
-  `40977` statements, `1183` funciones y `7551` branches; quedan `596` ramas
+- La corrida del Checkpoint 165 genera `coverage-summary.json` global con
+  `40981` statements, `1183` funciones y `7558` branches; quedan `585` ramas
   sin cubrir.
 
 ### Lectura de la deuda restante
 
-La cobertura global tiene `596` ramas faltantes sobre `7550` conocidas. El
+La cobertura global tiene `585` ramas faltantes sobre `7558` conocidas. El
 próximo objetivo no es perseguir `98%` con fallbacks imposibles, sino clasificar
 cada rama como:
 
@@ -3238,3 +3238,25 @@ Criterios de salida:
 - Siguiente lote: completar ramas semánticas de `DisputeActions` y
   `RefundReconciliation`, manteniendo fuera del alcance las escrituras reales
   del ledger.
+
+## Checkpoint 165
+
+- Fecha: `2026-07-27`, hardening de disputas y conciliación de refunds.
+- Commit de evidencia: `09fee88`.
+- Coverage antes: `99.61%` statements/lines, `98.22%` functions y `92.10%`
+  branches; `220` suites y `2014` tests.
+- Coverage después: `99.62%` statements/lines, `98.22%` functions y `92.25%`
+  branches; `220` suites y `2023` tests.
+- Archivos foco: `DisputeActions.tsx`,
+  `app/(admin)/admin/disputes/[id]/__tests__/page.test.tsx`,
+  `RefundReconciliation.tsx` y su suite adyacente.
+- Riesgos cerrados: errores de inicio/resolución/descarte/compensación,
+  montos y motivos inválidos en cliente, éxito/idempotencia de refunds,
+  excepciones inesperadas y ocultación de detalles internos.
+- Verificación: suite web `220/2023`, coverage global, lint y typecheck verdes;
+  hooks pre-commit también validaron game-server `37/846`.
+- Riesgos abiertos: contratos financieros reales contra staging, fixture AAL2,
+  smoke E2E en CI y ramas B1 de `admin-issues` y pantallas residuales de
+  recovery.
+- Siguiente lote: `app/actions/admin-issues.ts` y ramas de recovery con mayor
+  impacto, evitando todavía escrituras reales del ledger.
