@@ -12,6 +12,7 @@
 
 - **Checkpoint 164 de cobertura web** (`2026-07-26`, commit `898adfc`): `220` suites y `2014` tests en verde; la cobertura alcanza `99.61%` statements/lines, `98.22%` functions y `92.10%` branches. Se cubren carga diferida de OneSignal y cierre de incidentes de recovery.
 - **Checkpoint 165 de cobertura web** (`2026-07-27`, commit `09fee88`): `220` suites y `2023` tests en verde; la cobertura alcanza `99.62%` statements/lines, `98.22%` functions y `92.25%` branches. Se cubren errores de disputas, compensaciones y conciliación idempotente de refunds.
+- **Checkpoint 166 de cobertura web** (`2026-07-27`, commit `9c97f72`): `220` suites y `2034` tests en verde; la cobertura alcanza `99.62%` statements/lines, `98.22%` functions y `92.34%` branches. Se cubren auth, errores de consultas, mensajes, validación y autorización de adjuntos en `admin-issues.ts`.
 
 ## [Sprint 6.10e] - 2026-04-26
 
