@@ -163,6 +163,25 @@ describe('RecoveryExplorer', () => {
     expect(refresh).not.toHaveBeenCalled()
   })
 
+  it('muestra un error genérico cuando el reconocimiento lanza una excepción', async () => {
+    mockAcknowledgeRecoveryIncident.mockRejectedValue(new Error('internal failure'))
+    render(<RecoveryExplorer page={{
+      ...page,
+      incidents: [{
+        ...page.incidents[0],
+        incidentId: '00000000-0000-4000-8000-000000000131',
+        acknowledgedAt: null,
+      }],
+    }} filters={{}} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /marcar como revisado/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo registrar la revisión. Inténtalo de nuevo.')
+    expect(refresh).not.toHaveBeenCalled()
+    expect(mockAcknowledgeRecoveryIncident).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000131')
+    expect(screen.getByRole('button', { name: /marcar como revisado/i })).not.toBeDisabled()
+  })
+
   it('enlaza al detalle de refunds solo cuando hay refunds incompletos', () => {
     render(<RecoveryExplorer page={{
       ...page,
@@ -173,5 +192,29 @@ describe('RecoveryExplorer', () => {
       'href',
       '/admin/recovery/00000000-0000-4000-8000-000000000111/refunds'
     )
+  })
+
+  it('distingue estado cerrado, porcentaje cero y ausencia de incidentes filtrados', () => {
+    const { rerender } = render(<RecoveryExplorer page={{
+      incidents: [{
+        ...page.incidents[1],
+        status: 'closed' as const,
+        completedRefunds: 0,
+        totalRefunds: 0,
+      }],
+      total: 1,
+      nextCursor: null,
+    }} filters={{}} />)
+
+    expect(screen.getByText('Cerrado', { selector: 'span' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: /refunds completados/i })).toHaveAttribute('aria-valuenow', '0')
+    expect(screen.queryByRole('link', { name: /ver refunds afectados/i })).not.toBeInTheDocument()
+
+    rerender(<RecoveryExplorer page={{ incidents: [], total: 0, nextCursor: null }} filters={{}} />)
+    expect(screen.getByRole('heading', { name: /no hay incidentes terminales visibles/i })).toBeInTheDocument()
+
+    rerender(<RecoveryExplorer page={{ incidents: [], total: 0, nextCursor: null }} filters={{ query: 'missing-game' }} />)
+    expect(screen.getByRole('heading', { name: /no hay coincidencias/i })).toBeInTheDocument()
+    expect(screen.getByText(/ajustar los filtros/i)).toBeInTheDocument()
   })
 })
