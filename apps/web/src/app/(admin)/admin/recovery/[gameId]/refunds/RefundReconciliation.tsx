@@ -16,13 +16,17 @@ export function RefundReconciliation({ refundId }: { refundId: string }) {
     if (!canSubmit) return
     setMessage(null)
     startTransition(async () => {
-      const result = await reconcileRecoveryRefund({ refundId, reason: reason.trim() })
-      if ('error' in result) {
-        setMessage(result.error)
-        return
+      try {
+        const result = await reconcileRecoveryRefund({ refundId, reason: reason.trim() })
+        if ('error' in result) {
+          setMessage(result.error)
+          return
+        }
+        setMessage(result.data.alreadyReconciled ? 'El refund ya estaba conciliado.' : 'Refund conciliado correctamente.')
+        router.refresh()
+      } catch {
+        setMessage('No fue posible conciliar el refund. Inténtalo de nuevo.')
       }
-      setMessage(result.data.alreadyReconciled ? 'El refund ya estaba conciliado.' : 'Refund conciliado correctamente.')
-      router.refresh()
     })
   }
 

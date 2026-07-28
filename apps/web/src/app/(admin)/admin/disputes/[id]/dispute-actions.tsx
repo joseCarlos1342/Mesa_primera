@@ -74,7 +74,7 @@ export function DisputeActions({
 
   function handleProposeCompensation() {
     const parsedAmount = Number(amountCop)
-    if (!beneficiaryUserId.trim() || !Number.isInteger(parsedAmount) || parsedAmount <= 0 || !compensationReason.trim()) return
+    if (!beneficiaryUserId.trim() || !Number.isInteger(parsedAmount) || parsedAmount <= 0 || parsedAmount % 1000 !== 0 || compensationReason.trim().length < 10) return
     setError(null)
     startTransition(async () => {
       const result = await proposeDisputeCompensation(disputeId, {
