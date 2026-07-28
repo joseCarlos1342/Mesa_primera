@@ -12,8 +12,8 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 > completa asociada a un commit SHA. Los checkpoints históricos de este archivo
 > no sustituyen una medición reproducible.
 
-Fecha de referencia documentada: `2026-07-27` (Checkpoint 166).
-Commit de evidencia: `9c97f72`.
+Fecha de referencia documentada: `2026-07-27` (Checkpoint 167).
+Commit de evidencia: `82f978b`.
 
 Cobertura vigente conocida de `apps/web`:
 
@@ -22,20 +22,20 @@ Cobertura vigente conocida de `apps/web`:
 | Statements | `99.62%` |
 | Lines | `99.62%` |
 | Functions | `98.22%` |
-| Branches | `92.34%` |
+| Branches | `92.40%` |
 
 Resultado de la corrida:
 
 - `220` suites en verde.
-- `2034` tests pasando en la última verificación documentada.
+- `2037` tests pasando en la última verificación documentada.
 - La suite supera la meta estratégica en statements, lines y functions, pero
   functions tiene `0.22` puntos de margen y branches queda `5.75` puntos
   por debajo del objetivo final.
 - No se debe afirmar cobertura global actualizada sin guardar la corrida
   asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
   es una fuente global suficiente.
-- La corrida del Checkpoint 166 genera `coverage-summary.json` global con
-  `40981` statements, `1183` funciones y `7562` branches; quedan `579` ramas
+- La corrida del Checkpoint 167 genera `coverage-summary.json` global con
+  `40981` statements, `1183` funciones y `7566` branches; quedan `575` ramas
   sin cubrir.
 
 ### Lectura de la deuda restante
@@ -3284,3 +3284,24 @@ Criterios de salida:
 - Siguiente lote: ramas semánticas residuales de recovery, priorizando
   `RecoveryExplorer` y páginas de refunds sin tocar escrituras reales del
   ledger.
+
+## Checkpoint 167
+
+- Fecha: `2026-07-27`, hardening de estados residuales de recovery.
+- Commit de evidencia: `82f978b`.
+- Coverage antes: `99.62%` statements/lines, `98.22%` functions y `92.34%`
+  branches; `220` suites y `2034` tests.
+- Coverage después: `99.62%` statements/lines, `98.22%` functions y `92.40%`
+  branches; `220` suites y `2037` tests.
+- Archivos foco: `RecoveryExplorer.tsx`, su suite adyacente y la página
+  `app/(admin)/admin/recovery/[gameId]/refunds/page.tsx`.
+- Riesgos cerrados: estados vacíos con y sin filtros, reconocimiento que lanza
+  excepciones, estado cerrado, porcentajes de refunds con total cero y filas
+  pending/failed con conciliación visible sin movimiento ledger.
+- Verificación: suite focal `12/12`, suite web `220/2037`, coverage global,
+  lint y typecheck verdes; hooks pre-commit también validaron game-server
+  `37/846`.
+- Riesgos abiertos: contratos financieros reales contra staging, fixture AAL2,
+  smoke E2E en CI y ramas B1 de recovery aún no ejercitadas.
+- Siguiente lote: evaluar ramas restantes de `RecoveryExplorer` y decidir si
+  requieren tests B1 adicionales o clasificación como defensas B2.
