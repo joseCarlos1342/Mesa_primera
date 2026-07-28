@@ -69,6 +69,59 @@ describe('listAdminIssueTickets', () => {
     expect(countIn).toHaveBeenCalledWith('status', ['investigating', 'resolved', 'closed'])
   })
 
+  it('rechaza la bandeja administrativa sin sesión antes de consultar perfiles', async () => {
+    const from = jest.fn()
+    ;(createClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null } }) },
+      from,
+    })
+
+    await expect(listAdminIssueTickets()).resolves.toEqual({ error: 'No autenticado' })
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it('mapea un fallo de la bandeja abierta sin filtrar el error de Supabase', async () => {
+    const roleSingle = jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null })
+    const limit = jest.fn().mockResolvedValue({ data: null, error: { message: 'internal query error' } })
+    const supabase = {
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } } }) },
+      from: jest.fn((table: string) => table === 'profiles'
+        ? { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: roleSingle }) }) }
+        : { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ order: jest.fn().mockReturnValue({ limit }) }) }) }),
+    }
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(listAdminIssueTickets()).resolves.toEqual({ error: 'No fue posible cargar las consultas' })
+  })
+
+  it('devuelve archivo vacío cuando la consulta archivada no tiene filas', async () => {
+    const roleSingle = jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null })
+    const limit = jest.fn().mockResolvedValue({ data: null, error: null })
+    const supabase = {
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } } }) },
+      from: jest.fn((table: string) => table === 'profiles'
+        ? { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: roleSingle }) }) }
+        : { select: jest.fn().mockReturnValue({ in: jest.fn().mockReturnValue({ order: jest.fn().mockReturnValue({ limit }) }) }) }),
+    }
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(listAdminArchivedIssueTickets()).resolves.toEqual({ data: [] })
+  })
+
+  it('mapea el error del conteo archivado sin exponer detalles internos', async () => {
+    const roleSingle = jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null })
+    const countIn = jest.fn().mockResolvedValue({ count: null, error: { message: 'count failed' } })
+    const supabase = {
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } } }) },
+      from: jest.fn((table: string) => table === 'profiles'
+        ? { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: roleSingle }) }) }
+        : { select: jest.fn().mockReturnValue({ in: countIn }) }),
+    }
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(countAdminArchivedIssueTickets()).resolves.toEqual({ error: 'No fue posible contar el archivo' })
+  })
+
   it('rechaza la bandeja archivada cuando la sesión es anónima', async () => {
     ;(createClient as jest.Mock).mockResolvedValue({
       auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null } }) },
@@ -139,6 +192,58 @@ describe('listAdminIssueTickets', () => {
     expect(eq).toHaveBeenCalledWith('user_id', 'player-1')
   })
 
+  it('mapea el fallo de lectura de reclamos propios', async () => {
+    const limit = jest.fn().mockResolvedValue({ data: null, error: { message: 'player query failed' } })
+    const supabase = {
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'player-1' } } }) },
+      from: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ order: jest.fn().mockReturnValue({ limit }) }) }) }),
+    }
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(listPlayerIssueTickets()).resolves.toEqual({ error: 'No fue posible cargar tus reclamos' })
+  })
+
+  it('lee mensajes del jugador y distingue la sesión anónima', async () => {
+    const messages = [{ id: 'message-1', ticket_id: 'ticket-1', message: 'Respuesta', from_admin: true }]
+    const order = jest.fn().mockResolvedValue({ data: messages, error: null })
+    const eq = jest.fn().mockReturnValue({ order })
+    const select = jest.fn().mockReturnValue({ eq })
+    const from = jest.fn().mockReturnValue({ select })
+    ;(createClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'player-1' } } }) },
+      from,
+    })
+
+    await expect(getPlayerIssueMessages('ticket-1')).resolves.toEqual({ data: messages })
+    expect(from).toHaveBeenCalledWith('issue_ticket_messages')
+    expect(eq).toHaveBeenCalledWith('ticket_id', 'ticket-1')
+    expect(order).toHaveBeenCalledWith('created_at', { ascending: true })
+
+    ;(createClient as jest.Mock).mockResolvedValue({ auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null } }) } })
+    await expect(getPlayerIssueMessages('ticket-1')).resolves.toEqual({ error: 'No autenticado' })
+  })
+
+  it('devuelve mensajes administrativos y conserva el orden temporal', async () => {
+    const messages = [{ id: 'message-1', ticket_id: 'ticket-1', message: 'Respuesta', from_admin: true }]
+    const roleSingle = jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null })
+    const order = jest.fn().mockResolvedValue({ data: messages, error: null })
+    const eq = jest.fn().mockReturnValue({ order })
+    const select = jest.fn().mockReturnValue({ eq })
+    const messagesQuery = { select }
+    const supabase = {
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } } }) },
+      from: jest.fn((table: string) => table === 'profiles'
+        ? { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: roleSingle }) }) }
+        : messagesQuery),
+    }
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getAdminIssueMessages('ticket-1')).resolves.toEqual({ data: messages })
+    expect(supabase.from).toHaveBeenCalledWith('issue_ticket_messages')
+    expect(eq).toHaveBeenCalledWith('ticket_id', 'ticket-1')
+    expect(order).toHaveBeenCalledWith('created_at', { ascending: true })
+  })
+
   it('agrega una respuesta administrativa con la RPC del caso', async () => {
     const rpc = jest.fn().mockResolvedValue({ data: { success: true, message_id: 'message-1' }, error: null })
     const single = jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null })
@@ -159,6 +264,17 @@ describe('listAdminIssueTickets', () => {
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
     await expect(appendIssueTicketMessage('ticket-1', 'Respuesta')).resolves.toEqual({ error: 'Caso cerrado' })
+  })
+
+  it('rechaza respuestas administrativas sin sesión antes de ejecutar la RPC', async () => {
+    const rpc = jest.fn()
+    ;(createClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null } }) },
+      rpc,
+    })
+
+    await expect(appendIssueTicketMessage('ticket-1', 'Respuesta válida para el caso')).resolves.toEqual({ error: 'No autenticado' })
+    expect(rpc).not.toHaveBeenCalled()
   })
 
   it('usa errores seguros cuando la RPC no devuelve éxito ni identificador', async () => {
@@ -214,6 +330,14 @@ describe('listAdminIssueTickets', () => {
     formData.append('file', new File(['image'], 'prueba.png', { type: 'image/png' }))
     formData.append('description', '   ')
     await expect(uploadIssueTicketImage('123e4567-e89b-12d3-a456-426614174000', formData)).resolves.toEqual({ error: 'Describe qué muestra esta imagen' })
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('rechaza un formulario de adjunto sin archivo antes de autenticar', async () => {
+    const formData = new FormData()
+    formData.append('description', 'Descripción sin archivo')
+
+    await expect(uploadIssueTicketImage('ticket-1', formData)).resolves.toEqual({ error: 'La imagen debe ser JPG, PNG o WebP y pesar máximo 10 MB' })
     expect(createClient).not.toHaveBeenCalled()
   })
 
@@ -395,5 +519,35 @@ describe('listAdminIssueTickets', () => {
     const ownerSupabase = { ...supabase, auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'owner' } } }) } }
     ;(createClient as jest.Mock).mockResolvedValueOnce(ownerSupabase)
     await expect(getIssueTicketAttachmentUrl('attachment-1')).resolves.toEqual({ error: 'No fue posible abrir la imagen' })
+  })
+
+  it('rechaza una URL firmada cuando el ticket asociado ya no existe', async () => {
+    const attachment = { ticket_id: 'ticket-1', storage_path: 'private/image.png' }
+    const ticketSingle = jest.fn().mockResolvedValue({ data: null, error: null })
+    const ticketEq = jest.fn().mockReturnValue({ single: ticketSingle })
+    const ticketSelect = jest.fn().mockReturnValue({ eq: ticketEq })
+    const supabase = {
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'owner' } } }) },
+      from: jest.fn((table: string) => table === 'issue_ticket_attachments'
+        ? { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: jest.fn().mockResolvedValue({ data: attachment, error: null }) }) }) }
+        : { select: ticketSelect }),
+      storage: { from: jest.fn() },
+    }
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(getIssueTicketAttachmentUrl('attachment-1')).resolves.toEqual({ error: 'Acceso denegado' })
+    expect(supabase.from).toHaveBeenCalledWith('issue_tickets')
+    expect(ticketEq).toHaveBeenCalledWith('id', 'ticket-1')
+    expect(supabase.storage.from).not.toHaveBeenCalled()
+  })
+
+  it('mapea errores al listar adjuntos sin filtrar detalles de Supabase', async () => {
+    const order = jest.fn().mockResolvedValue({ data: null, error: { message: 'attachment query failed' } })
+    ;(createClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'player-1' } } }) },
+      from: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ order }) }) }),
+    })
+
+    await expect(listIssueTicketAttachments('ticket-1')).resolves.toEqual({ error: 'No fue posible cargar los adjuntos' })
   })
 })
