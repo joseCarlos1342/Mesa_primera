@@ -12,8 +12,8 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 > completa asociada a un commit SHA. Los checkpoints históricos de este archivo
 > no sustituyen una medición reproducible.
 
-Fecha de referencia documentada: `2026-07-27` (Checkpoint 165).
-Commit de evidencia: `09fee88`.
+Fecha de referencia documentada: `2026-07-27` (Checkpoint 166).
+Commit de evidencia: `9c97f72`.
 
 Cobertura vigente conocida de `apps/web`:
 
@@ -22,20 +22,20 @@ Cobertura vigente conocida de `apps/web`:
 | Statements | `99.62%` |
 | Lines | `99.62%` |
 | Functions | `98.22%` |
-| Branches | `92.25%` |
+| Branches | `92.34%` |
 
 Resultado de la corrida:
 
 - `220` suites en verde.
-- `2023` tests pasando en la última verificación documentada.
+- `2034` tests pasando en la última verificación documentada.
 - La suite supera la meta estratégica en statements, lines y functions, pero
   functions tiene `0.22` puntos de margen y branches queda `5.75` puntos
   por debajo del objetivo final.
 - No se debe afirmar cobertura global actualizada sin guardar la corrida
   asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
   es una fuente global suficiente.
-- La corrida del Checkpoint 165 genera `coverage-summary.json` global con
-  `40981` statements, `1183` funciones y `7558` branches; quedan `585` ramas
+- La corrida del Checkpoint 166 genera `coverage-summary.json` global con
+  `40981` statements, `1183` funciones y `7562` branches; quedan `579` ramas
   sin cubrir.
 
 ### Lectura de la deuda restante
@@ -162,6 +162,7 @@ Estado actual:
 - `app/actions/admin-ledger.ts`: `100%` statements/lines/functions/branches.
 - `app/actions/admin-tables.ts`: `99.59%` statements/lines, `100%` functions y `94.36%` branches.
 - `app/actions/admin-recovery.ts`: `100%` statements/lines/functions y `87.91%` branches tras cubrir paginación, exportación, refunds, reconocimiento y cierre.
+- `app/actions/admin-issues.ts`: `100%` statements/lines/functions y `82.47%` branches tras cubrir auth temprana, fallos de consultas, mensajes, validación de adjuntos, limpieza de Storage y URLs firmadas.
 - `app/(auth)/auth-actions.ts`: `100%` statements/lines/functions y `89.65%` branches.
 - `app/actions/admin-security.ts`: `100%` statements/lines/functions, branches `97.27%`; quedan solo ramas defensivas menores de defaults/nullish.
 - `app/actions/support.ts`: `100%` statements/lines/functions, branches `91.86%`; quedan solo ramas defensivas `||` que son inaccesibles con la implementación actual de `getAuthenticatedUser()`.
@@ -3260,3 +3261,26 @@ Criterios de salida:
   recovery.
 - Siguiente lote: `app/actions/admin-issues.ts` y ramas de recovery con mayor
   impacto, evitando todavía escrituras reales del ledger.
+
+## Checkpoint 166
+
+- Fecha: `2026-07-27`, hardening de consultas administrativas y adjuntos.
+- Commit de evidencia: `9c97f72`.
+- Coverage antes: `99.62%` statements/lines, `98.22%` functions y `92.25%`
+  branches; `220` suites y `2023` tests.
+- Coverage después: `99.62%` statements/lines, `98.22%` functions y `92.34%`
+  branches; `220` suites y `2034` tests.
+- Archivo foco: `app/actions/admin-issues.ts` mediante
+  `app/actions/__tests__/admin-issues.test.ts`.
+- Riesgos cerrados: auth anónima y rol admin, fallos seguros de consultas y
+  RPC, alcance de filtros por ticket, validación temprana de imágenes,
+  autorización de adjuntos, limpieza de Storage y ausencia de URLs firmadas
+  cuando el ticket asociado no existe.
+- Verificación: suite focal `34/34`, suite web `220/2034`, coverage global,
+  lint y typecheck verdes; hooks pre-commit también validaron game-server
+  `37/846`.
+- Riesgos abiertos: contratos financieros reales contra staging, fixture AAL2,
+  smoke E2E en CI y ramas B1 de recovery.
+- Siguiente lote: ramas semánticas residuales de recovery, priorizando
+  `RecoveryExplorer` y páginas de refunds sin tocar escrituras reales del
+  ledger.
