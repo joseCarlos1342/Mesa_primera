@@ -6,10 +6,12 @@
 
 - **Summary de replays deja de presentar una muestra como total** (`/admin/replays`): los cards muestran juegos terminados con replay, rake completado asociado y participantes observados mediante una RPC administrativa protegida.
 - **Opt-in de notificaciones push maneja fallos sin promesas rechazadas** (`apps/web/src/components/OneSignalPushOptIn.tsx`): los errores de permiso o suscripción muestran feedback accesible, liberan el estado ocupado y permiten reintentar sin provocar `UnhandledPromiseRejection`.
+- **Disputas y refunds validan y manejan errores en cliente** (`DisputeActions.tsx`, `RefundReconciliation.tsx`): se bloquean montos no múltiplos de `$1.000 COP` y motivos cortos, y las excepciones inesperadas muestran un mensaje genérico sin filtrar detalles internos.
 
 ### Tests
 
 - **Checkpoint 164 de cobertura web** (`2026-07-26`, commit `898adfc`): `220` suites y `2014` tests en verde; la cobertura alcanza `99.61%` statements/lines, `98.22%` functions y `92.10%` branches. Se cubren carga diferida de OneSignal y cierre de incidentes de recovery.
+- **Checkpoint 165 de cobertura web** (`2026-07-27`, commit `09fee88`): `220` suites y `2023` tests en verde; la cobertura alcanza `99.62%` statements/lines, `98.22%` functions y `92.25%` branches. Se cubren errores de disputas, compensaciones y conciliación idempotente de refunds.
 
 ## [Sprint 6.10e] - 2026-04-26
 
