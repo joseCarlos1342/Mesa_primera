@@ -199,6 +199,16 @@ describe('DisputeActions', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
+  it('muestra el error al iniciar una investigación y no refresca', async () => {
+    mockStartDispute.mockResolvedValue({ error: 'No se pudo iniciar la investigación' })
+
+    render(<DisputeActions disputeId="dispute-1" status="open" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar investigación' }))
+
+    expect(await screen.findByText('No se pudo iniciar la investigación')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
   it('muestra error al resolver y permite cancelar el formulario', async () => {
     mockResolveDispute.mockResolvedValue({ error: 'Resolucion rechazada' })
 
@@ -231,6 +241,18 @@ describe('DisputeActions', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
+  it('muestra error al descartar y mantiene el formulario abierto', async () => {
+    mockDismissDispute.mockResolvedValue({ error: 'El descarte fue rechazado' })
+
+    render(<DisputeActions disputeId="dispute-1" status="investigating" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar' }))
+    fireEvent.change(screen.getByPlaceholderText('Razón del descarte…'), { target: { value: 'No hay evidencia suficiente.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar descarte' }))
+
+    expect(await screen.findByText('El descarte fue rechazado')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
   it('propone una compensación estructurada desde una investigación activa', async () => {
     mockProposeCompensation.mockResolvedValue({ data: { id: 'dispute-1', compensation_status: 'proposed' } })
     render(<DisputeActions disputeId="dispute-1" status="investigating" subjectUserIds={['11111111-1111-4111-8111-111111111111']} />)
@@ -248,6 +270,37 @@ describe('DisputeActions', () => {
     }))
   })
 
+  it('bloquea una propuesta de compensación con monto o motivo inválidos', () => {
+    render(<DisputeActions disputeId="dispute-1" status="investigating" subjectUserIds={['user-1']} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Proponer compensación' }))
+    fireEvent.change(screen.getByLabelText('Jugador beneficiario'), { target: { value: 'user-1' } })
+    fireEvent.change(screen.getByLabelText('Monto en COP'), { target: { value: '999' } })
+    fireEvent.change(screen.getByLabelText('Motivo de compensación'), { target: { value: 'Motivo operativo válido.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar propuesta' }))
+
+    expect(mockProposeCompensation).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Monto en COP'), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText('Motivo de compensación'), { target: { value: 'Motivo' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar propuesta' }))
+    expect(mockProposeCompensation).not.toHaveBeenCalled()
+  })
+
+  it('muestra error si la propuesta de compensación es rechazada', async () => {
+    mockProposeCompensation.mockResolvedValue({ error: 'La compensación no es válida' })
+    render(<DisputeActions disputeId="dispute-1" status="investigating" subjectUserIds={['user-1']} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Proponer compensación' }))
+    fireEvent.change(screen.getByLabelText('Jugador beneficiario'), { target: { value: 'user-1' } })
+    fireEvent.change(screen.getByLabelText('Monto en COP'), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText('Motivo de compensación'), { target: { value: 'Motivo operativo válido para la compensación.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar propuesta' }))
+
+    expect(await screen.findByText('La compensación no es válida')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
   it('exige confirmación explícita antes de acreditar una compensación propuesta', async () => {
     mockApproveCompensation.mockResolvedValue({ data: { id: 'dispute-1', status: 'resolved', ledger_id: 'ledger-1' } })
     render(<DisputeActions disputeId="dispute-1" status="investigating" compensationStatus="proposed" compensationUserId="11111111-1111-4111-8111-111111111111" compensationAmountCents={100000} compensationReason="Compensación por colusión confirmada." />)
@@ -263,6 +316,17 @@ describe('DisputeActions', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
+  it('muestra error si la acreditación de compensación es rechazada', async () => {
+    mockApproveCompensation.mockResolvedValue({ error: 'El ledger rechazó la acreditación' })
+    render(<DisputeActions disputeId="dispute-1" status="investigating" compensationStatus="proposed" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aprobar y acreditar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar acreditación' }))
+
+    expect(await screen.findByText('El ledger rechazó la acreditación')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
   it('permite cancelar una propuesta equivocada', async () => {
     mockCancelCompensation.mockResolvedValue({ data: { id: 'dispute-1', status: 'investigating' } })
     render(<DisputeActions disputeId="dispute-1" status="investigating" compensationStatus="proposed" />)
@@ -272,5 +336,19 @@ describe('DisputeActions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cancelación' }))
 
     await waitFor(() => expect(mockCancelCompensation).toHaveBeenCalledWith('dispute-1', 'El beneficiario seleccionado era incorrecto.'))
+  })
+
+  it('muestra error al cancelar una propuesta y bloquea razones demasiado cortas', async () => {
+    mockCancelCompensation.mockResolvedValue({ error: 'No se pudo cancelar la propuesta' })
+    render(<DisputeActions disputeId="dispute-1" status="investigating" compensationStatus="proposed" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar propuesta' }))
+    const confirm = screen.getByRole('button', { name: 'Confirmar cancelación' })
+    expect(confirm).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Motivo de cancelación'), { target: { value: 'Motivo válido de cancelación.' } })
+    fireEvent.click(confirm)
+
+    expect(await screen.findByText('No se pudo cancelar la propuesta')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
   })
 })
