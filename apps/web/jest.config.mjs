@@ -17,6 +17,7 @@ const config = {
   },
   testPathIgnorePatterns: ['/node_modules/', '/e2e/'],
   collectCoverageFrom: [
+    'src/proxy.ts',
     'src/app/**/*.{ts,tsx}',
     'src/components/**/*.{ts,tsx}',
     'src/utils/**/*.{ts,tsx}',
