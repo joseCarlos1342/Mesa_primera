@@ -45,15 +45,17 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.62%` statements, `92.40%` branches, `98.22%` functions, `99.62%` lines con `220` suites y `2037` tests pasando (`2026-07-27`, Checkpoint 167).
-- Medicion game-server vigente: `91.65%` statements, `83.16%` branches, `93.41%` functions, `93.56%` lines con `37` suites y `846` tests pasando (`2026-07-26`).
+- Medicion web vigente: `99.63%` statements, `92.48%` branches, `98.22%` functions, `99.63%` lines con `222` suites y `2049` tests pasando (`2026-08-01`, Checkpoint 168, commit `8ff278c`). La medición incluye `src/proxy.ts`.
+- Medicion game-server vigente: `91.65%` statements, `83.16%` branches, `93.41%` functions, `93.56%` lines con `37` archivos de test y `846` tests pasando (`2026-07-26`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
-- Frentes flojos actuales de game-server: `MesaRoom.ts` por volumen de reglas, `AdminCommand.ts`, `RecoveryService.ts` y `ReplayPhaseService.ts` por ramas de error/dispatch, además de `dispatcher.ts` por rutas de protocolo aún poco ejercitadas.
+- Frentes flojos actuales de game-server: `MesaRoom.ts` por volumen de reglas, `AdminCommand.ts`, `CrashRecoveryService.ts`, `SupabaseService.ts` y `notification-dispatcher.ts` por ramas de error/dispatch. `RecoveryService.ts` y `ReplayPhaseService.ts` no existen en el árbol actual y no deben usarse como objetivos.
 - Gate operativo actual:
   - Web: `99%` statements, `91%` branches, `98%` functions, `99%` lines. Este gate fija el avance del checkpoint 155 y evita regresar por debajo de la meta estratégica ya alcanzada en statements, functions y lines.
   - Game server: `89%` statements, `80%` branches, `89%` functions, `90%` lines.
-- Objetivo final estrategico sigue siendo `98%` en ambos frentes. Web ya supera la meta en statements, functions y lines; branches (`92.40%`) es su frente pendiente. Game-server mantiene gates escalonados hasta acercarse a la meta sin falsos rojos.
+- Objetivo final estrategico sigue siendo `98%` en ambos frentes. Web ya supera la meta en statements, functions y lines; branches (`92.48%`) es su frente pendiente. Game-server mantiene gates escalonados hasta acercarse a la meta sin falsos rojos.
+- La medicion web incorpora `src/proxy.ts` como frontera de CSP, canonicalizacion y sesion; el baseline debe recalcularse despues de cada cambio de superficie medida.
+- Hay una discrepancia de dominio pendiente: la regla global documenta una gracia de reconexion de `60s`, mientras `ConnectionManager.ts` y parte de su documentacion operativa usan `120s`. No se debe ampliar cobertura de ese flujo hasta resolver el contrato.
 - Hardening de cobertura Fases 1-2 (2026-06-22): 80 tests nuevos centrados en zonas debiles criticas (auth-actions, MesaRoom.refundAllActiveBets, AdminSecurityPanel, recovery, security, password, tables, consultas). Subidas clave: `auth-actions.ts` 74.8% → 85.71% branches; `recovery/page.tsx` 11.11% → 100% branches; `AdminSecurityPanel.tsx` 26.92% → 100% branches; `password/page.tsx` 62.5% → 94.54% branches; `tables/page.tsx` 61.11% → 100% branches; `consultas/page.tsx` 63.63% → 100% branches; `security/page.tsx` 33.33% → 100% branches.
 - Hardening de cobertura Fase 3 (2026-06-24): 14 tests web y 2 tests game-server adicionales sobre replays, perfil, CSP, cliente Supabase SSR, `PlayerBadge` y `AlertService`. Subidas clave: `app/(player)/replays/page.tsx` queda en `100%`, `utils/supabase/client.ts` queda en `100%`, `PlayerBadge.tsx` sube branches a `96.87%` y `AlertService.ts` queda en `100%` statements/lines/functions con `96.07%` branches.
 - Hardening de wallet UI (2026-07-01): 4 tests web adicionales sobre `TransactionModal.tsx` cubren fallback sin `signedUrl`, modal cerrado, retiro pendiente sin comprobante, transferencias/ajustes/tipos desconocidos y mantienen el bloque financiero solo en UI con Supabase storage mockeado.
