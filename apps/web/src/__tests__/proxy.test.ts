@@ -3,7 +3,6 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 
-import { buildContentSecurityPolicy } from '@/lib/security/csp'
 import { updateSession } from '@/utils/supabase/middleware'
 import { proxy } from '../proxy'
 
@@ -11,19 +10,18 @@ jest.mock('@/utils/supabase/middleware', () => ({
   updateSession: jest.fn(),
 }))
 
-jest.mock('@/lib/security/csp', () => ({
-  buildContentSecurityPolicy: jest.fn(() => "default-src 'self'"),
-}))
-
 const mockUpdateSession = updateSession as jest.MockedFunction<typeof updateSession>
-const mockBuildContentSecurityPolicy = buildContentSecurityPolicy as jest.MockedFunction<
-  typeof buildContentSecurityPolicy
->
+const originalNodeEnv = process.env.NODE_ENV
 
 describe('proxy', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    process.env.NODE_ENV = 'test'
     mockUpdateSession.mockResolvedValue(NextResponse.next())
+  })
+
+  afterAll(() => {
+    process.env.NODE_ENV = originalNodeEnv
   })
 
   it('redirects GET requests from redirect hosts while preserving path and query', async () => {
@@ -35,7 +33,19 @@ describe('proxy', () => {
     expect(response.headers.get('location')).toBe(
       'https://primerariveradalos4ases.com/mesa/7?tab=chat',
     )
-    expect(response.headers.get('Content-Security-Policy')).toBe("default-src 'self'")
+    expect(response.headers.get('Content-Security-Policy')).toContain("script-src")
+    expect(mockUpdateSession).not.toHaveBeenCalled()
+  })
+
+  it('redirects HEAD requests from redirect hosts without invoking session middleware', async () => {
+    const response = await proxy(
+      new NextRequest('https://mesa-primera-web.vercel.app/health', { method: 'HEAD' }),
+    )
+
+    expect(response.status).toBe(308)
+    expect(response.headers.get('location')).toBe(
+      'https://primerariveradalos4ases.com/health',
+    )
     expect(mockUpdateSession).not.toHaveBeenCalled()
   })
 
@@ -51,23 +61,38 @@ describe('proxy', () => {
     expect(mockUpdateSession.mock.calls[0]?.[0]).toBe(request)
     const requestHeaders = mockUpdateSession.mock.calls[0]?.[1]
     expect(requestHeaders?.get('x-nonce')).toEqual(expect.any(String))
-    expect(requestHeaders?.get('Content-Security-Policy')).toBe("default-src 'self'")
-    expect(response.headers.get('Content-Security-Policy')).toBe("default-src 'self'")
+    expect(requestHeaders?.get('Content-Security-Policy')).toContain("script-src")
+    expect(response.headers.get('Content-Security-Policy')).toContain("script-src")
   })
 
-  it('adds the same generated nonce to request headers and the CSP builder', async () => {
+  it('adds the generated nonce to the request headers and resulting CSP', async () => {
     const request = new NextRequest('https://primerariveradalos4ases.com/dashboard')
 
-    await proxy(request)
+    const response = await proxy(request)
 
     const requestHeaders = mockUpdateSession.mock.calls[0]?.[1]
     const nonce = requestHeaders?.get('x-nonce')
 
     expect(nonce).toEqual(expect.any(String))
-    expect(mockBuildContentSecurityPolicy).toHaveBeenCalledWith({
-      nonce,
-      isDevelopment: false,
-    })
+    expect(response.headers.get('Content-Security-Policy')).toContain(`'nonce-${nonce}'`)
+  })
+
+  it('passes unknown hosts to session middleware instead of redirecting them', async () => {
+    const request = new NextRequest('https://staging.example.test/private')
+
+    await proxy(request)
+
+    expect(mockUpdateSession).toHaveBeenCalledWith(request, expect.any(Headers))
+  })
+
+  it('includes development CSP directives when running in development', async () => {
+    process.env.NODE_ENV = 'development'
+
+    const response = await proxy(
+      new NextRequest('http://localhost:3000/dashboard'),
+    )
+
+    expect(response.headers.get('Content-Security-Policy')).toContain("'unsafe-eval'")
   })
 
   it('applies CSP to a response returned by session middleware', async () => {
@@ -79,6 +104,6 @@ describe('proxy', () => {
     )
 
     expect(response.status).toBe(401)
-    expect(response.headers.get('Content-Security-Policy')).toBe("default-src 'self'")
+    expect(response.headers.get('Content-Security-Policy')).toContain("script-src")
   })
 })
