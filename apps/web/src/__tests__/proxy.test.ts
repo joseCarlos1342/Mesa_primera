@@ -13,15 +13,24 @@ jest.mock('@/utils/supabase/middleware', () => ({
 const mockUpdateSession = updateSession as jest.MockedFunction<typeof updateSession>
 const originalNodeEnv = process.env.NODE_ENV
 
+function setNodeEnv(value: string | undefined) {
+  Object.defineProperty(process.env, 'NODE_ENV', {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  })
+}
+
 describe('proxy', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    process.env.NODE_ENV = 'test'
+    setNodeEnv('test')
     mockUpdateSession.mockResolvedValue(NextResponse.next())
   })
 
   afterAll(() => {
-    process.env.NODE_ENV = originalNodeEnv
+    setNodeEnv(originalNodeEnv)
   })
 
   it('redirects GET requests from redirect hosts while preserving path and query', async () => {
@@ -86,7 +95,7 @@ describe('proxy', () => {
   })
 
   it('includes development CSP directives when running in development', async () => {
-    process.env.NODE_ENV = 'development'
+    setNodeEnv('development')
 
     const response = await proxy(
       new NextRequest('http://localhost:3000/dashboard'),
