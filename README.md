@@ -198,13 +198,19 @@ The project uses three testing layers:
 
 ```bash
 # Unit tests — Web (Jest 30)
-npm run test -- apps/web
+pnpm --filter web test
+
+# Coverage — Web
+pnpm --filter web test:coverage
 
 # Unit tests — Game Server (Vitest 4)
-npm run test -- apps/game-server
+pnpm --filter game-server test
+
+# Coverage — Game Server
+pnpm --filter game-server test:coverage
 
 # End-to-end (Playwright)
-npx playwright test
+pnpm exec playwright test
 ```
 
 E2E suites cover:
@@ -217,7 +223,7 @@ E2E suites cover:
 | `social` | Leaderboard rendering, friends system, auth gates |
 
 > [!IMPORTANT]
-> Server actions require a minimum of 80% test coverage.
+> Los gates ejecutables son: web `99%` statements/lines, `91%` branches y `98%` functions; game-server `89%` statements/functions, `80%` branches y `90%` lines. La cobertura no sustituye pruebas de integración para RLS, atomicidad financiera o reconexión real.
 
 ## Deployment
 

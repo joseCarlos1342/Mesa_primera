@@ -12,35 +12,35 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 > completa asociada a un commit SHA. Los checkpoints históricos de este archivo
 > no sustituyen una medición reproducible.
 
-Fecha de referencia documentada: `2026-07-27` (Checkpoint 167).
-Commit de evidencia: `82f978b`.
+Fecha de referencia documentada: `2026-08-01` (Checkpoint 168).
+Commit de evidencia: `8ff278c`.
 
 Cobertura vigente conocida de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.62%` |
-| Lines | `99.62%` |
+| Statements | `99.63%` |
+| Lines | `99.63%` |
 | Functions | `98.22%` |
-| Branches | `92.40%` |
+| Branches | `92.48%` |
 
 Resultado de la corrida:
 
-- `220` suites en verde.
-- `2037` tests pasando en la última verificación documentada.
+- `222` suites en verde.
+- `2049` tests pasando en la última verificación documentada.
 - La suite supera la meta estratégica en statements, lines y functions, pero
-  functions tiene `0.22` puntos de margen y branches queda `5.75` puntos
+  functions tiene `0.22` puntos de margen y branches queda `5.52` puntos
   por debajo del objetivo final.
 - No se debe afirmar cobertura global actualizada sin guardar la corrida
   asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
   es una fuente global suficiente.
-- La corrida del Checkpoint 167 genera `coverage-summary.json` global con
-  `40981` statements, `1183` funciones y `7566` branches; quedan `575` ramas
+- La corrida del Checkpoint 168 generó `coverage-summary.json` global con
+  `41035` statements, `1184` funciones y `7581` branches; quedan `570` ramas
   sin cubrir.
 
 ### Lectura de la deuda restante
 
-La cobertura global tiene `585` ramas faltantes sobre `7558` conocidas. El
+La cobertura global tiene `570` ramas faltantes sobre `7581` conocidas. El
 próximo objetivo no es perseguir `98%` con fallbacks imposibles, sino clasificar
 cada rama como:
 
@@ -135,6 +135,7 @@ El gate final de `98%` ya esta definido, pero el trabajo real debe planificarse 
 
 Hoy `apps/web/jest.config.mjs` incluye:
 
+- `src/proxy.ts`
 - `src/app/**/*.{ts,tsx}`
 - `src/components/**/*.{ts,tsx}`
 - `src/utils/**/*.{ts,tsx}`
@@ -149,7 +150,7 @@ Exclusiones actuales:
 - `error.tsx`
 - `not-found.tsx`
 
-Esto es correcto para medir superficie real. El problema no es configuracion incompleta; el problema es deficit real de pruebas sobre UI, hooks y wrappers.
+Esto mide también la frontera de CSP, canonicalizacion y sesión de `src/proxy.ts`. El problema restante es deficit real de pruebas sobre UI, hooks, wrappers y ramas de integraciones.
 
 ## Diagnostico: Donde se Hunde la Cobertura
 
@@ -157,7 +158,7 @@ Esto es correcto para medir superficie real. El problema no es configuracion inc
 
 Estado actual:
 
-- `app/actions/replays.ts`: `100%` statements/lines/functions y `93.67%` branches tras cubrir privacidad player, autorización admin, hidratación best-effort y fallos parciales.
+- `app/actions/replays.ts`: `100%` statements/lines/functions y `90.69%` branches en la medición vigente; mantiene cubiertos privacidad player, autorización admin, hidratación best-effort y fallos parciales.
 - `app/actions/admin-rake.ts`: `100%` statements/lines/functions, branches `96.96%`; quedan ramas defensivas menores de `rakeEntries || []`.
 - `app/actions/admin-ledger.ts`: `100%` statements/lines/functions/branches.
 - `app/actions/admin-tables.ts`: `99.59%` statements/lines, `100%` functions y `94.36%` branches.
@@ -178,7 +179,7 @@ Riesgo:
 
 Estado actual:
 
-- `app/(auth)/auth-actions.ts`: `99.54%` statements/lines, `85.71%` branches, `100%` functions tras Fase 1 del plan de hardening (jun 2026). Quedan 2 branches menores en `verifyOtp` (rama de éxito sin error).
+- `app/(auth)/auth-actions.ts`: `100%` statements/lines/functions y `89.41%` branches en la medición vigente. El valor histórico de Fase 1 se conserva únicamente en el historial de checkpoints.
 - `app/(auth)/auth-actions-helpers.ts`: `100%`.
 - `passkey-actions.ts`: `100%` statements/lines/functions/branches tras hardening de env vars, fallbacks de userName/transports/sign_count y auth guard de verificacion.
 - Las paginas de login/registro tienen buena base, pero quedan ramas de error y variantes de recovery/admin.
@@ -3305,3 +3306,27 @@ Criterios de salida:
   smoke E2E en CI y ramas B1 de recovery aún no ejercitadas.
 - Siguiente lote: evaluar ramas restantes de `RecoveryExplorer` y decidir si
   requieren tests B1 adicionales o clasificación como defensas B2.
+
+## Checkpoint 168
+
+- Fecha: `2026-08-01`, incorporación de la frontera `src/proxy.ts` y pruebas
+  directas de privacidad de replays.
+- Commit de evidencia: `8ff278c`.
+- Coverage después: `99.63%` statements/lines, `98.22%` functions y `92.48%`
+  branches; `222` suites y `2049` tests.
+- Archivos foco: `src/proxy.ts`,
+  `src/__tests__/proxy.test.ts` y
+  `src/lib/__tests__/replay-sanitizer.test.ts`.
+- Riesgos cerrados: canonicalización GET/HEAD con path/query preservados,
+  CSP aplicada a redirects y respuestas de sesión, nonce compartido entre
+  proxy y headers, eliminación de `privateCards` rivales, ocultación de
+  `hint.cards` y no mutación del payload original. La privacidad de otros
+  campos futuros de replay sigue requiriendo un contrato explícito.
+- Verificación: suites web completa, cobertura web, lint y typecheck verdes;
+  lint mantiene únicamente warnings preexistentes en assets generados de
+  `public/`. El hook de commit también validó game-server `37/846`.
+- Riesgos abiertos: autorización y rate limit de LiveKit, fallos biométricos
+  fail-closed, MFA/fallback de sesión, carreras asíncronas de SupportChat,
+  contratos financieros reales contra staging, fixture AAL2 y smoke E2E en CI.
+- Siguiente lote: LiveKit fail-closed y passkeys, empezando por tests rojos
+  de autorización de sala y fallos intermedios antes de cambiar producción.
