@@ -14,7 +14,7 @@
 - **Checkpoint 165 de cobertura web** (`2026-07-27`, commit `09fee88`): `220` suites y `2023` tests en verde; la cobertura alcanza `99.62%` statements/lines, `98.22%` functions y `92.25%` branches. Se cubren errores de disputas, compensaciones y conciliación idempotente de refunds.
 - **Checkpoint 166 de cobertura web** (`2026-07-27`, commit `9c97f72`): `220` suites y `2034` tests en verde; la cobertura alcanza `99.62%` statements/lines, `98.22%` functions y `92.34%` branches. Se cubren auth, errores de consultas, mensajes, validación y autorización de adjuntos en `admin-issues.ts`.
 - **Checkpoint 167 de cobertura web** (`2026-07-27`, commit `82f978b`): `220` suites y `2037` tests en verde; la cobertura alcanza `99.62%` statements/lines, `98.22%` functions y `92.40%` branches. Se cubren estados vacíos de recovery, excepciones de reconocimiento y refunds pending/failed con conciliación visible.
-- **Checkpoint 168 de cobertura web** (`2026-08-01`, commit `8ff278c`): `222` suites y `2049` tests en verde; la cobertura alcanza `99.63%` statements/lines, `98.22%` functions y `92.48%` branches. Se incorpora `src/proxy.ts` al baseline y se cubren canonicalización/CSP, sanitización de `privateCards`/`hint.cards` y no mutación del payload saneado.
+- **Checkpoint 168 de cobertura web** (`2026-08-01`, commit `802bc0e`): `222` suites y `2049` tests en verde; la cobertura alcanza `99.63%` statements/lines, `98.22%` functions y `92.48%` branches. Se incorpora `src/proxy.ts` al baseline y se cubren canonicalización/CSP, sanitización de `privateCards`/`hint.cards` y no mutación del payload saneado.
 
 ## [Sprint 6.10e] - 2026-04-26
 

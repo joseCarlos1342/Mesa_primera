@@ -13,7 +13,7 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 > no sustituyen una medición reproducible.
 
 Fecha de referencia documentada: `2026-08-01` (Checkpoint 168).
-Commit de evidencia: `8ff278c`.
+Commit de evidencia: `802bc0e`.
 
 Cobertura vigente conocida de `apps/web`:
 
@@ -3311,7 +3311,7 @@ Criterios de salida:
 
 - Fecha: `2026-08-01`, incorporación de la frontera `src/proxy.ts` y pruebas
   directas de privacidad de replays.
-- Commit de evidencia: `8ff278c`.
+- Commit de evidencia: `802bc0e`.
 - Coverage después: `99.63%` statements/lines, `98.22%` functions y `92.48%`
   branches; `222` suites y `2049` tests.
 - Archivos foco: `src/proxy.ts`,
