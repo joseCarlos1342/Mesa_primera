@@ -12,35 +12,35 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 > completa asociada a un commit SHA. Los checkpoints históricos de este archivo
 > no sustituyen una medición reproducible.
 
-Fecha de referencia documentada: `2026-08-01` (Checkpoint 168).
-Commit de evidencia: `802bc0e`.
+Fecha de referencia documentada: `2026-08-05` (Checkpoint 169).
+Commits de evidencia: `0779187`, `7f3bce0`, `eb43126`.
 
 Cobertura vigente conocida de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.63%` |
-| Lines | `99.63%` |
+| Statements | `99.59%` |
+| Lines | `99.59%` |
 | Functions | `98.22%` |
-| Branches | `92.48%` |
+| Branches | `92.41%` |
 
 Resultado de la corrida:
 
 - `222` suites en verde.
-- `2049` tests pasando en la última verificación documentada.
+- `2059` tests pasando en la última verificación documentada.
 - La suite supera la meta estratégica en statements, lines y functions, pero
-  functions tiene `0.22` puntos de margen y branches queda `5.52` puntos
+  functions tiene `0.22` puntos de margen y branches queda `5.59` puntos
   por debajo del objetivo final.
 - No se debe afirmar cobertura global actualizada sin guardar la corrida
   asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
   es una fuente global suficiente.
-- La corrida del Checkpoint 168 generó `coverage-summary.json` global con
-  `41035` statements, `1184` funciones y `7581` branches; quedan `570` ramas
+- La corrida del Checkpoint 169 generó `coverage-summary.json` global con
+  `41128` statements, `1185` funciones y `7612` branches; quedan `577` ramas
   sin cubrir.
 
 ### Lectura de la deuda restante
 
-La cobertura global tiene `570` ramas faltantes sobre `7581` conocidas. El
+La cobertura global tiene `577` ramas faltantes sobre `7612` conocidas. El
 próximo objetivo no es perseguir `98%` con fallbacks imposibles, sino clasificar
 cada rama como:
 
@@ -3330,3 +3330,27 @@ Criterios de salida:
   contratos financieros reales contra staging, fixture AAL2 y smoke E2E en CI.
 - Siguiente lote: LiveKit fail-closed y passkeys, empezando por tests rojos
   de autorización de sala y fallos intermedios antes de cambiar producción.
+
+## Checkpoint 169
+
+- Fecha: `2026-08-05`, autorización LiveKit basada en el estado vivo de la room.
+- Commits de evidencia: `0779187`, `7f3bce0`, `eb43126`.
+- Coverage web después: `99.59%` statements/lines, `98.22%` functions y
+  `92.41%` branches; `222` suites y `2059` tests.
+- Coverage game-server después: `91.64%` statements, `83.28%` branches,
+  `93.35%` functions y `93.59%` lines; `40` archivos de test y `861` tests.
+- Archivos foco: `app/api/livekit/route.ts`, `utils/redis.ts`,
+  `components/VoiceChat.tsx`, `rooms/MesaRoom.ts`,
+  `rooms/core/ConnectionManager.ts` y el contrato interno de autorización.
+- Riesgos cerrados: tokens LiveKit para jugadores ajenos, acceso admin sin
+  supervisión, rate limit sin fallback permisivo, respuestas internas
+  malformadas, roles desconocidos y desalineación del room ID tras recovery.
+  La revocación expulsa conexiones al salir y limita el JWT a 5 minutos.
+- Verificación: suites web y game-server completas, coberturas, ambos
+  typechecks, lint web y design lint player verdes. Lint mantiene únicamente
+  warnings preexistentes en assets generados de `public/`.
+- Riesgos abiertos: ventana residual de hasta 5 minutos para un JWT ya emitido,
+  passkey server-side fail-closed, MFA/fallback de sesión, carreras asíncronas
+  de SupportChat, lease de recovery y el contrato de reconexión `60s/120s`.
+- Siguiente lote: corregir el login passkey server-side antes de tocar SQL o
+  el enrolamiento biométrico de navegador.
