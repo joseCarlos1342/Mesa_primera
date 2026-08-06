@@ -45,15 +45,15 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.63%` statements, `92.48%` branches, `98.22%` functions, `99.63%` lines con `222` suites y `2049` tests pasando (`2026-08-01`, Checkpoint 168, commit `802bc0e`). La medición incluye `src/proxy.ts`.
-- Medicion game-server vigente: `91.65%` statements, `83.16%` branches, `93.41%` functions, `93.56%` lines con `37` archivos de test y `846` tests pasando (`2026-07-26`).
+- Medicion web vigente: `99.59%` statements, `92.41%` branches, `98.22%` functions, `99.59%` lines con `222` suites y `2059` tests pasando (`2026-08-05`, Checkpoint 169, commits `0779187`, `7f3bce0` y `eb43126`). La medición incluye autorización LiveKit real.
+- Medicion game-server vigente: `91.64%` statements, `83.28%` branches, `93.35%` functions, `93.59%` lines con `40` archivos de test y `861` tests pasando (`2026-08-05`).
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
 - Frentes flojos actuales de game-server: `MesaRoom.ts` por volumen de reglas, `AdminCommand.ts`, `CrashRecoveryService.ts`, `SupabaseService.ts` y `notification-dispatcher.ts` por ramas de error/dispatch. `RecoveryService.ts` y `ReplayPhaseService.ts` no existen en el árbol actual y no deben usarse como objetivos.
 - Gate operativo actual:
   - Web: `99%` statements, `91%` branches, `98%` functions, `99%` lines. Este gate fija el avance del checkpoint 155 y evita regresar por debajo de la meta estratégica ya alcanzada en statements, functions y lines.
   - Game server: `89%` statements, `80%` branches, `89%` functions, `90%` lines.
-- Objetivo final estrategico sigue siendo `98%` en ambos frentes. Web ya supera la meta en statements, functions y lines; branches (`92.48%`) es su frente pendiente. Game-server mantiene gates escalonados hasta acercarse a la meta sin falsos rojos.
+- Objetivo final estrategico sigue siendo `98%` en ambos frentes. Web ya supera la meta en functions y los gates operativos en las cuatro métricas; branches (`92.41%`) es su frente pendiente. Game-server mantiene gates escalonados hasta acercarse a la meta sin falsos rojos.
 - La medicion web incorpora `src/proxy.ts` como frontera de CSP, canonicalizacion y sesion; el baseline debe recalcularse despues de cada cambio de superficie medida.
 - Hay una discrepancia de dominio pendiente: la regla global documenta una gracia de reconexion de `60s`, mientras `ConnectionManager.ts` y parte de su documentacion operativa usan `120s`. No se debe ampliar cobertura de ese flujo hasta resolver el contrato.
 - Hardening de cobertura Fases 1-2 (2026-06-22): 80 tests nuevos centrados en zonas debiles criticas (auth-actions, MesaRoom.refundAllActiveBets, AdminSecurityPanel, recovery, security, password, tables, consultas). Subidas clave: `auth-actions.ts` 74.8% → 85.71% branches; `recovery/page.tsx` 11.11% → 100% branches; `AdminSecurityPanel.tsx` 26.92% → 100% branches; `password/page.tsx` 62.5% → 94.54% branches; `tables/page.tsx` 61.11% → 100% branches; `consultas/page.tsx` 63.63% → 100% branches; `security/page.tsx` 33.33% → 100% branches.
