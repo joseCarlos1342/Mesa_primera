@@ -32,6 +32,7 @@ vi.mock('../../services/redis', () => {
 vi.mock('../../services/LiveKitModerationService', () => ({
   LiveKitModerationService: {
     muteParticipant: vi.fn().mockResolvedValue(true),
+    removeParticipant: vi.fn().mockResolvedValue(true),
   },
 }));
 
