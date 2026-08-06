@@ -35,6 +35,7 @@ import {
 import { SnapshotBuilder, type AnimationHint, type StateLike } from "../services/ReplayV2";
 import { MIN_BALANCE_CENTS, COLYSEUS_CONSENTED_CLOSE_CODE, TURN_TIMEOUT_SECONDS, SHOWDOWN_TIMEOUT_SECONDS } from "./core/constants";
 import { isRecoverableGamePhase, stableJson } from "../services/RecoveryPolicy";
+import { resolveVoiceAuthorization, type VoiceAuthorizationResult } from "./voice-authorization";
 
 export interface MesaMetadata {
   tableName: string;
@@ -133,8 +134,18 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   public clientMap = new Map<string, Client>();
   /** Espectadores admin (no reciben cartas, solo observan estado público). */
   public spectators = new Map<string, Client>();
+  /** Identidad Supabase de cada espectador admin activo, indexada por sesión. */
+  public spectatorAdminIds = new Map<string, string>();
   /** Jugadores silenciados por moderación durante la vida de la sala. */
   public mutedPlayerIds = new Set<string>();
+
+  public authorizeVoiceParticipant(userId: string): VoiceAuthorizationResult {
+    return resolveVoiceAuthorization(
+      this.state.players.values(),
+      this.spectatorAdminIds.values(),
+      userId,
+    );
+  }
   /** Jugadores que ganaron el pique por doble-paso con juego. */
   public juegoCallers: string[] = [];
   /** ID del ganador del pique pendiente de decidir mostrar/ocultar cartas. */

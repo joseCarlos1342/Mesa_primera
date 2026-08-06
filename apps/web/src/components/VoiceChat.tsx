@@ -54,7 +54,7 @@ export function VoiceChat({ roomName, username, showSpeakers = false }: VoiceCha
         const resp = await fetch('/api/livekit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ room: roomName, username }),
+          body: JSON.stringify({ room: roomName }),
         });
         const data = await resp.json();
         
