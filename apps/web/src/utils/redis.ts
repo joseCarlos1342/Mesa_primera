@@ -104,6 +104,25 @@ export async function checkRateLimit(key: string, limit: number, windowSecs: num
   }
 }
 
+export async function checkDistributedRateLimit(key: string, limit: number, windowSecs: number) {
+  if (!redisClient) {
+    throw new Error('Redis is required for this rate limit');
+  }
+
+  try {
+    const current = await redisClient.incr(key);
+    if (current === 1) await redisClient.expire(key, windowSecs);
+    return {
+      success: current <= limit,
+      limit,
+      remaining: Math.max(0, limit - current),
+      reset: windowSecs,
+    };
+  } catch (error) {
+    throw new Error('Distributed rate limiter unavailable', { cause: error });
+  }
+}
+
 /**
  * Obtiene la IP con headers de Vercel/proxies
  */

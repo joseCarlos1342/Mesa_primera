@@ -118,6 +118,37 @@ describe('redis utils', () => {
     expect(warn).toHaveBeenCalledWith('[REDIS_FALLBACK] Redis error in rate limit — using memory fallback:', 'ECONNREFUSED')
   })
 
+  it('falla cerrado cuando el rate limit distribuido no tiene Redis', async () => {
+    const { checkDistributedRateLimit } = await loadRedisModule()
+
+    await expect(checkDistributedRateLimit('livekit:user:1', 10, 60)).rejects.toThrow(
+      'Redis is required for this rate limit',
+    )
+  })
+
+  it('usa Redis para el rate limit distribuido sin fallback en memoria', async () => {
+    MockRedis.incr.mockResolvedValueOnce(1)
+    MockRedis.expire.mockResolvedValueOnce(1)
+    const { checkDistributedRateLimit } = await loadRedisModule('redis://localhost:6380')
+
+    await expect(checkDistributedRateLimit('livekit:user:1', 10, 60)).resolves.toEqual({
+      success: true,
+      limit: 10,
+      remaining: 9,
+      reset: 60,
+    })
+    expect(MockRedis.expire).toHaveBeenCalledWith('livekit:user:1', 60)
+  })
+
+  it('propaga indisponibilidad de Redis en el rate limit distribuido', async () => {
+    MockRedis.incr.mockRejectedValueOnce(new Error('ECONNREFUSED'))
+    const { checkDistributedRateLimit } = await loadRedisModule('redis://localhost:6380')
+
+    await expect(checkDistributedRateLimit('livekit:user:1', 10, 60)).rejects.toThrow(
+      'Distributed rate limiter unavailable',
+    )
+  })
+
   it('silencia errores repetidos de cliente Redis solo en desarrollo', async () => {
     ;(process.env as Record<string, string | undefined>).NODE_ENV = 'development'
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})

@@ -9,6 +9,7 @@ import { emitBroadcastToClients } from "./services/socket";
 import { isDraining } from "./runtime-state";
 import { isInternalRequest } from "./services/internal-api";
 import { getRecoveryHealth, recoveryMetrics } from "./services/RecoveryObservability";
+import { createLiveKitAuthorizationHandler } from "./services/LiveKitAuthorizationService";
 
 export default defineServer({
     transport: new WebSocketTransport({
@@ -119,6 +120,16 @@ export default defineServer({
 
             emitBroadcastToClients({ broadcastId, type, title, body, createdAt: createdAt || new Date().toISOString() });
             res.json({ ok: true });
+        });
+
+        app.post("/api/internal/livekit/authorize", createLiveKitAuthorizationHandler());
+
+        app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+            if (req.path === "/api/internal/livekit/authorize") {
+                res.status(400).json({ ok: false, error: "Invalid request" });
+                return;
+            }
+            next(err);
         });
     },
 });

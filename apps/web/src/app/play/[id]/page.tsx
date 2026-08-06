@@ -976,7 +976,7 @@ export default function GameRoomPage() {
         {room && (
           <div className="fixed bottom-24 right-4 landscape:bottom-16 landscape:right-2 z-50 landscape:scale-75 origin-bottom-right">
             <VoiceChat
-              roomName={roomId}
+              roomName={room.roomId}
               username={players.find(p => p.id === room?.sessionId)?.nickname || 'Jugador'}
             />
           </div>

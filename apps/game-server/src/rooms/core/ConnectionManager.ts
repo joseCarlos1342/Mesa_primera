@@ -81,15 +81,16 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
   // ── Spectator (admin) mode ──
   if (options.spectator === true) {
     // Validate supervision token for authorized spectator access
-    const { valid } = await SupabaseService.validateSupervisionToken(
+    const { valid, adminId } = await SupabaseService.validateSupervisionToken(
       options.supervisionToken,
       r.roomId
     );
-    if (!valid) {
+    if (!valid || !adminId) {
       throw new Error("Token de supervisión inválido o expirado (code: 4003)");
     }
     console.log(`[MesaRoom] Espectador (admin) conectado: ${client.sessionId}`);
     r.spectators.set(client.sessionId, client);
+    r.spectatorAdminIds.set(client.sessionId, adminId);
     // Spectators do NOT get a Player schema entry and NEVER receive private cards (Admin Blindness)
     client.send("spectator:joined", { roomId: r.roomId, phase: r.state.phase });
     const mutedPlayerIds = Array.from(r.state.players.values())
@@ -291,6 +292,7 @@ export async function handleConnectionLeave(room: MesaRoom, client: Client, code
   if (r.spectators.has(client.sessionId)) {
     console.log(`[MesaRoom] Espectador desconectado: ${client.sessionId}`);
     r.spectators.delete(client.sessionId);
+    r.spectatorAdminIds.delete(client.sessionId);
     // Notify players that admin left
     r.broadcast("admin:status", { active: r.spectators.size > 0, count: r.spectators.size });
     return;

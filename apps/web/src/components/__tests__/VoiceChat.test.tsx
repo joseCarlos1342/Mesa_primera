@@ -58,7 +58,7 @@ describe('VoiceChat', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/livekit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ room: 'mesa-1', username: 'Jose' }),
+      body: JSON.stringify({ room: 'mesa-1' }),
     })
   })
 
