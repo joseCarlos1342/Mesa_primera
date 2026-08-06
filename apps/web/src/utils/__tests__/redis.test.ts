@@ -7,6 +7,7 @@ class MockRedis {
   static get = jest.fn()
   static incr = jest.fn()
   static expire = jest.fn()
+  static eval = jest.fn()
 
   public on = jest.fn((event: string, handler: (error: Error) => void) => {
     if (event === 'error') this.errorHandler = handler
@@ -37,6 +38,10 @@ class MockRedis {
 
   expire(key: string, seconds: number) {
     return MockRedis.expire(key, seconds)
+  }
+
+  eval(script: string, keyCount: number, key: string, windowSecs: number) {
+    return MockRedis.eval(script, keyCount, key, windowSecs)
   }
 
   triggerError(message: string) {
@@ -127,8 +132,7 @@ describe('redis utils', () => {
   })
 
   it('usa Redis para el rate limit distribuido sin fallback en memoria', async () => {
-    MockRedis.incr.mockResolvedValueOnce(1)
-    MockRedis.expire.mockResolvedValueOnce(1)
+    MockRedis.eval.mockResolvedValueOnce(1)
     const { checkDistributedRateLimit } = await loadRedisModule('redis://localhost:6380')
 
     await expect(checkDistributedRateLimit('livekit:user:1', 10, 60)).resolves.toEqual({
@@ -137,11 +141,11 @@ describe('redis utils', () => {
       remaining: 9,
       reset: 60,
     })
-    expect(MockRedis.expire).toHaveBeenCalledWith('livekit:user:1', 60)
+    expect(MockRedis.eval).toHaveBeenCalledWith(expect.stringContaining('EXPIRE'), 1, 'livekit:user:1', 60)
   })
 
   it('propaga indisponibilidad de Redis en el rate limit distribuido', async () => {
-    MockRedis.incr.mockRejectedValueOnce(new Error('ECONNREFUSED'))
+    MockRedis.eval.mockRejectedValueOnce(new Error('ECONNREFUSED'))
     const { checkDistributedRateLimit } = await loadRedisModule('redis://localhost:6380')
 
     await expect(checkDistributedRateLimit('livekit:user:1', 10, 60)).rejects.toThrow(

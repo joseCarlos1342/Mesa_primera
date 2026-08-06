@@ -87,9 +87,10 @@ let _leaveHandler: ((code: number) => void) | undefined
 let errorHandler: ((code: number, message?: string) => void) | undefined
 const messageHandlers = new Map<string, (data: any) => void>()
 
-function makeRoom(overrides: Partial<{ sessionId: string; state: Record<string, unknown>; reconnectionToken: string }> = {}) {
+function makeRoom(overrides: Partial<{ sessionId: string; roomId: string; state: Record<string, unknown>; reconnectionToken: string }> = {}) {
   return {
     sessionId: overrides.sessionId ?? 'player-1',
+    roomId: overrides.roomId ?? 'room-123',
     reconnectionToken: overrides.reconnectionToken ?? 'fresh-token',
     state: { isFirstGame: true, minPlayers: 3, ...(overrides.state ?? {}) },
     send,
@@ -461,6 +462,16 @@ describe('GameRoomPage', () => {
     })
     expect(unlock).toHaveBeenCalled()
     expect(exitFullscreen).toHaveBeenCalled()
+  })
+
+  it('pasa a voz el roomId real después de recuperar una sala', async () => {
+    mockJoinById.mockResolvedValue(makeRoom({ roomId: 'recovered-room-456' }) as never)
+
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState({ players: new Map([['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 0 }]]) })
+
+    expect(await screen.findByText('Voice recovered-room-456 Ana')).toBeInTheDocument()
   })
 
   it('muestra cuenta regresiva y permite anular listo cuando la mesa alcanza minimo', async () => {

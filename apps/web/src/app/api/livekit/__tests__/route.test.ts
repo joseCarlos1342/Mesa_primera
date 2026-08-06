@@ -86,7 +86,7 @@ describe('POST /api/livekit', () => {
     expect(AccessToken).toHaveBeenCalledWith('api-key', 'api-secret', {
       identity: 'user-auth-1',
       name: 'Ana Mesa',
-      ttl: '2h',
+      ttl: '5m',
     })
     expect(addGrant).toHaveBeenCalledWith({ roomJoin: true, room: 'mesa-1', canPublish: true })
   })

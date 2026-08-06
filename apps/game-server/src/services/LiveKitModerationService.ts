@@ -7,6 +7,22 @@ function liveKitHttpUrl(): string | null {
 }
 
 export class LiveKitModerationService {
+  static async removeParticipant(roomName: string, identity: string): Promise<boolean> {
+    const url = liveKitHttpUrl();
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    if (!url || !apiKey || !apiSecret || !roomName || !identity) return false;
+
+    try {
+      const roomService = new RoomServiceClient(url, apiKey, apiSecret);
+      await roomService.removeParticipant(roomName, identity);
+      return true;
+    } catch (error) {
+      console.error("[LiveKitModerationService] Error expulsando participante:", error instanceof Error ? error.name : "unknown");
+      return false;
+    }
+  }
+
   static async muteParticipant(roomName: string, identity: string): Promise<boolean> {
     const url = liveKitHttpUrl();
     const apiKey = process.env.LIVEKIT_API_KEY;
