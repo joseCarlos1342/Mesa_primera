@@ -110,8 +110,13 @@ export async function checkDistributedRateLimit(key: string, limit: number, wind
   }
 
   try {
-    const current = await redisClient.incr(key);
-    if (current === 1) await redisClient.expire(key, windowSecs);
+    const current = Number(await redisClient.eval(
+      'local current = redis.call("INCR", KEYS[1]); if current == 1 then redis.call("EXPIRE", KEYS[1], ARGV[1]); end; return current',
+      1,
+      key,
+      windowSecs,
+    ));
+    if (!Number.isFinite(current)) throw new Error('Invalid Redis rate limit result');
     return {
       success: current <= limit,
       limit,

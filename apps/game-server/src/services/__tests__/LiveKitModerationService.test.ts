@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getParticipant, mutePublishedTrack, updateParticipant, RoomServiceClient } = vi.hoisted(() => ({
+const { getParticipant, mutePublishedTrack, updateParticipant, removeParticipant, RoomServiceClient } = vi.hoisted(() => ({
   getParticipant: vi.fn(),
   mutePublishedTrack: vi.fn(),
   updateParticipant: vi.fn(),
+  removeParticipant: vi.fn(),
   RoomServiceClient: vi.fn(),
 }));
 
@@ -15,6 +16,7 @@ vi.mock("livekit-server-sdk", () => ({
     getParticipant = getParticipant;
     mutePublishedTrack = mutePublishedTrack;
     updateParticipant = updateParticipant;
+    removeParticipant = removeParticipant;
   },
 }));
 
@@ -28,6 +30,13 @@ describe("LiveKitModerationService", () => {
     process.env.LIVEKIT_API_SECRET = "secret";
     getParticipant.mockResolvedValue({ tracks: [{ sid: "TR_AUDIO" }] });
     mutePublishedTrack.mockResolvedValue({});
+    removeParticipant.mockResolvedValue(undefined);
+  });
+
+  it("expulsa al participante de LiveKit al salir definitivamente de la room", async () => {
+    await expect(LiveKitModerationService.removeParticipant("room-1", "user-1")).resolves.toBe(true);
+
+    expect(removeParticipant).toHaveBeenCalledWith("room-1", "user-1");
   });
 
   it("silencia todas las pistas publicadas por el jugador", async () => {

@@ -25,7 +25,11 @@ export async function POST(request: NextRequest) {
   try {
     let body: LiveKitRequestBody;
     try {
-      body = await request.json();
+      const parsedBody: unknown = await request.json();
+      if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) {
+        return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 });
+      }
+      body = parsedBody as LiveKitRequestBody;
     } catch {
       return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 });
     }
@@ -138,7 +142,7 @@ export async function POST(request: NextRequest) {
       identity: user.id,
       name: participantName,
       // TTL set to 2 hours
-      ttl: '2h',
+      ttl: '5m',
     });
 
     at.addGrant({ roomJoin: true, room: roomName, canPublish: !isMuted });

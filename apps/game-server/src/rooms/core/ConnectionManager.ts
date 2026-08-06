@@ -38,6 +38,11 @@ async function reapplyVoiceMute(room: MesaRoom, player: Player, client: Client):
   client.send("admin:muted", { reason: "Silenciado por admin", muted: true });
 }
 
+async function revokeVoiceParticipant(room: MesaRoom, player: Player): Promise<void> {
+  if (!player.supabaseUserId) return;
+  await LiveKitModerationService.removeParticipant(room.roomId, player.supabaseUserId);
+}
+
 interface MesaMetadataLike {
   tableName?: string;
   minEntry?: number;
@@ -352,6 +357,7 @@ export async function handleConnectionLeave(room: MesaRoom, client: Client, code
       }
     }
     console.log(`[RECONNECT:ABANDON] ${player.nickname} (${client.sessionId}) — desconexión explícita (code=${code}), phase=${r.state.phase}`);
+    await revokeVoiceParticipant(r, player);
     r.removePlayer(client.sessionId);
     return;
   }
@@ -401,5 +407,6 @@ export async function handleConnectionLeave(room: MesaRoom, client: Client, code
     }
 
     r.removePlayer(client.sessionId);
+    await revokeVoiceParticipant(r, player);
   }
 }
