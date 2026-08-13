@@ -17,6 +17,7 @@
 - **Checkpoint 168 de cobertura web** (`2026-08-01`, commit `802bc0e`): `222` suites y `2049` tests en verde; la cobertura alcanza `99.63%` statements/lines, `98.22%` functions y `92.48%` branches. Se incorpora `src/proxy.ts` al baseline y se cubren canonicalización/CSP, sanitización de `privateCards`/`hint.cards` y no mutación del payload saneado.
 - **Checkpoint 169 de cobertura web** (`2026-08-05`, commits `0779187`, `7f3bce0`, `eb43126`): `222` suites y `2059` tests en verde; la cobertura alcanza `99.59%` statements/lines, `98.22%` functions y `92.41%` branches. Se cierra autorización LiveKit por pertenencia viva a `MesaRoom`, supervisión admin activa, TTL corto, expulsión al salir, rate limit distribuido y recovery por room ID real.
 - **T1 estabilidad de suites** (`2026-08-12`, pendiente de commit): se retiró `--forceExit`, se añadió `test:handles:web`, Jest terminó naturalmente en tres corridas y `ReplayFileService` obtuvo un cleanup idempotente/cancelable. La cobertura game-server queda en `91.65%` statements, `83.35%` branches, `93.36%` functions y `93.60%` lines.
+- **Checkpoint 170 passkey hardening** (`2026-08-12`, commits `4140f77`, `c71ce69`): `222` suites y `2073` tests web en verde; cobertura `99.57%` statements/lines, `98.22%` functions y `92.39%` branches. El login valida persistencia/identidad y los challenges usan Redis one-time con propósito y TTL.
 
 ## [Sprint 6.10e] - 2026-04-26
 

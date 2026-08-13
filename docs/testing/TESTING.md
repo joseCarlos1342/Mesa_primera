@@ -45,9 +45,9 @@ Antes de cerrar cambios relevantes:
 
 - Web: el umbral oficial lo gobierna el proyecto `apps/web`.
 - Game server: el umbral oficial lo gobierna `apps/game-server`.
-- Medicion web vigente: `99.59%` statements, `92.41%` branches, `98.22%` functions, `99.59%` lines con `222` suites y `2059` tests pasando (`2026-08-05`, Checkpoint 169, commits `0779187`, `7f3bce0` y `eb43126`). La medición incluye autorización LiveKit real.
+- Medicion web vigente: `99.57%` statements, `92.39%` branches, `98.22%` functions, `99.57%` lines con `222` suites y `2073` tests pasando (`2026-08-13`, commits `0779187`, `7f3bce0`, `eb43126`, `adb3971`, `4140f77` y `c71ce69`). La medición incluye autorización LiveKit y challenges passkey one-time.
 - Medicion game-server vigente: `91.64%` statements, `83.28%` branches, `93.35%` functions, `93.59%` lines con `40` archivos de test y `861` tests pasando (`2026-08-05`).
-- T1 estabilidad de suites (`2026-08-12`, pendiente de commit): Jest web termina naturalmente sin `--forceExit` en `222` suites y `2059` tests; el diagnóstico `test:handles:web` (`--detectOpenHandles`) tampoco reporta handles. Game-server mantiene `40` archivos y `861` tests; cobertura focal final: `91.65%` statements, `83.35%` branches, `93.36%` functions y `93.60%` lines.
+- T1 estabilidad de suites (`2026-08-12`, commit `adb3971`): Jest web termina naturalmente sin `--forceExit` en `222` suites y `2059` tests; el diagnóstico `test:handles:web` (`--detectOpenHandles`) tampoco reporta handles. Game-server mantiene `40` archivos y `861` tests; cobertura focal final: `91.65%` statements, `83.35%` branches, `93.36%` functions y `93.60%` lines.
 - `MesaRoom` y sus fases son zona critica: cualquier cambio en flujo de juego, reconexion, payout o apuestas debe venir con pruebas especificas.
 - El roadmap detallado de cobertura web vive en `docs/testing/WEB_COVERAGE_ROADMAP.md`.
 - Frentes flojos actuales de game-server: `MesaRoom.ts` por volumen de reglas, `AdminCommand.ts`, `CrashRecoveryService.ts`, `SupabaseService.ts` y `notification-dispatcher.ts` por ramas de error/dispatch. `RecoveryService.ts` y `ReplayPhaseService.ts` no existen en el árbol actual y no deben usarse como objetivos.
