@@ -72,6 +72,18 @@ export const redis = {
     if (!redisClient) return null
     return redisClient.get(key)
   },
+
+  async consume(key: string) {
+    if (!redisClient) {
+      throw new Error('Redis is required for one-time values')
+    }
+
+    try {
+      return await redisClient.call('GETDEL', key) as string | null
+    } catch (error) {
+      throw new Error('One-time value store unavailable', { cause: error })
+    }
+  },
 }
 
 /**

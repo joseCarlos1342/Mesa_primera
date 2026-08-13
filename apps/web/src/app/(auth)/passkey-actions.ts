@@ -15,6 +15,8 @@ import type {
   AuthenticationResponseJSON,
 } from '@simplewebauthn/server'
 import { normalizePhone } from '@/lib/phone'
+import { randomUUID } from 'node:crypto'
+import { redis } from '@/utils/redis'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -34,10 +36,19 @@ function getExpectedOrigins(): string[] {
 
 
 
-/** Store a challenge in an httpOnly cookie for later verification */
-async function storeChallenge(challenge: string) {
+type ChallengePurpose = 'registration' | 'authentication'
+
+/** Store the challenge server-side and keep only an opaque reference in the cookie. */
+async function storeChallenge(challenge: string, purpose: ChallengePurpose) {
+  const reference = randomUUID()
+  const stored = await redis.setex(
+    `webauthn:challenge:${reference}`,
+    CHALLENGE_MAX_AGE,
+    JSON.stringify({ challenge, purpose }),
+  )
+  if (stored === null) throw new Error('Redis is required for passkey challenges')
   const cookieStore = await cookies()
-  cookieStore.set(CHALLENGE_COOKIE, challenge, {
+  cookieStore.set(CHALLENGE_COOKIE, reference, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
@@ -46,14 +57,25 @@ async function storeChallenge(challenge: string) {
   })
 }
 
-/** Retrieve and consume the stored challenge */
-async function consumeChallenge(): Promise<string | null> {
+/** Retrieve and atomically consume a challenge for its intended operation. */
+async function consumeChallenge(purpose: ChallengePurpose): Promise<string | null> {
   const cookieStore = await cookies()
   const value = cookieStore.get(CHALLENGE_COOKIE)?.value ?? null
   if (value) {
     cookieStore.delete(CHALLENGE_COOKIE)
   }
-  return value
+  if (!value) return null
+
+  const raw = await redis.consume(`webauthn:challenge:${value}`)
+  if (!raw) return null
+
+  try {
+    const stored = JSON.parse(raw) as { challenge?: unknown; purpose?: unknown }
+    if (stored.purpose !== purpose || typeof stored.challenge !== 'string') return null
+    return stored.challenge
+  } catch {
+    return null
+  }
 }
 
 // ─── 1. Registration: generate options ─────────────────────────────────────
@@ -77,7 +99,11 @@ export async function getPasskeyRegistrationOptions() {
     timeout: 60000,
   })
 
-  await storeChallenge(options.challenge)
+  try {
+    await storeChallenge(options.challenge, 'registration')
+  } catch {
+    return { error: 'No se pudo preparar la verificación biométrica.' }
+  }
 
   return { options }
 }
@@ -92,7 +118,12 @@ export async function verifyPasskeyRegistration(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const expectedChallenge = await consumeChallenge()
+  let expectedChallenge: string | null
+  try {
+    expectedChallenge = await consumeChallenge('registration')
+  } catch {
+    return { error: 'No se pudo verificar el challenge biométrico.' }
+  }
   if (!expectedChallenge) return { error: 'Challenge expirado. Intenta de nuevo.' }
 
   let verification
@@ -183,7 +214,11 @@ export async function getPasskeyLoginOptions(phone: string) {
     timeout: 60000,
   })
 
-  await storeChallenge(options.challenge)
+  try {
+    await storeChallenge(options.challenge, 'authentication')
+  } catch {
+    return { error: 'No se pudo preparar el acceso biométrico.' }
+  }
 
   return { available: true, options }
 }
@@ -197,7 +232,12 @@ export async function verifyPasskeyLogin(
   const rl = await enforceRateLimiting('passkey_login_verify', 5, 60)
   if (!rl.success) return { error: rl.error }
 
-  const expectedChallenge = await consumeChallenge()
+  let expectedChallenge: string | null
+  try {
+    expectedChallenge = await consumeChallenge('authentication')
+  } catch {
+    return { error: 'No se pudo verificar el challenge biométrico.' }
+  }
   if (!expectedChallenge) return { error: 'Challenge expirado. Intenta de nuevo.' }
 
   const normalized = normalizePhone(phone)

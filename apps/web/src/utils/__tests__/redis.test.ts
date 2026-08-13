@@ -8,6 +8,7 @@ class MockRedis {
   static incr = jest.fn()
   static expire = jest.fn()
   static eval = jest.fn()
+  static call = jest.fn()
 
   public on = jest.fn((event: string, handler: (error: Error) => void) => {
     if (event === 'error') this.errorHandler = handler
@@ -42,6 +43,10 @@ class MockRedis {
 
   eval(script: string, keyCount: number, key: string, windowSecs: number) {
     return MockRedis.eval(script, keyCount, key, windowSecs)
+  }
+
+  call(command: string, ...args: string[]) {
+    return MockRedis.call(command, ...args)
   }
 
   triggerError(message: string) {
@@ -150,6 +155,33 @@ describe('redis utils', () => {
 
     await expect(checkDistributedRateLimit('livekit:user:1', 10, 60)).rejects.toThrow(
       'Distributed rate limiter unavailable',
+    )
+  })
+
+  it('consume valores de un solo uso con GETDEL en Redis', async () => {
+    MockRedis.call.mockResolvedValueOnce('{"purpose":"authentication","challenge":"challenge-1"}')
+    const { redis } = await loadRedisModule('redis://localhost:6380')
+
+    await expect(redis.consume('webauthn:challenge:opaque-1')).resolves.toBe(
+      '{"purpose":"authentication","challenge":"challenge-1"}',
+    )
+    expect(MockRedis.call).toHaveBeenCalledWith('GETDEL', 'webauthn:challenge:opaque-1')
+  })
+
+  it('propaga indisponibilidad de GETDEL', async () => {
+    MockRedis.call.mockRejectedValueOnce(new Error('ECONNREFUSED'))
+    const { redis } = await loadRedisModule('redis://localhost:6380')
+
+    await expect(redis.consume('webauthn:challenge:opaque-1')).rejects.toThrow(
+      'One-time value store unavailable',
+    )
+  })
+
+  it('falla cerrado al consumir un valor de un solo uso sin Redis', async () => {
+    const { redis } = await loadRedisModule()
+
+    await expect(redis.consume('webauthn:challenge:opaque-1')).rejects.toThrow(
+      'Redis is required for one-time values',
     )
   })
 

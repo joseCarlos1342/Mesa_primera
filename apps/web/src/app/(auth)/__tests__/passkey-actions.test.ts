@@ -5,6 +5,10 @@ const createClient = jest.fn()
 const createAdminClient = jest.fn()
 const enforceRateLimiting = jest.fn()
 const enforceSessionPolicy = jest.fn()
+const redisSetex = jest.fn()
+const redisConsume = jest.fn()
+let redisChallengePurpose: 'registration' | 'authentication' = 'authentication'
+let lastChallengeKey: string | null = null
 const generateRegistrationOptions = jest.fn()
 const verifyRegistrationResponse = jest.fn()
 const generateAuthenticationOptions = jest.fn()
@@ -21,6 +25,13 @@ jest.mock('@/utils/supabase/server', () => ({
 
 jest.mock('@/app/actions/anti-fraud', () => ({
   enforceRateLimiting: (...args: unknown[]) => enforceRateLimiting(...args),
+}))
+
+jest.mock('@/utils/redis', () => ({
+  redis: {
+    setex: (...args: unknown[]) => redisSetex(...args),
+    consume: (...args: unknown[]) => redisConsume(...args),
+  },
 }))
 
 jest.mock('../auth-actions-helpers', () => ({
@@ -81,6 +92,16 @@ describe('passkey-actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     cookieGet.mockReturnValue({ value: 'challenge-1' })
+    redisSetex.mockResolvedValue('OK')
+    redisSetex.mockImplementation(async (key: string) => {
+      lastChallengeKey = key
+      return 'OK'
+    })
+    redisChallengePurpose = 'authentication'
+    redisConsume.mockImplementation(async () => JSON.stringify({
+      purpose: redisChallengePurpose,
+      challenge: redisChallengePurpose === 'authentication' ? 'challenge-1' : 'challenge-1',
+    }))
     enforceRateLimiting.mockResolvedValue({ success: true })
     enforceSessionPolicy.mockResolvedValue(undefined)
     generateRegistrationOptions.mockResolvedValue({ challenge: 'challenge-1', rp: { name: 'Mesa Primera' } })
@@ -119,10 +140,50 @@ describe('passkey-actions', () => {
       userName: 'ana',
       authenticatorSelection: expect.objectContaining({ userVerification: 'required' }),
     }))
-    expect(cookieSet).toHaveBeenCalledWith('webauthn_challenge', 'challenge-1', expect.objectContaining({ httpOnly: true, maxAge: 120 }))
+    expect(cookieSet).toHaveBeenCalledWith('webauthn_challenge', expect.not.stringMatching(/^challenge-1$/), expect.objectContaining({ httpOnly: true, maxAge: 120 }))
+    expect(redisSetex).toHaveBeenCalledWith(expect.stringMatching(/^webauthn:challenge:/), 120, expect.stringContaining('registration'))
+  })
+
+  it('consume exactamente la referencia de challenge guardada en la cookie', async () => {
+    redisChallengePurpose = 'registration'
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    createAdminClient.mockResolvedValue(adminClientWithFrom(jest.fn(() => query({ error: null }))))
+    const { getPasskeyRegistrationOptions, verifyPasskeyRegistration } = await import('../passkey-actions')
+
+    await getPasskeyRegistrationOptions()
+    const cookieReference = (cookieSet.mock.calls.at(-1)?.[1] as string)
+    expect(lastChallengeKey).toBe(`webauthn:challenge:${cookieReference}`)
+
+    cookieGet.mockReturnValue({ value: cookieReference })
+    await verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')
+
+    expect(redisConsume).toHaveBeenCalledWith(lastChallengeKey)
+  })
+
+  it('falla cerrado si Redis no puede almacenar el challenge de registro', async () => {
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    redisSetex.mockResolvedValueOnce(null)
+    const { getPasskeyRegistrationOptions } = await import('../passkey-actions')
+
+    await expect(getPasskeyRegistrationOptions()).resolves.toEqual({
+      error: 'No se pudo preparar la verificación biométrica.',
+    })
+    expect(cookieSet).not.toHaveBeenCalled()
+  })
+
+  it('falla cerrado si Redis rechaza el almacenamiento del challenge', async () => {
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    redisSetex.mockRejectedValueOnce(new Error('Redis unavailable'))
+    const { getPasskeyRegistrationOptions } = await import('../passkey-actions')
+
+    await expect(getPasskeyRegistrationOptions()).resolves.toEqual({
+      error: 'No se pudo preparar la verificación biométrica.',
+    })
+    expect(cookieSet).not.toHaveBeenCalled()
   })
 
   it('verifica registro, consume challenge y guarda credencial confiable', async () => {
+    redisChallengePurpose = 'registration'
     createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
     const from = jest.fn(() => query({ error: null }))
     createAdminClient.mockResolvedValue(adminClientWithFrom(from))
@@ -130,11 +191,13 @@ describe('passkey-actions', () => {
 
     await expect(verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')).resolves.toEqual({ ok: true, credentialId: 'credential-1' })
     expect(cookieDelete).toHaveBeenCalledWith('webauthn_challenge')
+    expect(redisConsume).toHaveBeenCalledWith(expect.stringMatching(/^webauthn:challenge:/))
     expect(verifyRegistrationResponse).toHaveBeenCalledWith(expect.objectContaining({ expectedChallenge: 'challenge-1' }))
     expect(from).toHaveBeenCalledWith('user_devices')
   })
 
   it('rechaza registro si no hay challenge, falla la verificacion o no hay registrationInfo', async () => {
+    redisChallengePurpose = 'registration'
     createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
     const { verifyPasskeyRegistration } = await import('../passkey-actions')
@@ -152,7 +215,45 @@ describe('passkey-actions', () => {
     await expect(verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')).resolves.toEqual({ error: 'La verificación biométrica falló.' })
   })
 
+  it('rechaza un challenge de autenticación cuando se presenta en registro', async () => {
+    redisChallengePurpose = 'authentication'
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    const { verifyPasskeyRegistration } = await import('../passkey-actions')
+
+    await expect(verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')).resolves.toEqual({
+      error: 'Challenge expirado. Intenta de nuevo.',
+    })
+    expect(verifyRegistrationResponse).not.toHaveBeenCalled()
+  })
+
+  it('rechaza payload corrupto o sin propósito al consumir challenge', async () => {
+    redisChallengePurpose = 'registration'
+    redisConsume.mockResolvedValueOnce('{"challenge":123}')
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    const { verifyPasskeyRegistration } = await import('../passkey-actions')
+
+    await expect(verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')).resolves.toEqual({
+      error: 'Challenge expirado. Intenta de nuevo.',
+    })
+    expect(verifyRegistrationResponse).not.toHaveBeenCalled()
+  })
+
+  it('rechaza el segundo consumo del mismo challenge de registro', async () => {
+    redisChallengePurpose = 'registration'
+    redisConsume
+      .mockResolvedValueOnce(JSON.stringify({ purpose: 'registration', challenge: 'challenge-1' }))
+      .mockResolvedValueOnce(null)
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
+    createAdminClient.mockResolvedValue(adminClientWithFrom(jest.fn(() => query({ error: null }))))
+    const { verifyPasskeyRegistration } = await import('../passkey-actions')
+
+    await expect(verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')).resolves.toEqual({ ok: true, credentialId: 'credential-1' })
+    await expect(verifyPasskeyRegistration({ id: 'credential-1' } as never, 'device-1')).resolves.toEqual({ error: 'Challenge expirado. Intenta de nuevo.' })
+    expect(verifyRegistrationResponse).toHaveBeenCalledTimes(1)
+  })
+
   it('rechaza registro si falla el upsert de credencial', async () => {
+    redisChallengePurpose = 'registration'
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
     createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
     createAdminClient.mockResolvedValue(adminClientWithFrom(jest.fn(() => query({ error: { message: 'db down' } }))))
@@ -185,7 +286,8 @@ describe('passkey-actions', () => {
       allowCredentials: [{ id: 'credential-1', transports: ['internal'] }],
       userVerification: 'required',
     }))
-    expect(cookieSet).toHaveBeenCalledWith('webauthn_challenge', 'login-challenge', expect.any(Object))
+    expect(cookieSet).toHaveBeenCalledWith('webauthn_challenge', expect.not.stringMatching(/^login-challenge$/), expect.any(Object))
+    expect(redisSetex).toHaveBeenCalledWith(expect.stringMatching(/^webauthn:challenge:/), 120, expect.stringContaining('authentication'))
   })
 
   it('rechaza opciones de login por rate limit o sin dispositivos confiables', async () => {
@@ -390,6 +492,7 @@ describe('passkey-actions', () => {
   })
 
   it('usa WEBAUTHN_ORIGINS y WEBAUTHN_RP_ID cuando estan configurados', async () => {
+    redisChallengePurpose = 'registration'
     process.env.WEBAUTHN_RP_ID = 'mesa.test'
     process.env.WEBAUTHN_ORIGINS = 'https://mesa.test,https://staging.mesa.test'
     createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
@@ -437,6 +540,7 @@ describe('passkey-actions', () => {
   })
 
   it('usa transports internos por defecto cuando credential no incluye transports', async () => {
+    redisChallengePurpose = 'registration'
     createClient.mockResolvedValue(clientWithUser({ id: 'user-1', phone: '3001234567', user_metadata: {} }))
     const testChain = query({ error: null })
     const from = jest.fn(() => testChain)
