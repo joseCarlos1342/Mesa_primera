@@ -62,6 +62,27 @@ Solo las ramas `B1` deben impulsar nuevos tests unitarios por defecto.
 6. Elevar el gate de branches solo después de alcanzar margen real sobre el
    nuevo umbral.
 
+### Paquete T1 — estabilidad de suites (`2026-08-12`)
+
+- Se retiró `--forceExit` de `test` y `test:coverage`; las corridas normales
+  usan `--openHandlesTimeout=5000`.
+- Se añadió `test:handles:web` para diagnóstico manual de Jest web con
+  `--runInBand --detectOpenHandles --no-cache`, sin penalizar el flujo normal.
+- Jest terminó naturalmente en tres corridas paralelas: `222` suites y
+  `2059` tests por corrida.
+- La corrida completa `pnpm test` terminó web y game-server sin forzar salida.
+- El diagnóstico de handles web terminó con `222` suites y `2059` tests sin
+  reportar handles abiertos; game-server se valida mediante su suite Vitest
+  completa y su lifecycle de replays tiene pruebas focales separadas.
+- `ReplayFileService` ahora tiene job idempotente y cancelable mediante
+  `stopCleanupJob()`, y el timer usa `unref()` para no retener el proceso.
+- Cobertura después del paquete: web `99.59/92.41/98.22/99.59`; game-server
+  `91.65/83.35/93.36/93.60` en statements/branches/functions/lines.
+- Warnings conocidos: lint web conserva únicamente warnings preexistentes en
+  `apps/web/public/sw.js` y `workbox-5194662c.js`.
+- Riesgo pendiente: revisar y cerrar explícitamente cron jobs, colas Redis y
+  workers del game-server durante graceful shutdown.
+
 ## Meta Final
 
 Objetivo estrategico de largo plazo:

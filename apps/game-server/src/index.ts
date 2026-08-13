@@ -11,6 +11,7 @@ import { CrashRecoveryService } from "./services/CrashRecoveryService";
 import { installCrashProcessHandlers } from "./services/CrashProcessHandlers";
 import { startNotificationDispatcher } from "./services/notification-dispatcher";
 import { pushWorker } from "./workers/push.worker";
+import { ReplayFileService } from "./services/ReplayFileService";
 
 // Polyfill WebSocket for Node 20 compatibility with Colyseus 0.17+
 if (typeof WebSocket === "undefined") {
@@ -69,6 +70,7 @@ async function gracefulShutdown(signal: string, exitCode = 0): Promise<void> {
             console.log("[shutdown] Socket.IO cerrado");
         }
         stopNotificationDispatcher?.();
+        ReplayFileService.stopCleanupJob();
         if (socketHttpServer && socketHttpServer.listening) {
             await new Promise<void>((resolve) => {
                 socketHttpServer!.close(() => resolve());

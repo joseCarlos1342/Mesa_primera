@@ -301,20 +301,33 @@ describe('ReplayFileService — 7-day Retention', () => {
     expect(listed.map(r => r.game_id)).not.toContain('game-expired');
   });
 
-  it('startCleanupJob ejecuta cleanup inmediato y programa intervalo de 6 horas', () => {
+  it('startCleanupJob ejecuta cleanup inmediato, evita duplicar intervalos y permite detenerlo', () => {
     vi.useFakeTimers();
-    const intervalSpy = vi.spyOn(global, 'setInterval');
+    const intervalHandle = { unref: vi.fn() };
+    const intervalSpy = vi.spyOn(global, 'setInterval').mockReturnValue(intervalHandle as never);
+    const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const cleanupSpy = vi.spyOn(ReplayFileService, 'cleanup').mockReturnValue(0);
 
     ReplayFileService.startCleanupJob();
+    ReplayFileService.startCleanupJob();
 
     expect(cleanupSpy).toHaveBeenCalledTimes(1);
     expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 6 * 60 * 60 * 1000);
+    expect(intervalSpy).toHaveBeenCalledTimes(1);
+    expect(intervalHandle.unref).toHaveBeenCalledTimes(1);
     expect(logSpy).toHaveBeenCalledWith('[ReplayFileService] Cleanup job iniciado: cada 6h, retención=7 días');
+
+    intervalSpy.mock.calls[0][0]();
+    expect(cleanupSpy).toHaveBeenCalledTimes(2);
+
+    ReplayFileService.stopCleanupJob();
+    ReplayFileService.stopCleanupJob();
+    expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
 
     vi.useRealTimers();
     cleanupSpy.mockRestore();
     logSpy.mockRestore();
+    clearIntervalSpy.mockRestore();
   });
 });

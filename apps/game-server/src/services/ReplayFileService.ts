@@ -50,6 +50,7 @@ export class ReplayFileService {
   }
 
   private static initialized = false;
+  private static cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   private static ensureDir(dirPath: string): boolean {
     try {
@@ -194,12 +195,22 @@ export class ReplayFileService {
    * Llamar una vez al iniciar el servidor.
    */
   static startCleanupJob(): void {
+    if (this.cleanupTimer) return;
+
     // Limpieza inmediata al arrancar
     this.cleanup();
     // Repetir cada 6 horas
     const SIX_HOURS = 6 * 60 * 60 * 1000;
-    setInterval(() => this.cleanup(), SIX_HOURS);
+    this.cleanupTimer = setInterval(() => this.cleanup(), SIX_HOURS);
+    this.cleanupTimer.unref?.();
     console.log(`[ReplayFileService] Cleanup job iniciado: cada 6h, retención=${this.RETENTION_DAYS} días`);
+  }
+
+  /** Detiene el job periódico; es seguro llamarlo varias veces. */
+  static stopCleanupJob(): void {
+    if (!this.cleanupTimer) return;
+    clearInterval(this.cleanupTimer);
+    this.cleanupTimer = null;
   }
 
   /**

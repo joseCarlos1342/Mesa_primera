@@ -19,8 +19,9 @@
     "dev": "turbo dev",
     "dev:web": "pnpm --filter web dev",
     "dev:game": "pnpm --filter game-server dev",
-    "test": "pnpm --filter web exec jest --ci --forceExit && pnpm --filter game-server test",
-    "test:coverage": "pnpm --filter web exec jest --coverage --ci --forceExit && pnpm --filter game-server test:coverage",
+    "test": "pnpm --filter web exec jest --ci --openHandlesTimeout=5000 && pnpm --filter game-server test",
+    "test:coverage": "pnpm --filter web exec jest --coverage --ci --openHandlesTimeout=5000 && pnpm --filter game-server test:coverage",
+    "test:handles:web": "pnpm --filter web exec jest --ci --runInBand --detectOpenHandles --no-cache",
     "test:e2e": "pnpm --filter web exec playwright test --config ../../playwright.config.ts",
     "prepare": "husky"
   },
