@@ -36,24 +36,29 @@ jest.mock('@simplewebauthn/server', () => ({
 
 type QueryResult = { data?: unknown; error?: { message: string } | null }
 
-function query(result: QueryResult) {
+function query(result: QueryResult, updateResult: QueryResult = result) {
   const chain: Record<string, unknown> = {
     select: jest.fn(() => chain),
     eq: jest.fn(() => chain),
+    is: jest.fn(() => chain),
     not: jest.fn(() => chain),
     update: jest.fn(() => chain),
     upsert: jest.fn(() => Promise.resolve(result)),
-    maybeSingle: jest.fn(() => Promise.resolve(result)),
-    then: (resolve: (value: QueryResult) => void) => Promise.resolve(result).then(resolve),
+    maybeSingle: jest.fn()
+      .mockResolvedValueOnce(result)
+      .mockResolvedValue(updateResult),
+    then: (resolve: (value: QueryResult) => void) => Promise.resolve(updateResult).then(resolve),
   }
   return chain
 }
 
 function clientWithUser(user: unknown, verifyOtp = jest.fn(async () => ({ error: null }))) {
+  const signOut = jest.fn(async () => ({ error: null }))
   return {
     auth: {
       getUser: jest.fn(async () => ({ data: { user } })),
       verifyOtp,
+      signOut,
     },
   }
 }
@@ -63,7 +68,7 @@ function adminClientWithFrom(from: jest.Mock) {
     from,
     auth: {
       admin: {
-        updateUser: jest.fn(async () => ({ data: { user: {} }, error: null })),
+        updateUserById: jest.fn(async () => ({ data: { user: {} }, error: null })),
         generateLink: jest.fn(async () => ({ data: { properties: { hashed_token: 'hash-1' } }, error: null })),
       },
     },
@@ -200,10 +205,13 @@ describe('passkey-actions', () => {
 
   it('verifica login biometrico, crea sesion y aplica politica de sesion', async () => {
     const verifyOtp = jest.fn(async () => ({ error: null }))
-    createClient.mockResolvedValue(clientWithUser(null, verifyOtp))
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1' }, verifyOtp))
+    let deviceQuery: Record<string, jest.Mock> | undefined
     const from = jest.fn((table: string) => {
       if (table === 'user_devices') {
-        return query({ data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: 7 }, error: null })
+        const chain = query({ data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: 7 }, error: null })
+        deviceQuery = chain as unknown as Record<string, jest.Mock>
+        return chain
       }
       return query({ data: { id: 'user-1', phone: '+573001234567' }, error: null })
     })
@@ -213,7 +221,11 @@ describe('passkey-actions', () => {
 
     await expect(verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)).resolves.toEqual({ ok: true })
     expect(verifyAuthenticationResponse).toHaveBeenCalledWith(expect.objectContaining({ expectedChallenge: 'challenge-1' }))
-    expect(admin.auth.admin.updateUser).toHaveBeenCalledWith('user-1', expect.objectContaining({ email_confirm: true }))
+    expect(admin.auth.admin.updateUserById).toHaveBeenCalledWith('user-1', expect.objectContaining({ email_confirm: true }))
+    expect(deviceQuery?.update).toHaveBeenCalledWith(expect.objectContaining({ sign_count: 8, last_login_at: expect.any(String) }))
+    expect(deviceQuery?.eq).toHaveBeenCalledWith('credential_id', 'credential-1')
+    expect(deviceQuery?.eq).toHaveBeenCalledWith('sign_count', 7)
+    expect(deviceQuery?.select).toHaveBeenCalledWith('credential_id')
     expect(verifyOtp).toHaveBeenCalledWith({ token_hash: 'hash-1', type: 'magiclink' })
     expect(enforceSessionPolicy).toHaveBeenCalledWith('user-1')
   })
@@ -269,10 +281,105 @@ describe('passkey-actions', () => {
     expect(consoleError).toHaveBeenCalledWith('[PASSKEY] generateLink failed:', 'link failed')
 
     const verifyOtp = jest.fn(async () => ({ error: { message: 'otp failed' } })) as unknown as ReturnType<typeof clientWithUser>['auth']['verifyOtp']
-    createClient.mockResolvedValueOnce(clientWithUser(null, verifyOtp))
+    createClient.mockResolvedValueOnce(clientWithUser({ id: 'user-1' }, verifyOtp))
     createAdminClient.mockResolvedValueOnce(adminClientWithFrom(from))
     await expect(verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)).resolves.toEqual({ error: 'Error al crear sesión. Intenta con SMS.' })
     expect(consoleError).toHaveBeenCalledWith('[PASSKEY] Token exchange failed:', 'otp failed')
+  })
+
+  it('falla cerrado si no puede persistir el nuevo sign_count', async () => {
+    let userDeviceCalls = 0
+    const from = jest.fn((table: string) => {
+      if (table === 'user_devices') {
+        userDeviceCalls += 1
+        return userDeviceCalls === 1
+          ? query({ data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: 7 }, error: null })
+          : query({ data: null, error: { message: 'database unavailable' } })
+      }
+      return query({ data: { id: 'user-1', phone: '+573001234567' }, error: null })
+    })
+    const admin = adminClientWithFrom(from)
+    createAdminClient.mockResolvedValueOnce(admin)
+    const { verifyPasskeyLogin } = await import('../passkey-actions')
+
+    await expect(verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)).resolves.toEqual({
+      error: 'No se pudo actualizar la credencial. Intenta de nuevo.',
+    })
+    expect(admin.auth.admin.generateLink).not.toHaveBeenCalled()
+    expect(enforceSessionPolicy).not.toHaveBeenCalled()
+  })
+
+  it('falla cerrado si el compare-and-swap del sign_count no encuentra la versión esperada', async () => {
+    let deviceQuery: Record<string, jest.Mock> | undefined
+    const from = jest.fn((table: string) => {
+      if (table === 'user_devices') {
+        const isLookup = !deviceQuery
+        let maybeSingleCalls = 0
+        const chain: Record<string, jest.Mock> = {
+          select: jest.fn(() => chain),
+          eq: jest.fn(() => chain),
+          update: jest.fn(() => chain),
+          maybeSingle: jest.fn(async () => {
+            maybeSingleCalls += 1
+            return isLookup && maybeSingleCalls === 1
+              ? { data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: 7 }, error: null }
+              : { data: null, error: null }
+          }),
+        }
+        deviceQuery = chain
+        return chain
+      }
+      return query({ data: { id: 'user-1', phone: '+573001234567' }, error: null })
+    })
+    createAdminClient.mockResolvedValueOnce(adminClientWithFrom(from))
+    const { verifyPasskeyLogin } = await import('../passkey-actions')
+
+    await expect(verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)).resolves.toEqual({
+      error: 'No se pudo actualizar la credencial. Intenta de nuevo.',
+    })
+    expect(deviceQuery?.eq).toHaveBeenCalledWith('sign_count', 7)
+    expect(deviceQuery?.update).toHaveBeenCalledWith(expect.objectContaining({ sign_count: 8, last_login_at: expect.any(String) }))
+    expect(deviceQuery?.eq).toHaveBeenCalledWith('credential_id', 'credential-1')
+    expect(deviceQuery?.select).toHaveBeenCalledWith('credential_id')
+  })
+
+  it('falla cerrado si no puede preparar el usuario auth para la sesión', async () => {
+    const from = jest.fn((table: string) => {
+      if (table === 'user_devices') {
+        return query({ data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: 7 }, error: null })
+      }
+      return query({ data: { id: 'user-1', phone: '+573001234567' }, error: null })
+    })
+    const admin = adminClientWithFrom(from)
+    admin.auth.admin.updateUserById = jest.fn(async () => ({ data: null, error: { message: 'auth unavailable' } })) as unknown as AdminTestClient['auth']['admin']['updateUserById']
+    createAdminClient.mockResolvedValueOnce(admin)
+    const { verifyPasskeyLogin } = await import('../passkey-actions')
+
+    await expect(verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)).resolves.toEqual({
+      error: 'Error al preparar la sesión. Intenta de nuevo.',
+    })
+    expect(admin.auth.admin.generateLink).not.toHaveBeenCalled()
+  })
+
+  it('falla cerrado si la sesión emitida no pertenece al propietario de la credencial', async () => {
+    const verifyOtp = jest.fn(async () => ({ error: null }))
+    const sessionClient = clientWithUser({ id: 'other-user' }, verifyOtp)
+    createClient.mockResolvedValue(sessionClient)
+    const from = jest.fn((table: string) => {
+      if (table === 'user_devices') {
+        return query({ data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: 7 }, error: null })
+      }
+      return query({ data: { id: 'user-1', phone: '+573001234567' }, error: null })
+    })
+    const admin = adminClientWithFrom(from)
+    createAdminClient.mockResolvedValueOnce(admin)
+    const { verifyPasskeyLogin } = await import('../passkey-actions')
+
+    await expect(verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)).resolves.toEqual({
+      error: 'La sesión biométrica no coincide con la cuenta.',
+    })
+    expect(sessionClient.auth.signOut).toHaveBeenCalled()
+    expect(enforceSessionPolicy).not.toHaveBeenCalled()
   })
 
   it('rechaza login biometrico sin challenge vigente', async () => {
@@ -373,7 +480,7 @@ describe('passkey-actions', () => {
 
   it('usa sign_count cero cuando el dispositivo no tiene counter definido', async () => {
     const verifyOtp = jest.fn(async () => ({ error: null }))
-    createClient.mockResolvedValue(clientWithUser(null, verifyOtp))
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1' }, verifyOtp))
     const from = jest.fn((table: string) => {
       if (table === 'user_devices') {
         return query({ data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: null }, error: null })
@@ -388,5 +495,31 @@ describe('passkey-actions', () => {
     expect(verifyAuthenticationResponse).toHaveBeenCalledWith(expect.objectContaining({
       credential: expect.objectContaining({ counter: 0 }),
     }))
+  })
+
+  it('usa IS NULL para persistir el primer contador de un dispositivo legacy', async () => {
+    const verifyOtp = jest.fn(async () => ({ error: null }))
+    createClient.mockResolvedValue(clientWithUser({ id: 'user-1' }, verifyOtp))
+    let deviceQuery: Record<string, jest.Mock> | undefined
+    const from = jest.fn((table: string) => {
+      if (table === 'user_devices') {
+        const chain: Record<string, jest.Mock> = {
+          select: jest.fn(() => chain),
+          eq: jest.fn(() => chain),
+          is: jest.fn(() => chain),
+          update: jest.fn(() => chain),
+          maybeSingle: jest.fn().mockResolvedValue({ data: { user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]).toString('base64'), sign_count: null }, error: null }),
+        }
+        deviceQuery = chain
+        return chain
+      }
+      return query({ data: { id: 'user-1', phone: '+573001234567' }, error: null })
+    })
+    createAdminClient.mockResolvedValue(adminClientWithFrom(from))
+    const { verifyPasskeyLogin } = await import('../passkey-actions')
+
+    await verifyPasskeyLogin('3001234567', { id: 'credential-1' } as never)
+
+    expect(deviceQuery?.is).toHaveBeenCalledWith('sign_count', null)
   })
 })

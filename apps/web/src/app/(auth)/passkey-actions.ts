@@ -251,36 +251,42 @@ export async function verifyPasskeyLogin(
     return { error: 'La verificación biométrica falló.' }
   }
 
-  // Update sign count to prevent replay attacks
-  await adminSupabase
+  // Persiste el contador y detecta carreras o retrocesos del autenticador.
+  const signCountUpdate = adminSupabase
     .from('user_devices')
     .update({
       sign_count: verification.authenticationInfo.newCounter,
       last_login_at: new Date().toISOString(),
     })
     .eq('credential_id', device.credential_id!)
+  const signCountQuery = device.sign_count === null
+    ? signCountUpdate.is('sign_count', null)
+    : signCountUpdate.eq('sign_count', Number(device.sign_count ?? 0))
+  const { data: updatedDevice, error: signCountError } = await signCountQuery
+    .select('credential_id')
+    .maybeSingle()
+
+  if (signCountError || !updatedDevice) {
+    console.error('[PASSKEY] Sign count update failed:', signCountError?.message ?? 'compare-and-swap rejected')
+    return { error: 'No se pudo actualizar la credencial. Intenta de nuevo.' }
+  }
 
   // ── Mint session ──
   // Ensure the user has a proxy email for magic link generation
   const proxyEmail = `player-${device.user_id}@passkey.mesa-primera.internal`
 
-  // Cast admin API for methods not fully typed in @supabase/supabase-js
-  const adminAuth = adminSupabase.auth.admin as typeof adminSupabase.auth.admin & {
-    updateUser: (uid: string, attrs: Record<string, unknown>) => Promise<{
-      data: { user?: unknown } | null
-      error: { message: string } | null
-    }>
-    generateLink: (params: { type: string; email: string }) => Promise<{
-      data: { properties?: { hashed_token?: string } } | null
-      error: { message: string } | null
-    }>
-  }
+  const adminAuth = adminSupabase.auth.admin
 
   // Set email on the auth user (idempotent) so generateLink works
-  await adminAuth.updateUser(device.user_id, {
+  const { error: updateUserError } = await adminAuth.updateUserById(device.user_id, {
     email: proxyEmail,
     email_confirm: true,
   })
+
+  if (updateUserError) {
+    console.error('[PASSKEY] Auth user update failed:', updateUserError.message)
+    return { error: 'Error al preparar la sesión. Intenta de nuevo.' }
+  }
 
   // Generate a magic link — returns a hashed_token we can verify server-side
   const { data: linkData, error: linkError } = await adminAuth.generateLink({
@@ -303,6 +309,12 @@ export async function verifyPasskeyLogin(
   if (verifyError) {
     console.error('[PASSKEY] Token exchange failed:', verifyError.message)
     return { error: 'Error al crear sesión. Intenta con SMS.' }
+  }
+
+  const { data: sessionUserData, error: sessionUserError } = await supabase.auth.getUser()
+  if (sessionUserError || sessionUserData.user?.id !== device.user_id) {
+    await supabase.auth.signOut()
+    return { error: 'La sesión biométrica no coincide con la cuenta.' }
   }
 
   await enforceSessionPolicy(device.user_id)
