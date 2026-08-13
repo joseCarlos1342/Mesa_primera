@@ -12,35 +12,35 @@ No es un documento aspiracional generico. Es una hoja de ruta operativa para que
 > completa asociada a un commit SHA. Los checkpoints históricos de este archivo
 > no sustituyen una medición reproducible.
 
-Fecha de referencia documentada: `2026-08-05` (Checkpoint 169).
-Commits de evidencia: `0779187`, `7f3bce0`, `eb43126`.
+Fecha de referencia documentada: `2026-08-12` (Checkpoint 170).
+Commits de evidencia: `0779187`, `7f3bce0`, `eb43126`, `adb3971`, `4140f77`, `c71ce69`.
 
 Cobertura vigente conocida de `apps/web`:
 
 | Metrica | Valor actual |
 |---|---:|
-| Statements | `99.59%` |
-| Lines | `99.59%` |
+| Statements | `99.57%` |
+| Lines | `99.57%` |
 | Functions | `98.22%` |
-| Branches | `92.41%` |
+| Branches | `92.39%` |
 
 Resultado de la corrida:
 
 - `222` suites en verde.
-- `2059` tests pasando en la última verificación documentada.
+- `2073` tests pasando en la última verificación documentada.
 - La suite supera la meta estratégica en statements, lines y functions, pero
-  functions tiene `0.22` puntos de margen y branches queda `5.59` puntos
+  functions tiene `0.22` puntos de margen y branches queda `5.61` puntos
   por debajo del objetivo final.
 - No se debe afirmar cobertura global actualizada sin guardar la corrida
   asociada a su commit SHA; `coverage-summary.json` puede ser focalizado y no
   es una fuente global suficiente.
-- La corrida del Checkpoint 169 generó `coverage-summary.json` global con
-  `41128` statements, `1185` funciones y `7612` branches; quedan `577` ramas
+- La corrida del Checkpoint 170 generó `coverage-summary.json` global con
+  `41192` statements, `1186` funciones y `7649` branches; quedan `582` ramas
   sin cubrir.
 
 ### Lectura de la deuda restante
 
-La cobertura global tiene `577` ramas faltantes sobre `7612` conocidas. El
+La cobertura global tiene `582` ramas faltantes sobre `7649` conocidas. El
 próximo objetivo no es perseguir `98%` con fallbacks imposibles, sino clasificar
 cada rama como:
 
@@ -82,6 +82,21 @@ Solo las ramas `B1` deben impulsar nuevos tests unitarios por defecto.
   `apps/web/public/sw.js` y `workbox-5194662c.js`.
 - Riesgo pendiente: revisar y cerrar explícitamente cron jobs, colas Redis y
   workers del game-server durante graceful shutdown.
+
+### Checkpoint 170 — passkey hardening (`2026-08-12`)
+
+- Se endureció `passkey-actions.ts` con `updateUserById`, validación de la
+  identidad tras `verifyOtp`, CAS del contador y soporte para `sign_count NULL`.
+- Los challenges ahora usan referencia opaca en cookie, almacenamiento Redis
+  con TTL, propósito separado y consumo atómico `GETDEL`.
+- La cobertura web queda en `99.57/92.39/98.22/99.57` en
+  statements/branches/functions/lines, con `222` suites y `2073` tests.
+- Tests focales del paquete: `42` entre passkeys y Redis; la suite completa web
+  pasa en verde.
+- Decisión pendiente: `GETDEL` consume la ceremonia antes de validar la
+  assertion; cualquier fallo posterior obliga a iniciar una ceremonia nueva.
+- Siguiente paquete: MFA administrativo fail-closed (AAL2, factores verificados
+  y consumo atómico de recovery codes).
 
 ## Meta Final
 
