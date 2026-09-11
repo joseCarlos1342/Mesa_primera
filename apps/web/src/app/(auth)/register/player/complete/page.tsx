@@ -174,7 +174,7 @@ export default function CompleteGoogleRegistrationPage() {
                 </div>
                 <FieldError msg={displayError('nickname')} />
                 {!displayError('nickname') && (
-                  <p className="text-white/20 text-[10px] ml-2">Letras, números y _ (sin espacios)</p>
+                  <p className="text-white/60 text-[11px] ml-2">Letras, números y _ (sin espacios)</p>
                 )}
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function CompleteGoogleRegistrationPage() {
               </div>
               <FieldError msg={displayError('phone')} />
               {!displayError('phone') && (
-                <p className="text-white/20 text-[10px] ml-2">10 dígitos, debe empezar por 3. Recibirás un código de verificación.</p>
+                <p className="text-white/60 text-[11px] ml-2">10 dígitos, debe empezar por 3. Recibirás un código de verificación.</p>
               )}
             </div>
 

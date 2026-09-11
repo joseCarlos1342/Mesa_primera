@@ -42,6 +42,7 @@ export function buildContentSecurityPolicy({
     'https://api.twilio.com',
     'https://verify.twilio.com',
     'https://api.onesignal.com',
+    'https://va.vercel-scripts.com',
     'https://basemaps.cartocdn.com',
     'https://*.basemaps.cartocdn.com',
   ]
@@ -65,7 +66,6 @@ export function buildContentSecurityPolicy({
 
   const styleSrc = [
     `'self'`,
-    'https://fonts.googleapis.com',
     `'unsafe-inline'`,
   ]
 
@@ -82,6 +82,7 @@ export function buildContentSecurityPolicy({
     'https://primerariveradalos4ases.com/cdn-cgi/scripts/',
     'https://primerariveradalos4ases.com/cdn-cgi/challenge-platform/',
     'https://cdn.onesignal.com',
+    'https://va.vercel-scripts.com',
   ]
 
   return [
@@ -89,7 +90,7 @@ export function buildContentSecurityPolicy({
     `script-src ${scriptSrc.join(' ')}`,
     `script-src-elem ${scriptSrcElem.join(' ')}`,
     `style-src ${styleSrc.join(' ')}`,
-    `font-src 'self' https://fonts.gstatic.com`,
+    `font-src 'self'`,
     `img-src 'self' ${supabaseOrigin} https://www.transparenttextures.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com data: blob:`,
     `connect-src ${Array.from(new Set(connectSrc)).join(' ')}`,
     `media-src 'self'`,

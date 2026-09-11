@@ -93,7 +93,7 @@ function VerifyContent() {
 
         {/* Security Indicator */}
         <div className="mt-12 text-center pb-8 opacity-40">
-          <div className="inline-flex items-center gap-2 text-text-secondary text-[10px] font-black tracking-widest uppercase">
+          <div className="inline-flex items-center gap-2 text-text-secondary text-[11px] font-bold tracking-[0.1em] uppercase">
             <div className="w-2 h-2 rounded-full bg-brand-gold animate-ping" />
             CONEXIÓN SEGURA TLS 1.3
           </div>

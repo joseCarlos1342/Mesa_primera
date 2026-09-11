@@ -8,6 +8,10 @@
   --color-surface-card: #16213e;
   --color-surface-poker: #1b4d3e;
   --color-surface-felt: #0a2a1f;
+  --color-surface-leather: #0a2c20;
+  --color-surface-wood: #120806;
+  --color-surface-wood-rim: #35180f;
+  --color-surface-felt-highlight: #45996c;
   --color-primary: #e2b044;
   --color-primary-dark: #8b6b2e;
   --color-primary-light: #f0d78c;
@@ -21,16 +25,17 @@
   --color-overlay-black: #000000;
 
   /* Font Families */
-  --font-display: "Cinzel", serif;
-  --font-headline-lg: "Outfit", sans-serif;
-  --font-headline-md: "Outfit", sans-serif;
-  --font-headline-sm: "Outfit", sans-serif;
-  --font-body-lg: "Outfit", sans-serif;
-  --font-body-md: "Outfit", sans-serif;
-  --font-body-sm: "Outfit", sans-serif;
-  --font-label-lg: "Outfit", sans-serif;
-  --font-label-md: "Outfit", sans-serif;
-  --font-label-sm: "Outfit", sans-serif;
+  --font-display: var(--font-brand);
+  --font-headline-lg: var(--font-ui);
+  --font-headline-md: var(--font-ui);
+  --font-headline-sm: var(--font-ui);
+  --font-body-lg: var(--font-ui);
+  --font-body-md: var(--font-ui);
+  --font-body-sm: var(--font-ui);
+  --font-label-lg: var(--font-ui);
+  --font-label-md: var(--font-ui);
+  --font-label-sm: var(--font-ui);
+  --font-mono: var(--font-data);
 
   /* Font Sizes */
   --text-display: 48px;
@@ -42,7 +47,7 @@
   --text-body-sm: 14px;
   --text-label-lg: 14px;
   --text-label-md: 12px;
-  --text-label-sm: 10px;
+  --text-label-sm: 12px;
 
   /* Letter Spacing */
   --tracking-display: 0.05em;

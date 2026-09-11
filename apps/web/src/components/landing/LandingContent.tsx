@@ -769,7 +769,7 @@ export function LandingContent() {
 
   /* ── Render ─────────────────────────────────────── */
   return (
-    <div className="relative min-h-screen bg-[#0a180e] text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-clip">
+    <div className="landing-layout relative min-h-screen bg-[#0a180e] text-text-premium font-sans selection:bg-brand-gold/30 overflow-x-clip">
       {/* ── Casino Background ─────────────────────── */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-bg-poker)_0%,#0a2a1f_100%)]" />
@@ -904,7 +904,7 @@ export function LandingContent() {
           <div className="relative max-w-4xl mx-auto">
             <h1
               data-hero-title=""
-              className="text-5xl md:text-7xl lg:text-8xl font-display font-black tracking-tight leading-[1.1]"
+              className="text-5xl md:text-7xl lg:text-7xl font-display font-bold tracking-tight leading-[1.08]"
             >
               <span className="bg-linear-to-r from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent">
                 Primera Riverada

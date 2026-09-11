@@ -34,17 +34,17 @@
   --color-accent-rose: #fb7185;
 
   /* Font Families */
-  --font-headline-display: "Inter", sans-serif;
-  --font-headline-lg: "Inter", sans-serif;
-  --font-headline-md: "Inter", sans-serif;
-  --font-headline-sm: "Inter", sans-serif;
-  --font-body-lg: "Inter", sans-serif;
-  --font-body-md: "Inter", sans-serif;
-  --font-body-sm: "Inter", sans-serif;
-  --font-label-lg: "Inter", sans-serif;
-  --font-label-md: "Inter", sans-serif;
-  --font-label-sm: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-headline-display: var(--font-ui);
+  --font-headline-lg: var(--font-ui);
+  --font-headline-md: var(--font-ui);
+  --font-headline-sm: var(--font-ui);
+  --font-body-lg: var(--font-ui);
+  --font-body-md: var(--font-ui);
+  --font-body-sm: var(--font-ui);
+  --font-label-lg: var(--font-ui);
+  --font-label-md: var(--font-ui);
+  --font-label-sm: var(--font-ui);
+  --font-mono: var(--font-data);
 
   /* Font Sizes */
   --text-headline-display: 36px;

@@ -26,9 +26,10 @@ describe('buildContentSecurityPolicy', () => {
     expect(csp).toContain(
       "script-src-elem 'self' 'nonce-test-nonce' 'unsafe-inline' https://static.cloudflareinsights.com https://challenges.cloudflare.com https://primerariveradalos4ases.com/cdn-cgi/scripts/"
     )
-    expect(csp).toContain(
-      "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'"
-    )
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
+    expect(csp).toContain("font-src 'self'")
+    expect(csp).not.toContain('fonts.googleapis.com')
+    expect(csp).not.toContain('fonts.gstatic.com')
     expect(csp).toContain('https://vps24726.cubepath.net')
     expect(csp).toContain('wss://vps24726.cubepath.net')
     expect(csp).not.toContain('vps23830.cubepath.net')
@@ -59,6 +60,16 @@ describe('buildContentSecurityPolicy', () => {
     expect(csp).toMatch(/connect-src.*https:\/\/basemaps\.cartocdn\.com/)
   })
 
+  it('allows Vercel Speed Insights script and telemetry', () => {
+    const csp = buildContentSecurityPolicy({
+      nonce: 'test-nonce',
+      isDevelopment: false,
+    })
+
+    expect(csp).toMatch(/script-src-elem.*https:\/\/va\.vercel-scripts\.com/)
+    expect(csp).toMatch(/connect-src.*https:\/\/va\.vercel-scripts\.com/)
+  })
+
   it('allows unsafe-eval only in development', () => {
     const csp = buildContentSecurityPolicy({
       nonce: 'test-nonce',
@@ -66,9 +77,7 @@ describe('buildContentSecurityPolicy', () => {
     })
 
     expect(csp).toContain("'unsafe-eval'")
-    expect(csp).toContain(
-      "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'"
-    )
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
   })
 
   it('allows local game and socket origins in development', () => {

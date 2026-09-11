@@ -72,10 +72,10 @@ export default async function PlayerLayout({
               )}
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-black uppercase italic text-text-premium leading-none">
+               <span className="text-sm font-bold uppercase text-text-premium leading-none">
                 {profile?.username || 'Invitado'}
               </span>
-              <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-brand-gold mt-0.5">
+               <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-brand-gold mt-0.5">
                 Ver Perfil
               </span>
             </div>

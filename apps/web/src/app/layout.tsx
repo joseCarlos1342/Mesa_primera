@@ -1,23 +1,28 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from 'next/headers'
-import { Cinzel, Outfit, Geist_Mono } from "next/font/google";
+import { Alegreya, Geist_Mono, Source_Sans_3 } from "next/font/google";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ClientErrorSuppressor } from "@/components/ClientErrorSuppressor";
 import "./globals.css";
 
-const cinzel = Cinzel({
-  variable: "--font-display",
+const alegreya = Alegreya({
+  variable: "--font-brand",
+  style: ["normal", "italic"],
   subsets: ["latin"],
+  display: "swap",
 });
 
-const outfit = Outfit({
-  variable: "--font-sans",
+const sourceSans = Source_Sans_3({
+  variable: "--font-ui",
+  style: ["normal", "italic"],
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  variable: "--font-data",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -296,7 +301,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${cinzel.variable} ${outfit.variable} ${geistMono.variable} antialiased`}
+        className={`${alegreya.variable} ${sourceSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <ClientErrorSuppressor />

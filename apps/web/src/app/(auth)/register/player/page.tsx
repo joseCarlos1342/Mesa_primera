@@ -129,7 +129,7 @@ export default function PlayerRegisterPage() {
                 </div>
                 <FieldError msg={displayError('fullName')} />
                 {!displayError('fullName') && (
-                  <p className="text-white/20 text-[10px] ml-2">Solo letras, espacios y guiones</p>
+                  <p className="text-white/60 text-[11px] ml-2">Solo letras, espacios y guiones</p>
                 )}
               </div>
 
@@ -161,7 +161,7 @@ export default function PlayerRegisterPage() {
                 </div>
                 <FieldError msg={displayError('nickname')} />
                 {!displayError('nickname') && (
-                  <p className="text-white/20 text-[10px] ml-2">Letras, números y _ (sin espacios)</p>
+                  <p className="text-white/60 text-[11px] ml-2">Letras, números y _ (sin espacios)</p>
                 )}
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function PlayerRegisterPage() {
               </div>
               <FieldError msg={displayError('phone')} />
               {!displayError('phone') && (
-                <p className="text-white/20 text-[10px] ml-2">10 dígitos, debe empezar por 3</p>
+                <p className="text-white/60 text-[11px] ml-2">10 dígitos, debe empezar por 3</p>
               )}
             </div>
 

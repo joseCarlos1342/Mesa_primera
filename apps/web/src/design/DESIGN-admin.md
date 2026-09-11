@@ -34,62 +34,62 @@ colors:
   accent-rose: "#fb7185"
 typography:
   headline-display:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 36px
     fontWeight: 900
     lineHeight: 1.1
     letterSpacing: -0.025em
   headline-lg:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 28px
     fontWeight: 800
     lineHeight: 1.2
     letterSpacing: -0.02em
   headline-md:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 20px
     fontWeight: 700
     lineHeight: 1.3
   headline-sm:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 18px
     fontWeight: 700
     lineHeight: 1.3
   body-lg:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 16px
     fontWeight: 400
     lineHeight: 1.6
   body-md:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 14px
     fontWeight: 400
     lineHeight: 1.5
   body-sm:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 12px
     fontWeight: 400
     lineHeight: 1.4
   label-lg:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 12px
     fontWeight: 800
     lineHeight: 1
     letterSpacing: 0.1em
   label-md:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 11px
     fontWeight: 700
     lineHeight: 1
     letterSpacing: 0.1em
   label-sm:
-    fontFamily: Inter
+    fontFamily: Source Sans 3
     fontSize: 10px
     fontWeight: 700
     lineHeight: 1
     letterSpacing: 0.1em
   mono:
-    fontFamily: "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    fontFamily: Geist Mono
     fontSize: 10px
     fontWeight: 400
     lineHeight: 1.5
@@ -221,7 +221,7 @@ El panel de administración de **Mesa Primera** está diseñado para operadores 
 - **Funcional y denso:** Máxima densidad de información sin sacrificar legibilidad. Labels pequeños (10-11px), números grandes y monoespaciados.
 - **Oscuro y profesional:** Fondo gris-azulado oscuro (#111827) para reducir fatiga visual en sesiones prolongadas de monitoreo.
 - **Semántico por color:** Cada funcionalidad tiene un color de acento distintivo (indigo para finanzas, emerald para usuarios, rojo para alertas) que permite identificar secciones a golpe de vista.
-- **Tipografía técnica:** Inter para UI limpia, fuente monoespaciada para datos numéricos y auditoría.
+- **Tipografía técnica:** Source Sans 3 para UI limpia y Geist Mono para datos numéricos y auditoría.
 
 ## Colors
 
@@ -261,8 +261,8 @@ Cada área del admin tiene un color semántico asignado:
 
 La tipografía es puramente funcional y técnica:
 
-- **Inter:** Fuente sans-serif neutra y altamente legible en tamaños pequeños. Usada en toda la interfaz.
-- **JetBrains Mono / ui-monospace:** Usada exclusivamente para datos numéricos, balances, timestamps y auditoría.
+- **Source Sans 3:** Sans humanista, legible y consistente con la experiencia player sin mezclar su paleta ni su atmósfera.
+- **Geist Mono:** Usada exclusivamente para datos numéricos, balances, timestamps y auditoría.
 
 Los tamaños tipográficos son deliberadamente pequeños para maximizar la densidad de información:
 

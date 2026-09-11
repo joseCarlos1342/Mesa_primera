@@ -21,8 +21,8 @@
   }
 
   html {
-    /* Scale base font size for seniors */
-    font-size: 18px;
+    /* Keep rem-based admin layouts at the browser default size. */
+    font-size: 16px;
   }
 
   body {
@@ -49,8 +49,9 @@
   --border-width-brass: 2px;
   --color-border-brass-color: #8b6b2e;
 
-  --font-display: "Cinzel", serif;
-  --font-sans: "Outfit", sans-serif;
+  --font-display: var(--font-brand);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-data);
 
   --animate-pulse-slow: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-pulse-slow-reverse: pulse-slow-reverse 8s
@@ -123,11 +124,20 @@ body {
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
+  --font-display: var(--font-brand);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-data);
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-ui), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* The public/player experience uses a larger reading rhythm for its audience. */
+html:has(.player-layout),
+html:has(.landing-layout) {
+  font-size: 18px;
 }
 
 /* Noise texture overlay — used instead of inline style to comply with CSP */
@@ -176,8 +186,32 @@ body {
 
 
 /* Felt texture pattern — replaces external URL for LCP optimization */
-.bg-felt-texture {
+  .bg-felt-texture {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23000'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%23111' opacity='0.4'/%3E%3Crect x='3' y='0' width='1' height='1' fill='%23222' opacity='0.3'/%3E%3Crect x='0' y='3' width='1' height='1' fill='%23111' opacity='0.3'/%3E%3C/svg%3E");
     background-repeat: repeat;
+  }
+}
+
+/* Runtime aliases for the variables injected by next/font on body. */
+.font-display {
+  font-family: var(--font-brand), serif;
+}
+
+.font-sans {
+  font-family: var(--font-ui), sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-data), ui-monospace, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

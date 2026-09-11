@@ -26,7 +26,12 @@ export function BottomNav() {
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href
           return (
-            <Link key={item.href} href={item.href} className="flex-1 min-w-0 group">
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={isActive ? 'page' : undefined}
+              className="flex-1 min-w-0 group"
+            >
               <div className="flex flex-col items-center justify-center gap-1.5">
                 <div className={cn(
                   "relative p-2.5 rounded-2xl transition-all duration-500",
@@ -45,7 +50,7 @@ export function BottomNav() {
                   )}
                 </div>
                 <span className={cn(
-                  "text-[8px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] transition-all duration-500 truncate px-1",
+                  "text-[12px] md:text-[13px] font-bold uppercase tracking-[0.08em] md:tracking-[0.12em] transition-all duration-500 truncate px-1",
                   isActive ? "text-brand-gold scale-105" : "text-slate-600 group-hover:text-text-premium"
                 )}>
                   {item.label}
