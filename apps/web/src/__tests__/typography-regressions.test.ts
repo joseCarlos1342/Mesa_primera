@@ -26,6 +26,16 @@ describe('sistema tipográfico de Mesa Primera', () => {
     expect(globals).toMatch(/--font-mono:\s*var\(--font-data\)/)
   })
 
+  it('mantiene los tokens de player y admin en una única fuente CSS', () => {
+    const playerTheme = readSource('../app/(player)/player.css')
+    const adminTheme = readSource('../app/(admin)/admin/admin.css')
+
+    expect(playerTheme).toMatch(/@import\s+["']\.\.\/\.\.\/design\/player-theme\.css["']/)
+    expect(adminTheme).toMatch(/@import\s+["']\.\.\/\.\.\/\.\.\/design\/admin-theme\.css["']/)
+    expect(playerTheme).not.toMatch(/--font-headline-lg:/)
+    expect(adminTheme).not.toMatch(/--font-headline-lg:/)
+  })
+
   it('respeta la preferencia de movimiento reducido', () => {
     const globals = readSource('../app/globals.css')
 
