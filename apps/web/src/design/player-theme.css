@@ -1,13 +1,17 @@
 /* Generated from DESIGN-player.md — Mesa Primera Player Theme */
 /* Tailwind v4 @theme block */
 
-@theme {
+@theme inline {
   /* Colors */
   --color-background: #0a0a0a;
   --color-surface: #1a1a2e;
   --color-surface-card: #16213e;
   --color-surface-poker: #1b4d3e;
   --color-surface-felt: #0a2a1f;
+  --color-surface-leather: #0a2c20;
+  --color-surface-wood: #120806;
+  --color-surface-wood-rim: #35180f;
+  --color-surface-felt-highlight: #45996c;
   --color-primary: #e2b044;
   --color-primary-dark: #8b6b2e;
   --color-primary-light: #f0d78c;
