@@ -8,6 +8,10 @@ colors:
   surface-card: "#16213e"
   surface-poker: "#1b4d3e"
   surface-felt: "#0a2a1f"
+  surface-leather: "#0a2c20"
+  surface-wood: "#120806"
+  surface-wood-rim: "#35180f"
+  surface-felt-highlight: "#45996c"
   primary: "#e2b044"
   primary-dark: "#8b6b2e"
   primary-light: "#f0d78c"
@@ -21,57 +25,57 @@ colors:
   overlay-black: "#000000"
 typography:
   display:
-    fontFamily: Cinzel
+    fontFamily: Alegreya
     fontSize: 48px
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: 0.05em
   headline-lg:
-    fontFamily: Outfit
+    fontFamily: Source Sans 3
     fontSize: 32px
     fontWeight: 800
     lineHeight: 1.2
     letterSpacing: -0.02em
   headline-md:
-    fontFamily: Outfit
+    fontFamily: Source Sans 3
     fontSize: 24px
     fontWeight: 700
     lineHeight: 1.3
   headline-sm:
-    fontFamily: Outfit
+    fontFamily: Source Sans 3
     fontSize: 20px
     fontWeight: 700
     lineHeight: 1.3
   body-lg:
-    fontFamily: Outfit
+    fontFamily: Source Sans 3
     fontSize: 18px
     fontWeight: 400
     lineHeight: 1.6
   body-md:
-    fontFamily: Outfit
+    fontFamily: Source Sans 3
     fontSize: 16px
     fontWeight: 400
     lineHeight: 1.5
   body-sm:
-    fontFamily: Outfit
+    fontFamily: Source Sans 3
     fontSize: 14px
     fontWeight: 400
     lineHeight: 1.4
   label-lg:
-    fontFamily: Outfit
+    fontFamily: Source Sans 3
     fontSize: 14px
     fontWeight: 700
     lineHeight: 1
     letterSpacing: 0.1em
   label-md:
-    fontFamily: Outfit
+    fontFamily: Source Sans 3
     fontSize: 12px
     fontWeight: 700
     lineHeight: 1
     letterSpacing: 0.1em
   label-sm:
-    fontFamily: Outfit
-    fontSize: 10px
+    fontFamily: Source Sans 3
+    fontSize: 12px
     fontWeight: 700
     lineHeight: 1
     letterSpacing: 0.1em
@@ -129,6 +133,32 @@ components:
     backgroundColor: "{colors.surface-poker}"
   game-felt:
     backgroundColor: "{colors.surface-felt}"
+  game-leather-surface:
+    backgroundColor: "{colors.surface-leather}"
+  game-felt-highlight:
+    backgroundColor: "{colors.surface-felt-highlight}"
+  game-wood-base:
+    backgroundColor: "{colors.surface-wood}"
+  game-wood-rim:
+    backgroundColor: "{colors.surface-wood-rim}"
+  chip-casino-plate:
+    backgroundColor: "{colors.surface-card}"
+    textColor: "{colors.text-primary}"
+    rounded: "{rounded.md}"
+    padding: 4px 8px
+    typography: "{typography.label-md}"
+  betting-display-panel:
+    backgroundColor: "{colors.surface-wood}"
+    textColor: "{colors.text-primary}"
+    rounded: "{rounded.lg}"
+    padding: 8px
+    typography: "{typography.body-md}"
+  player-console:
+    backgroundColor: "{colors.surface-wood}"
+    textColor: "{colors.text-primary}"
+    rounded: "{rounded.lg}"
+    padding: 8px 16px
+    typography: "{typography.body-md}"
   label-muted:
     textColor: "{colors.primary-muted}"
     typography: "{typography.label-sm}"
@@ -183,10 +213,10 @@ components:
 
 ## Overview
 
-La interfaz de jugadores de **Mesa Primera** evoca la experiencia de un casino tradicional argentino combinada con tecnología moderna. El diseño prioriza:
+La interfaz de jugadores de **Mesa Primera** evoca la experiencia de un club tradicional de cartas latinoamericano combinada con tecnología moderna. El diseño prioriza:
 
 - **Accesibilidad**: La base tipográfica es de 18px para facilitar la lectura a personas mayores, nuestro público principal.
-- **Lujo sutil**: Tonos oscuros profundos, acentos dorados/bronce y texturas de fieltro verde que rememoran las mesas de póker clásicas.
+- **Lujo sutil**: Tonos oscuros profundos, acentos dorados/bronce y materiales de nogal y cuero verde que rememoran un club clásico.
 - **Inmersión**: Fondos con gradientes radiales y ruido texturizado que crean profundidad sin distracciones.
 - **Contraste**: Texto crema (#f3edd7) sobre fondos oscuros para máxima legibilidad.
 
@@ -199,6 +229,10 @@ La paleta está inspirada en los materiales de un casino tradicional:
 - **Surface Card (#16213e):** Azul medianoche para tarjetas secundarias y paneles.
 - **Surface Poker (#1b4d3e):** Verde bosque para elementos relacionados con el juego (mesas, fondos de juego).
 - **Surface Felt (#0a2a1f):** Verde fieltro oscuro para texturas de mesa.
+- **Surface Leather (#0a2c20):** Verde botella mate para la superficie principal de la mesa, con grano orgánico.
+- **Surface Wood (#120806):** Nogal profundo para el perímetro y la base física de la mesa.
+- **Surface Wood Rim (#35180f):** Nogal rojizo para el canto elevado y sus sombras.
+- **Surface Felt Highlight (#45996c):** Verde medio usado únicamente como luz radial sobre el fieltro.
 - **Primary (#e2b044):** Dorado/bronce premium. El color de interacción principal: botones, acentos, bordes.
 - **Primary Dark (#8b6b2e):** Bronce oscuro para estados activos, bordes y sombras.
 - **Primary Light (#f0d78c):** Dorado claro para hovers y destellos.
@@ -213,12 +247,13 @@ La paleta está inspirada en los materiales de un casino tradicional:
 
 ## Typography
 
-La estrategia tipográfica usa dos familias:
+La estrategia tipográfica usa dos familias de comunicación y una familia de datos:
 
-- **Cinzel (Display):** Fuente serif con inspiración romana para títulos heroicos, logos y encabezados premium. Evoca tradición y prestigio.
-- **Outfit (Sans):** Fuente sans-serif geométrica y legible para todo el cuerpo del texto, labels y UI. Su construcción clara facilita la lectura a tamaños grandes.
+- **Alegreya (Marca/display):** Serif editorial cálida para marca, hero y encabezados premium. Sus cursivas reales permiten expresar tradición sin deformaciones sintéticas.
+- **Source Sans 3 (UI):** Sans humanista para cuerpo, labels, formularios y controles. Mantiene claridad en móvil y deja que Alegreya aporte personalidad.
+- **Geist Mono (Datos):** Monoespaciada exclusiva para saldos, apuestas, IDs, timestamps y auditoría.
 
-Todos los tamaños de fuente están escalados sobre una base de 18px (html { font-size: 18px }) para accesibilidad de personas mayores.
+Landing y player usan una base de lectura de 18px para accesibilidad. El admin conserva la base de 16px para evitar que la densidad operativa se amplíe accidentalmente.
 
 ## Layout
 
@@ -234,6 +269,8 @@ El layout usa un modelo fluido en móvil y un contenedor máximo de 7xl (80rem /
 La profundidad se logra mediante **capas tonales y sombras** en lugar de sombras planas:
 
 - **Fondo base:** Negro profundo con gradiente radial verde póker.
+- **Base de mesa:** Nogal oscuro con vetas longitudinales muy sutiles y un canto elevado que enmarca el cuero.
+- **Superficie:** Cuero verde botella en forma ovalada, iluminado en el centro y oscurecido en los bordes mediante gradientes radiales, poros y ruido local.
 - **Capa de ruido:** Textura SVG de ruido fractal al 3% de opacidad para simular fieltro.
 - **Capa de viñeta:** Degradado radial negro al 40% en los bordes para enmarcar el contenido.
 - **Sombras:** `0 10px 30px rgba(0,0,0,0.6)` para tarjetas premium; `0 10px 30px rgba(0,0,0,0.5)` para header.
@@ -286,8 +323,11 @@ El lenguaje de formas combina lo clásico con lo moderno:
 ## Do's and Don'ts
 
 - **Do** usar dorado (#e2b044) solo para acciones primarias y acentos. Un máximo de 2-3 elementos dorados por pantalla.
+- **Do** usar Alegreya solo en marca, titulares y momentos narrativos; Source Sans 3 en controles y lectura.
+- **Do** usar Geist Mono para datos alineados y `tabular-nums` en saldos, apuestas y estadísticas.
 - **Don't** usar blanco puro (#ffffff) para texto. Siempre usar crema (#f3edd7) o gris secundario (#a0a0b0).
-- **Do** mantener el font-size base de 18px en html. Nunca reducir la base tipográfica global.
+- **Don't** usar textos funcionales por debajo de 11px; la navegación y las acciones deben preferir 12px o más.
+- **Don't** usar `font-black` o tracking extremo como sustituto de jerarquía.
 - **Don't** usar esquinas muy afiladas (0px) en elementos interactivos. Mínimo 8px de radio.
 - **Do** usar el verde póker (#1b4d3e) exclusivamente para áreas de juego y mesas.
 - **Don't** mezclar colores de acento funcionales del admin (indigo, purple, etc.) en la interfaz de jugadores.

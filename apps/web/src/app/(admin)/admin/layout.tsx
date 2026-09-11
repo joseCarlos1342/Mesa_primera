@@ -18,11 +18,11 @@ export default async function AdminLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <div className="admin-layout min-h-screen bg-gray-900 text-white">
+    <div className="admin-layout min-h-screen bg-gray-900 text-white font-sans">
       <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-gray-900/80 px-4 py-2 backdrop-blur-sm sm:px-6">
         <Link
           href="/admin"
-          className="rounded-sm text-lg font-black tracking-tight text-white transition-colors hover:text-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 sm:text-xl md:text-2xl"
+          className="rounded-sm font-headline-sm text-lg font-bold tracking-tight text-white transition-colors hover:text-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 sm:text-xl md:text-2xl"
         >
           Admin
         </Link>
