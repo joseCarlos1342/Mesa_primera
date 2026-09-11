@@ -53,7 +53,7 @@ export function StatsClient({ initialStats, initialLeaderboard, initialBonusStat
             <div className="text-center py-20 bg-black/40 border-2 border-dashed border-white/5 rounded-[3rem] px-8">
                <Star className="w-12 h-12 text-text-secondary opacity-20 mx-auto mb-4" />
                <h2 className="text-xl font-display font-black text-text-premium uppercase italic mb-2">Sin actividad registrada</h2>
-               <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest max-w-xs mx-auto">
+               <p className="text-[11px] font-medium text-text-secondary uppercase tracking-[0.1em] max-w-xs mx-auto">
                  Aún no has participado en ninguna mesa oficial. ¡Empieza a jugar para ver tus estadísticas aquí!
                </p>
             </div>
@@ -78,7 +78,7 @@ export function StatsClient({ initialStats, initialLeaderboard, initialBonusStat
               <button
                 key={cat.id}
                 onClick={() => setLeaderboardCategory(cat.id as any)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                 className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-[0.1em] transition-all ${
                   leaderboardCategory === cat.id 
                     ? 'bg-white/10 text-white shadow-xl border border-white/10' 
                     : 'text-text-secondary hover:text-white hover:bg-white/5'

@@ -49,7 +49,7 @@ export default function WithdrawPage() {
             </h1>
             <div className="flex items-center gap-2">
               <div className="h-0.5 w-8 bg-accent-gold/40 rounded-full" />
-              <p className="text-[#f3edd7]/40 text-[9px] font-black uppercase tracking-[0.3em]">Protocolo de Élite</p>
+              <p className="text-[#f3edd7]/70 text-[11px] font-bold uppercase tracking-[0.12em]">Protocolo de Élite</p>
             </div>
           </div>
         </motion.div> 
@@ -67,7 +67,7 @@ export default function WithdrawPage() {
           <div className="space-y-4 relative z-10 w-full">
             <div className="flex items-center gap-3 ml-2">
               <Banknote className="w-4 h-4 text-[#c0a060] opacity-80" />
-              <label className="text-[10px] md:text-[11px] font-black text-[#c0a060] uppercase tracking-[0.3em]">Monto a Retirar (COP)</label>
+              <label className="text-xs md:text-[13px] font-bold text-[#c0a060] uppercase tracking-[0.12em]">Monto a Retirar (COP)</label>
             </div>
             <div className="relative group w-full">
               <span className="absolute left-6 top-1/2 -translate-y-1/2 text-3xl font-display font-black text-[#c0a060] italic pr-2">$</span>
@@ -85,13 +85,13 @@ export default function WithdrawPage() {
                 className="w-full h-20 pl-14 pr-6 bg-black/40 border-2 border-white/5 rounded-2xl text-3xl md:text-4xl font-display font-black text-[#f3edd7] placeholder:text-white/10 focus:outline-none focus:border-[#c0a060]/40 focus:bg-black/60 transition-all italic tracking-tighter shadow-inner"
               />
             </div>
-            <p className="text-[#c0a060]/40 text-[10px] font-medium ml-2">Por favor, escribe el número sin puntos ni comas</p>
+            <p className="text-[#c0a060]/70 text-[11px] font-medium ml-2">Por favor, escribe el número sin puntos ni comas</p>
           </div>
 
           <div className="space-y-4 relative z-10 w-full">
              <div className="flex items-center gap-3 ml-2">
               <Landmark className="w-4 h-4 text-[#c0a060] opacity-80" />
-              <label className="text-[10px] md:text-[11px] font-black text-[#c0a060] uppercase tracking-[0.3em]">Datos Bancarios (Alias/CBU)</label>
+              <label className="text-xs md:text-[13px] font-bold text-[#c0a060] uppercase tracking-[0.12em]">Datos Bancarios (Alias/CBU)</label>
             </div>
             <textarea
               value={bankDetails}
@@ -105,7 +105,7 @@ export default function WithdrawPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-16 bg-accent-gold-shimmer text-slate-950 rounded-xl font-display font-black uppercase italic tracking-[0.3em] text-[10px] md:text-xs shadow-[0_10px_20px_rgba(192,160,96,0.3)] transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95 border-2 border-[#f0d78c] hover:shadow-[0_15px_30px_rgba(192,160,96,0.4)] relative z-10"
+            className="w-full h-16 bg-accent-gold-shimmer text-slate-950 rounded-xl font-display font-bold uppercase italic tracking-[0.12em] text-xs md:text-sm shadow-[0_10px_20px_rgba(192,160,96,0.3)] transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95 border-2 border-[#f0d78c] hover:shadow-[0_15px_30px_rgba(192,160,96,0.4)] relative z-10"
           >
             {loading ? (
               <div className="flex items-center gap-3">
@@ -130,7 +130,7 @@ export default function WithdrawPage() {
         >
           <div className="flex items-center gap-3 justify-center">
             <ShieldAlert className="w-5 h-5 text-[#c0a060] opacity-80" />
-            <span className="text-[10px] md:text-[11px] font-black text-[#c0a060] uppercase tracking-[0.3em]">Protocolo de Retiro</span>
+            <span className="text-xs md:text-[13px] font-bold text-[#c0a060] uppercase tracking-[0.12em]">Protocolo de Retiro</span>
           </div>
           <ul className="space-y-3">
             {[

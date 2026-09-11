@@ -51,7 +51,7 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
               className="absolute top-12 left-0 w-56 md:w-64 bg-[#0d211a]/95 backdrop-blur-xl border border-[#c0a060]/30 rounded-xl md:rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(192,160,96,0.15)] overflow-hidden flex flex-col py-1 pointer-events-auto"
             >
               <div className="px-4 py-2 border-b border-[#c0a060]/15">
-                <p className="text-[#c0a060]/70 text-[10px] font-black tracking-widest uppercase">Opciones de Mesa</p>
+                <p className="text-[#c0a060]/85 text-[11px] font-bold tracking-[0.1em] uppercase">Opciones de Mesa</p>
               </div>
               
               <button 

@@ -12,7 +12,7 @@ export function StatsTabs({ activeTab, onChange }: StatsTabsProps) {
     <div className="flex p-1 bg-black/40 backdrop-blur-xl border-2 border-white/5 rounded-2xl w-full max-w-sm mx-auto shadow-2xl">
       <button
         onClick={() => onChange('personal')}
-        className={`relative flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 overflow-hidden rounded-xl ${
+         className={`relative flex-1 py-3 text-xs font-bold uppercase tracking-[0.1em] transition-all duration-500 overflow-hidden rounded-xl ${
           activeTab === 'personal' ? 'text-black' : 'text-text-secondary hover:text-text-premium'
         }`}
       >
@@ -28,7 +28,7 @@ export function StatsTabs({ activeTab, onChange }: StatsTabsProps) {
       
       <button
         onClick={() => onChange('global')}
-        className={`relative flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 overflow-hidden rounded-xl ${
+         className={`relative flex-1 py-3 text-xs font-bold uppercase tracking-[0.1em] transition-all duration-500 overflow-hidden rounded-xl ${
           activeTab === 'global' ? 'text-black' : 'text-text-secondary hover:text-text-premium'
         }`}
       >

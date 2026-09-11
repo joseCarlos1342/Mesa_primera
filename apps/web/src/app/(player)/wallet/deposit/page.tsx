@@ -23,7 +23,7 @@ function DepositContent() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-black text-brand-gold italic tracking-[0.1em] select-none uppercase drop-shadow-sm whitespace-nowrap">
               Cargar Saldo
             </h1>
-            <p className="text-text-secondary text-[10px] md:text-[11px] font-black uppercase tracking-[0.4em] opacity-60">Sube tu comprobante de pago</p>
+            <p className="text-text-secondary text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] opacity-80">Sube tu comprobante de pago</p>
           </div>
         </motion.div>
 

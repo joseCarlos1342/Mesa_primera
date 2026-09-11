@@ -89,7 +89,7 @@ export function StatsDashboard({
               <h2 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic">
                 Cantos Especiales
               </h2>
-              <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
+              <p className="text-xs font-bold text-text-secondary uppercase tracking-[0.12em]">
                 Tu desempeño técnico en mesa
               </p>
             </div>
@@ -218,13 +218,13 @@ function BonusCard({
               <h2 className="text-xl font-display font-black text-text-premium uppercase tracking-tight italic">
                 Bono del Mes
               </h2>
-              <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">
+              <p className="text-xs font-bold text-emerald-300 uppercase tracking-[0.12em]">
                 {bonusStatus.period}
               </p>
             </div>
           </div>
           {hasClaimable && (
-            <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 rounded-full text-[10px] font-black text-emerald-300 uppercase tracking-widest animate-pulse">
+            <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 rounded-full text-xs font-bold text-emerald-300 uppercase tracking-[0.12em] animate-pulse">
               Disponible
             </span>
           )}
@@ -233,7 +233,7 @@ function BonusCard({
         {/* Progress bar */}
         {nextTier && (
           <div className="space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-300/70 px-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-300/80 px-1">
               {progressPct < 30
                 ? "¡Cada mesa te acerca a tu bono! 🎯"
                 : progressPct < 70
@@ -267,7 +267,7 @@ function BonusCard({
         </div>
 
         {claimError && (
-          <p role="alert" className="rounded-2xl border border-brand-red/30 bg-brand-red/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-brand-red">
+          <p role="alert" className="rounded-2xl border border-brand-red/30 bg-brand-red/10 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-brand-red">
             {claimError}
           </p>
         )}
@@ -317,7 +317,7 @@ function BonusCard({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.8 }}
-                className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.4em]"
+                className="text-xs font-bold text-emerald-300 uppercase tracking-[0.14em]"
               >
                 Acreditado a tu bóveda
               </m.p>
@@ -382,7 +382,7 @@ function TierRow({
           >
             {tier.name}
           </p>
-          <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest">
+          <p className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.12em]">
             {tier.claimed
               ? "Reclamado"
               : `Bono: ${formatCOP(tier.bonus_amount_cents)}`}
@@ -395,7 +395,7 @@ function TierRow({
           type="button"
           onClick={onClaim}
           disabled={claiming}
-          className="px-4 py-2 bg-brand-gold text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all active:scale-95 disabled:opacity-50 shadow-lg"
+          className="px-4 py-2 bg-brand-gold text-slate-950 rounded-xl text-xs font-bold uppercase tracking-[0.12em] hover:scale-105 transition-all active:scale-95 disabled:opacity-50 shadow-lg"
         >
           {claiming ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -436,7 +436,7 @@ function StatHero({
         <Icon className={`w-12 h-12 md:w-16 md:h-16 ${iconColor}`} />
       </div>
 
-      <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary">
+       <p className="text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-text-secondary">
         {title}
       </p>
       <div className="flex flex-col">
@@ -444,7 +444,7 @@ function StatHero({
           {value}
         </p>
         {sub && (
-          <span className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+           <span className="text-[11px] md:text-xs font-bold text-text-secondary uppercase tracking-[0.12em]">
             {sub}
           </span>
         )}
@@ -471,14 +471,14 @@ function SpecialStat({
       className={`p-4 md:p-6 ${bgColor} rounded-3xl md:rounded-4xl border border-white/5 flex flex-col items-center text-center gap-1 md:gap-2 group hover:border-brand-gold/20 transition-all active:scale-95`}
     >
       <span
-        className={`text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] ${color}`}
+         className={`text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] ${color}`}
       >
         {label}
       </span>
       <span className="text-2xl md:text-3xl font-display font-black text-white italic">
         {count}
       </span>
-      <p className="text-[8px] md:text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+       <p className="text-[11px] md:text-xs font-bold text-text-secondary uppercase tracking-[0.12em]">
         {description}
       </p>
     </div>

@@ -48,13 +48,13 @@ export function PermissionsGate({ children }: PermissionsGateProps) {
             </p>
 
             <div className="flex items-center gap-3 mb-3">
-              <div className="flex items-center gap-2 text-[10px] text-[#8faa96]">
+              <div className="flex items-center gap-2 text-[11px] text-[#a8c2ad]">
                 {microphone === 'granted'
                   ? <Check className="w-3.5 h-3.5 text-emerald-400" />
                   : <Mic className="w-3.5 h-3.5 text-[#d4af37]" />}
                 <span>Micrófono</span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-[#8faa96]">
+              <div className="flex items-center gap-2 text-[11px] text-[#a8c2ad]">
                 {notifications === 'granted'
                   ? <Check className="w-3.5 h-3.5 text-emerald-400" />
                   : <Bell className="w-3.5 h-3.5 text-[#d4af37]" />}

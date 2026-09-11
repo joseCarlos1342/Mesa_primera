@@ -213,7 +213,7 @@ export function TableHelpModal({ isOpen, onClose, roomId, userId }: TableHelpMod
                             <span className={`block text-sm font-bold ${selected ? 'text-[#f3edd7]' : 'text-[#f3edd7]/60'}`}>
                               {r.label}
                             </span>
-                            <span className="block text-[10px] text-[#f3edd7]/30 truncate">{r.description}</span>
+                            <span className="block text-[11px] text-[#f3edd7]/60 truncate">{r.description}</span>
                           </div>
                           <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
                             selected ? 'border-[#c0a060] bg-[#c0a060]' : 'border-white/15'
@@ -238,7 +238,7 @@ export function TableHelpModal({ isOpen, onClose, roomId, userId }: TableHelpMod
                     rows={3}
                     className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-[#f3edd7] text-sm placeholder:text-[#f3edd7]/20 focus:outline-none focus:border-[#c0a060]/30 focus:ring-1 focus:ring-[#c0a060]/20 resize-none transition-colors"
                   />
-                  <p className="text-right text-[10px] text-[#f3edd7]/20">{message.length}/500</p>
+                  <p className="text-right text-[11px] text-[#f3edd7]/50">{message.length}/500</p>
                 </div>
 
                 {error && (

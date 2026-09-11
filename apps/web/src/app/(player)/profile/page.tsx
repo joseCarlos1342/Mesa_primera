@@ -227,7 +227,7 @@ export default function ProfilePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-16 h-16 border-4 border-brand-gold/20 border-t-brand-gold rounded-full animate-spin shadow-[0_0_15px_rgba(202,171,114,0.2)]" />
-        <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em] animate-pulse">Abriendo Bóveda...</p>
+        <p className="text-[11px] font-bold text-brand-gold uppercase tracking-[0.12em] animate-pulse">Abriendo Bóveda...</p>
       </div>
     );
   }
@@ -328,17 +328,17 @@ export default function ProfilePage() {
              <div className="text-center space-y-2">
                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-brand-gold mx-auto opacity-40" />
                <p className="text-xl sm:text-2xl font-display font-black text-[#f3edd7] leading-none">{stats?.games_played || 0}</p>
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Mesas</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">Mesas</p>
              </div>
              <div className="text-center space-y-2">
                <Medal className="w-5 h-5 sm:w-6 sm:h-6 text-brand-gold mx-auto opacity-40" />
                <p className="text-xl sm:text-2xl font-display font-black text-brand-gold leading-none">{stats?.games_won || 0}</p>
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Victorias</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">Victorias</p>
              </div>
              <div className="text-center space-y-2">
                <Star className="w-5 h-5 sm:w-6 sm:h-6 text-brand-gold mx-auto opacity-40" />
                <p className="text-xl sm:text-2xl font-display font-black text-[#f3edd7] leading-none">{stats?.primeras_count || 0}</p>
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Primeras</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">Primeras</p>
              </div>
           </div>
         </aside>
@@ -359,7 +359,7 @@ export default function ProfilePage() {
               <div className="grid sm:grid-cols-2 gap-8 sm:gap-10 w-full">
                 {/* Username */}
                 <div className="space-y-4 w-full">
-                  <label className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold ml-3">Alias de Jugador</label>
+                  <label className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-gold ml-3">Alias de Jugador</label>
                   <div className="relative group w-full">
                     <Tag className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-slate-600 group-focus-within:text-brand-gold transition-colors" />
                     <input
@@ -374,7 +374,7 @@ export default function ProfilePage() {
 
                 {/* Full Name */}
                 <div className="space-y-4 w-full">
-                  <label className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold ml-3">Nombre Real</label>
+                  <label className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-gold ml-3">Nombre Real</label>
                   <div className="relative group w-full">
                     <User className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-slate-600 group-focus-within:text-brand-gold transition-colors" />
                     <input
@@ -390,7 +390,7 @@ export default function ProfilePage() {
 
               {/* Phone */}
               <div className="space-y-4 w-full">
-                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold ml-3">Directorio Seguro (Teléfono)</label>
+                <label className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-gold ml-3">Directorio Seguro (Teléfono)</label>
                 <div className="relative group w-full">
                   <Phone className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-slate-600 group-focus-within:text-brand-gold transition-colors" />
                   <input
@@ -405,7 +405,7 @@ export default function ProfilePage() {
 
               {/* Email (Disabled) */}
               <div className="space-y-4 border-t border-brand-gold/10 pt-10 pointer-events-none w-full">
-                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 ml-3">Enlace de Bóveda (Email)</label>
+                <label className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 ml-3">Enlace de Bóveda (Email)</label>
                 <div className="relative w-full">
                   <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-slate-700" />
                   <input
@@ -421,7 +421,7 @@ export default function ProfilePage() {
               {/* Biometric App Lock */}
               {lockSupported && (
                 <div className="space-y-4 border-t border-brand-gold/10 pt-10 w-full">
-                  <label className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold ml-3">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-gold ml-3">
                     Seguridad Biométrica
                   </label>
                   <div className="flex items-center justify-between bg-slate-950/60 border-2 border-brand-gold/10 rounded-[1.8rem] py-5 sm:py-6 px-6 sm:px-8 w-full">
@@ -556,7 +556,7 @@ export default function ProfilePage() {
                   )}
                 </button>
 
-                <p className="text-[10px] text-center text-[#f3edd7]/30 font-medium">
+                <p className="text-[11px] text-center text-[#f3edd7]/60 font-medium">
                   Si no recibes el código, revisa que el número sea correcto e intenta de nuevo.
                 </p>
               </div>

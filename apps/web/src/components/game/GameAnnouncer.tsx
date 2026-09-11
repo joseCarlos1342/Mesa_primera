@@ -61,7 +61,7 @@ export function GameAnnouncer({ phase, customMessage }: GameAnnouncerProps) {
             className="flex flex-col items-center gap-0.5"
           >
             <div className="h-px w-10 bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent" />
-            <span className="text-[#fdf0a6] font-serif font-black italic text-base md:text-2xl tracking-wide drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)] px-5 py-1.5 text-center whitespace-nowrap">
+            <span className="text-[#fdf0a6] font-display font-bold italic text-base md:text-2xl tracking-wide drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)] px-5 py-1.5 text-center whitespace-nowrap">
               {announcement.text}
             </span>
             <div className="h-px w-10 bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent" />

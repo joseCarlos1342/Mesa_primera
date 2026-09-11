@@ -61,9 +61,9 @@ export function ActionControls({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 20, opacity: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="flex flex-col items-center gap-1 z-[60] pointer-events-auto shrink-0 bg-[#0a180e]/95 rounded-tl-2xl border-t border-l border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] px-3 py-2 md:p-3"
+          className="flex flex-col items-center gap-1 z-[60] pointer-events-auto shrink-0 max-w-[calc(100vw-1rem)] overflow-x-auto bg-[#0a180e]/95 rounded-tl-2xl border-t border-l border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] px-3 py-2 md:p-3"
         >
-          <span className="text-[8px] md:text-[10px] text-[#d4af37] font-bold uppercase tracking-wider">
+          <span className="text-[11px] md:text-xs text-[#d4af37] font-bold uppercase tracking-wider">
             Tienes {pasoJuegoChoice.handType}
           </span>
           <div className="flex flex-row gap-1">
@@ -74,7 +74,7 @@ export function ActionControls({
                   room.send('paso-juego-response', { llevaJuego: true });
                   onPasoJuegoResolved?.();
                 }}
-                className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+                className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
               >
                 Llevo Juego
               </button>
@@ -85,7 +85,7 @@ export function ActionControls({
                   room.send('paso-juego-response', { llevaJuego: false });
                   onPasoJuegoResolved?.();
                 }}
-                className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
+                className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
               >
                 No Llevo
               </button>
@@ -126,7 +126,7 @@ export function ActionControls({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 20, opacity: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="flex flex-row items-center gap-1 z-[60] pointer-events-auto shrink-0 bg-[#0a180e]/95 rounded-tl-2xl border-t border-l border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] px-2 py-1 md:p-2"
+        className="flex flex-row items-center gap-1 z-[60] pointer-events-auto shrink-0 max-w-[calc(100vw-1rem)] overflow-x-auto whitespace-nowrap bg-[#0a180e]/95 rounded-tl-2xl border-t border-l border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] px-2 py-1 md:p-2"
       >
         {/* ── PIQUE: Monto fijo impuesto por La Mano ── */}
         {piqueFixed && canAffordPique && (
@@ -136,7 +136,7 @@ export function ActionControls({
               room.send('action', { action: 'voy', amount: currentMaxBet });
               onClearSelection?.();
             }}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
+            className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-bold text-[11px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
           >
             {piqueReopenActive ? 'IGUALAR' : 'VOY'} ${formatAmount(currentMaxBet)}
           </button>
@@ -148,7 +148,7 @@ export function ActionControls({
               room.send('action', { action: 'voy', amount: myChips });
               onClearSelection?.();
             }}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
+            className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
           >
             Resto ${formatAmount(myChips)}
           </button>
@@ -158,7 +158,7 @@ export function ActionControls({
         {showPiqueBet && !piqueFixed && (
           <button
             onClick={onBetClear}
-            className="h-7 md:h-10 px-2 md:px-3 bg-gradient-to-b from-[#6b7280] to-[#374151] text-white rounded-lg font-black text-[8px] md:text-xs shadow border-b-2 border-b-[#1f2937] active:scale-95 transition-all uppercase tracking-wider">
+            className="h-8 md:h-10 px-2 md:px-3 bg-gradient-to-b from-[#6b7280] to-[#374151] text-white rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#1f2937] active:scale-95 transition-all uppercase tracking-wider">
             Limpiar
           </button>
         )}
@@ -166,7 +166,7 @@ export function ActionControls({
           <button 
             onClick={onBetConfirm}
             disabled={isBetBelowMin}
-            className={`h-7 md:h-10 px-3 md:px-5 rounded-lg font-black text-[9px] md:text-xs shadow uppercase tracking-wider border-b-2 active:scale-95 transition-all ${
+            className={`h-8 md:h-10 px-3 md:px-5 rounded-lg font-bold text-[11px] md:text-xs shadow uppercase tracking-wider border-b-2 active:scale-95 transition-all ${
               isBetBelowMin
                 ? 'bg-gradient-to-b from-gray-500 to-gray-700 text-gray-300 border-gray-800 cursor-not-allowed opacity-60'
                 : 'bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white border-green-700'
@@ -175,7 +175,7 @@ export function ActionControls({
           </button>
         )}
         {isPique && isBetBelowMin && !piqueFixed && (
-          <span className="text-[7px] md:text-[9px] text-red-400 font-bold uppercase tracking-wider whitespace-nowrap">
+          <span className="text-[11px] md:text-xs text-red-400 font-bold uppercase tracking-wider whitespace-nowrap">
             Mín: ${formatAmount(minPique)}
           </span>
         )}
@@ -185,7 +185,7 @@ export function ActionControls({
         {is4CardBetting && hasActiveBet && canAffordCall && callAmount > 0 && !showRaiseBet && (
           <button
             onClick={() => send('igualar')}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-green-700 active:scale-95 transition-all uppercase tracking-wider"
+            className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-green-700 active:scale-95 transition-all uppercase tracking-wider"
           >
             IR ${formatAmount(callAmount)}
           </button>
@@ -195,7 +195,7 @@ export function ActionControls({
         {is4CardBetting && hasActiveBet && !canAffordCall && myChips > 0 && !showRaiseBet && (
           <button
             onClick={() => send('resto')}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
+            className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fbbf24] to-[#d97706] text-[#1a0a00] rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#92400e] active:scale-95 transition-all uppercase tracking-widest"
           >
             IR Resto ${formatAmount(myChips)}
           </button>
@@ -206,12 +206,12 @@ export function ActionControls({
           <>
             <button
               onClick={onBetClear}
-              className="h-7 md:h-10 px-2 md:px-3 bg-gradient-to-b from-[#6b7280] to-[#374151] text-white rounded-lg font-black text-[8px] md:text-xs shadow border-b-2 border-b-[#1f2937] active:scale-95 transition-all uppercase tracking-wider">
+              className="h-8 md:h-10 px-2 md:px-3 bg-gradient-to-b from-[#6b7280] to-[#374151] text-white rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#1f2937] active:scale-95 transition-all uppercase tracking-wider">
               Limpiar
             </button>
             <button
               onClick={onBetConfirm}
-              className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-black text-[9px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
+              className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#4ade80] to-[#16a34a] text-white rounded-lg font-bold text-[11px] md:text-xs shadow uppercase tracking-wider border-b-2 border-green-700 active:scale-95 transition-all"
             >
               IR! ${formatAmount(totalBet)}
             </button>
@@ -225,7 +225,7 @@ export function ActionControls({
               if (navigator.vibrate) navigator.vibrate(50);
               room.send('llevo-juego');
             }}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+            className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
           >
             Llevo Juego
           </button>
@@ -235,7 +235,7 @@ export function ActionControls({
         {phase === 'DESCARTE' && !passedWithJuego && selectedCards.length > 0 && (
           <button
             onClick={() => send('discard', { droppedCards: selectedCards })}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+            className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
           >
             Botar {selectedCards.length}
           </button>
@@ -248,7 +248,7 @@ export function ActionControls({
               if (navigator.vibrate) navigator.vibrate(50);
               room.send('declarar-juego', { tiene: true });
             }}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
+            className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] text-[#2a1b04] rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#5c4613] active:scale-95 transition-all uppercase tracking-wider"
           >
             Tengo {validJuegoOption.handType}
           </button>
@@ -259,14 +259,14 @@ export function ActionControls({
               if (navigator.vibrate) navigator.vibrate(50);
               room.send('declarar-juego', { tiene: false });
             }}
-            className="h-7 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-black text-[9px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
+            className="h-8 md:h-10 px-3 md:px-5 bg-gradient-to-b from-[#f87171] to-[#dc2626] text-white rounded-lg font-bold text-[11px] md:text-xs shadow border-b-2 border-b-[#7f1d1d] active:scale-95 transition-all uppercase tracking-wider"
           >
             No Tengo Juego
           </button>
         )}
         {/* Fallback: if server option not yet received, show loading */}
         {isDeclararJuego && !validJuegoOption && (
-          <span className="text-[9px] md:text-xs text-[#d4af37] font-bold uppercase animate-pulse">
+          <span className="text-[11px] md:text-xs text-[#d4af37] font-bold uppercase animate-pulse">
             Evaluando...
           </span>
         )}
@@ -282,7 +282,7 @@ export function ActionControls({
                 send('paso');
               }
             }}
-            className={`h-7 md:h-10 px-3 md:px-6 rounded-lg font-black text-[9px] md:text-sm shadow border-b-2 active:scale-95 transition-all uppercase tracking-widest ${
+            className={`h-8 md:h-10 px-3 md:px-6 rounded-lg font-bold text-[11px] md:text-sm shadow border-b-2 active:scale-95 transition-all uppercase tracking-widest ${
               // Check style (green/neutral) when no active bet in 4-card phases or DESCARTE
               ((is4CardBetting && !hasActiveBet) || phase === 'DESCARTE')
                 ? 'bg-gradient-to-b from-[#6b7280] to-[#4b5563] text-white border-b-[#374151]'

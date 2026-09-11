@@ -187,7 +187,7 @@ export default async function PlayerReplaysPage({ searchParams }: { searchParams
                         <Hash className="w-5 h-5 text-(--accent-gold)" />
                         {mesa.table_name || 'Mesa'}
                       </h2>
-                      <p className="text-[10px] text-(--accent-gold)/60 font-mono tracking-widest mt-1">
+                       <p className="text-[11px] text-(--accent-gold)/80 font-mono tracking-[0.1em] mt-1">
                         {mesa.room_id.substring(0, 8)}
                       </p>
                     </div>
@@ -202,7 +202,7 @@ export default async function PlayerReplaysPage({ searchParams }: { searchParams
 
                   <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm mb-4">
                     <div>
-                      <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest mb-1 flex items-center gap-1">
+                       <p className="text-[11px] font-bold text-(--accent-gold) uppercase tracking-[0.1em] mb-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Fecha
                       </p>
                       <p className="text-white font-bold">
@@ -215,7 +215,7 @@ export default async function PlayerReplaysPage({ searchParams }: { searchParams
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest mb-1 flex items-center gap-1">
+                       <p className="text-[11px] font-bold text-(--accent-gold) uppercase tracking-[0.1em] mb-1 flex items-center gap-1">
                         <Film className="w-3 h-3" /> Partidas
                       </p>
                       <p className="text-white font-bold">{mesa.game_count} jugadas</p>
@@ -223,7 +223,7 @@ export default async function PlayerReplaysPage({ searchParams }: { searchParams
                   </div>
 
                   <div className="pt-3 border-t border-(--accent-gold)/10 pl-4">
-                    <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest mb-1 flex items-center gap-1">
+                     <p className="text-[11px] font-bold text-(--accent-gold) uppercase tracking-[0.1em] mb-1 flex items-center gap-1">
                       <Users className="w-3 h-3" /> Jugadores ({playerNames.length})
                     </p>
                     <p className="text-xs text-slate-300 font-medium truncate">

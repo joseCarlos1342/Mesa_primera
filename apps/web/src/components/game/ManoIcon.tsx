@@ -13,9 +13,9 @@ interface ManoIconProps {
  */
 export function ManoIcon({ size = 'sm', className = '', animate = false }: ManoIconProps) {
   const sizes = {
-    xs: 'px-1.5 py-0.5 text-[6px]',
-    sm: 'px-2 py-0.5 text-[8px]',
-    md: 'px-2.5 py-1 text-[10px]',
+    xs: 'px-1.5 py-0.5 text-[11px]',
+    sm: 'px-2 py-0.5 text-[12px]',
+    md: 'px-2.5 py-1 text-[14px]',
   };
 
   const Wrapper = animate ? m.div : 'div';
@@ -38,7 +38,7 @@ export function ManoIcon({ size = 'sm', className = '', animate = false }: ManoI
       `}
       {...animateProps}
     >
-      <span className="font-black uppercase tracking-wider text-[#1a0f02] leading-none select-none">
+      <span className="font-bold uppercase tracking-[0.08em] text-[#1a0f02] leading-none select-none">
         Mano
       </span>
     </Wrapper>
