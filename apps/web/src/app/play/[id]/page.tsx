@@ -589,7 +589,7 @@ export default function GameRoomPage() {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
         <Loader2 className="h-10 w-10 animate-spin text-[#d4af37] mb-4 relative z-10" />
-        <h2 className="text-lg font-black tracking-[0.3em] text-[#fdf0a6]/70 uppercase relative z-10 text-center px-6">Conectando a la mesa...</h2>
+        <h2 className="text-lg font-bold tracking-[0.12em] text-[#fdf0a6]/80 uppercase relative z-10 text-center px-6">Conectando a la mesa...</h2>
       </div>
     )
   }
@@ -606,7 +606,7 @@ export default function GameRoomPage() {
           <div className="w-14 h-14 rounded-full bg-[#0a180e] border-2 border-[#d4af37]/40 flex items-center justify-center mb-5 shadow-[0_0_20px_rgba(212,175,55,0.15)]">
             <AlertCircle className="w-7 h-7 text-[#d4af37]" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-black font-display text-[#fdf0a6] uppercase tracking-[0.2em] mb-3">Error de Conexión</h2>
+          <h2 className="text-2xl md:text-3xl font-bold font-display text-[#fdf0a6] uppercase tracking-[0.12em] mb-3">Error de Conexión</h2>
           <div className="h-px w-24 bg-[#d4af37]/30 mb-4" />
           <p className="text-[#8faa96] mb-8 text-sm md:text-base leading-relaxed">{error}</p>
           <button
@@ -638,7 +638,7 @@ export default function GameRoomPage() {
           <div className="relative z-10 mb-8 w-24 h-24 flex items-center justify-center bg-[#0a180e]/80 rounded-3xl border border-[#d4af37]/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)] animate-[spin_4s_ease-in-out_infinite]">
             <RotateCcw className="w-14 h-14 text-[#d4af37]" />
           </div>
-          <h2 className="relative z-10 text-3xl font-black text-[#fdf0a6] mb-3 italic uppercase tracking-wider">Gira tu Dispositivo</h2>
+          <h2 className="relative z-10 text-3xl font-bold text-[#fdf0a6] mb-3 italic uppercase tracking-[0.1em]">Gira tu Dispositivo</h2>
           <div className="relative z-10 h-px w-24 bg-[#d4af37]/30 mb-4" />
           <p className="relative z-10 text-[#8faa96] text-base leading-relaxed max-w-xs">
             Para jugar en <span className="text-[#d4af37] font-bold uppercase tracking-wider">Primera Riverada</span>, necesitas usar tu pantalla en horizontal.
@@ -670,16 +670,16 @@ export default function GameRoomPage() {
             <div className="bg-[#0a180e]/95 border border-[#d4af37]/40 rounded-2xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.8),_0_0_20px_rgba(212,175,55,0.15)] flex flex-col items-center gap-1 backdrop-blur-xl">
               {bandaEvent._errorMsg ? (
                 <>
-                  <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-red-400">Error</span>
+                  <span className="text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-red-300">Error</span>
                   <span className="text-sm md:text-base font-bold text-[#fdf0a6]">{bandaEvent._errorMsg}</span>
                 </>
               ) : (
                 <>
-                  <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-[#d4af37]">Cobro de Banda</span>
+                  <span className="text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-[#d4af37]">Cobro de Banda</span>
                   <span className="text-lg md:text-2xl font-black text-[#fdf0a6]">
                     {bandaEvent.winnerNickname} +${formatAmount(bandaEvent.totalBanda)}
                   </span>
-                  <span className="text-[9px] md:text-[11px] text-[#8faa96] font-bold">
+                  <span className="text-[11px] md:text-xs text-[#a8c2ad] font-medium">
                     ${formatAmount(bandaEvent.bandaPerPlayer)} × {bandaEvent.details?.length || 0} jugador(es)
                   </span>
                 </>
@@ -697,7 +697,7 @@ export default function GameRoomPage() {
                   {/* Row 1: Icon + Title */}
                   <div className="flex flex-row items-center gap-2 md:gap-5">
                     <Users className="w-6 h-6 md:w-16 landscape:w-8 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] flex-shrink-0" />
-                    <h2 className="text-2xl md:text-6xl landscape:text-2xl font-display font-black italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium">
+                    <h2 className="text-2xl md:text-6xl landscape:text-2xl font-display font-bold italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium">
                       Sala de Espera
                     </h2>
                   </div>
@@ -705,7 +705,7 @@ export default function GameRoomPage() {
                   {/* Row 2: Players Status (Centered below) */}
                   <div className="flex items-center gap-3">
                     <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
-                    <p className="text-[#f3edd7]/60 text-[10px] md:text-[14px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
+                    <p className="text-[#f3edd7]/75 text-[11px] md:text-sm font-bold uppercase tracking-[0.12em] whitespace-nowrap">
                       Jugadores: <span className="text-[#c5a059] text-[11px] md:text-[16px]">{players.length}</span> <span className="opacity-40">/ 7</span>
                     </p>
                     <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
@@ -715,24 +715,24 @@ export default function GameRoomPage() {
                 {/* ── Pique Mínimo Config ── */}
                 <div className="w-full px-2 md:px-10">
                   <div className="bg-[#071a0e]/80 border border-[#d4af37]/20 rounded-xl p-3 md:p-5 flex flex-col items-center gap-1.5">
-                    <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a059]/70">Pique Mínimo</span>
+                    <span className="text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-[#c5a059]/80">Pique Mínimo</span>
                     <span className="text-xl md:text-3xl font-black text-[#fdf0a6] tracking-tight">
                       ${formatAmount(minPique)}
                     </span>
-                    <span className="text-[8px] md:text-[10px] text-[#8faa96] font-bold uppercase tracking-wider">
+                    <span className="text-[11px] md:text-xs text-[#a8c2ad] font-medium uppercase tracking-[0.08em]">
                       Banda: ${minPique >= 1_000_000 ? '5,000' : '2,000'} por jugador
                     </span>
 
                     {/* Propuesta activa: mostrar votación */}
                     {proposedPique > 0 ? (
                       <div className="bg-[#0f2e1a]/90 border border-[#d4af37]/30 rounded-xl p-3 w-full flex flex-col items-center gap-2 mt-1">
-                        <span className="text-[9px] md:text-[11px] text-[#c5a059] uppercase tracking-wider font-bold">
+                          <span className="text-[11px] md:text-xs text-[#c5a059] uppercase tracking-[0.08em] font-bold">
                           {players.find((p: any) => p.id === proposedPiqueBy)?.nickname || 'Jugador'} propone:
                         </span>
                         <span className="text-lg md:text-2xl font-black text-[#fdf0a6]">
                           ${formatAmount(proposedPique)}
                         </span>
-                        <div className="flex items-center gap-3 text-[10px] md:text-xs text-[#8faa96] font-bold">
+                        <div className="flex items-center gap-3 text-[11px] md:text-xs text-[#a8c2ad] font-medium">
                           <span className="text-emerald-400">✓ {piqueVotesFor}</span>
                           <span className="text-red-400">✗ {piqueVotesAgainst}</span>
                           <span className="opacity-50">/ {piqueVotersTotal}</span>
@@ -741,23 +741,23 @@ export default function GameRoomPage() {
                           <div className="flex gap-2 mt-1">
                             <button
                               onClick={() => { room.send('vote_pique', { approve: true }); setHasVotedPique(true); }}
-                              className="px-4 py-2 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-black text-[10px] md:text-xs uppercase tracking-wider border border-emerald-500/30 transition-all active:scale-95"
+                              className="px-4 py-2 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold text-[11px] md:text-xs uppercase tracking-[0.08em] border border-emerald-500/30 transition-all active:scale-95"
                             >
                               Aceptar
                             </button>
                             <button
                               onClick={() => { room.send('vote_pique', { approve: false }); setHasVotedPique(true); }}
-                              className="px-4 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-white font-black text-[10px] md:text-xs uppercase tracking-wider border border-red-500/30 transition-all active:scale-95"
+                              className="px-4 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-white font-bold text-[11px] md:text-xs uppercase tracking-[0.08em] border border-red-500/30 transition-all active:scale-95"
                             >
                               Rechazar
                             </button>
                           </div>
                         )}
                         {room && room.sessionId === proposedPiqueBy && (
-                          <span className="text-[9px] text-[#c5a059]/60 uppercase tracking-wider italic">Tu propuesta</span>
+                          <span className="text-[11px] text-[#c5a059]/80 uppercase tracking-[0.08em] italic">Tu propuesta</span>
                         )}
                         {hasVotedPique && room?.sessionId !== proposedPiqueBy && (
-                          <span className="text-[9px] text-emerald-400/60 uppercase tracking-wider italic">Voto registrado</span>
+                          <span className="text-[11px] text-emerald-400/80 uppercase tracking-[0.08em] italic">Voto registrado</span>
                         )}
                       </div>
                     ) : (
@@ -765,7 +765,7 @@ export default function GameRoomPage() {
                       room && !showPiqueOptions ? (
                         <button
                           onClick={() => setShowPiqueOptions(true)}
-                          className="mt-1 px-4 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#c5a059] font-bold text-[10px] md:text-xs uppercase tracking-wider hover:border-[#d4af37]/50 transition-all active:scale-95"
+                          className="mt-1 px-4 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#c5a059] font-bold text-[11px] md:text-xs uppercase tracking-[0.08em] hover:border-[#d4af37]/50 transition-all active:scale-95"
                         >
                           Cambiar Pique
                         </button>
@@ -779,14 +779,14 @@ export default function GameRoomPage() {
                                 setShowPiqueOptions(false);
                               }}
                               disabled={amount === minPique}
-                              className="px-3 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#fdf0a6] font-bold text-[10px] md:text-xs hover:border-[#d4af37]/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                              className="px-3 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#fdf0a6] font-bold text-[11px] md:text-xs hover:border-[#d4af37]/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                             >
                               ${formatAmount(amount)}
                             </button>
                           ))}
                           <button
                             onClick={() => setShowPiqueOptions(false)}
-                            className="px-3 py-1.5 rounded-xl text-[#8faa96] text-[10px] md:text-xs hover:text-white transition-all"
+                            className="px-3 py-1.5 rounded-xl text-[#a8c2ad] text-[11px] md:text-xs hover:text-white transition-all"
                           >
                             Cancelar
                           </button>
@@ -821,10 +821,10 @@ export default function GameRoomPage() {
                         `} />
 
                           <div className="flex flex-col items-start overflow-hidden flex-1">
-                            <span className={`text-[#f3edd7] font-black tracking-tight truncate w-full text-left text-sm md:text-2xl`}>
-                              {p.nickname} {isMe ? <span className="text-[#c5a059] font-normal text-[10px] md:text-sm ml-2 tracking-[0.2em] uppercase opacity-70">(Tú)</span> : ''}
+                            <span className={`text-[#f3edd7] font-semibold tracking-tight truncate w-full text-left text-sm md:text-2xl`}>
+                              {p.nickname} {isMe ? <span className="text-[#c5a059] font-normal text-[11px] md:text-sm ml-2 tracking-[0.12em] uppercase opacity-80">(Tú)</span> : ''}
                             </span>
-                            <span className="text-[#c5a059] font-mono font-bold tracking-widest text-[10px] md:text-lg mt-1 opacity-90">
+                            <span className="text-[#c5a059] font-mono font-bold tracking-[0.1em] text-[11px] md:text-lg mt-1 opacity-90">
                               {formatCurrency(p.chips)}
                             </span>
                           </div>
@@ -847,7 +847,7 @@ export default function GameRoomPage() {
                         </div>
                         <button
                           onClick={() => { setShowDeposit(true); }}
-                          className="w-full h-12 md:h-14 bg-gradient-to-b from-[#d4af37] via-[#c5a028] to-[#8a6d1c] hover:from-[#fdf0a6] hover:via-[#d4af37] hover:to-[#c5a028] text-[#1a0a00] rounded-xl font-black text-sm md:text-base shadow-[0_10px_20px_rgba(0,0,0,0.6)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all uppercase tracking-widest border border-[#d4af37]/40 border-b-[3px] border-b-[#5c4613]"
+                          className="w-full h-12 md:h-14 bg-gradient-to-b from-[#d4af37] via-[#c5a028] to-[#8a6d1c] hover:from-[#fdf0a6] hover:via-[#d4af37] hover:to-[#c5a028] text-[#1a0a00] rounded-xl font-bold text-sm md:text-base shadow-[0_10px_20px_rgba(0,0,0,0.6)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all uppercase tracking-[0.1em] border border-[#d4af37]/40 border-b-[3px] border-b-[#5c4613]"
                         >
                           Cargar Fichas
                         </button>
@@ -858,21 +858,21 @@ export default function GameRoomPage() {
                       /* Botón deshabilitado cuando no tiene saldo */
                       <button
                         disabled
-                        className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#4b5563] to-[#374151] text-[#9ca3af] rounded-2xl font-black text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-inner uppercase tracking-widest border border-white/5 cursor-not-allowed opacity-60"
+                        className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#4b5563] to-[#374151] text-[#9ca3af] rounded-2xl font-bold text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-inner uppercase tracking-[0.1em] border border-white/5 cursor-not-allowed opacity-60"
                       >
                         Saldo Insuficiente
                       </button>
                     ) : players.find(p => p.id === room?.sessionId)?.isReady ? (
                       <button
                         onClick={() => room.send('toggleReady', { isReady: false })}
-                        className="w-full max-w-sm h-16 md:h-20 bg-gradient-to-b from-[#e74c3c] via-[#c0392b] to-[#922b21] hover:from-[#f1948a] hover:via-[#e74c3c] hover:to-[#c0392b] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-12 landscape:text-xs shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#7b241c] tactile-button"
+                          className="w-full max-w-sm h-16 md:h-20 bg-gradient-to-b from-[#e74c3c] via-[#c0392b] to-[#922b21] hover:from-[#f1948a] hover:via-[#e74c3c] hover:to-[#c0392b] text-[#f3edd7] rounded-2xl font-bold text-sm md:text-xl landscape:h-12 landscape:text-xs shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-[0.1em] border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#7b241c] tactile-button"
                       >
                         Anular Listo
                       </button>
                     ) : (
                       <button
                         onClick={() => room.send('toggleReady', { isReady: true })}
-                        className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8449] hover:from-[#82e0aa] hover:via-[#2ecc71] hover:to-[#27ae60] text-[#f3edd7] rounded-2xl font-black text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-widest border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#186a3b] tactile-button"
+                          className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8449] hover:from-[#82e0aa] hover:via-[#2ecc71] hover:to-[#27ae60] text-[#f3edd7] rounded-2xl font-bold text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-[0.1em] border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#186a3b] tactile-button"
                       >
                         ¡Estoy Listo!
                       </button>
@@ -883,7 +883,7 @@ export default function GameRoomPage() {
                         const isFirst = room?.state.isFirstGame ?? true;
                         const requiredMin = isFirst ? (room?.state.minPlayers || 3) : 2;
                         return players.length < requiredMin ? (
-                          <p className="text-[#a0a0b0] uppercase tracking-widest text-[10px] md:text-base font-bold text-center">
+                          <p className="text-[#a0a0b0] uppercase tracking-[0.1em] text-[11px] md:text-base font-bold text-center">
                             Esperando al menos <span className="text-[#f3edd7]">{requiredMin} jugadores</span>...
                           </p>
                         ) : null;
@@ -926,7 +926,7 @@ export default function GameRoomPage() {
                                   </span>
                                 </div>
                               </div>
-                              <p className="text-[#c5a059] font-black uppercase tracking-[0.3em] text-[10px] md:text-xs">
+                              <p className="text-[#c5a059] font-bold uppercase tracking-[0.12em] text-[11px] md:text-xs">
                                 Iniciando partida
                               </p>
                             </div>
