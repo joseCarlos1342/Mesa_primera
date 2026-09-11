@@ -134,7 +134,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       {/* Reconstrucción visual (v2): única vista del replay */}
       {replay.version === 2 && Array.isArray(replay.frames) && replay.frames.length > 0 ? (
         <div className="space-y-3">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">Reconstrucción Visual</h2>
+           <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Reconstrucción Visual</h2>
           <ReplayController frames={replay.frames} finalHands={hands} />
         </div>
       ) : (
@@ -147,19 +147,19 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
 
       {/* Resumen final */}
       <section className="mt-10 space-y-6">
-        <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">Resumen Final</h2>
+         <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Resumen Final</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-1">
             <div className="flex items-center gap-2 text-slate-400">
               <Users className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Jugadores</span>
+               <span className="text-[11px] font-bold uppercase tracking-[0.1em]">Jugadores</span>
             </div>
             <p className="text-2xl font-black text-white">{players.length}</p>
           </div>
           <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-1">
             <div className="flex items-center gap-2 text-slate-400">
               <Trophy className="w-3.5 h-3.5 text-(--accent-gold)" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Bote</span>
+               <span className="text-[11px] font-bold uppercase tracking-[0.1em]">Bote</span>
             </div>
             <p className="text-xl font-black text-(--accent-gold)">
               {formatCurrency(pot.totalPot || 0)}
@@ -168,7 +168,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
           <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-1">
             <div className="flex items-center gap-2 text-slate-400">
               <Coins className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Pique</span>
+               <span className="text-[11px] font-bold uppercase tracking-[0.1em]">Pique</span>
             </div>
             <p className="text-xl font-black text-emerald-400">
               {formatCurrency(pot.piquePot || 0)}
@@ -177,7 +177,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
           <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-1">
             <div className="flex items-center gap-2 text-slate-400">
               <Layers className="w-3.5 h-3.5 text-purple-300" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Eventos</span>
+               <span className="text-[11px] font-bold uppercase tracking-[0.1em]">Eventos</span>
             </div>
             <p className="text-2xl font-black text-white">{timeline.length}</p>
           </div>
@@ -206,7 +206,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
                 >
                   <p className="font-black text-white text-sm">{hand.nickname}</p>
                   {hand.handType && (
-                    <p className="text-[10px] font-black uppercase tracking-widest text-(--accent-gold)">
+                     <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-(--accent-gold)">
                       {hand.handType}
                     </p>
                   )}
@@ -231,7 +231,7 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
       {/* Línea de tiempo */}
       {timeline.length > 0 && (
         <section className="mt-10 space-y-3">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
+           <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
             Línea de Tiempo
           </h2>
           <ol className="bg-gradient-to-b from-black/40 to-black/20 border border-white/10 rounded-3xl divide-y divide-white/5 overflow-hidden shadow-xl">
@@ -244,22 +244,22 @@ export default function ReplayViewer({ params }: { params: Promise<{ gameId: str
                   key={idx}
                   className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] md:grid-cols-[2.5rem_8rem_8rem_minmax(0,1fr)_auto] items-center gap-3 px-4 md:px-5 py-2.5 text-xs hover:bg-white/[0.04] transition-colors"
                 >
-                  <span className="font-mono text-[10px] text-slate-500">
+                  <span className="font-mono text-[11px] text-slate-500">
                     {String(idx + 1).padStart(2, '0')}
                   </span>
-                  <span className="font-black uppercase tracking-widest text-[10px] text-(--accent-gold) hidden md:inline">
+                   <span className="font-bold uppercase tracking-[0.1em] text-[11px] text-(--accent-gold) hidden md:inline">
                     {eventLabel(event)}
                   </span>
                   <span className="font-bold text-slate-200 truncate hidden md:inline">
                     {playerId ? `@${getPlayerName(playerId)}` : ''}
                   </span>
                   <span className="md:hidden font-bold text-slate-200 truncate">
-                    <span className="text-(--accent-gold) uppercase tracking-widest text-[10px] mr-2">{eventLabel(event)}</span>
+                     <span className="text-(--accent-gold) uppercase tracking-[0.1em] text-[11px] mr-2">{eventLabel(event)}</span>
                     {playerId ? `@${getPlayerName(playerId)}` : ''}
                   </span>
                   <span className="text-slate-400 truncate hidden md:inline">{detail}</span>
                   {time ? (
-                    <span className="text-[10px] font-mono text-slate-500 hidden md:flex items-center gap-1 justify-end">
+                     <span className="text-[11px] font-mono text-slate-500 hidden md:flex items-center gap-1 justify-end">
                       <Clock className="w-3 h-3" />
                       {new Date(time).toLocaleTimeString('es-ES', {
                         hour: '2-digit', minute: '2-digit', second: '2-digit',

@@ -131,7 +131,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
                 <Landmark className="w-6 h-6 landscape:w-5 landscape:h-5 text-[#c0a060]" />
               </div>
               <div className="text-left">
-                <span className="text-[#c0a060]/60 text-[10px] md:text-[10px] landscape:text-[9px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] block drop-shadow-sm leading-none mb-1">Cuenta de Transferencia</span>
+                <span className="text-[#c0a060]/80 text-[11px] md:text-xs landscape:text-[11px] font-bold uppercase tracking-[0.1em] block drop-shadow-sm leading-none mb-1">Cuenta de Transferencia</span>
                 <span className="text-[#f3edd7] text-base md:text-lg font-bold tracking-tight">Nequi Personal</span>
               </div>
             </div>
@@ -207,9 +207,9 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
             <p className="text-[#c0a060]/60 text-xs font-bold ml-6">{amountFormatted}</p>
           )}
           {!fieldErrors.amount && !amountFormatted && (
-            <p className="text-[#f3edd7]/20 text-[10px] font-bold ml-6 uppercase tracking-widest">Mínimo $10.000 — Máximo $50.000.000 COP</p>
+            <p className="text-[#f3edd7]/70 text-[11px] font-medium ml-6 uppercase tracking-[0.1em]">Mínimo $10.000 — Máximo $50.000.000 COP</p>
           )}
-          <p className="text-[#c0a060]/40 text-[10px] font-medium ml-6">Por favor, escribe el número sin puntos ni comas</p>
+          <p className="text-[#c0a060]/70 text-[11px] font-medium ml-6">Por favor, escribe el número sin puntos ni comas</p>
         </div>
 
         {/* Upload Section */}
@@ -235,7 +235,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
                     alt="Vista previa" 
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end justify-center pb-8">
-                    <p className="text-[#f3edd7] text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] bg-[#c0a060]/20 backdrop-blur-md px-6 py-2.5 rounded-xl border-2 border-[#c0a060]/30 shadow-xl">Reemplazar Comprobante</p>
+                    <p className="text-[#f3edd7] text-[11px] md:text-xs font-bold uppercase tracking-[0.1em] bg-[#c0a060]/20 backdrop-blur-md px-6 py-2.5 rounded-xl border-2 border-[#c0a060]/30 shadow-xl">Reemplazar Comprobante</p>
                   </div>
                 </motion.div>
               ) : (
@@ -250,7 +250,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
                   </div>
                   <div className="px-2">
                     <p className="text-[#f3edd7] text-base md:text-lg landscape:text-sm font-black uppercase tracking-[0.2em] leading-tight">Presiona para subir</p>
-                    <p className="text-[#f3edd7]/40 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mt-2 landscape:mt-1 opacity-60">PNG, JPG o Captura de pantalla</p>
+            <p className="text-[#f3edd7]/70 text-[11px] md:text-xs font-medium uppercase tracking-[0.1em] mt-2 landscape:mt-1">PNG, JPG o Captura de pantalla</p>
                   </div>
                 </motion.div>
               )}
@@ -266,7 +266,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
             <p className="text-red-400 text-xs font-bold ml-6">{fieldErrors.file}</p>
           )}
           {!fieldErrors.file && (
-            <p className="text-[#f3edd7]/20 text-[10px] font-bold ml-6 uppercase tracking-widest">JPG, PNG, WebP o GIF — Máx. 5 MB</p>
+            <p className="text-[#f3edd7]/70 text-[11px] font-medium ml-6 uppercase tracking-[0.1em]">JPG, PNG, WebP o GIF — Máx. 5 MB</p>
           )}
         </div>
 
@@ -319,7 +319,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
           </button>
           <div className="flex items-center justify-center gap-3 mt-8 landscape:mt-4 opacity-40">
             <div className="w-1.5 h-1.5 rounded-full bg-[#c0a060]" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#f3edd7]">Transacción Enmascarada y Segura</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#f3edd7]">Transacción Enmascarada y Segura</p>
             <div className="w-1.5 h-1.5 rounded-full bg-[#c0a060]" />
           </div>
         </div>

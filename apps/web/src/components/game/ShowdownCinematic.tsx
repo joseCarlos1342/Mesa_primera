@@ -122,7 +122,7 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
       <div className="flex flex-col items-center w-full py-6 md:py-8 landscape:py-3 min-h-full justify-start md:justify-center">
       {/* Header: Title */}
       <div className="showdown-header flex flex-col items-center mb-6 md:mb-8 landscape:mb-2">
-        <div className="text-[#d4af37] text-[10px] md:text-xs uppercase tracking-[0.3em] font-black mb-2">
+        <div className="text-[#d4af37] text-[11px] md:text-xs uppercase tracking-[0.12em] font-bold mb-2">
           Mostrando Cartas
         </div>
       </div>
@@ -191,12 +191,12 @@ export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss 
       {/* Pot Summary */}
       <div className="mt-5 md:mt-8 landscape:mt-2 flex gap-4 shrink-0">
         <div className="bg-[#0a180e]/90 px-4 py-2 rounded-xl border border-[#d4af37]/20">
-          <span className="text-[#fdf0a6] text-[8px] uppercase tracking-widest opacity-60">Pozo</span>
+          <span className="text-[#fdf0a6] text-[11px] uppercase tracking-[0.1em] opacity-80">Pozo</span>
           <div className="text-[#4ade80] font-mono font-black text-sm md:text-lg">{formatCurrency(pot)}</div>
         </div>
         {piquePot > 0 && (
           <div className="bg-[#0a180e]/90 px-4 py-2 rounded-xl border border-[#d4af37]/20">
-            <span className="text-[#fdf0a6] text-[8px] uppercase tracking-widest opacity-60">Pique</span>
+            <span className="text-[#fdf0a6] text-[11px] uppercase tracking-[0.1em] opacity-80">Pique</span>
             <div className="text-[#4ade80] font-mono font-black text-sm md:text-lg">{formatCurrency(piquePot)}</div>
           </div>
         )}

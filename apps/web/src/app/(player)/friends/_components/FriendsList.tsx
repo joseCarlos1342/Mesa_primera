@@ -61,7 +61,7 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
           <ShieldCheck className="w-8 h-8 text-slate-500" />
         </div>
         <p className="font-display font-black italic uppercase tracking-[0.2em] text-sm text-slate-400">Tu círculo está vacío</p>
-        <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-bold">¡Busca nuevos jugadores abajo!</p>
+        <p className="text-[11px] text-slate-400 mt-2 uppercase tracking-[0.1em] font-medium">¡Busca nuevos jugadores abajo!</p>
       </div>
     );
   }
@@ -124,7 +124,7 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
                         {friend.nickname || friend.profile.username}
                       </h4>
                       {friend.nickname && (
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest opacity-40">
+                         <span className="text-[11px] font-medium text-slate-400 uppercase tracking-[0.1em] opacity-80">
                           {friend.profile.username.startsWith('@') ? '' : '@'}{friend.profile.username}
                         </span>
                       )}
@@ -141,7 +141,7 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                   <p className={`text-[11px] font-bold uppercase tracking-[0.1em] ${
                     friend.status === 'online' ? 'text-emerald-500/80' : 
                     friend.status === 'in-game' ? 'text-brand-gold/80' : 
                     'text-slate-600'
@@ -161,7 +161,7 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
                 title="Escribir"
               >
                 <MessageCircle className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
-                <span className="text-[8px] font-black uppercase tracking-widest opacity-0 group-hover/btn:opacity-60 transition-opacity">Chat</span>
+                 <span className="text-[11px] font-bold uppercase tracking-[0.1em] opacity-0 group-hover/btn:opacity-60 transition-opacity">Chat</span>
               </button>
               <button 
                 onClick={() => handleInvite(friend.profile.id)}
@@ -170,7 +170,7 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
                 title="Invitar a jugar"
               >
                 <Gamepad2 className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
-                <span className="text-[8px] font-black uppercase tracking-widest opacity-0 group-hover/btn:opacity-60 transition-opacity">Invitar</span>
+                 <span className="text-[11px] font-bold uppercase tracking-[0.1em] opacity-0 group-hover/btn:opacity-60 transition-opacity">Invitar</span>
               </button>
               <button 
                 onClick={() => onRemove(friend.friendshipId)}
@@ -178,7 +178,7 @@ export function FriendsList({ friends, onChat, onRemove, onAction, onRefresh }: 
                 title="Borrar amigo"
               >
                 <UserX className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
-                <span className="text-[8px] font-black uppercase tracking-widest opacity-0 group-hover/btn:opacity-60 transition-opacity">Borrar</span>
+                 <span className="text-[11px] font-bold uppercase tracking-[0.1em] opacity-0 group-hover/btn:opacity-60 transition-opacity">Borrar</span>
               </button>
             </div>
           </div>

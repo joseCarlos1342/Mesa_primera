@@ -66,18 +66,18 @@ export default async function MesaDetailPage({ params, searchParams }: Props) {
                   
                   {/* Top: Status & Date */}
                   <div className="flex justify-between items-start">
-                    <div className={`px-3 py-1 flex items-center gap-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${badgeBg}`}>
+                    <div className={`px-3 py-1 flex items-center gap-1.5 rounded-full border text-[11px] font-bold uppercase tracking-[0.1em] ${badgeBg}`}>
                       {r.is_winner ? <Trophy className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                       {r.is_winner ? 'Victoria' : 'Derrota'}
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest flex items-center justify-end gap-1 mb-0.5">
+                      <p className="text-[11px] font-bold text-(--accent-gold) uppercase tracking-[0.1em] flex items-center justify-end gap-1 mb-0.5">
                         <Clock className="w-3 h-3" /> Fecha
                       </p>
                       <p className="text-xs text-white/80 font-medium">
                         {new Date(r.played_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
                       </p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[11px] text-slate-400">
                         {new Date(r.played_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
@@ -86,7 +86,7 @@ export default async function MesaDetailPage({ params, searchParams }: Props) {
                   {/* Middle: Players */}
                   {playerNames.length > 0 && (
                     <div className="py-3 border-y border-white/5">
-                      <p className="text-[10px] font-black text-(--accent-gold) uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                      <p className="text-[11px] font-bold text-(--accent-gold) uppercase tracking-[0.1em] mb-1.5 flex items-center gap-1">
                         <Users className="w-3 h-3" /> Jugadores contra ti
                       </p>
                       <p className="text-xs text-slate-300 font-medium leading-relaxed line-clamp-2">
@@ -98,7 +98,7 @@ export default async function MesaDetailPage({ params, searchParams }: Props) {
                   {/* Bottom: Financial Result */}
                   <div className="flex items-end justify-between pt-1">
                     <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-1">
                         Bote total
                       </p>
                       <p className="text-sm font-bold text-white">
@@ -107,7 +107,7 @@ export default async function MesaDetailPage({ params, searchParams }: Props) {
                     </div>
                     
                     <div className="text-right">
-                      <p className={`text-[10px] font-black uppercase tracking-widest mb-0.5 ${r.is_winner ? 'text-emerald-500/70' : 'text-red-500/70'}`}>
+                      <p className={`text-[11px] font-bold uppercase tracking-[0.1em] mb-0.5 ${r.is_winner ? 'text-emerald-500/70' : 'text-red-500/70'}`}>
                         Resultado Neto
                       </p>
                       <span className={`text-2xl font-black ${resultColorClass}`}>

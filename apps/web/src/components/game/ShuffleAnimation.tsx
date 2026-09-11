@@ -259,10 +259,10 @@ export function ShuffleAnimation() {
         transition={{ delay: 0.25, duration: 0.55 }}
         className="mb-14 text-center select-none"
       >
-        <p className="text-[8px] md:text-[10px] text-[#d4af37]/55 uppercase tracking-[0.5em] font-bold mb-2">
+        <p className="text-[11px] md:text-xs text-[#d4af37]/75 uppercase tracking-[0.12em] font-bold mb-2">
           Preparando la partida
         </p>
-        <h2 className="text-2xl md:text-4xl font-serif font-black italic uppercase tracking-[0.2em] text-[#fdf0a6] drop-shadow-[0_0_28px_rgba(212,175,55,0.55)]">
+        <h2 className="text-2xl md:text-4xl font-display font-bold italic uppercase tracking-[0.14em] text-[#fdf0a6] drop-shadow-[0_0_28px_rgba(212,175,55,0.55)]">
           Barajando
           <m.span
             animate={{ opacity: [1, 0.15, 1] }}

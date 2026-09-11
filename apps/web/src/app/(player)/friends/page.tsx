@@ -99,14 +99,14 @@ function FriendsContent() {
       <header className="flex justify-between items-end relative">
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 bg-brand-gold/10 rounded text-[8px] font-black text-brand-gold uppercase tracking-widest border border-brand-gold/20">
+             <span className="px-2 py-0.5 bg-brand-gold/10 rounded text-[11px] font-bold text-brand-gold uppercase tracking-[0.1em] border border-brand-gold/20">
               Social Club
             </span>
           </div>
           <h1 className="text-4xl md:text-5xl font-display font-black italic text-white uppercase tracking-tighter leading-none">
             Amigos
           </h1>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
+           <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.14em]">
             Primera Riverada • Elite Club
           </p>
         </div>
@@ -127,7 +127,7 @@ function FriendsContent() {
       <div className="flex p-1.5 bg-white/5 border border-white/5 rounded-[2rem] relative backdrop-blur-md">
         <button
           onClick={() => setActiveTab('friends')}
-          className={`relative flex-1 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+           className={`relative flex-1 py-4 rounded-full text-xs font-bold uppercase tracking-[0.1em] transition-all ${
             activeTab === 'friends' ? 'text-black' : 'text-slate-500 hover:text-slate-300'
           }`}
         >
@@ -148,7 +148,7 @@ function FriendsContent() {
         </button>
         <button
           onClick={() => setActiveTab('requests')}
-          className={`relative flex-1 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+           className={`relative flex-1 py-4 rounded-full text-xs font-bold uppercase tracking-[0.1em] transition-all ${
             activeTab === 'requests' ? 'text-black' : 'text-slate-500 hover:text-slate-300'
           }`}
         >
@@ -174,7 +174,7 @@ function FriendsContent() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-20">
             <Loader2 className="w-10 h-10 animate-spin text-brand-gold mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-white">Sincronizando círculo...</p>
+             <p className="text-xs font-bold uppercase tracking-[0.12em] text-white">Sincronizando círculo...</p>
           </div>
         ) : (
           <AnimatePresence mode="wait">
@@ -276,7 +276,7 @@ function FriendsContent() {
                     <h3 className="text-lg sm:text-xl font-display font-black italic uppercase tracking-[0.15em] text-red-400 leading-none">
                       ¿Eliminar Amigo?
                     </h3>
-                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
+                    <p className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.1em]">
                       Acción irreversible
                     </p>
                   </div>
@@ -284,7 +284,7 @@ function FriendsContent() {
                   {/* Friend name badge */}
                   <div className="px-4 py-2.5 bg-red-500/5 rounded-2xl border border-red-500/10 inline-flex items-center gap-2">
                     <span className="text-sm font-bold text-red-400">{friendToRemove.name}</span>
-                    <span className="text-[10px] text-text-secondary font-black uppercase tracking-widest">será eliminado</span>
+                    <span className="text-[11px] text-text-secondary font-bold uppercase tracking-[0.1em]">será eliminado</span>
                   </div>
 
                   <p className="text-sm text-text-secondary leading-relaxed px-2">
@@ -341,7 +341,7 @@ function FriendsContent() {
       {/* Footer Info */}
       {!loading && (
         <footer className="text-center pt-8 pb-12">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">
             Los datos se actualizan en tiempo real
           </p>
         </footer>

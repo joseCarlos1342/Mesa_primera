@@ -108,7 +108,7 @@ export function DirectChat({ friend, onClose }: DirectChatProps) {
             </h3>
             <div className="flex items-center gap-1.5 mt-1">
               <div className={`w-2 h-2 rounded-full ${friend.status === 'online' ? 'bg-emerald-500 animate-pulse' : friend.status === 'in-game' ? 'bg-brand-gold' : 'bg-slate-600'}`} />
-              <p className={`text-[9px] font-black uppercase tracking-[0.15em] ${friend.status === 'online' ? 'text-emerald-500' : friend.status === 'in-game' ? 'text-brand-gold' : 'text-slate-500'}`}>
+              <p className={`text-[11px] font-bold uppercase tracking-[0.1em] ${friend.status === 'online' ? 'text-emerald-500' : friend.status === 'in-game' ? 'text-brand-gold' : 'text-slate-500'}`}>
                 {friend.status === 'online' ? 'En Línea' : friend.status === 'in-game' ? 'En Partida' : 'Desconectado'}
               </p>
             </div>
@@ -127,7 +127,7 @@ export function DirectChat({ friend, onClose }: DirectChatProps) {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full opacity-20 space-y-4">
             <Loader2 className="w-10 h-10 animate-spin text-brand-gold" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-white">Abriendo canal seguro...</p>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-white">Abriendo canal seguro...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-30">
@@ -136,7 +136,7 @@ export function DirectChat({ friend, onClose }: DirectChatProps) {
             </div>
             <div className="space-y-1">
               <p className="text-sm font-display font-black italic uppercase tracking-widest text-white [word-spacing:0.3em]">Inicia&nbsp; la&nbsp; conversación</p>
-              <p className="text-[10px] text-slate-400 uppercase tracking-tighter">Escribe un mensaje para empezar a chatear.</p>
+              <p className="text-xs text-slate-400 uppercase tracking-[0.08em]">Escribe un mensaje para empezar a chatear.</p>
             </div>
           </div>
         ) : (
@@ -160,7 +160,7 @@ export function DirectChat({ friend, onClose }: DirectChatProps) {
                     : 'bg-slate-800/80 text-white border border-white/5 rounded-2xl rounded-bl-none px-4 py-3'
                 }`}>
                   <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
-                  <p className={`text-[8px] mt-1 font-black uppercase opacity-40 ${isMe ? 'text-black' : 'text-slate-400'}`}>
+                  <p className={`text-[11px] mt-1 font-medium uppercase opacity-70 ${isMe ? 'text-black' : 'text-slate-300'}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>

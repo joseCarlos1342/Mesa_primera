@@ -151,7 +151,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                 <h2 className="text-xl font-display font-black italic text-brand-gold leading-none tracking-tight uppercase">
                   Transferir
                 </h2>
-                <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mt-0.5">
+                <p className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em] mt-0.5">
                   {step === 'search' && 'Buscar jugador'}
                   {step === 'confirm-recipient' && 'Confirmar destinatario'}
                   {step === 'amount' && 'Ingresar monto'}
@@ -231,10 +231,10 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                   </div>
 
                   <div className="flex gap-3">
-                    <button onClick={() => { setRecipient(null); setStep('search'); }} className="flex-1 h-11 bg-white/5 hover:bg-white/10 text-white/50 rounded-xl font-bold uppercase tracking-widest text-[10px] border border-white/10">
+                    <button onClick={() => { setRecipient(null); setStep('search'); }} className="flex-1 h-11 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl font-bold uppercase tracking-[0.1em] text-[11px] border border-white/10">
                       Buscar Otro
                     </button>
-                    <button onClick={() => setStep('amount')} className="flex-1 h-11 bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold rounded-xl font-black uppercase tracking-wider text-[10px] border-2 border-brand-gold/30 active:scale-[0.97]">
+                    <button onClick={() => setStep('amount')} className="flex-1 h-11 bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold rounded-xl font-bold uppercase tracking-[0.1em] text-[11px] border-2 border-brand-gold/30 active:scale-[0.97]">
                       Confirmar ✓
                     </button>
                   </div>
@@ -246,7 +246,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
             {step === 'amount' && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                 <div className="text-center space-y-1">
-                  <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Fichas disponibles</p>
+                  <p className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em]">Fichas disponibles</p>
                   <p className="text-2xl font-display font-black text-brand-gold italic">${formatAmount(myChips)}</p>
                 </div>
 
@@ -266,10 +266,10 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                 </div>
 
                 {amountCents > 0 && amountCents < 100000 && (
-                  <p className="text-[10px] text-amber-400 font-bold text-center">Monto mínimo: $1.000</p>
+                  <p className="text-[11px] text-amber-300 font-medium text-center">Monto mínimo: $1.000</p>
                 )}
                 {amountCents > myChips && (
-                  <p className="text-[10px] text-red-400 font-bold text-center">Excede tus fichas disponibles</p>
+                  <p className="text-[11px] text-red-300 font-medium text-center">Excede tus fichas disponibles</p>
                 )}
 
                 {error && (
@@ -302,12 +302,12 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
 
                 <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Para</span>
+                    <span className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em]">Para</span>
                     <span className="font-display font-black text-white italic">{recipient.username}</span>
                   </div>
                   <div className="h-px bg-white/5" />
                   <div className="flex justify-between">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Monto</span>
+                    <span className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em]">Monto</span>
                     <span className="font-display font-black text-xl text-brand-gold italic">${formatAmount(amountCents)}</span>
                   </div>
                 </div>
@@ -320,7 +320,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={() => setStep('amount')} disabled={loading} className="flex-1 h-14 bg-white/5 hover:bg-white/10 text-white/50 rounded-2xl font-bold uppercase tracking-widest text-[10px] border border-white/10">
+                  <button onClick={() => setStep('amount')} disabled={loading} className="flex-1 h-14 bg-white/5 hover:bg-white/10 text-white/60 rounded-2xl font-bold uppercase tracking-[0.1em] text-[11px] border border-white/10">
                     Cancelar
                   </button>
                   <button
@@ -353,7 +353,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                     <p className="text-xs text-white/40">enviados a <strong className="text-white">{result.recipientName}</strong></p>
                     {result.newBalance !== undefined && (
                       <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                        <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">Fichas restantes</p>
+                        <p className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em]">Fichas restantes</p>
                         <p className="text-xl font-display font-black italic text-brand-gold">${formatAmount(result.newBalance)}</p>
                       </div>
                     )}
@@ -368,7 +368,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
                   </>
                 )}
 
-                <button onClick={handleClose} className="w-full h-12 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] border border-white/10 active:scale-[0.97]">
+                <button onClick={handleClose} className="w-full h-12 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold uppercase tracking-[0.1em] text-[11px] border border-white/10 active:scale-[0.97]">
                   Cerrar
                 </button>
               </motion.div>

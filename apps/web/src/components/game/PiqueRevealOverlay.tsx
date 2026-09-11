@@ -74,7 +74,7 @@ export function PiqueRevealOverlay({ room, players }: PiqueRevealOverlayProps) {
     >
       {/* Header */}
       <div className="reveal-header flex flex-col items-center mb-4 md:mb-6 landscape:mb-2 px-4 text-center">
-        <div className="text-[#d4af37] text-[10px] md:text-xs uppercase tracking-[0.25em] font-black mb-1">
+        <div className="text-[#d4af37] text-[11px] md:text-xs uppercase tracking-[0.12em] font-bold mb-1">
           Muestra de Juego
         </div>
         <div className="text-white/90 text-sm md:text-base font-bold">

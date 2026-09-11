@@ -59,7 +59,7 @@ export function AddFriendModal({ isOpen, onClose }: AddFriendModalProps) {
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
                   <h2 className="text-xl sm:text-2xl font-display font-black italic text-brand-gold uppercase tracking-tight leading-none">Añadir Amigo</h2>
-                  <p className="text-[9px] font-bold text-brand-gold/40 uppercase tracking-widest">Localiza a tus conocidos</p>
+                  <p className="text-[11px] font-medium text-brand-gold/70 uppercase tracking-[0.1em]">Localiza a tus conocidos</p>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-brand-gold/10 rounded-full transition-colors text-brand-gold/60 -mr-2 -mt-2">
                   <X className="w-5 h-5 sm:w-6 h-6" />
@@ -80,7 +80,7 @@ export function AddFriendModal({ isOpen, onClose }: AddFriendModalProps) {
                 <button 
                   type="submit"
                   disabled={loading || query.length < 3}
-                  className="absolute inset-y-2 right-2 px-3 sm:px-4 bg-brand-gold text-black rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
+                  className="absolute inset-y-2 right-2 px-3 sm:px-4 bg-brand-gold text-black rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-[0.1em] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </button>
@@ -106,7 +106,7 @@ export function AddFriendModal({ isOpen, onClose }: AddFriendModalProps) {
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-white text-sm truncate">{u.username}</p>
-                          <p className="text-[10px] text-brand-gold/40 uppercase tracking-widest truncate">{u.full_name || `Nivel ${u.level}`}</p>
+                          <p className="text-[11px] text-brand-gold/70 uppercase tracking-[0.1em] truncate">{u.full_name || `Nivel ${u.level}`}</p>
                         </div>
                       </div>
                       <button 

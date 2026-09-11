@@ -108,7 +108,7 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
                   </div>
                   <div>
                     <h2 className="text-xl font-black italic uppercase tracking-wider text-white">Mesa Personalizada</h2>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-0.5">Configuración del admin</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400 mt-0.5">Configuración del admin</p>
                   </div>
                 </div>
                 <button
@@ -123,7 +123,7 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
             <div className="px-6 py-5 space-y-6">
               {/* Nombre de la Mesa */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d4af37]/70 flex items-center gap-2">
+                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80 flex items-center gap-2">
                   <Layers className="w-3.5 h-3.5" />
                   Nombre de la Mesa
                 </label>
@@ -140,7 +140,7 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
 
               {/* Máx Jugadores */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d4af37]/70 flex items-center gap-2">
+                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80 flex items-center gap-2">
                   <Users className="w-3.5 h-3.5" />
                   Máx. Jugadores
                 </label>
@@ -163,7 +163,7 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
 
               {/* Entrada Mínima */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d4af37]/70 flex items-center gap-2">
+                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80 flex items-center gap-2">
                   <Coins className="w-3.5 h-3.5" />
                   Entrada Mínima (Saldo requerido)
                 </label>
@@ -186,7 +186,7 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
 
               {/* Pique Mínimo */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d4af37]/70 flex items-center gap-2">
+                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80 flex items-center gap-2">
                   <Coins className="w-3.5 h-3.5" />
                   Pique Mínimo
                 </label>
@@ -209,7 +209,7 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
 
               {/* Fichas Habilitadas */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d4af37]/70">
+                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80">
                   Fichas Habilitadas ({enabledCount}/{CHIP_DENOMS.length})
                 </label>
                 <div className="flex flex-wrap gap-2.5 justify-center py-2">
@@ -220,7 +220,7 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
                       <button
                         key={denom}
                         onClick={() => toggleChip(denom)}
-                        className={`relative w-14 h-14 rounded-full flex items-center justify-center font-black text-[10px] border-2 border-dashed transition-all ${chip.bg} ${
+                        className={`relative w-14 h-14 rounded-full flex items-center justify-center font-bold text-[11px] border-2 border-dashed transition-all ${chip.bg} ${
                           isEnabled
                             ? "ring-2 ring-emerald-400 scale-105 shadow-lg"
                             : "opacity-25 scale-90 grayscale"
@@ -229,7 +229,7 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
                         {chip.label}
                         {isEnabled && (
                           <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-[8px] font-black">✓</span>
+                            <span className="text-white text-[11px] font-bold">✓</span>
                           </span>
                         )}
                         {!isEnabled && (

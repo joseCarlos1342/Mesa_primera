@@ -21,7 +21,7 @@ export function HistoryList({ transactions }: { transactions: any[] }) {
         <div className="w-12 h-12 bg-brand-gold/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-brand-gold/10">
           <Landmark className="w-6 h-6 text-brand-gold/20" />
         </div>
-        <p className="text-text-secondary text-[10px] font-black uppercase tracking-[.3em] opacity-40">Sin movimientos</p>
+        <p className="text-text-secondary text-xs font-bold uppercase tracking-[0.12em] opacity-70">Sin movimientos</p>
       </div>
     )
   }
@@ -30,7 +30,7 @@ export function HistoryList({ transactions }: { transactions: any[] }) {
     <>
       {/* Registro de Bóveda */}
       <section className="space-y-3">
-        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold px-1">Registro de Bóveda</h2>
+        <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-brand-gold px-1">Registro de Bóveda</h2>
         <div className="space-y-3">
           {transactions.map((tx: any, idx: number) => (
             <TransactionItem key={tx.id} tx={tx} idx={idx} onTxClick={handleTxClick} />
@@ -85,7 +85,7 @@ function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxCli
                      tx.type === 'adjustment' || tx.type === 'admin_adjustment' ? 'Ajuste' :
                      tx.type}
                   </p>
-                  <p className="text-[9px] md:text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 truncate">
+                  <p className="text-[11px] md:text-xs font-medium text-text-secondary uppercase tracking-[0.1em] opacity-80 truncate">
                     {new Date(tx.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(tx.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -99,7 +99,7 @@ function TransactionItem({ tx, idx, onTxClick }: { tx: any; idx: number; onTxCli
                   {tx.direction === 'credit' ? '+' : '-'}${formatAmount(Math.abs(tx.amount_cents || 0))}
                 </p>
                 <div className="flex justify-end">
-                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${
+                  <span className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded-full border tracking-[0.1em] ${
                     tx.status === 'completed' ? 'bg-brand-gold/10 text-brand-gold border-brand-gold/30' :
                     tx.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/30' :
                     'bg-brand-red/10 text-brand-red border-brand-red/30'

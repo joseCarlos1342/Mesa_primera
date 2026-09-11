@@ -84,7 +84,7 @@ export function FriendRequests({ requests, onAction, onRefresh }: FriendRequests
                   <p className="font-display font-black italic uppercase text-lg text-text-premium group-hover:text-brand-gold transition-colors">
                     {req.profile?.username}
                   </p>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
                     Nivel {req.profile?.level}
                   </p>
                 </div>

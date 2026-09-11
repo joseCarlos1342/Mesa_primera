@@ -19,14 +19,14 @@ export function StatsShell({ children }: { children: ReactNode }) {
           className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full"
         >
           <Crown className="w-4 h-4 text-brand-gold" />
-          <span className="text-[10px] font-black text-brand-gold uppercase tracking-[0.2em]">Salón de la Fama</span>
+          <span className="text-[11px] font-bold text-brand-gold uppercase tracking-[0.1em]">Salón de la Fama</span>
         </m.div>
         
         <div className="space-y-1">
           <h1 className="text-4xl md:text-6xl font-display font-black italic text-white uppercase tracking-tighter leading-none break-words">
             Estadísticas
           </h1>
-          <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.4em]">
+          <p className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.12em]">
             Primera Riverada • Elite Club
           </p>
         </div>
@@ -42,7 +42,7 @@ export function StatsShell({ children }: { children: ReactNode }) {
 
       {/* Footer */}
       <footer className="text-center pt-10">
-        <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.3em]">
+        <p className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.12em]">
           Los datos se actualizan en tiempo real al finalizar cada ronda
         </p>
       </footer>

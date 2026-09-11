@@ -25,7 +25,7 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
       {entries.length === 0 ? (
         <div className="text-center py-20 bg-black/40 border-2 border-dashed border-white/5 rounded-[2.5rem]">
           <Trophy className="w-12 h-12 text-text-secondary opacity-20 mx-auto mb-4" />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary italic">Buscando leyendas...</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary italic">Buscando leyendas...</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -57,7 +57,7 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
                   </div>
                   
                   {/* Rank Badge Overlay */}
-                  <div className={`absolute -top-2 -left-2 w-7 h-7 rounded-lg flex items-center justify-center font-display font-black text-[10px] italic border-2 shadow-xl z-20 ${
+                  <div className={`absolute -top-2 -left-2 w-7 h-7 rounded-lg flex items-center justify-center font-display font-bold text-[11px] italic border-2 shadow-xl z-20 ${
                     idx === 0 ? 'bg-brand-gold text-black border-brand-gold shadow-brand-gold/40' :
                     idx === 1 ? 'bg-slate-300 text-black border-slate-300' :
                     idx === 2 ? 'bg-amber-700 text-white border-amber-700' :
@@ -75,7 +75,7 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <Icon className="w-3 h-3 text-text-secondary" />
-                    <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest whitespace-nowrap">Global Ranking</span>
+                  <span className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.1em] whitespace-nowrap">Global Ranking</span>
                   </div>
                 </div>
               </div>
@@ -87,7 +87,7 @@ export function Leaderboard({ entries, category }: LeaderboardProps) {
                 }`}>
                   {entry.score}
                 </p>
-                <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
+                <span className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.1em]">
                   {category === 'mejor_racha' ? 'Best Streak' : 
                    category === 'maestro_primera' ? 'Especiales' : 'Partidas'}
                 </span>
