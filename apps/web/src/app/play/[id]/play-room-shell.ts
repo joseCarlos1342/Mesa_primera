@@ -12,7 +12,7 @@ const GAMEPLAY_VIGNETTE_CLASS_NAME = [
 ].join(' ')
 
 export function getPlayRoomShellClassName(phase: string) {
-  const heightClassName = phase === 'LOBBY' ? 'min-h-screen' : 'h-screen overflow-hidden'
+  const heightClassName = phase === 'LOBBY' ? 'min-h-[100dvh]' : 'h-[100dvh] overflow-hidden'
 
   if (phase === 'LOBBY') {
     return `${BASE_SHELL_CLASS_NAME} ${heightClassName}`

@@ -30,10 +30,22 @@ const singleMock = jest.fn()
 const eqMock = jest.fn()
 const selectMock = jest.fn()
 const authGetUserMock = jest.fn()
+const authGetSessionMock = jest.fn()
+
+function setAuthSession(userId = 'user-1', accessToken = 'access-token') {
+  authGetSessionMock.mockResolvedValue({
+    data: {
+      session: {
+        access_token: accessToken,
+        user: { id: userId },
+      },
+    },
+  })
+}
 
 jest.mock('@/utils/supabase/client', () => ({
   createClient: jest.fn(() => ({
-    auth: { getUser: authGetUserMock },
+    auth: { getUser: authGetUserMock, getSession: authGetSessionMock },
     from: jest.fn(() => ({
       select: selectMock,
     })),
@@ -103,6 +115,7 @@ describe('Lobby', () => {
     joinByIdMock.mockResolvedValue({ send: jest.fn() })
 
     authGetUserMock.mockResolvedValue({ data: { user: { id: 'user-1', user_metadata: {} } } })
+    setAuthSession()
 
     selectMock.mockReturnValue({ eq: eqMock })
     eqMock.mockReturnValue({ single: singleMock })
@@ -333,9 +346,24 @@ describe('Lobby', () => {
         isCustom: false,
         chips: 6500000,
         userId: 'user-1',
+        accessToken: 'access-token',
       }))
       expect(sessionStorage.getItem('reconnectionToken_created-room')).toBe('created-token')
       expect(push).toHaveBeenCalledWith('/play/created-room')
+    })
+  })
+
+  it('no crea mesa si la sesión Supabase ya no está disponible', async () => {
+    authGetUserMock.mockResolvedValueOnce({ data: { user: null } })
+    authGetSessionMock.mockResolvedValueOnce({ data: { session: null } })
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0])
+
+    await waitFor(() => {
+      expect(createMock).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert')).toHaveTextContent(/sesión expiró/i)
     })
   })
 
@@ -353,7 +381,7 @@ describe('Lobby', () => {
       fireEvent.click(openButton)
     })
 
-    expect(createMock).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
     resolveCreate?.({ roomId: 'created-room', reconnectionToken: 'created-token' })
     await waitFor(() => expect(push).toHaveBeenCalledWith('/play/created-room'))
   })
@@ -363,6 +391,7 @@ describe('Lobby', () => {
     singleMock
       .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: null, avatar_url: null } })
       .mockResolvedValueOnce({ data: { balance_cents: 8000000 } })
+    setAuthSession('admin-1', 'admin-access-token')
     jest.spyOn(Math, 'random').mockReturnValue(0.123456)
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
@@ -379,9 +408,35 @@ describe('Lobby', () => {
         avatarUrl: 'as-oros',
         chips: 8000000,
         userId: 'admin-1',
+        accessToken: 'admin-access-token',
       }))
       expect(push).toHaveBeenCalledWith('/play/created-room')
     })
+  })
+
+  it('evita crear dos mesas normales con doble click', async () => {
+    let resolveCreate: ((value: { roomId: string; reconnectionToken: string }) => void) | undefined
+    createMock.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveCreate = resolve
+    }))
+    singleMock.mockReset()
+    singleMock
+      .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: 'Admin', avatar_url: null } })
+      .mockResolvedValueOnce({ data: { balance_cents: 8000000 } })
+    setAuthSession('admin-1', 'admin-access-token')
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+    await screen.findByText('80,000')
+    const createButton = screen.getByTitle('Nueva Mesa Normal')
+
+    act(() => {
+      fireEvent.click(createButton)
+      fireEvent.click(createButton)
+    })
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    resolveCreate?.({ roomId: 'created-room', reconnectionToken: 'created-token' })
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/play/created-room'))
   })
 
   it('tolera conexión creada sin transport.close al abrir mesa normal', async () => {
@@ -435,8 +490,10 @@ describe('Lobby', () => {
 
     fireEvent.click(screen.getByTitle('Nueva Mesa Normal'))
 
-    expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:true')
-    expect(createMock).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:true')
+      expect(createMock).not.toHaveBeenCalled()
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar depósito' }))
     expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:false')
@@ -447,6 +504,7 @@ describe('Lobby', () => {
     singleMock
       .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: 'Admin', avatar_url: 'avatar-admin' } })
       .mockResolvedValueOnce({ data: { balance_cents: 9000000 } })
+    setAuthSession('admin-1', 'admin-access-token')
     localStorage.setItem('deviceId', 'device-admin')
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
@@ -470,6 +528,7 @@ describe('Lobby', () => {
         nickname: 'Admin',
         deviceId: 'device-admin',
         avatarUrl: 'avatar-admin',
+        accessToken: 'admin-access-token',
       }))
       expect(screen.getByTestId('custom-mesa-modal')).toHaveTextContent('open:false')
       expect(push).toHaveBeenCalledWith('/play/created-room')
@@ -526,6 +585,7 @@ describe('Lobby', () => {
         minPique: 900000,
         disabledChips: [1000, 2000, 5000],
         isCustom: true,
+        accessToken: 'access-token',
       }))
     })
   })
@@ -540,6 +600,7 @@ describe('Lobby', () => {
 
     await waitFor(() => {
       expect(console.error).toHaveBeenCalledWith('Error creating fixed table:', expect.any(Error))
+      expect(screen.getByRole('alert')).toHaveTextContent(/no se pudo crear la mesa/i)
     })
     expect(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0]).not.toBeDisabled()
   })
@@ -598,8 +659,10 @@ describe('Lobby', () => {
     await screen.findByText('10,000')
     fireEvent.click(screen.getByRole('button', { name: 'ABRIR MESA' }))
 
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Fondos insuficientes'))
-    expect(createMock).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Fondos insuficientes'))
+      expect(createMock).not.toHaveBeenCalled()
+    })
   })
 
   it('permite al admin cerrar una mesa activa confirmada', async () => {

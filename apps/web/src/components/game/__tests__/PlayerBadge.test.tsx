@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 
 import { PlayerBadge } from '../PlayerBadge'
 
@@ -43,6 +43,16 @@ describe('PlayerBadge', () => {
     render(<PlayerBadge player={player} isActive={false} isMe={false} turnOrder={3} isWaiting={true} />)
 
     expect(screen.getByText(/espera/i)).toBeInTheDocument()
+  })
+
+  it('muestra el puesto dentro del avatar para jugadores locales y rivales', () => {
+    const { rerender } = render(<PlayerBadge player={player} isActive={false} isMe={false} turnOrder={3} />)
+
+    expect(within(screen.getByTestId('player-avatar')).getByTestId('avatar-position')).toHaveTextContent('3ª')
+
+    rerender(<PlayerBadge player={player} isActive={false} isMe={true} turnOrder={4} />)
+
+    expect(within(screen.getByTestId('player-avatar')).getByTestId('avatar-position')).toHaveTextContent('4ª')
   })
 
   it('muestra indicador de desconexión y fallback vacío sin avatar', () => {

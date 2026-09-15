@@ -18,6 +18,14 @@ import { ManoIcon } from './ManoIcon'
 import { useCardPreloader } from '@/hooks/useCardPreloader'
 import { getArcCardLayout } from './hand-layout'
 
+function getPotValueSizeClass(amount: number): string {
+  const visibleCharacters = formatCurrency(amount).replace(/\s/g, '').length
+
+  if (visibleCharacters >= 11) return 'text-[12px] md:text-[18px]'
+  if (visibleCharacters >= 9) return 'text-[14px] md:text-[20px]'
+  return 'text-[16px] md:text-[22px]'
+}
+
 interface BoardProps {
   room: Room | null;
   phase: string;
@@ -54,6 +62,15 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   const prevPlayersRef = useRef<any[]>([]);
   const prevMyCardsRef = useRef<string>("");
   const awaitingInitialPrivateHydrationRef = useRef(false);
+  // Keep the first render deterministic for SSR/hydration. The compact layout
+  // is applied after mount and refreshed when the viewport changes.
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
+  useEffect(() => {
+    const updateViewportDensity = () => setIsCompactViewport(window.innerWidth < 1000);
+    updateViewportDensity();
+    window.addEventListener('resize', updateViewportDensity);
+    return () => window.removeEventListener('resize', updateViewportDensity);
+  }, []);
 
   const myId = room?.sessionId ?? "";
   const currentPhase = room?.state?.phase ?? phase;
@@ -238,7 +255,6 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
     "top-[38%] right-[0%] landscape:top-[6%] landscape:right-[0%] md:landscape:top-[30%] md:landscape:right-[2%] lg:top-[25%] lg:right-[3%]"
   ];
 
-  const isCompactViewport = typeof window !== 'undefined' && window.innerWidth < 1000;
   const myHandDensity = isCompactViewport ? 'compact' : 'comfortable';
 
   const renderPlayerAtSeat = (p: any, seatIndex: number) => {
@@ -366,14 +382,71 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
   const opponents = players.filter(p => p.id !== myId);
 
   return (
-    <div className="relative w-full h-full bg-[#073926] flex items-center justify-center overflow-hidden font-sans border-t-4 border-[#0a2e1b]">
-      {/* Table Surface - Elegant Green Felt with Texture */}
-      <div className="absolute inset-0 bg-[#073b24] opacity-100" />
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-40 mix-blend-multiply pointer-events-none" />
-      <div className="absolute inset-[5%] border-[12px] border-black/10 rounded-[50%] blur-sm pointer-events-none" />
-      
-      {/* Decorative center ellipse */}
-      <div className="absolute w-[85vw] h-[55vh] border-[1px] border-white/5 rounded-[50%] pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]" />
+    <div
+      data-testid="table-root"
+      className="relative w-full h-full bg-surface-wood flex items-center justify-center overflow-hidden font-sans border-t-4 border-surface-wood-rim"
+      style={{ backgroundColor: '#120806', borderTopColor: '#35180f' }}
+    >
+      {/* Base de nogal: las vetas quedan visibles en las esquinas y el perímetro. */}
+      <div
+        data-testid="table-wood-base"
+        className="absolute inset-0 bg-surface-wood pointer-events-none"
+        style={{
+          backgroundColor: '#120806',
+          backgroundImage: [
+            'radial-gradient(ellipse at 50% -20%, rgba(168, 82, 42, 0.3) 0%, transparent 54%)',
+            'repeating-linear-gradient(7deg, rgba(255, 190, 118, 0.08) 0 1px, transparent 1px 46px)',
+            'url("/textures/noise.png")',
+          ].join(', '),
+          backgroundBlendMode: 'normal, normal, soft-light',
+          backgroundSize: 'auto, auto, 128px 128px',
+        }}
+      />
+
+      {/* Viñeta exterior para que la madera parezca una base profunda. */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.58) 100%)',
+        }}
+      />
+
+      {/* Canto elevado de la mesa. */}
+      <div
+        data-testid="table-wood-rim"
+        className="absolute inset-[2.25%] rounded-[50%] pointer-events-none"
+        style={{
+          border: 'clamp(8px, 1.5vw, 20px) solid var(--color-surface-wood-rim, #35180f)',
+          boxShadow: [
+            '0 18px 30px rgba(0, 0, 0, 0.62)',
+            'inset 0 1px 0 rgba(240, 170, 105, 0.34)',
+            'inset 0 -5px 0 rgba(0, 0, 0, 0.42)',
+          ].join(', '),
+        }}
+      />
+
+      {/* Fieltro: volumen central, luz suave y trama discreta sin textura remota. */}
+      <div
+        data-testid="table-felt-surface"
+        className="absolute inset-[4.25%] bg-surface-leather rounded-[50%] overflow-hidden pointer-events-none"
+        style={{
+          backgroundColor: '#0a2c20',
+          backgroundImage: [
+            'radial-gradient(ellipse at 50% 35%, rgba(69, 153, 108, 0.42) 0%, rgba(26, 94, 63, 0.34) 43%, rgba(2, 26, 16, 0.92) 100%)',
+            'repeating-radial-gradient(ellipse at 18% 32%, rgba(148, 204, 169, 0.07) 0 1px, transparent 1px 11px)',
+            'url("/textures/noise.png")',
+          ].join(', '),
+          backgroundBlendMode: 'normal, soft-light, soft-light',
+          backgroundSize: 'auto, auto, 128px 128px',
+          boxShadow: 'inset 0 0 72px rgba(0, 0, 0, 0.72), 0 5px 14px rgba(0, 0, 0, 0.65)',
+        }}
+      />
+
+      {/* Filete interior que separa visualmente el fieltro del nogal. */}
+      <div
+        className="absolute inset-[4.25%] rounded-[50%] border border-[#d4af37]/35 pointer-events-none"
+        style={{ boxShadow: 'inset 0 1px 0 rgba(255, 226, 153, 0.18)' }}
+      />
 
       <GameAnnouncer phase={phase} customMessage={manoMessage} />
 
@@ -438,7 +511,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           >
             <div className="flex items-center gap-2 bg-red-900/80 backdrop-blur-md border border-red-500/50 px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.3)]">
               <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-              <span className="text-red-200 text-[10px] md:text-xs font-bold uppercase tracking-wider">
+              <span className="text-red-200 text-[11px] md:text-xs font-bold uppercase tracking-wider">
                 👮‍♂️ El equipo de soporte está observando la mesa
               </span>
             </div>
@@ -475,7 +548,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                 className="h-px w-[100px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent origin-center" 
               />
 
-              <h1 className="text-4xl md:text-7xl font-serif font-black italic uppercase tracking-[0.25em] text-center leading-tight drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] px-4">
+              <h1 className="text-4xl md:text-7xl font-display font-bold italic uppercase tracking-[0.18em] text-center leading-tight drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] px-4">
                 <span className="block bg-gradient-to-b from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c] bg-clip-text text-transparent pb-2">
                   Primera rebirada
                 </span>
@@ -512,58 +585,59 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           return renderPlayerAtSeat(opponent, slotIdx);
         })}
       </div>
-      {/* TABLE CENTER - Refined side-by-side layout */}
+      {/* TABLE CENTER - Unified double display with the deck embedded in the divider */}
       <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none mb-12 lg:mb-20">
-        
-        <div className="flex flex-row items-center gap-2 md:gap-10 pointer-events-auto px-2 md:px-8 py-2 md:py-4 rounded-3xl">
-          
-          {/* Column 1: Stacked Pots */}
-          <div className="flex flex-col gap-1 md:gap-2 shrink-0">
-            {/* Apuesta Principal */}
-            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2 md:px-6 py-0.5 md:py-2 rounded-lg md:rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[70px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Apuesta Principal</span>
-              <span className="text-[#4ade80] font-mono font-black text-[10px] md:text-xl">{formatCurrency(pot)}</span>
+        <div className="relative flex items-center justify-center pointer-events-auto px-2 py-2 md:px-8 md:py-4">
+          {/* Independent smoked-glass displays */}
+          <div
+            data-testid="pot-displays"
+            className="relative z-10 flex items-center gap-1 md:gap-2"
+          >
+            <div
+              data-testid="pot-main"
+              className="relative flex h-[58px] w-[112px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-[14px] border border-[#8b6b2e] bg-[#160b08]/95 px-1.5 text-center shadow-[0_10px_20px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(240,170,105,0.28),inset_0_-5px_12px_rgba(0,0,0,0.65)] backdrop-blur-md md:h-[76px] md:w-[154px] md:rounded-[18px] md:px-2"
+            >
+              <div className="pointer-events-none absolute inset-[3px] rounded-[11px] border border-[#d4af37]/20 md:rounded-[15px]" />
+               <span className="relative z-10 text-[11px] font-bold uppercase leading-tight tracking-[0.08em] text-[#fdf0a6]/80 md:text-xs md:tracking-[0.1em]">Apuesta Principal</span>
+              <span className={`relative z-10 whitespace-nowrap font-mono font-black leading-none text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.35)] ${getPotValueSizeClass(pot)}`}>{formatCurrency(pot)}</span>
             </div>
-            
-            {/* Apuesta Pique - solo visible cuando > 0 */}
-            {piquePot > 0 && (
-            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2 md:px-6 py-0.5 md:py-2 rounded-lg md:rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[70px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Apuesta Pique</span>
-              <span className="text-[#4ade80] font-mono font-black text-[10px] md:text-xl">{formatCurrency(piquePot)}</span>
+            <div data-testid="deck-pedestal" aria-hidden="true" className="relative h-[58px] w-16 shrink-0 pointer-events-none md:h-[94px] md:w-[168px]" />
+            <div
+              data-testid="pot-pique"
+              className={`relative flex h-[58px] w-[112px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-[14px] border border-[#8b6b2e] bg-[#160b08]/95 px-1.5 text-center shadow-[0_10px_20px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(240,170,105,0.28),inset_0_-5px_12px_rgba(0,0,0,0.65)] backdrop-blur-md transition-opacity md:h-[76px] md:w-[154px] md:rounded-[18px] md:px-2 ${piquePot > 0 ? 'opacity-100' : 'opacity-55'}`}
+            >
+              <div className="pointer-events-none absolute inset-[3px] rounded-[11px] border border-[#d4af37]/20 md:rounded-[15px]" />
+               <span className="relative z-10 text-[11px] font-bold uppercase leading-tight tracking-[0.08em] text-[#fdf0a6]/80 md:text-xs md:tracking-[0.1em]">Apuesta Pique</span>
+              <span className={`relative z-10 whitespace-nowrap font-mono font-black leading-none text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.35)] ${getPotValueSizeClass(piquePot)}`}>{formatCurrency(piquePot)}</span>
             </div>
-            )}
           </div>
 
-          {/* Column 2: Central Deck (Mazo) + bottom card tucked under */}
-          <div className="flex flex-col items-center gap-0">
-            <div id="deck-center" className="relative shrink-0">
-               {/* Deck stack effect */}
-               <div className="w-6 h-9 md:w-16 md:h-24 bg-[#0a0a0a] rounded-md md:rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
-               <div className="w-6 h-9 md:w-16 md:h-24 bg-[#1a1a1a] rounded-md md:rounded-lg absolute translate-x-[1px] translate-y-[1px] md:translate-x-1 md:translate-y-1" />
-               
-               {/* Top Card */}
-               <div className="w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border-[1.5px] md:border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
-                  <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-md md:rounded-lg" />
-                  <div className="absolute inset-0 border border-white/10 rounded-md md:rounded-lg pointer-events-none" />
+          {/* Central deck overlaps the divider like a physical table insert. */}
+          <div id="deck-center" className="absolute left-1/2 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2">
+             {/* Deck stack effect */}
+             <div className="absolute h-9 w-6 translate-x-0.5 translate-y-0.5 rounded-md bg-[#0a0a0a] shadow-[2px_2px_15px_rgba(0,0,0,0.9)] md:h-24 md:w-16 md:translate-x-1.5 md:translate-y-1.5 md:rounded-lg" />
+             <div className="absolute h-9 w-6 translate-x-[1px] translate-y-[1px] rounded-md bg-[#1a1a1a] md:h-24 md:w-16 md:translate-x-1 md:translate-y-1 md:rounded-lg" />
+             {/* Top Card */}
+             <div data-testid="deck-card" className="relative z-10 h-9 w-6 overflow-hidden rounded-md border-[1.5px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center md:h-24 md:w-16 md:rounded-lg md:border-[2px]">
+                <div className="pointer-events-none absolute inset-0 rounded-md shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] md:rounded-lg" />
+                <div className="pointer-events-none absolute inset-0 rounded-md border border-white/10 md:rounded-lg" />
+             </div>
+             {/* Bottom card — slides out to the right of the deck */}
+             {room.state.bottomCard && (
+                 <div data-testid="bottom-card" className="absolute left-[58%] top-1/2 z-[5] h-9 w-6 -translate-y-1/2 rotate-[8deg] overflow-hidden rounded-md border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] md:left-[58%] md:h-24 md:w-16 md:rounded-lg">
+                 <img
+                   src={`/cards/${room.state.bottomCard.split('-')[0].padStart(2, '0')}-${({'O':'oros','C':'copas','E':'espadas','B':'bastos'} as Record<string,string>)[room.state.bottomCard.split('-')[1]] || room.state.bottomCard.split('-')[1]?.toLowerCase()}.png?v=3`}
+                   alt=""
+                   className="h-full w-full object-cover"
+                 />
+                 <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_0_10px_rgba(0,0,0,0.4)]" />
                </div>
-
-               {/* Bottom card — slides out to the right of the deck */}
-               {room.state.bottomCard && (
-                 <div className="absolute top-1/2 -translate-y-1/2 left-[70%] z-[5] w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] rotate-[8deg]">
-                   <img
-                     src={`/cards/${room.state.bottomCard.split('-')[0].padStart(2, '0')}-${({'O':'oros','C':'copas','E':'espadas','B':'bastos'} as Record<string,string>)[room.state.bottomCard.split('-')[1]] || room.state.bottomCard.split('-')[1]?.toLowerCase()}.png?v=3`}
-                     alt=""
-                     className="w-full h-full object-cover"
-                   />
-                   <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.4)] pointer-events-none rounded-lg" />
-                 </div>
-               )}
-            </div>
+             )}
           </div>
         </div>
       </div>
       {/* UNIFIED PLAYER DASHBOARD - Split Left / Center / Right */}
-      <div className="fixed bottom-0 left-0 w-full z-50 pointer-events-none">
+      <div data-testid="player-dashboard" className="fixed bottom-0 left-0 z-50 w-full pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
         
         {me && (
           <>
@@ -606,38 +680,37 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                 </AnimatePresence>
 
                 {/* HUD: Saldo & Puntos */}
-                <div id={`seat-${myId}`} className={`
-                  flex flex-row items-center gap-4 md:gap-4 px-4 py-1 md:py-1.5 min-w-[340px] md:min-w-0
-                  bg-[#0a180e]/95 rounded-tr-2xl border-t border-r border-[#d4af37]/30 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)]
-                  ${isMyTurn ? 'bg-[#4ade80]/5' : ''}
-                `}>
-                  <div className="flex flex-col">
-                    <span className="text-[8px] md:text-[9px] text-[#fdf0a6] uppercase tracking-[0.15em] font-black opacity-60 leading-none mb-1">Saldo</span>
-                    <span className="text-[#4ade80] font-mono font-black text-xs md:text-lg leading-none">{formatCurrency(me.chips || 0)}</span>
+                <div
+                  data-testid="player-hud"
+                  id={`seat-${myId}`}
+                  className={`relative flex min-w-[250px] flex-row items-center gap-3 overflow-hidden rounded-tr-[20px] border-r border-t border-[#8b6b2e] bg-[#160b08]/95 px-3 py-1.5 shadow-[0_-12px_30px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(240,170,105,0.28)] backdrop-blur-xl md:min-w-[340px] md:gap-4 md:px-4 md:py-2 ${isMyTurn ? 'bg-[#4ade80]/5' : ''}`}
+                >
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/70 to-transparent" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-[11px] font-bold uppercase leading-none tracking-[0.08em] text-[#fdf0a6]/80 md:text-xs">Saldo</span>
+                    <span className="font-mono text-sm font-black leading-none text-[#4ade80] drop-shadow-[0_0_7px_rgba(74,222,128,0.3)] md:text-lg">{formatCurrency(me.chips || 0)}</span>
                   </div>
-                  
+
                   {myCards && (
-                    <div className="flex flex-row items-center gap-3">
-                      <div className="w-px h-6 bg-white/10" />
+                    <div className="flex flex-row items-center gap-3 border-l border-[#d4af37]/25 pl-3">
                       <div className="flex flex-col items-center">
-                        <span className="text-[8px] md:text-[9px] text-[#fdf0a6] uppercase tracking-[0.15em] font-black opacity-60 leading-none mb-1">Puntos</span>
-                        <span className="text-[#d4af37] font-mono font-black text-sm md:text-xl leading-none">
+                        <span className="text-[11px] font-bold uppercase leading-none tracking-[0.08em] text-[#fdf0a6]/80 md:text-xs">Puntos</span>
+                        <span className="font-mono text-base font-black leading-none text-[#d4af37] drop-shadow-[0_0_7px_rgba(212,175,55,0.3)] md:text-xl">
                           {evaluateHand(myCards).points + (room.state.dealerId === myId ? 1 : 0)}
                         </span>
                       </div>
                     </div>
                   )}
-                  
-                  {/* Dealer Tag */}
-                  {!hideMano && room.state.dealerId === myId && (
-                     <ManoIcon size="xs" className="ml-1" />
-                  )}
-                  {!hideMano && room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
-                     <div className="ml-1 bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">{me.turnOrder}ª</div>
-                  )}
-                  {me.isAllIn && !me.passedWithJuego && (
-                     <div className="ml-1 bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[7px] md:text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">Resto</div>
-                  )}
+
+                  <div className="ml-auto flex items-center gap-1.5 border-l border-[#d4af37]/25 pl-2">
+                    {!hideMano && room.state.dealerId === myId && <ManoIcon size="xs" className="ml-1" />}
+                    {!hideMano && room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
+                      <div className="rounded border border-[#d4af37]/50 bg-[#0d2e1b] px-1 py-0.5 text-[11px] font-bold tracking-tighter text-[#d4af37]">{me.turnOrder}ª</div>
+                    )}
+                    {me.isAllIn && !me.passedWithJuego && (
+                      <div className="rounded border border-amber-500/60 bg-amber-900/80 px-1 py-0.5 text-[11px] font-bold tracking-tighter text-amber-300">Resto</div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -646,7 +719,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                 {/* Instrucción de descarte */}
                 {phase === 'DESCARTE' && isMyTurn && !me?.passedWithJuego && (
                   <div className="mb-1 md:mb-2 px-3 py-1 bg-[#0a180e]/90 border border-[#d4af37]/40 rounded-full backdrop-blur-md animate-pulse">
-                    <span className="text-[#fdf0a6] text-[8px] md:text-xs font-bold uppercase tracking-wider">
+                    <span className="text-[#fdf0a6] text-[11px] md:text-xs font-bold uppercase tracking-wider">
                       Selecciona las cartas que vas a botar
                     </span>
                   </div>

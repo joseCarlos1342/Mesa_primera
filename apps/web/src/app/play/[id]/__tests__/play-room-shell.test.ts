@@ -5,7 +5,7 @@ describe('getPlayRoomShellClassName', () => {
     const className = getPlayRoomShellClassName('LOBBY')
 
     expect(className).toContain('bg-[#073926]')
-    expect(className).toContain('min-h-screen')
+    expect(className).toContain('min-h-[100dvh]')
     expect(className).not.toContain('before:content-')
     expect(className).not.toContain('before:via-[rgba(0,0,0,0.1)]')
     expect(className).not.toContain('before:to-[rgba(0,0,0,0.5)]')
@@ -14,7 +14,7 @@ describe('getPlayRoomShellClassName', () => {
   it('keeps the vignette shell for active gameplay phases', () => {
     const className = getPlayRoomShellClassName('GUERRA')
 
-    expect(className).toContain('h-screen')
+    expect(className).toContain('h-[100dvh]')
     expect(className).toContain('overflow-hidden')
     expect(className).toContain("before:content-['']")
     expect(className).toContain('before:via-[rgba(0,0,0,0.1)]')
