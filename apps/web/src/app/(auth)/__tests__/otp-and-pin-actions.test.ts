@@ -235,7 +235,7 @@ describe('OTP y PIN auth actions', () => {
       httpOnly: false,
       maxAge: 60,
     }))
-    expect(redirect).toHaveBeenCalledWith('/')
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
   })
 
   it('verifyOtp rechaza tokens inválidos antes de llamar Supabase', async () => {
@@ -338,7 +338,7 @@ describe('OTP y PIN auth actions', () => {
     }))).resolves.toEqual({ error: 'Token has expired or is invalid' })
   })
 
-  it('verifyOtp en flujo legacy/default valida sanción, aplica sesión y redirige al inicio', async () => {
+  it('verifyOtp en flujo legacy/default valida sanción, aplica sesión y redirige al dashboard', async () => {
     const supabase = buildSupabase()
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
@@ -351,7 +351,7 @@ describe('OTP y PIN auth actions', () => {
     expect(supabase.rpc).toHaveBeenCalledWith('check_account_eligibility', { p_user_id: 'user-123' })
     expect(enforceSessionPolicy).toHaveBeenCalledWith('user-123')
     expect(cookieSet).toHaveBeenCalledWith('mesa_primera_auth_bypass', '1', expect.any(Object))
-    expect(redirect).toHaveBeenCalledWith('/')
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
   })
 
   it('verifyOtp bloquea login cuando la sanción no tiene fecha de expiración (permanente)', async () => {
@@ -622,7 +622,7 @@ describe('OTP y PIN auth actions', () => {
     expect(supabase.rpc).toHaveBeenCalledWith('is_device_trusted', { p_phone: TEST_PHONE_E164, p_device_id: 'device-1' })
     expect(supabase.update).toHaveBeenCalledWith(expect.objectContaining({ last_login_at: expect.any(String) }))
     expect(enforceSessionPolicy).toHaveBeenCalledWith('user-123')
-    expect(redirect).toHaveBeenCalledWith('/')
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
   })
 
   it('loginWithPin normaliza errores de PIN y de OTP de dispositivo desconocido', async () => {
@@ -872,7 +872,7 @@ describe('OTP y PIN auth actions', () => {
     expect(supabase.auth.updateUser).not.toHaveBeenCalled()
   })
 
-  it('setPlayerPin en recovery actualiza sesión y vuelve al inicio', async () => {
+  it('setPlayerPin en recovery actualiza sesión y vuelve al dashboard', async () => {
     const supabase = buildSupabase()
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
@@ -884,7 +884,7 @@ describe('OTP y PIN auth actions', () => {
 
     expect(supabase.auth.updateUser).toHaveBeenCalledWith({ password: '654321' })
     expect(enforceSessionPolicy).toHaveBeenCalledWith('user-123')
-    expect(redirect).toHaveBeenCalledWith('/')
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
   })
 
   it('setPlayerPin informa error de updateUser y no bloquea si falla marcar has_pin', async () => {
@@ -901,7 +901,7 @@ describe('OTP y PIN auth actions', () => {
     ;(createClient as jest.Mock).mockResolvedValue(supabaseWithProfileError)
 
     await expect(setPlayerPin(null, formData({ pin: '654321', pinConfirm: '654321', flow: 'recovery' }))).rejects.toThrow('NEXT_REDIRECT')
-    expect(redirect).toHaveBeenCalledWith('/')
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
   })
 
   it('startPinRecovery no envía OTP cuando el teléfono no existe', async () => {

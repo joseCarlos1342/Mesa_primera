@@ -84,7 +84,7 @@ describe('loginWithPin coverage', () => {
     mockCookieGet.mockReturnValue({ value: 'trusted-device-1' })
   })
 
-  it('autentica, valida trusted device y redirige al inicio', async () => {
+  it('autentica, valida trusted device y redirige al dashboard', async () => {
     const supabase = buildSupabase()
     ;(createClient as jest.Mock).mockResolvedValue(supabase)
 
@@ -109,7 +109,7 @@ describe('loginWithPin coverage', () => {
         maxAge: 60,
       }),
     )
-    expect(redirect).toHaveBeenCalledWith('/')
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
   })
 
   it('devuelve mensaje seguro cuando las credenciales son inválidas', async () => {

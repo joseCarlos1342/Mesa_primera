@@ -369,7 +369,7 @@ export async function loginWithPin(prevState: unknown, formData: FormData) {
 
       await enforceSessionPolicy(data.user.id)
       await setAppLockBypassCookie()
-      redirect('/')
+      redirect('/dashboard')
     }
   }
 
@@ -526,7 +526,7 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       await registerTrustedDevice(data.user.id)
       await enforceSessionPolicy(data.user.id)
       await setAppLockBypassCookie()
-      return redirect('/')
+      return redirect('/dashboard')
     }
 
     case 'recovery':
@@ -543,7 +543,7 @@ export async function verifyOtp(prevState: unknown, formData: FormData) {
       if (defSanction.blocked) return { error: defSanction.error }
       await enforceSessionPolicy(data.user.id)
       await setAppLockBypassCookie()
-      return redirect('/')
+      return redirect('/dashboard')
     }
   }
 }
@@ -885,7 +885,7 @@ export async function setPlayerPin(prevState: unknown, formData: FormData) {
   }
 
   await setAppLockBypassCookie()
-  redirect('/')
+  redirect('/dashboard')
 }
 
 /**
