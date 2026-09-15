@@ -455,8 +455,8 @@ REDIS_HOST=mesa-redis
 REDIS_PORT=6380
 REDIS_PASSWORD=<mismo-secreto-del-acl>
 REDIS_URL=redis://default:<password-percent-encoded>@mesa-redis:6380
-ONESIGNAL_APP_ID=01eec15a-d02d-46f8-be84-9a5e9c3158f0
-ONESIGNAL_REST_API_KEY=<secret-rest-de-onesignal>
+ONESIGNAL_APP_ID=c5e160be-6676-421a-9424-7a6943a55db7
+ONESIGNAL_REST_API_KEY=<secret-app-api-key-de-onesignal>
 INTERNAL_API_SECRET=<secret-compartido-con-la-web>
 ```
 

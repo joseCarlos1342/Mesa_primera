@@ -43,7 +43,7 @@ LIVEKIT_API_SECRET="..."
 INTERNAL_API_SECRET="..."
 NEXT_PUBLIC_TURNSTILE_SITE_KEY="..."
 TURNSTILE_SECRET_KEY="..."
-NEXT_PUBLIC_ONESIGNAL_APP_ID="01eec15a-d02d-46f8-be84-9a5e9c3158f0"
+NEXT_PUBLIC_ONESIGNAL_APP_ID="c5e160be-6676-421a-9424-7a6943a55db7"
 
 WEBAUTHN_RP_ID="..."
 WEBAUTHN_ORIGINS="..."
@@ -73,8 +73,8 @@ REDIS_PORT="6380"
 REDIS_PASSWORD="<redis-password>"
 
 # OneSignal (server-only; never expose the REST key to the web client)
-ONESIGNAL_APP_ID="01eec15a-d02d-46f8-be84-9a5e9c3158f0"
-ONESIGNAL_REST_API_KEY="<onesignal-rest-api-key>"
+ONESIGNAL_APP_ID="c5e160be-6676-421a-9424-7a6943a55db7"
+ONESIGNAL_REST_API_KEY="<onesignal-app-api-key>"
 ```
 
 Notas:
@@ -82,8 +82,9 @@ Notas:
 - `PORT` es Colyseus.
 - `SOCKET_PORT` es el servidor Socket.IO auxiliar.
 - Redis respalda presencia, BullMQ y el dispatcher de notificaciones.
-- `ONESIGNAL_REST_API_KEY` debe configurarse como secreto en el VPS. Nunca usar
-  una clave VAPID hardcodeada ni reutilizar credenciales expuestas.
+- `ONESIGNAL_REST_API_KEY` contiene la App API Key de OneSignal y debe
+  configurarse como secreto en el VPS. Nunca usar una clave VAPID hardcodeada
+  ni reutilizar credenciales expuestas.
 
 ## Build y Deploy
 
@@ -123,10 +124,10 @@ está aplicada y verificada en Supabase remoto, pero Push no podrá entregar avi
 hasta que vuelva a existir un runtime que ejecute el dispatcher y tenga acceso a
 Redis, Supabase y OneSignal.
 
-El `NEXT_PUBLIC_ONESIGNAL_APP_ID` ya está configurado en Vercel para Production y
-Development. Las variables del game-server y el REST key siguen pendientes del
-VPS; una Preview de Vercel deberá configurarse para la rama que se use cuando se
-requiera probarla.
+El `NEXT_PUBLIC_ONESIGNAL_APP_ID` está configurado en Vercel únicamente para
+Production. Desarrollo y Preview no apuntan a la app productiva. Las variables
+del game-server y el App API Key siguen pendientes del VPS; una Preview deberá
+usar una app OneSignal separada si se necesita probar push fuera de producción.
 
 Pendientes antes de reactivar producción:
 
