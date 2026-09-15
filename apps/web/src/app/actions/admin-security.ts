@@ -76,7 +76,10 @@ async function getRequestOrigin() {
   return requestOrigin
 }
 
-async function getAuthenticatedAdmin(supabase: SupabaseServerClient): Promise<AuthenticatedAdmin | AdminSecurityActionState> {
+async function getAuthenticatedAdmin(
+  supabase: SupabaseServerClient,
+  options: { requireAal2?: boolean } = {},
+): Promise<AuthenticatedAdmin | AdminSecurityActionState> {
   const { data: userData, error: userError } = await supabase.auth.getUser()
 
   if (userError || !userData?.user) {
@@ -91,6 +94,27 @@ async function getAuthenticatedAdmin(supabase: SupabaseServerClient): Promise<Au
 
   if (profileError || profile?.role !== 'admin') {
     return { error: 'Acceso denegado' }
+  }
+
+  if (options.requireAal2 === false) {
+    return {
+      user: {
+        id: userData.user.id,
+        email: userData.user.email ?? null,
+      },
+    }
+  }
+
+  try {
+    const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aalError || !aalData) {
+      return { error: 'No se pudo verificar la autenticación multifactor.' }
+    }
+    if (aalData.currentLevel !== 'aal2') {
+      return { error: 'Se requiere autenticación multifactor.' }
+    }
+  } catch {
+    return { error: 'No se pudo verificar la autenticación multifactor.' }
   }
 
   return {
@@ -108,7 +132,7 @@ async function getVerifiedTotpFactor(supabase: SupabaseServerClient) {
     return { error: error.message }
   }
 
-  const totpFactor = factorData?.totp?.find((factor) => factor.status === 'verified') ?? factorData?.totp?.[0]
+  const totpFactor = factorData?.totp?.find((factor) => factor.status === 'verified')
 
   if (!totpFactor) {
     return { error: 'No hay factor TOTP configurado para esta cuenta.' }
@@ -168,7 +192,7 @@ async function getActiveRecoveryCodeCount(
 
 export async function getAdminSecuritySnapshot(): Promise<AdminSecuritySnapshot> {
   const supabase = await createClient()
-  const admin = await getAuthenticatedAdmin(supabase)
+  const admin = await getAuthenticatedAdmin(supabase, { requireAal2: false })
 
   if (!hasAuthenticatedAdmin(admin)) {
     throw new Error(admin.error)

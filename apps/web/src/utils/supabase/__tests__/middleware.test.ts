@@ -159,6 +159,16 @@ describe('middleware – device-kick exemption for admin MFA pages', () => {
     expect(location).toBe('')
   })
 
+  it.each(['/sw.js', '/worker-abc123.js', '/workbox-abc123.js'])
+    ('allows OneSignal/PWA worker assets without auth redirects: %s', async (pathname) => {
+      mockSupabase({ user: null })
+
+      const res = await updateSession(makeRequest(pathname))
+
+      const location = res.headers?.get('location') ?? ''
+      expect(location).toBe('')
+    })
+
   it('redirects unauthenticated private routes to player login', async () => {
     mockSupabase({ user: null })
 
@@ -176,6 +186,19 @@ describe('middleware – device-kick exemption for admin MFA pages', () => {
 
     expect(publicRes.headers?.get('location') ?? '').toBe('')
     expect(seoRes.headers?.get('location') ?? '').toBe('')
+  })
+
+  it('allows the local table preview without Supabase authentication in development', async () => {
+    const originalNodeEnv = process.env.NODE_ENV
+    Object.defineProperty(process.env, 'NODE_ENV', { configurable: true, value: 'development' })
+    mockSupabase({ user: null })
+
+    const res = await updateSession(makeRequest('/play/demo'))
+
+    expect(res.headers?.get('location') ?? '').toBe('')
+    expect(createServerClient).not.toHaveBeenCalled()
+
+    Object.defineProperty(process.env, 'NODE_ENV', { configurable: true, value: originalNodeEnv })
   })
 
   it('applies Supabase cookie writes to request and response with inactivity maxAge', async () => {
@@ -260,6 +283,32 @@ describe('middleware – device-kick exemption for admin MFA pages', () => {
     const res = await updateSession(makeRequest('/admin'))
 
     expect(res.headers.get('location')).toContain('/login/admin/mfa')
+  })
+
+  it('bloquea admin si AAL no puede determinarse', async () => {
+    const supabase = mockSupabase({
+      user: { id: 'admin1' },
+      profile: { role: 'admin', last_device_id: null, phone: null, username: 'admin', full_name: 'Admin', avatar_url: 'avatar', has_pin: true },
+      aalData: null,
+    })
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValueOnce({ data: null, error: null })
+
+    const res = await updateSession(makeRequest('/admin'))
+
+    expect(res.headers.get('location')).toContain('/login/admin/mfa')
+  })
+
+  it('bloquea admin si Supabase devuelve niveles AAL incompletos o desconocidos', async () => {
+    const supabase = mockSupabase({
+      user: { id: 'admin1' },
+      profile: { role: 'admin', last_device_id: null, phone: null, username: 'admin', full_name: 'Admin', avatar_url: 'avatar', has_pin: true },
+      aalData: { currentLevel: 'unknown', nextLevel: 'aal3' },
+    })
+
+    const res = await updateSession(makeRequest('/admin'))
+
+    expect(res.headers.get('location')).toContain('/login/admin/mfa')
+    expect(supabase.auth.mfa.getAuthenticatorAssuranceLevel).toHaveBeenCalled()
   })
 
   it('redirects authenticated admins away from player-only routes', async () => {

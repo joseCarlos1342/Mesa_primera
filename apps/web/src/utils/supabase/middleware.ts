@@ -6,6 +6,17 @@ export async function updateSession(
   request: NextRequest,
   requestHeaders: Headers = request.headers,
 ) {
+  const isDevelopmentTablePreview =
+    process.env.NODE_ENV === 'development' && request.nextUrl.pathname === '/play/demo'
+
+  if (isDevelopmentTablePreview) {
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  }
+
   const envErrorMessage = getSupabaseEnvErrorMessage()
 
   if (envErrorMessage) {
@@ -80,6 +91,7 @@ export async function updateSession(
 
   // PREVENT REDIRECT FOR STATIC FILES
   const isStaticFile = pathname.match(/\.(json|xml|txt|png|jpg|jpeg|gif|webp|svg|ico)$/)
+    || /^\/(?:sw\.js|worker-[^/]+\.js|workbox-[^/]+\.js)$/.test(pathname)
   if (isStaticFile) {
     return supabaseResponse
   }
@@ -149,7 +161,22 @@ export async function updateSession(
 
     // 1.5 Enforce MFA for admin users accessing admin routes
     if (role === 'admin' && (isAdminPath || pathname === '/')) {
-      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      let aalData: { currentLevel?: string | null; nextLevel?: string | null } | null = null
+      try {
+        const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        if (
+          error
+          || !data
+          || !['aal1', 'aal2'].includes(data.currentLevel ?? '')
+          || !['aal1', 'aal2'].includes(data.nextLevel ?? '')
+        ) throw error ?? new Error('AAL unavailable')
+        aalData = data
+      } catch {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login/admin/mfa'
+        url.searchParams.set('error', 'mfa_unavailable')
+        return NextResponse.redirect(url)
+      }
 
       if (aalData) {
         const { currentLevel, nextLevel } = aalData
