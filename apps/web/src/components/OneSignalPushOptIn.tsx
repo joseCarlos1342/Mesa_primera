@@ -10,6 +10,7 @@ type OneSignalClient = {
     serviceWorkerParam: { scope: string };
   }): Promise<void>;
   login(externalId: string): Promise<void>;
+  logout(): Promise<void>;
   Notifications: {
     isPushSupported(): boolean;
     permissionNative: NotificationPermission;
@@ -34,6 +35,20 @@ type OneSignalPushOptInProps = {
   compact?: boolean;
 };
 
+let activeOneSignalClient: OneSignalClient | null = null;
+
+export async function logoutOneSignalUser(): Promise<void> {
+  const client = activeOneSignalClient;
+  activeOneSignalClient = null;
+  if (!client) return;
+
+  try {
+    await client.logout();
+  } catch {
+    // Supabase sign-out must continue even if OneSignal is unavailable.
+  }
+}
+
 function getAppId(): string | null {
   return process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim()
     || window.__MESA_PRIMERA_RUNTIME_ENV__?.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim()
@@ -51,6 +66,8 @@ export function OneSignalPushOptIn({ userId, compact = false }: OneSignalPushOpt
     if (!userId) return;
     const appId = getAppId();
     if (!appId) return;
+    let cancelled = false;
+    let initializedClient: OneSignalClient | null = null;
 
     const init = (client: OneSignalClient) => {
       void client.init({
@@ -59,6 +76,12 @@ export function OneSignalPushOptIn({ userId, compact = false }: OneSignalPushOpt
         serviceWorkerParam: { scope: '/' },
       }).then(async () => {
         await client.login(userId);
+        if (cancelled) {
+          await client.logout();
+          return;
+        }
+        initializedClient = client;
+        activeOneSignalClient = client;
         setOneSignal(client);
         setSupported(client.Notifications.isPushSupported());
         setPermission(client.Notifications.permissionNative);
@@ -74,6 +97,14 @@ export function OneSignalPushOptIn({ userId, compact = false }: OneSignalPushOpt
     script.async = true;
     script.dataset.onesignalSdk = 'true';
     document.head.appendChild(script);
+
+    return () => {
+      cancelled = true;
+      if (initializedClient && activeOneSignalClient === initializedClient) {
+        activeOneSignalClient = null;
+        void initializedClient.logout().catch(() => undefined);
+      }
+    };
   }, [userId]);
 
   const enablePush = async () => {

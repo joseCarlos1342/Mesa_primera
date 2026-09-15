@@ -1,9 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { OneSignalPushOptIn } from '../OneSignalPushOptIn'
+import { logoutOneSignalUser, OneSignalPushOptIn } from '../OneSignalPushOptIn'
 
 type MockOneSignal = {
   init: jest.Mock<Promise<void>, [Record<string, unknown>]>
   login: jest.Mock<Promise<void>, [string]>
+  logout: jest.Mock<Promise<void>, []>
   Notifications: {
     isPushSupported: jest.Mock<boolean, []>
     permissionNative: NotificationPermission
@@ -21,6 +22,7 @@ function createClient({ supported = true, permission = 'default' as Notification
   return {
     init: jest.fn().mockResolvedValue(undefined),
     login: jest.fn().mockResolvedValue(undefined),
+    logout: jest.fn().mockResolvedValue(undefined),
     Notifications: {
       isPushSupported: jest.fn().mockReturnValue(supported),
       permissionNative: permission,
@@ -57,7 +59,8 @@ describe('OneSignalPushOptIn', () => {
     document.querySelectorAll('script[data-onesignal-sdk]').forEach((script) => script.remove())
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await logoutOneSignalUser()
     if (originalAppId === undefined) delete process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID
     else process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID = originalAppId
     delete window.OneSignalDeferred
@@ -126,6 +129,16 @@ describe('OneSignalPushOptIn', () => {
     await waitFor(() => expect(client.User.PushSubscription.optIn).toHaveBeenCalledTimes(1))
     expect(client.Notifications.requestPermission).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: 'Activar notificaciones push' })).not.toBeInTheDocument()
+  })
+
+  it('desvincula el usuario actual al cerrar sesión', async () => {
+    const client = createClient()
+    renderWithAppId()
+    await initialize(client)
+
+    await logoutOneSignalUser()
+
+    expect(client.logout).toHaveBeenCalledTimes(1)
   })
 
   it('libera el estado ocupado aunque la activación falle', async () => {

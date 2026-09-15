@@ -20,8 +20,9 @@ export class OneSignalDeliveryError extends Error {
 }
 
 const ONE_SIGNAL_API_URL = 'https://api.onesignal.com/notifications';
+const PUBLIC_APP_URL = 'https://primerariveradalos4ases.com';
 
-function internalUrl(value: unknown): string | undefined {
+function internalPath(value: unknown): string | undefined {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return undefined;
   return value;
 }
@@ -44,9 +45,10 @@ function getOneSignalConfig() {
 
 export async function sendOneSignalPush(userId: string, payload: PushPayload, idempotencyKey?: string): Promise<string> {
   const { appId, apiKey } = getOneSignalConfig();
-  const safeUrl = internalUrl(payload.data?.url);
+  const safePath = internalPath(payload.data?.url);
+  const safeUrl = safePath ? `${PUBLIC_APP_URL}${safePath}` : undefined;
   const safeData = payload.data
-    ? Object.fromEntries(Object.entries(payload.data).filter(([key, value]) => key !== 'url' || safeUrl === value))
+    ? Object.fromEntries(Object.entries(payload.data).filter(([key, value]) => key !== 'url' || safePath === value))
     : undefined;
   let response: Response;
   try {

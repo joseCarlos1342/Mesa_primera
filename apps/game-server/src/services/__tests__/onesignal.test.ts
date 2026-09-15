@@ -34,6 +34,13 @@ describe('OneSignal provider', () => {
       headers: expect.objectContaining({ Authorization: 'Key secret' }),
       body: expect.stringContaining('"external_id":["user-1"]'),
     }));
+
+    const requestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string) as {
+      url?: string;
+      data?: { url?: string };
+    };
+    expect(requestBody.url).toBe('https://primerariveradalos4ases.com/wallet');
+    expect(requestBody.data?.url).toBe('/wallet');
   });
 
   it('turns provider errors into retryable errors', async () => {
