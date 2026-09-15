@@ -131,6 +131,34 @@ describe('Admin Security Actions', () => {
     })
   })
 
+  it('rechaza acción sensible con sesión admin en AAL1', async () => {
+    const supabase = buildAdminSupabase()
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValueOnce({
+      data: { currentLevel: 'aal1', nextLevel: 'aal2' },
+      error: null,
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const result = await revokeOtherAdminSessions()
+
+    expect(result).toEqual({ error: 'Se requiere autenticación multifactor.' })
+    expect(supabase.auth.signOut).not.toHaveBeenCalled()
+  })
+
+  it('falla cerrado si no puede consultar AAL en una acción sensible', async () => {
+    const supabase = buildAdminSupabase()
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'AAL unavailable' },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const result = await revokeOtherAdminSessions()
+
+    expect(result).toEqual({ error: 'No se pudo verificar la autenticación multifactor.' })
+    expect(supabase.auth.signOut).not.toHaveBeenCalled()
+  })
+
   it('rejects invalid admin password reset emails before calling Supabase', async () => {
     const supabase = buildAdminSupabase()
     ;(createClient as any).mockResolvedValue(supabase)
@@ -444,6 +472,50 @@ describe('Admin Security Actions', () => {
       error: 'No hay factor TOTP configurado para esta cuenta.',
     })
     expect(supabase.auth.updateUser).not.toHaveBeenCalled()
+  })
+
+  it('bloquea email change cuando solo existe un factor TOTP no verificado', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        mfa: {
+          ...buildAdminSupabase().auth.mfa,
+          listFactors: jest.fn().mockResolvedValue({ data: { totp: [{ id: 'totp-pending', status: 'unverified' }] }, error: null }),
+        },
+      },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('email', 'nuevo-admin@mesa.test')
+    formData.append('code', '123456')
+
+    await expect(requestAdminEmailChange(null, formData)).resolves.toEqual({
+      error: 'No hay factor TOTP configurado para esta cuenta.',
+    })
+    expect(supabase.auth.mfa.challenge).not.toHaveBeenCalled()
+    expect(supabase.auth.updateUser).not.toHaveBeenCalled()
+  })
+
+  it('bloquea rotación de recovery codes cuando solo existe un factor no verificado', async () => {
+    const supabase = buildAdminSupabase({
+      auth: {
+        ...buildAdminSupabase().auth,
+        mfa: {
+          ...buildAdminSupabase().auth.mfa,
+          listFactors: jest.fn().mockResolvedValue({ data: { totp: [{ id: 'totp-pending', status: 'unverified' }] }, error: null }),
+        },
+      },
+    })
+    ;(createClient as any).mockResolvedValue(supabase)
+
+    const formData = new FormData()
+    formData.append('code', '123456')
+
+    await expect(rotateAdminRecoveryCodes(null, formData)).resolves.toEqual({
+      error: 'No hay factor TOTP configurado para esta cuenta.',
+    })
+    expect(supabase.from).not.toHaveBeenCalledWith('admin_mfa_recovery_codes')
   })
 
   it('returns MFA provider errors before challenging email change', async () => {
