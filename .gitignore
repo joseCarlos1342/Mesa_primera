@@ -72,6 +72,8 @@ e2e/snapshots/*.yaml
 # ── PWA generated files ──
 sw.js
 sw.js.map
+apps/web/public/worker-*.js
+apps/web/public/worker-*.js.map
 workbox-*.js
 workbox-*.js.map
 
