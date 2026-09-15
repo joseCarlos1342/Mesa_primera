@@ -86,6 +86,26 @@ describe('Board misc guards and banners', () => {
     expect(await screen.findByText(/el equipo de soporte está observando la mesa/i)).toBeInTheDocument()
   })
 
+  it('renderiza una base de nogal y un fieltro iluminado como capas separadas', () => {
+    const room = createRoom()
+    render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} />)
+
+    expect(screen.getByTestId('table-wood-base')).toHaveClass('bg-surface-wood')
+    expect(screen.getByTestId('table-felt-surface')).toHaveClass('bg-surface-leather')
+    expect(screen.getByTestId('table-felt-surface').style.backgroundImage).toContain('radial-gradient')
+    expect(screen.getByTestId('table-wood-base').style.backgroundImage).not.toContain('35deg')
+    expect(screen.getByTestId('table-felt-surface').style.backgroundImage).not.toContain('125deg')
+    expect(screen.getByTestId('table-felt-surface').style.backgroundImage).toContain('/textures/noise.png')
+    expect(screen.getByTestId('table-wood-rim')).toBeInTheDocument()
+  })
+
+  it('usa el color del nogal en el borde superior y no currentColor', () => {
+    const room = createRoom()
+    render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} />)
+
+    expect(screen.getByTestId('table-root').style.borderTopColor).toBe('rgb(53, 24, 15)')
+  })
+
   it('muestra estado waiting del jugador propio y CTA básicos del tablero', () => {
     const room = createRoom()
     const waitingPlayers = [{ ...players[0], isWaiting: true }, players[1]]
@@ -94,6 +114,32 @@ describe('Board misc guards and banners', () => {
     expect(screen.getByText(/esperando próxima partida/i)).toBeInTheDocument()
     expect(screen.getByText('$1000')).toBeInTheDocument()
     expect(screen.getByText('$500')).toBeInTheDocument()
+  })
+
+  it('agrupa las apuestas en un panel doble y mantiene el compartimento pique en cero', () => {
+    const room = createRoom()
+    render(<Board room={room} phase="PIQUE" pot={2400} piquePot={0} players={players} />)
+
+    expect(screen.queryByTestId('pot-panel')).not.toBeInTheDocument()
+    expect(screen.getByTestId('pot-displays')).toBeInTheDocument()
+    expect(screen.getByTestId('pot-main')).toHaveClass('w-[112px]', 'md:w-[154px]')
+    expect(screen.getByTestId('pot-pique')).toHaveClass('w-[112px]', 'md:w-[154px]')
+    expect(screen.getByTestId('deck-pedestal')).toHaveClass('w-16', 'md:w-[168px]')
+    expect(screen.getByTestId('deck-pedestal')).not.toHaveClass('bg-[#24120c]/95')
+    expect(screen.getByTestId('bottom-card')).toHaveClass('left-[58%]', 'md:left-[58%]')
+    expect(screen.getByTestId('pot-main')).toHaveTextContent('$2400')
+    expect(screen.getByTestId('pot-pique')).toHaveTextContent('$0')
+  })
+
+  it('presenta saldo, puntos y estado dentro de una consola HUD única', () => {
+    const room = createRoom()
+    render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} myCards="01-O,02-C" />)
+
+    const hud = screen.getByTestId('player-hud')
+    expect(screen.getByTestId('player-dashboard')).toHaveClass('pb-[env(safe-area-inset-bottom,0px)]')
+    expect(hud).toHaveTextContent('Saldo')
+    expect(hud).toHaveTextContent('Puntos')
+    expect(hud).toHaveTextContent('$10000')
   })
 
   it('usa fallback de palo para la carta inferior del mazo si el palo es desconocido', () => {
@@ -116,6 +162,29 @@ describe('Board misc guards and banners', () => {
     expect(screen.getAllByText('$0').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText('0').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('2ª')).toBeInTheDocument()
+  })
+
+  it('actualiza la densidad de la mano al cambiar el ancho sin leer window durante SSR', () => {
+    const room = createRoom()
+    const originalInnerWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+
+    const { container } = render(
+      <Board room={room} phase="PIQUE" pot={0} piquePot={0} players={[players[0]]} myCards="01-O,02-C,03-E,04-B" />,
+    )
+
+    const getSelfCardStyles = () => Array.from(container.querySelectorAll('div'))
+      .map(element => element.getAttribute('style') ?? '')
+      .filter(style => style.includes('left: calc(50%'))
+
+    expect(getSelfCardStyles().some(style => style.includes('78px'))).toBe(true)
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 })
+    fireEvent(window, new Event('resize'))
+
+    expect(getSelfCardStyles().some(style => style.includes('57px'))).toBe(true)
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
   })
 
   it('muestra intro, shuffle y overlays de reveal/showdown según fase', () => {

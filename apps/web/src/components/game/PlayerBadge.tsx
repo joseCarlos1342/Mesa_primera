@@ -20,6 +20,7 @@ interface PlayerBadgeProps {
 
 export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvatar = false, turnOrder, isWaiting = false, isAllIn = false }: PlayerBadgeProps) {
   const _isMuted = true; // Placeholder for actual voice chat state if available
+  const showTurnOrder = !isDealer && !isWaiting && (turnOrder ?? 0) > 1;
 
   // Determine avatar rendering
   let avatarContent = null;
@@ -70,26 +71,35 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
          transition-all duration-300
        `}>
          
-         {/* Small Avatar Circle */}
-         {!hideAvatar && (
-            <div className={`
-              relative rounded-full flex-shrink-0 flex items-center justify-center
-              w-5 h-5 md:w-10 md:h-10 
-              bg-gradient-to-br from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c]
+          {/* Small Avatar Circle */}
+          {!hideAvatar && (
+             <div data-testid="player-avatar" className={`
+               relative rounded-full flex-shrink-0 flex items-center justify-center
+               w-5 h-5 md:w-10 md:h-10
+               bg-gradient-to-br from-[#fdf0a6] via-[#d4af37] to-[#8a6d1c]
               p-[1.5px] md:p-[2px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]
             `}>
-              <div className="w-full h-full rounded-full overflow-hidden bg-[#111] border border-black/20">
-                {avatarContent}
-              </div>
-            </div>
-         )}
+             <div className="w-full h-full rounded-full overflow-hidden bg-[#111] border border-black/20">
+               {avatarContent}
+             </div>
+             {showTurnOrder && (
+               <span
+                 data-testid="avatar-position"
+                 aria-label={`Puesto ${turnOrder}`}
+                  className="absolute right-0.5 bottom-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border border-[#d4af37]/80 bg-[#0d2e1b]/95 px-0.5 text-[11px] font-bold leading-none text-[#fdf0a6] shadow-[0_1px_4px_rgba(0,0,0,0.8)] md:h-6 md:min-w-6 md:text-xs"
+               >
+                 {turnOrder}ª
+               </span>
+             )}
+           </div>
+          )}
 
          {/* Info Column (Name & Balance) */}
          <div className="flex flex-col items-start pr-1 md:pr-2">
-            <span className="text-[#e2c161] text-[6px] md:text-[11px] font-bold tracking-wider uppercase truncate max-w-[50px] md:max-w-[100px]">
+            <span className="text-[#e2c161] text-[11px] md:text-xs font-bold tracking-wider uppercase truncate max-w-[50px] md:max-w-[100px]">
               {player.nickname || 'VACÍO'}
             </span>
-            <span className="text-[#c1a052] text-[6px] md:text-[9px] font-mono font-bold opacity-90 flex items-center">
+            <span className="text-[#c1a052] text-[11px] md:text-xs font-mono font-bold opacity-90 flex items-center">
               {player.chips != null ? formatCurrency(player.chips) : '$0'}
             </span>
          </div>
@@ -99,43 +109,32 @@ export function PlayerBadge({ player, isActive, isMe, isDealer = false, hideAvat
             <ManoIcon size="xs" />
          )}
 
-         {isMe && !isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
-            <div className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
-              {turnOrder}ª
-            </div>
-         )}
-
-         {isMe && isAllIn && !isWaiting && (
-            <div className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+          {isMe && isAllIn && !isWaiting && (
+            <div className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[11px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
               Resto
             </div>
          )}
 
          {isMe && isWaiting && (
-            <div className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
+            <div className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[11px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
               Espera
             </div>
          )}
        </div>
 
-       {/* Badges BELOW the pill for enemies (avoids expanding pill width at any screen size) */}
+       {/* Badges BELOW the pill for enemies. The position now lives inside the avatar. */}
        {!isMe && (
          <div className="flex items-center justify-center gap-0.5 md:gap-1 mt-0.5">
            {isDealer && !isWaiting && (
              <ManoIcon size="xs" />
            )}
-           {!isDealer && !isWaiting && (turnOrder ?? 0) > 1 && (
-             <span className="bg-[#0d2e1b] text-[#d4af37] border border-[#d4af37]/50 text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter leading-none">
-               {turnOrder}ª
-             </span>
-           )}
-           {isAllIn && !isWaiting && (
-             <span className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter leading-none">
+            {isAllIn && !isWaiting && (
+             <span className="bg-amber-900/80 text-amber-300 border border-amber-500/60 text-[11px] md:text-xs font-bold px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter leading-none">
                Resto
              </span>
            )}
            {isWaiting && (
-             <span className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[5px] md:text-[7px] font-black px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter animate-pulse leading-none">
+             <span className="bg-[#0d2e1b] text-[#c0a060] border border-[#c0a060]/40 text-[11px] md:text-xs font-bold px-1 md:px-1.5 py-px rounded-full uppercase tracking-tighter animate-pulse leading-none">
                Espera
              </span>
            )}

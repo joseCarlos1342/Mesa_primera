@@ -17,10 +17,33 @@ interface LobbyProps {
   lobbyTables?: { common: LobbyTable[]; custom: LobbyTable[] };
 }
 
+type MatchmakingIdentity = {
+  userId: string;
+  accessToken: string;
+};
+
+const MATCHMAKING_SESSION_ERROR = 'Tu sesión expiró. Vuelve a iniciar sesión para entrar a una mesa.';
+
+async function getMatchmakingIdentity(): Promise<MatchmakingIdentity | null> {
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.user?.id || !session.access_token) return null;
+
+    return {
+      userId: session.user.id,
+      accessToken: session.access_token,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function Lobby({ lobbyTables }: LobbyProps) {
   const [rooms, setRooms] = useState<RoomAvailable[]>([])
   const [_loading, setLoading] = useState(true)
-  const [_error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
   const [creating, setCreating] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -141,17 +164,28 @@ export function Lobby({ lobbyTables }: LobbyProps) {
   const createTable = async () => {
     if (creating || creatingRef.current) return
 
+    creatingRef.current = true
+    setCreating(true)
+    setError(null)
+
+    const identity = await getMatchmakingIdentity();
+    if (!identity) {
+      setError(MATCHMAKING_SESSION_ERROR);
+      creatingRef.current = false;
+      setCreating(false);
+      return;
+    }
+
     // VALIDACIÓN DE SALDO MÍNIMO ($50,000)
     const balance = userProfile?.balance_cents || 0;
     if (balance < 5000000) { // 50,000 * 100 (cents) = 5,000,000
       setError("Fondos insuficientes. Se requiere un saldo mínimo de $50,000 para abrir una mesa. Por favor, recargue su cuenta.");
       setShowDeposit(true);
+      creatingRef.current = false;
+      setCreating(false);
       return;
     }
 
-    creatingRef.current = true
-    setCreating(true)
-    setError(null)
     try {
       let nick = localStorage.getItem('nickname');
       if (!nick) {
@@ -174,7 +208,8 @@ export function Lobby({ lobbyTables }: LobbyProps) {
         deviceId: deviceId,
         avatarUrl: avatarUrl,
         chips: userProfile?.balance_cents || 0,
-        userId: userProfile?.id || null
+        userId: identity.userId,
+        accessToken: identity.accessToken,
       })
 
       sessionStorage.setItem(`reconnectionToken_${room.roomId}`, room.reconnectionToken);
@@ -225,6 +260,14 @@ export function Lobby({ lobbyTables }: LobbyProps) {
     setCreating(true)
     setError(null)
     try {
+      const identity = await getMatchmakingIdentity();
+      if (!identity) {
+        setError(MATCHMAKING_SESSION_ERROR);
+        creatingRef.current = false;
+        setCreating(false);
+        return;
+      }
+
       const nick = localStorage.getItem('nickname') || 'Jugador';
       const deviceId = localStorage.getItem('deviceId') || 'dev_' + Math.random().toString(36).substring(2, 15);
       const avatarUrl = localStorage.getItem('avatarUrl') || 'as-oros';
@@ -235,7 +278,8 @@ export function Lobby({ lobbyTables }: LobbyProps) {
         deviceId,
         avatarUrl,
         chips: userProfile?.balance_cents || 0,
-        userId: userProfile?.id || null,
+        userId: identity.userId,
+        accessToken: identity.accessToken,
       })
 
       sessionStorage.setItem(`reconnectionToken_${room.roomId}`, room.reconnectionToken);
@@ -346,9 +390,9 @@ export function Lobby({ lobbyTables }: LobbyProps) {
             className="inline-flex items-center gap-4 px-8 py-3 bg-brand-gold/5 border-2 border-brand-gold/20 rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(197,160,89,0.1)]"
           >
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-            <span className="text-[10px] md:text-xs font-black text-brand-gold uppercase tracking-[0.4em]">SERVIDOR ACTIVO</span>
+            <span className="text-[11px] md:text-xs font-bold text-brand-gold uppercase tracking-[0.16em]">SERVIDOR ACTIVO</span>
             <div className="w-px h-4 bg-brand-gold/20 mx-1" />
-            <span className="text-[10px] md:text-xs font-black text-text-premium uppercase tracking-[0.2em]">
+            <span className="text-[11px] md:text-xs font-bold text-text-premium uppercase tracking-[0.12em]">
               {rooms.length} MESAS DISPONIBLES
             </span>
           </m.div>
@@ -369,7 +413,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
               className="flex items-center gap-4"
             >
               <div className="h-px w-8 md:w-16 bg-gradient-to-r from-transparent to-slate-500" />
-              <p className="text-sm md:text-base font-black text-slate-400 uppercase tracking-[0.5em] italic text-center">
+              <p className="text-sm md:text-base font-bold text-slate-400 uppercase tracking-[0.18em] italic text-center">
                 Selecciona tu mesa de primera
               </p>
               <div className="h-px w-8 md:w-16 bg-gradient-to-l from-transparent to-slate-500" />
@@ -385,7 +429,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
               className="flex flex-col items-center gap-4 px-6 md:px-10 py-5 rounded-[2rem] bg-black/40 backdrop-blur-xl border-2 border-brand-gold/10 shadow-[0_15px_40px_rgba(0,0,0,0.5)] group transition-all hover:border-brand-gold/30 w-full max-w-md mx-auto"
             >
               <div className="flex flex-col items-center justify-center text-center">
-                <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-brand-gold group-hover:text-brand-gold-light transition-colors mb-1">Mi Balance</span>
+                <span className="text-[11px] md:text-xs font-bold uppercase tracking-[0.16em] text-brand-gold group-hover:text-brand-gold-light transition-colors mb-1">Mi Balance</span>
                 <span className="text-4xl md:text-5xl font-black text-text-premium tracking-tighter leading-none flex items-center drop-shadow-premium">
                   <span className="text-brand-gold mr-1.5 opacity-90">$</span>
                   {userProfile.balance?.toLocaleString() || '0'}
@@ -399,7 +443,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
                 >
                   <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
                   <Plus className="w-5 h-5 text-slate-950 stroke-[3] relative z-10" />
-                  <span className="text-xs font-black text-slate-950 uppercase tracking-widest relative z-10">Recargar</span>
+                  <span className="text-sm font-bold text-slate-950 uppercase tracking-[0.12em] relative z-10">Recargar</span>
                 </button>
                 <Link
                   href="/replays"
@@ -408,7 +452,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
                 >
                   <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
                   <Film className="w-5 h-5 text-white stroke-[2.5] relative z-10" />
-                  <span className="text-xs font-black text-white uppercase tracking-widest relative z-10">Repeticiones</span>
+                  <span className="text-sm font-bold text-white uppercase tracking-[0.12em] relative z-10">Repeticiones</span>
                 </Link>
               </div>
             </m.div>
@@ -428,7 +472,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
               <button
                 onClick={() => setShowCustomMesa(true)}
                 disabled={creating}
-                className="group relative h-16 w-16 bg-gradient-to-br from-[#d4af37] to-[#8b6914] text-white rounded-[2rem] font-black flex items-center justify-center transition-all hover:scale-105 active:translate-y-1 disabled:opacity-50 shadow-premium border-b-4 border-black/30 text-[10px] uppercase tracking-wider leading-tight text-center"
+                className="group relative h-16 w-16 bg-gradient-to-br from-[#d4af37] to-[#8b6914] text-white rounded-[2rem] font-bold flex items-center justify-center transition-all hover:scale-105 active:translate-y-1 disabled:opacity-50 shadow-premium border-b-4 border-black/30 text-[11px] uppercase tracking-wider leading-tight text-center"
                 title="Mesa Personalizada"
               >
                 VIP
@@ -436,6 +480,15 @@ export function Lobby({ lobbyTables }: LobbyProps) {
             </div>
           )}
         </header>
+
+        {error && (
+          <div
+            role="alert"
+            className="mx-auto max-w-2xl rounded-2xl border-2 border-brand-red/30 bg-brand-red/10 px-5 py-4 text-center text-brand-red font-bold"
+          >
+            {error}
+          </div>
+        )}
 
         {/* Main Content Area - Anchored with Premium Table Container */}
         <div className="relative p-5 md:p-16 lg:p-20 bg-black/40 backdrop-blur-3xl rounded-[3rem] md:rounded-[5rem] border-2 border-brand-gold/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden min-h-[400px] md:min-h-[800px] w-full max-w-full">
@@ -464,6 +517,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
                     creating={creating}
                     setCreating={setCreating}
                     userProfile={userProfile}
+                    onError={setError}
                   />
                 ))}
               </div>
@@ -488,6 +542,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
                       creating={creating}
                       setCreating={setCreating}
                       userProfile={userProfile}
+                      onError={setError}
                     />
                   ))}
                 </div>
@@ -499,13 +554,13 @@ export function Lobby({ lobbyTables }: LobbyProps) {
 
         {/* Bottom info - Enhanced for Accessibility */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 pt-4 md:pt-24 pb-4 border-t-2 border-brand-gold/10 w-full overflow-hidden">
-          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400">
+              <div className="flex items-center gap-3 text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
             <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Seguridad de Élite
           </div>
-          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400">
+              <div className="flex items-center gap-3 text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
             <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Juego Auditado
           </div>
-          <div className="flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400">
+              <div className="flex items-center gap-3 text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
             <Shield className="w-5 h-5 md:w-6 md:h-6 text-brand-gold/60" /> Conexión Blindada
           </div>
         </div>
@@ -526,7 +581,7 @@ export function Lobby({ lobbyTables }: LobbyProps) {
   )
 }
 
-function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCreating, userProfile }: {
+function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCreating, userProfile, onError }: {
   room: any,
   isAdmin: boolean,
   onJoin: (id: string) => void,
@@ -534,7 +589,8 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
   isFixed: boolean,
   creating: boolean,
   setCreating: (v: boolean) => void,
-  userProfile: any
+  userProfile: any,
+  onError: (message: string) => void
 }) {
   const isPlaceholder = room.metadata?.isPlaceholder;
   const creatingRef = useRef(false)
@@ -547,16 +603,27 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
   const displayTitle = tableName.toUpperCase().replace(/MESA\s*/i, "").trim();
 
   const handleAction = async () => {
-    const balance = userProfile?.balance_cents || 0;
-    if (balance < roomMinEntry) {
-      alert(`Fondos insuficientes. Se requiere un saldo mínimo de $${formatAmount(roomMinEntry)} para entrar a esta mesa. Por favor, recargue su cuenta.`);
-      return;
-    }
-
     if (isPlaceholder) {
       if (creating || creatingRef.current) return;
+
       creatingRef.current = true
       setCreating(true);
+
+      const identity = await getMatchmakingIdentity();
+      if (!identity) {
+        onError(MATCHMAKING_SESSION_ERROR);
+        creatingRef.current = false;
+        setCreating(false);
+        return;
+      }
+
+      const balance = userProfile?.balance_cents || 0;
+      if (balance < roomMinEntry) {
+        alert(`Fondos insuficientes. Se requiere un saldo mínimo de $${formatAmount(roomMinEntry)} para entrar a esta mesa. Por favor, recargue su cuenta.`);
+        creatingRef.current = false;
+        setCreating(false);
+        return;
+      }
       try {
         const nick = localStorage.getItem('nickname') || 'Jugador';
         const deviceId = localStorage.getItem('deviceId') || 'dev_' + Math.random();
@@ -572,7 +639,8 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
           deviceId: deviceId,
           avatarUrl: avatarUrl,
           chips: userProfile?.balance_cents || 0,
-          userId: userProfile?.id || null,
+          userId: identity.userId,
+          accessToken: identity.accessToken,
         };
 
         // Pass DB config to Colyseus room
@@ -597,10 +665,17 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
         onJoin(newRoom.roomId);
       } catch (e) {
         console.error("Error creating fixed table:", e);
+        onError("No se pudo crear la mesa. Inténtalo de nuevo.");
         creatingRef.current = false
         setCreating(false);
       }
     } else {
+      const balance = userProfile?.balance_cents || 0;
+      if (balance < roomMinEntry) {
+        alert(`Fondos insuficientes. Se requiere un saldo mínimo de $${formatAmount(roomMinEntry)} para entrar a esta mesa. Por favor, recargue su cuenta.`);
+        return;
+      }
+
       onJoin(room.roomId);
     }
   };
@@ -624,8 +699,8 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
 
             {!isPlaceholder && (
               <div className="flex flex-col gap-1 md:gap-2">
-                <span className="text-[7px] md:text-[11px] font-black uppercase tracking-[0.3em] text-slate-500/60 leading-none">Ocupación</span>
-                <div className="flex items-center gap-1.5 md:gap-3 px-3 md:px-6 py-1.5 md:py-3 rounded-lg md:rounded-2xl bg-black/60 border border-white/5 text-white font-black text-[10px] md:text-lg shadow-inner overflow-hidden relative">
+                <span className="text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-slate-500/75 leading-none">Ocupación</span>
+                    <div className="flex items-center gap-1.5 md:gap-3 px-3 md:px-6 py-1.5 md:py-3 rounded-lg md:rounded-2xl bg-black/60 border border-white/5 text-white font-bold text-[11px] md:text-lg shadow-inner overflow-hidden relative">
                   <Users className="w-3 h-3 md:w-5 md:h-5 text-emerald-400 relative z-10" />
                   <span className="relative z-10 lining-nums">
                     <span className="text-emerald-400">{(room.metadata as any)?.activePlayers ?? room.clients}</span>
@@ -668,14 +743,14 @@ function TableCard({ room, isAdmin, onJoin, onDelete, isFixed, creating, setCrea
           {/* Custom mesa rules */}
           {isCustom && !isPlaceholder && (
             <div className="flex flex-wrap gap-2 mt-2 justify-center md:justify-start">
-              <span className="px-3 py-1 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] text-[10px] font-black uppercase tracking-wider">
+                  <span className="px-3 py-1 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] text-[11px] font-bold uppercase tracking-[0.1em]">
                 Entrada: ${formatAmount(roomMinEntry)}
               </span>
-              <span className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider">
+                  <span className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] font-bold uppercase tracking-[0.1em]">
                 Pique: ${formatAmount(roomMinPique)}
               </span>
               {meta?.disabledChips?.length > 0 && (
-                <span className="px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider">
+                <span className="px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] font-bold uppercase tracking-[0.1em]">
                   {6 - meta.disabledChips.length} fichas
                 </span>
               )}

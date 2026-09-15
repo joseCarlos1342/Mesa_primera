@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import { ChipSelector } from '../ChipSelector'
 
@@ -30,6 +30,45 @@ describe('ChipSelector', () => {
 
     expect(screen.getByRole('button', { name: '1k' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '50k' })).not.toBeInTheDocument()
+  })
+
+  it('renderiza fichas como placas de casino con capas de profundidad', () => {
+    render(
+      <ChipSelector
+        chipCounts={{}}
+        totalBet={0}
+        maxChips={10_000_000}
+        onAdd={jest.fn()}
+        onRemove={jest.fn()}
+      />,
+    )
+
+    const chip = screen.getByRole('button', { name: '1k' })
+
+    expect(chip).toHaveAttribute('data-chip-shape', 'casino-plate')
+    expect(chip).toHaveClass('h-7', 'md:h-9')
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+    expect(within(chip).getByTestId('chip-edge')).toBeInTheDocument()
+    expect(within(chip).getByTestId('chip-face')).toBeInTheDocument()
+    expect(within(chip).getByTestId('chip-bevel')).toBeInTheDocument()
+  })
+
+  it('marca visualmente la ficha activa y la expone como pulsada', () => {
+    render(
+      <ChipSelector
+        chipCounts={{}}
+        totalBet={0}
+        maxChips={10_000_000}
+        onAdd={jest.fn()}
+        onRemove={jest.fn()}
+      />,
+    )
+
+    const chip = screen.getByRole('button', { name: '1k' })
+    fireEvent.click(chip)
+
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    expect(chip).toHaveAttribute('data-selected', 'true')
   })
 
   it('permite activar un chip, sumar y restar cuando corresponde', () => {

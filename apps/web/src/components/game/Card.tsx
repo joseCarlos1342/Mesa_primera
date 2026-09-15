@@ -1,7 +1,7 @@
 "use client"
 
 import { m } from 'framer-motion'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface CardProps {
   suit?: 'Oros' | 'Copas' | 'Espadas' | 'Bastos';
@@ -14,9 +14,10 @@ interface CardProps {
   priority?: boolean;
 }
 
-export function Card({ suit, value, isHidden = false, className = '', delay = 0, originX = 0, originY = -200 }: CardProps) {
+export function Card({ suit, value, isHidden = false, className = '', delay = 0, originX = 0, originY = -200, priority = false }: CardProps) {
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   const getCardImage = () => {
     if (!suit || !value) return '';
@@ -34,6 +35,15 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
 
     return `/cards/${paddedValue}-${mappedSuit}.png?v=3`;
   }
+
+  const cardImageSrc = getCardImage();
+
+  useEffect(() => {
+    const image = imageRef.current;
+    if (image?.complete && image.naturalWidth > 0) {
+      setImgLoaded(true);
+    }
+  }, [cardImageSrc]);
 
   return (
     <m.div
@@ -56,17 +66,19 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
       >
         {!isHidden && suit && value && (
           imgError ? (
-            <span className="text-xl md:text-3xl font-black font-playfair text-slate-800 text-center uppercase">
+            <span className="text-xl md:text-3xl font-display font-bold text-slate-800 text-center uppercase">
               {value}<br />{suit.substring(0, 1)}
             </span>
           ) : (
             /* Using standard img instead of next/image to handle local query string cache busting without extra config */
-            <img
-              src={getCardImage()}
-              alt={`${value} de ${suit}`}
-              className={`w-full h-full object-contain transition-opacity duration-150 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-              loading="eager"
-              decoding="async"
+             <img
+               ref={imageRef}
+               src={cardImageSrc}
+               alt={`${value} de ${suit}`}
+               className={`w-full h-full object-contain transition-opacity duration-150 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+               loading={priority ? 'eager' : 'lazy'}
+               fetchPriority={priority ? 'high' : 'auto'}
+               decoding="async"
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgError(true)}
             />

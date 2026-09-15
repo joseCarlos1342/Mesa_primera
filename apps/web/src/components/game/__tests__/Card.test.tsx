@@ -22,6 +22,29 @@ describe('Card', () => {
     expect(image).toHaveClass('opacity-100')
   })
 
+  it('muestra una imagen que ya estaba cargada antes de registrar onLoad', () => {
+    const completeDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'complete')
+    const naturalWidthDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'naturalWidth')
+
+    Object.defineProperty(HTMLImageElement.prototype, 'complete', { configurable: true, value: true })
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', { configurable: true, value: 416 })
+
+    try {
+      render(<Card suit="Oros" value={1} />)
+
+      expect(screen.getByRole('img', { name: '1 de Oros' })).toHaveClass('opacity-100')
+    } finally {
+      if (completeDescriptor) Object.defineProperty(HTMLImageElement.prototype, 'complete', completeDescriptor)
+      if (naturalWidthDescriptor) Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', naturalWidthDescriptor)
+    }
+  })
+
+  it('marca las cartas prioritarias con fetchPriority high', () => {
+    render(<Card suit="Oros" value={1} priority />)
+
+    expect(screen.getByRole('img', { name: '1 de Oros' })).toHaveAttribute('fetchpriority', 'high')
+  })
+
   it('falls back to text when the card image cannot be loaded', () => {
     const { container } = render(<Card suit="Espadas" value={12} />)
 
