@@ -14,7 +14,7 @@ export default async function AdminRulesPage() {
             REGLAMENTO DEL LOCAL
             </h1>
             <p className="text-slate-500 font-medium mt-2">
-            Edita las reglas públicas, rake general y normas que verán los jugadores. (Formato Markdown)
+            Edita únicamente el anexo operativo del local. No modifica las reglas técnicas del juego ni el rake calculado por el motor. (Formato Markdown)
             </p>
         </div>
       </div>
@@ -28,8 +28,8 @@ export default async function AdminRulesPage() {
             <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 relative overflow-hidden">
                 <Info className="w-10 h-10 text-indigo-500/20 absolute -right-2 -top-2" />
                 <h3 className="font-bold text-indigo-400 mb-2">Formato Soportado</h3>
-                <p className="text-sm text-indigo-200/80 mb-4">
-                   Puedes utilizar formato <strong className="text-white">Markdown</strong> para estructurar las reglas:
+                 <p className="text-sm text-indigo-200/80 mb-4">
+                    Puedes utilizar formato <strong className="text-white">Markdown</strong> para estructurar avisos, horarios y normas del local:
                 </p>
                 <div className="space-y-3 font-mono text-xs text-slate-300 bg-black/40 p-4 rounded-xl border border-white/5">
                    <p><span className="text-emerald-400">#</span> Título Principal</p>

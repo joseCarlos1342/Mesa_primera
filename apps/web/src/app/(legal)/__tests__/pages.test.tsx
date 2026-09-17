@@ -28,21 +28,27 @@ describe('legal pages', () => {
   it('renderiza politica de seguridad con security.txt y alcance', () => {
     render(<SecurityPolicyPage />)
 
-    expect(securityMetadata.title).toContain('Política de Seguridad')
-    expect(screen.getByRole('heading', { name: 'Política de Seguridad' })).toBeInTheDocument()
+    expect(securityMetadata.title).toContain('Divulgación Responsable')
+    expect(screen.getByRole('heading', { name: 'Política de Divulgación Responsable' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /ver security\.txt/i })).toHaveAttribute('href', '/.well-known/security.txt')
     expect(screen.getByRole('heading', { name: /alcance/i })).toBeInTheDocument()
-    expect(screen.getByText(/sistema de billetera digital/i)).toBeInTheDocument()
+    expect(screen.getByText(/billetera digital y transacciones/i)).toBeInTheDocument()
+    expect(screen.getByText(/no pruebes contra cuentas reales ni operaciones con dinero real/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /objetivos de respuesta/i })).toBeInTheDocument()
   })
 
-  it('renderiza reglas publicas con CTA de registro', () => {
+  it('renderiza el reglamento oficial completo con reglas de dinero y desempate', () => {
     render(<PublicRulesPage />)
 
     expect(rulesMetadata.title).toContain('Reglas del Juego')
     expect(screen.getByRole('heading', { name: 'Reglamento Oficial' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Reglas Básicas' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Seguridad y Fair Play' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Apuestas y Saldo' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '1. Objeto y alcance' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '6. Jerarquía y valoración' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '19. Desempates y división de pozos' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '23. Reglas económicas' })).toBeInTheDocument()
+    expect(screen.getByText(/no existe captura de cartas ni objetivo de 15/i)).toBeInTheDocument()
+    expect(screen.getByText(/rake del 5%/i)).toBeInTheDocument()
+    expect(screen.getByText(/60 segundos/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /únete al club/i })).toHaveAttribute('href', '/register/player')
   })
 })
