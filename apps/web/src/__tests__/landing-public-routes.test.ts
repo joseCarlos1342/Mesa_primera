@@ -46,6 +46,12 @@ describe('Proxy public asset exclusions', () => {
   it('excludes the generated social preview image from auth middleware', () => {
     expect(source).toContain('og-image')
   })
+
+  it('excludes tutorial video assets from auth middleware', () => {
+    expect(source).toContain('mp4')
+    expect(source).toContain('webm')
+    expect(source).toContain('vtt')
+  })
 })
 
 // ────────────────────────────────────────────────

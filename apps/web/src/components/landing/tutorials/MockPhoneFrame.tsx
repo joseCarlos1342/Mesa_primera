@@ -9,13 +9,13 @@ interface MockPhoneFrameProps {
 export function MockPhoneFrame({ children, className = '', landscape = false }: MockPhoneFrameProps) {
   if (landscape) {
     return (
-      <div className={`relative mx-auto w-full ${className}`}>
+      <div role="group" aria-label="Vista de mesa horizontal" className={`relative mx-auto w-full ${className}`}>
         {/* Outer bezel - landscape */}
-        <div className="relative rounded-[1.5rem] md:rounded-[2rem] bg-gradient-to-b from-zinc-600 via-zinc-800 to-zinc-900 p-[5px] md:p-[6px] shadow-2xl shadow-black/70 ring-1 ring-white/10">
-          <div className="relative rounded-[1.5rem] md:rounded-[2rem] bg-zinc-950 p-[2px] md:p-[3px]">
-            <div className="relative rounded-[1.5rem] md:rounded-[2rem] overflow-hidden bg-[#073926]">
+        <div className="relative rounded-xl md:rounded-[2rem] bg-gradient-to-b from-zinc-600 via-zinc-800 to-zinc-900 p-[3px] md:p-[6px] shadow-2xl shadow-black/70 ring-1 ring-white/10">
+          <div className="relative rounded-lg md:rounded-[2rem] bg-zinc-950 p-[2px] md:p-[3px]">
+            <div className="relative rounded-md md:rounded-[2rem] overflow-hidden bg-[#073926]">
               {/* Side notch / camera */}
-              <div className="absolute top-1/2 -translate-y-1/2 left-[5px] md:left-[6px] z-10">
+              <div className="absolute top-1/2 -translate-y-1/2 left-[5px] md:left-[6px] z-10 hidden md:block">
                 <div className="w-[14px] md:w-[18px] h-[12px] md:h-[14px] bg-black rounded-full flex items-center justify-center">
                   <div className="w-[5px] md:w-[6px] h-[5px] md:h-[6px] bg-zinc-800 rounded-full ring-1 ring-white/10" />
                 </div>

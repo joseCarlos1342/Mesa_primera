@@ -1,0 +1,12 @@
+{
+  "duration": 14,
+  "assertions": [
+    { "kind": "appearsBy", "selector": "#step-1", "bySec": 0.5 },
+    { "kind": "before", "a": "#step-1", "b": "#step-2" },
+    { "kind": "before", "a": "#step-2", "b": "#step-3" },
+    { "kind": "before", "a": "#step-3", "b": "#step-4" },
+    { "kind": "before", "a": "#step-4", "b": "#step-5" },
+    { "kind": "staysInFrame", "selector": "#step-1" },
+    { "kind": "keepsMoving", "withinSelector": "#root", "maxStaticSec": 2.5 }
+  ]
+}

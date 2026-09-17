@@ -46,9 +46,10 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - og-image (social preview image)
-     * - favicon.ico (favicon file)
+      * - favicon.ico (favicon file)
+      * - static media files (including tutorial videos)
      * Feel free to modify this pattern to include more paths.
      */
-     '/((?!_next/static|_next/image|og-image|favicon.ico|manifest.json|robots.txt|sitemap.xml|sw\\.js|worker-[^/]+\\.js|workbox-[^/]+\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|xml|txt)$).*)',
+      '/((?!_next/static|_next/image|og-image|favicon.ico|manifest.json|robots.txt|sitemap.xml|sw\\.js|worker-[^/]+\\.js|workbox-[^/]+\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm|mov|vtt|json|xml|txt)$).*)',
   ],
 }

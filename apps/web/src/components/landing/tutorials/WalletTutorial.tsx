@@ -4,7 +4,7 @@ import { Landmark, ArrowRightLeft, Plus, ShieldCheck } from 'lucide-react'
 import type { TutorialStep } from './TutorialWalkthrough'
 
 /* ── Screen 1: Wallet Home ────────────────────────────────────── */
-function WalletHomeScreen() {
+function WalletHomeScreen({ selectedAmount }: { selectedAmount?: string }) {
   return (
     <div className="w-full h-full bg-gradient-to-b from-slate-950 via-[#0a2a1f] to-slate-950 flex flex-col overflow-y-auto px-3 pt-10 pb-4">
       {/* Premium Balance Card */}
@@ -46,15 +46,21 @@ function WalletHomeScreen() {
           ].map((pack, i) => (
             <div
               key={i}
-              className={`relative p-3 rounded-[1.5rem] border-2 flex flex-col items-center text-center gap-1 transition-all ${
+              data-testid={selectedAmount === pack.amount ? 'wallet-pack-selected' : undefined}
+              className={`relative p-3 rounded-[1.5rem] border-2 flex flex-col items-center text-center gap-1 transition-[background-color,border-color,box-shadow,transform] ${
                 pack.popular
                   ? 'bg-[#0a2a1f] border-brand-gold/60 shadow-[0_10px_40px_rgba(0,0,0,0.5)]'
                   : 'bg-black/40 border-brand-gold/10 shadow-xl'
-              }`}
+              } ${selectedAmount === pack.amount ? 'ring-2 ring-brand-gold-light ring-offset-2 ring-offset-[#0a2a1f]' : ''}`}
             >
               {pack.popular && (
                 <span className="absolute top-0 right-0 bg-brand-gold text-black text-[6px] font-black uppercase py-1 px-2.5 rounded-bl-xl tracking-[0.2em] shadow-xl border-b border-l border-white/20">
                   Popular
+                </span>
+              )}
+              {selectedAmount === pack.amount && (
+                <span className="absolute bottom-2 rounded-full bg-brand-gold-light px-2 py-0.5 text-[6px] font-black uppercase tracking-[0.12em] text-black">
+                  Seleccionado
                 </span>
               )}
               <div className={`p-2 rounded-full shadow-inner ${pack.popular ? 'bg-brand-gold/20' : 'bg-brand-gold/5'}`}>
@@ -164,7 +170,7 @@ function DepositSuccessScreen() {
 /* ── Exported tutorial steps ──────────────────────────────────── */
 export const walletSteps: TutorialStep[] = [
   { label: 'Tu billetera con balance y opciones', screen: <WalletHomeScreen /> },
-  { label: 'Elige un monto y ve al depósito', screen: <WalletHomeScreen /> },
+  { label: 'Elige un monto y ve al depósito', screen: <WalletHomeScreen selectedAmount="$100.000" /> },
   { label: 'Deposita vía Nequi con comprobante', screen: <DepositFormScreen /> },
   { label: 'Tu depósito está siendo procesado', screen: <DepositSuccessScreen /> },
 ]

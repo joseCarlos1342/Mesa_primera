@@ -13,6 +13,8 @@ import {
   Play, ArrowRight, MapPin, Navigation,
 } from 'lucide-react'
 import { LOCAL_LOCATION } from '@/components/landing/LocationMap'
+import { getTutorialDefinition, TUTORIAL_CATALOG, type TutorialKey, type TutorialPreviewTone } from './tutorialCatalog'
+import type { TutorialStep } from './tutorials/TutorialWalkthrough'
 
 const LocationMap = dynamic(
   () => import('@/components/landing/LocationMap').then((m) => ({ default: m.LocationMapInner })),
@@ -23,18 +25,6 @@ const TutorialWalkthrough = dynamic(
   () => import('@/components/landing/tutorials/TutorialWalkthrough').then((m) => ({ default: m.TutorialWalkthrough })),
   { ssr: false },
 )
-
-const TUTORIAL_IMPORTS = {
-  'Cómo instalar la app': () => import('@/components/landing/tutorials/InstallAppTutorial').then((m) => m.installAppSteps),
-  'Cómo registrarte': () => import('@/components/landing/tutorials/RegisterTutorial').then((m) => m.registerSteps),
-  'Cómo iniciar sesión': () => import('@/components/landing/tutorials/LoginTutorial').then((m) => m.loginSteps),
-  'Cómo cargar saldo': () => import('@/components/landing/tutorials/WalletTutorial').then((m) => m.walletSteps),
-  'Cómo retirar saldo': () => import('@/components/landing/tutorials/WithdrawTutorial').then((m) => m.withdrawSteps),
-  'Cómo transferir saldo': () => import('@/components/landing/tutorials/TransferTutorial').then((m) => m.transferSteps),
-  'Cómo jugar tu primera partida': () => import('@/components/landing/tutorials/FirstGameTutorial').then((m) => m.firstGameSteps),
-  'Funciones del menú de mesa': () => import('@/components/landing/tutorials/GameMenuTutorial').then((m) => m.gameMenuSteps),
-  'Amigos': () => import('@/components/landing/tutorials/FriendsTutorial').then((m) => m.friendsSteps),
-} as const
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -52,18 +42,6 @@ const SERVICES = [
   { icon: Coffee, label: 'Bebidas sin alcohol', desc: 'Café, jugos y refrescos para tu partida.' },
   { icon: Wine, label: 'Bebidas con alcohol', desc: 'Cervezas, licores y cocteles disponibles.' },
   { icon: Grid2x2, label: 'Mesas de parqués', desc: 'Juegos de mesa y parqués para pasar el rato.' },
-]
-
-const TUTORIALS = [
-  { title: 'Cómo instalar la app', desc: 'Agrega Mesa Primera a tu celular como app.' },
-  { title: 'Cómo registrarte', desc: 'Crea tu cuenta en menos de 2 minutos.' },
-  { title: 'Cómo iniciar sesión', desc: 'Entra con tu teléfono, PIN o huella.' },
-  { title: 'Cómo cargar saldo', desc: 'Deposita fondos vía Nequi y juega.' },
-  { title: 'Cómo retirar saldo', desc: 'Retira tus ganancias a tu cuenta bancaria.' },
-  { title: 'Cómo transferir saldo', desc: 'Envía fichas a otros jugadores.' },
-  { title: 'Cómo jugar tu primera partida', desc: 'Únete a una mesa y empieza a jugar.' },
-  { title: 'Funciones del menú de mesa', desc: 'Audio, reglas, admin, transferir y salir.' },
-  { title: 'Amigos', desc: 'Agrega, elimina, invita y chatea con amigos.' },
 ]
 
 const FAQ_ITEMS = [
@@ -137,8 +115,8 @@ function TutorialCarousel({
   tutorials,
   onSelect,
 }: {
-  tutorials: { title: string; desc: string; preview?: string }[]
-  onSelect: (title: string) => void
+  tutorials: typeof TUTORIAL_CATALOG
+  onSelect: (key: TutorialKey) => void
 }) {
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(1)
@@ -147,11 +125,15 @@ function TutorialCarousel({
   const total = tutorials.length
 
   useEffect(() => {
-    const updateVisible = () => setVisible(window.innerWidth >= 640 ? 2 : 1)
+    const updateVisible = () => {
+      const nextVisible = window.innerWidth >= 640 ? 2 : 1
+      setVisible(nextVisible)
+      setIndex((current) => Math.min(current, Math.max(0, total - nextVisible)))
+    }
     updateVisible()
     window.addEventListener('resize', updateVisible)
     return () => window.removeEventListener('resize', updateVisible)
-  }, [])
+  }, [total])
 
   const go = useCallback(
     (dir: 'next' | 'prev') => {
@@ -187,16 +169,17 @@ function TutorialCarousel({
       const gap = 24
       trackRef.current.style.transform = `translateX(-${index * (cardW + gap)}px)`
     }
-  }, [index])
+  }, [index, visible])
 
   return (
     <div className="relative flex flex-col items-center">
       <div className="relative w-full flex items-center">
         {/* Left arrow */}
         <button
+          type="button"
           onClick={() => go('prev')}
           disabled={index === 0}
-          className="hidden sm:flex shrink-0 mr-2 p-2 rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-10"
+          className="hidden sm:flex shrink-0 mr-2 p-2 rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
           aria-label="Anterior"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -214,17 +197,18 @@ function TutorialCarousel({
             style={{ width: 'max-content', touchAction: 'pan-y' }}
           >
             {tutorials.map((t) => (
-              <div
-                key={t.title}
-                id={t.title === 'Cómo instalar la app' ? 'instalar-app' : undefined}
-                onClick={() => onSelect(t.title)}
+              <button
+                type="button"
+                key={t.key}
+                id={t.key === 'install' ? 'instalar-app' : undefined}
+                onClick={() => onSelect(t.key)}
+                aria-label={`Abrir tutorial: ${t.title}`}
                 data-testid="tutorial-card"
-                className="group bg-white/3 border border-white/8 rounded-2xl p-5 flex flex-col hover:border-brand-gold/20 transition-all duration-500 text-left cursor-pointer w-[280px] sm:w-[340px] shrink-0 select-none"
+                className="group bg-white/3 border border-white/8 rounded-2xl p-5 flex flex-col hover:border-brand-gold/20 transition-[border-color,background-color,box-shadow] duration-500 text-left cursor-pointer w-[280px] sm:w-[340px] shrink-0 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a180e]"
               >
                 <div className="w-full aspect-[16/10] rounded-xl border border-white/5 group-hover:border-brand-gold/10 transition-all overflow-hidden relative mb-4">
-                  {/* Preview gradient background */}
-                  <div className={`absolute inset-0 ${getTutorialPreviewGradient(t.title)}`} />
-                  <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-transparent" />
+                  <div className={`absolute inset-0 ${getTutorialPreviewGradient(t.preview.tone)}`} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-transparent" aria-hidden="true" />
 
                   {/* Mini phone mockup with tutorial preview */}
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -236,12 +220,15 @@ function TutorialCarousel({
                           <div className="w-6 h-1.5 bg-white/10 rounded-full" />
                         </div>
                         {/* Content */}
-                        <div className="flex-1 p-1 flex flex-col gap-0.5">
-                          {getTutorialPreviewContent(t.title).map((item, idx) => (
-                            <div key={idx} className={`w-full h-full rounded ${item} flex items-center justify-center`}>
-                              <div className="w-3 h-3 rounded-sm bg-white/10" />
-                            </div>
-                          ))}
+                        <div className="flex-1 p-2 flex flex-col justify-between">
+                          <div>
+                            <p className="text-[6px] font-bold uppercase tracking-[0.12em] text-brand-gold/80 truncate">{t.preview.eyebrow}</p>
+                            <div className="mt-2 h-1.5 w-4/5 rounded-full bg-white/20" />
+                            <div className="mt-1 h-1 w-3/5 rounded-full bg-white/10" />
+                          </div>
+                          <div className="rounded-md border border-brand-gold/30 bg-brand-gold/15 px-1.5 py-1 text-center text-[6px] font-bold text-brand-gold truncate">
+                            {t.preview.action}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -249,28 +236,29 @@ function TutorialCarousel({
 
                   {/* Play button overlay */}
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/5 transition-colors duration-500 flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-brand-gold/20 backdrop-blur-sm border border-brand-gold/40 flex items-center justify-center group-hover:bg-brand-gold/40 group-hover:border-brand-gold/60 group-hover:scale-110 transition-all duration-500 shadow-lg">
+                    <div className="w-12 h-12 rounded-full bg-brand-gold/20 backdrop-blur-sm border border-brand-gold/40 flex items-center justify-center group-hover:bg-brand-gold/40 group-hover:border-brand-gold/60 group-hover:scale-110 transition-[background-color,border-color,transform] duration-500 shadow-lg">
                       <Play className="w-5 h-5 text-brand-gold group-hover:text-slate-950 ml-0.5" />
                     </div>
                   </div>
 
                   {/* Step count badge */}
                   <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded-full border border-white/10">
-                    <span className="text-[10px] font-bold text-white/70">{getTutorialStepCount(t.title)} pasos</span>
+                    <span className="text-[10px] font-bold text-white/70">{t.stepCount} pasos</span>
                   </div>
                 </div>
                 <h3 className="text-lg font-bold mb-1">{t.title}</h3>
-                <p className="text-text-secondary text-sm leading-relaxed">{t.desc}</p>
-              </div>
+                <p className="text-text-secondary text-sm leading-relaxed">{t.description}</p>
+              </button>
             ))}
           </div>
         </div>
 
         {/* Right arrow */}
         <button
+          type="button"
           onClick={() => go('next')}
           disabled={index >= total - visible}
-          className="hidden sm:flex shrink-0 ml-2 p-2 rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-10"
+          className="hidden sm:flex shrink-0 ml-2 p-2 rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-brand-gold hover:border-brand-gold/30 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
           aria-label="Siguiente"
         >
           <ChevronRight className="w-5 h-5" />
@@ -280,9 +268,9 @@ function TutorialCarousel({
       {/* Progress bar */}
       <div className="w-full max-w-xs mx-auto mt-6">
         <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-          <div
-            className="h-full bg-brand-gold rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${((index + visible) / total) * 100}%` }}
+            <div
+              className="h-full bg-brand-gold rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${Math.min(100, ((index + visible) / total) * 100)}%` }}
           />
         </div>
         <p className="text-center text-xs text-text-secondary/60 mt-2 tracking-wide">
@@ -293,49 +281,15 @@ function TutorialCarousel({
   )
 }
 
-function getTutorialPreviewGradient(title: string): string {
-  const gradients: Record<string, string> = {
-    'Cómo instalar la app': 'bg-gradient-to-br from-blue-900/60 via-slate-800/80 to-slate-900/60',
-    'Cómo registrarte': 'bg-gradient-to-br from-emerald-900/60 via-slate-800/80 to-slate-900/60',
-    'Cómo iniciar sesión': 'bg-gradient-to-br from-violet-900/60 via-slate-800/80 to-slate-900/60',
-    'Cómo cargar saldo': 'bg-gradient-to-br from-amber-900/60 via-slate-800/80 to-slate-900/60',
-    'Cómo retirar saldo': 'bg-gradient-to-br from-red-900/60 via-slate-800/80 to-slate-900/60',
-    'Cómo transferir saldo': 'bg-gradient-to-br from-cyan-900/60 via-slate-800/80 to-slate-900/60',
-    'Cómo jugar tu primera partida': 'bg-gradient-to-br from-green-900/60 via-slate-800/80 to-slate-900/60',
-    'Funciones del menú de mesa': 'bg-gradient-to-br from-yellow-900/60 via-slate-800/80 to-slate-900/60',
-    'Amigos': 'bg-gradient-to-br from-pink-900/60 via-slate-800/80 to-slate-900/60',
+function getTutorialPreviewGradient(tone: TutorialPreviewTone): string {
+  const gradients: Record<TutorialPreviewTone, string> = {
+    system: 'bg-gradient-to-br from-zinc-800/80 via-slate-900/80 to-[#0a2a1f]',
+    auth: 'bg-gradient-to-br from-[#16213e] via-slate-900/80 to-[#0a2a1f]',
+    wallet: 'bg-gradient-to-br from-[#35180f]/80 via-[#16213e] to-[#0a2a1f]',
+    game: 'bg-gradient-to-br from-[#0a2a1f] via-[#1b4d3e] to-[#120806]',
+    social: 'bg-gradient-to-br from-[#16213e] via-[#1a1a2e] to-[#0a2a1f]',
   }
-  return gradients[title] || 'bg-gradient-to-br from-slate-800/60 via-slate-800/80 to-slate-900/60'
-}
-
-function getTutorialPreviewContent(title: string): string[] {
-  const contents: Record<string, string[]> = {
-    'Cómo instalar la app': ['bg-blue-500/20', 'bg-blue-500/30', 'bg-blue-500/20'],
-    'Cómo registrarte': ['bg-emerald-500/20', 'bg-emerald-500/30', 'bg-emerald-500/20'],
-    'Cómo iniciar sesión': ['bg-violet-500/20', 'bg-violet-500/30', 'bg-violet-500/20'],
-    'Cómo cargar saldo': ['bg-amber-500/20', 'bg-amber-500/30', 'bg-amber-500/20'],
-    'Cómo retirar saldo': ['bg-red-500/20', 'bg-red-500/30', 'bg-red-500/20'],
-    'Cómo transferir saldo': ['bg-cyan-500/20', 'bg-cyan-500/30', 'bg-cyan-500/20'],
-    'Cómo jugar tu primera partida': ['bg-green-500/20', 'bg-green-500/30', 'bg-green-500/20'],
-    'Funciones del menú de mesa': ['bg-yellow-500/20', 'bg-yellow-500/30', 'bg-yellow-500/20'],
-    'Amigos': ['bg-pink-500/20', 'bg-pink-500/30', 'bg-pink-500/20'],
-  }
-  return contents[title] || ['bg-slate-500/20', 'bg-slate-500/30', 'bg-slate-500/20']
-}
-
-function getTutorialStepCount(title: string): number {
-  const counts: Record<string, number> = {
-    'Cómo instalar la app': 4,
-    'Cómo registrarte': 4,
-    'Cómo iniciar sesión': 3,
-    'Cómo cargar saldo': 4,
-    'Cómo retirar saldo': 3,
-    'Cómo transferir saldo': 3,
-    'Cómo jugar tu primera partida': 4,
-    'Funciones del menú de mesa': 4,
-    'Amigos': 4,
-  }
-  return counts[title] || 3
+  return gradients[tone]
 }
 
 function SuitMark({
@@ -514,8 +468,13 @@ export function LandingContent() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [carouselPaused, setCarouselPaused] = useState(false)
   const [photoTouchStart, setPhotoTouchStart] = useState<number | null>(null)
-  const [activeTutorial, setActiveTutorial] = useState<string | null>(null)
-  const [tutorialSteps, setTutorialSteps] = useState<{ label: string; screen: React.ReactNode; landscape?: boolean }[] | null>(null)
+  const [activeTutorial, setActiveTutorial] = useState<TutorialKey | null>(null)
+  const [tutorialSteps, setTutorialSteps] = useState<TutorialStep[] | null>(null)
+  const [tutorialLoading, setTutorialLoading] = useState(false)
+  const [tutorialError, setTutorialError] = useState(false)
+  const tutorialRequestRef = useRef(0)
+  const tutorialFocusRef = useRef<HTMLElement | null>(null)
+  const tutorialDialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const html = document.documentElement
@@ -532,13 +491,59 @@ export function LandingContent() {
     }
   }, [])
 
-  const handleTutorialSelect = useCallback((title: string) => {
-    setActiveTutorial(title)
-    const loader = TUTORIAL_IMPORTS[title as keyof typeof TUTORIAL_IMPORTS]
-    if (loader) {
-      loader().then((steps) => setTutorialSteps(steps))
-    }
+  const closeTutorial = useCallback(() => {
+    tutorialRequestRef.current += 1
+    setActiveTutorial(null)
+    setTutorialSteps(null)
+    setTutorialLoading(false)
+    setTutorialError(false)
+
+    queueMicrotask(() => tutorialFocusRef.current?.focus())
   }, [])
+
+  const handleTutorialSelect = useCallback((key: TutorialKey) => {
+    const requestId = tutorialRequestRef.current + 1
+    tutorialRequestRef.current = requestId
+    tutorialFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setActiveTutorial(key)
+    setTutorialSteps(null)
+    setTutorialError(false)
+    setTutorialLoading(true)
+
+    getTutorialDefinition(key).loader()
+      .then((steps) => {
+        if (tutorialRequestRef.current === requestId) setTutorialSteps(steps)
+      })
+      .catch(() => {
+        if (tutorialRequestRef.current === requestId) setTutorialError(true)
+      })
+      .finally(() => {
+        if (tutorialRequestRef.current === requestId) setTutorialLoading(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    if (!activeTutorial) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeTutorial()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [activeTutorial, closeTutorial])
+
+  useEffect(() => {
+    if (!activeTutorial) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    tutorialDialogRef.current?.focus()
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [activeTutorial])
 
   /* ── Nav scroll spy ─────────────────────────────── */
   useEffect(() => {
@@ -883,7 +888,7 @@ export function LandingContent() {
 
       <main id="contenido-principal">
         {/* ── Animated Content ──────────────────────── */}
-        <div ref={containerRef} className="relative z-10">
+        <div ref={containerRef} className="relative">
         {/* ═══ Hero ════════════════════════════════ */}
         <section
           id="inicio"
@@ -1194,12 +1199,10 @@ export function LandingContent() {
               Antes de jugar, revisa nuestras{' '}
               <Link href="/rules" className="text-brand-gold hover:text-brand-gold-light underline underline-offset-4">
                 reglas oficiales
-              </Link>{' '}
-              y la{' '}
-              <Link href="/security-policy" className="text-brand-gold hover:text-brand-gold-light underline underline-offset-4">
-                política de seguridad
-              </Link>
-              .
+               </Link>. Si detectas un problema, consulta también la{' '}
+               <Link href="/security-policy" className="text-brand-gold hover:text-brand-gold-light underline underline-offset-4">
+                 política de divulgación responsable
+               </Link>.
             </p>
           </div>
         </section>
@@ -1229,33 +1232,75 @@ export function LandingContent() {
             </p>
 
             {/* ── Tutorial Modal Overlay ─────────────────────────── */}
-            {activeTutorial && tutorialSteps && (
+            {activeTutorial && (
               <div
-                className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 py-8 overflow-y-auto"
+                ref={tutorialDialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="tutorial-dialog-title"
+                tabIndex={-1}
+                className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-start md:items-center justify-center p-4 py-8 overflow-y-auto overscroll-contain"
+                aria-busy={tutorialLoading}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Tab') return
+
+                  const focusable = Array.from(
+                    event.currentTarget.querySelectorAll<HTMLElement>(
+                      'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+                    ),
+                  )
+                  if (focusable.length === 0) return
+
+                  const first = focusable[0]
+                  const last = focusable[focusable.length - 1]
+                  if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault()
+                    last.focus()
+                  } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault()
+                    first.focus()
+                  }
+                }}
                 onClick={(e) => {
                   if (e.target === e.currentTarget) {
-                    setActiveTutorial(null)
-                    setTutorialSteps(null)
+                    closeTutorial()
                   }
                 }}
               >
-                <div className="relative w-full max-w-3xl flex flex-col items-center">
-                  <TutorialWalkthrough
-                    key={activeTutorial}
-                    steps={tutorialSteps}
-                    className="w-full"
-                    onClose={() => {
-                      setActiveTutorial(null)
-                      setTutorialSteps(null)
-                    }}
-                  />
+                <div className="relative my-0 md:my-auto w-full max-w-3xl flex flex-col items-center">
+                  <h2 id="tutorial-dialog-title" className="sr-only">
+                    {getTutorialDefinition(activeTutorial).title}
+                  </h2>
+                  {tutorialLoading && (
+                    <div role="status" className="rounded-2xl border border-brand-gold/20 bg-[#16213e] px-6 py-5 text-center text-text-secondary">
+                      Cargando tutorial…
+                    </div>
+                  )}
+                  {tutorialError && (
+                    <div role="alertdialog" aria-modal="true" aria-label="No se pudo cargar el tutorial" className="rounded-2xl border border-red-400/30 bg-[#16213e] px-6 py-5 text-center text-text-secondary">
+                      <p>No se pudo cargar este tutorial.</p>
+                      <button type="button" onClick={closeTutorial} className="mt-4 rounded-lg bg-brand-gold px-4 py-2 font-semibold text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light">
+                        Volver a tutoriales
+                      </button>
+                    </div>
+                  )}
+                  {tutorialSteps && !tutorialError && (
+                    <TutorialWalkthrough
+                      key={activeTutorial}
+                      steps={tutorialSteps}
+                      className="w-full"
+                      dialog={false}
+                      video={getTutorialDefinition(activeTutorial).video}
+                      onClose={closeTutorial}
+                    />
+                  )}
                 </div>
               </div>
             )}
 
             {/* ── Tutorial Cards Carousel ─────────────────────────── */}
             <TutorialCarousel
-              tutorials={TUTORIALS}
+              tutorials={TUTORIAL_CATALOG}
               onSelect={handleTutorialSelect}
             />
           </div>
