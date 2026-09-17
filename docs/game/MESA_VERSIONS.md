@@ -9,6 +9,36 @@ Este archivo se actualiza con cada fix o mejora del motor de juego. El versionad
 
 ---
 
+## v4.0.0 — 2026-09-15 — Reglamento y liquidación canónicos
+
+### Reglas fundamentales cerradas para una mesa de apuestas
+
+**Tipo**: MAJOR.
+
+**Reglas**:
+- La comparación usa una única función: `SEGUNDA > CHIVO > PRIMERA > NINGUNA` y puntos dentro del mismo tipo.
+- La Mano activa recibe `+1` solo para el desempate; el empate residual divide el pozo correspondiente.
+- El pique sin reclamantes se incorpora al pozo principal.
+- La carta del fondo es informativa y no altera el resultado.
+- La reconexión no consentida queda fijada en 60 segundos.
+
+**Motor y economía**:
+- `resolveHandWinners()` y `splitAmount()` centralizan ganadores y residuos.
+- Los side pots se dividen de forma independiente.
+- `award_pot` acredita el bruto, registra el rake una sola vez y conserva el premio neto para el jugador.
+- `process_ledger_entry` devuelve la operación existente ante un reintento idéntico y rechaza una referencia con payload distinto.
+- `JUEGO_VALIDACION` entrega sus opciones de forma privada y dispone de controles visibles en la mesa.
+- Los descartes y montos de apuesta se validan en el servidor.
+
+**Archivos clave**:
+- `apps/web/src/lib/official-rulebook.ts`
+- `apps/game-server/src/rooms/combinations.ts`
+- `apps/game-server/src/rooms/phases/ShowdownPhase.ts`
+- `apps/game-server/src/rooms/commands/PlayerActionCommand.ts`
+- `supabase/migrations/20260915000000_idempotent_pot_settlement.sql`
+
+---
+
 ## v1.0.0 — 2026-04-27
 
 ### Reestructuración arquitectónica del motor: state machine extraída + cleanup de tipos

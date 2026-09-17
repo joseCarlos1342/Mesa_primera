@@ -74,13 +74,13 @@ describe('SupabaseService — Extended Coverage', () => {
         playersPresent: [{ odisplayName: 'Ana' }],
       })).resolves.toEqual({ success: true, balance_after: 125000 });
 
-      expect(mockRpc).toHaveBeenCalledWith('award_pot', {
+      expect(mockRpc).toHaveBeenCalledWith('award_pot', expect.objectContaining({
         p_winner_id: 'winner-1',
         p_payout: 95000,
         p_rake: 5000,
         p_game_id: 'game-1',
         p_table_id: 'table-1',
-        p_pot_details: {
+        p_pot_details: expect.objectContaining({
           payout: 95000,
           rake: 5000,
           total: 100000,
@@ -89,8 +89,9 @@ describe('SupabaseService — Extended Coverage', () => {
           table_name: 'Mesa Principal',
           players_present: [{ odisplayName: 'Ana' }],
           commission_pct: 0.05,
-        },
-      });
+          operation_id: expect.any(String),
+        }),
+      }));
     });
 
     it('awardPot returns a structured failure for logical RPC errors', async () => {
@@ -118,7 +119,7 @@ describe('SupabaseService — Extended Coverage', () => {
         p_type: 'bet',
         p_direction: 'debit',
         p_game_id: 'game-1',
-        p_table_id: null,
+        p_table_id: 'table-ignored',
         p_description: 'Apuesta en mesa (GUERRA)',
         p_reference_id: 'bet-game-1-1700000000000',
         p_metadata: { room_id: 'room-1', table_name: 'Mesa Principal', phase: 'GUERRA' },
@@ -684,7 +685,7 @@ describe('SupabaseService — Extended Coverage', () => {
         p_type: 'refund',
         p_direction: 'credit',
         p_game_id: 'game-1',
-        p_reference_id: 'refund-game-1-1700000000000',
+         p_reference_id: 'refund-game-1-user-1-room_disposed',
         p_metadata: { room_id: 'room-1', table_name: 'Mesa Principal', reason: 'room_disposed' },
       }));
       (Date.now as any).mockRestore();

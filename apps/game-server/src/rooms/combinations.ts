@@ -12,6 +12,11 @@ export interface HandEvaluation {
   points: number;
 }
 
+export interface EvaluatablePlayer {
+  id: string;
+  cards: string;
+}
+
 // Valores fijos para la mesa de Primera (Ronda y Punto)
 export const CARD_POINTS: Record<number, number> = {
   1: 16,
@@ -106,4 +111,60 @@ export function compareHands(evalA: HandEvaluation, evalB: HandEvaluation): numb
 
   // Si son del mismo tipo, desempata por puntos sumados
   return evalA.points - evalB.points;
+}
+
+/**
+ * Aplica la ventaja reglamentaria de La Mano únicamente al desempate.
+ * La combinación y sus puntos base permanecen intactos para el replay.
+ */
+export function evaluateHandWithManoBonus(cards: string, isMano: boolean): HandEvaluation {
+  const evaluation = evaluateHand(cards);
+  return isMano ? { ...evaluation, points: evaluation.points + 1 } : evaluation;
+}
+
+/**
+ * Devuelve todos los ganadores cuando el desempate todavía no es suficiente.
+ * El orden de entrada se conserva para repartir residuos de forma determinista.
+ */
+export function resolveHandWinners(
+  players: ReadonlyArray<EvaluatablePlayer>,
+  manoId: string,
+): string[] {
+  if (players.length === 0) return [];
+
+  const evaluated = players.map((player) => ({
+    player,
+    hand: evaluateHandWithManoBonus(player.cards, player.id === manoId),
+  }));
+
+  let bestHand = evaluated[0].hand;
+  for (const candidate of evaluated.slice(1)) {
+    if (compareHands(candidate.hand, bestHand) > 0) bestHand = candidate.hand;
+  }
+
+  return evaluated
+    .filter((candidate) => compareHands(candidate.hand, bestHand) === 0)
+    .map((candidate) => candidate.player.id);
+}
+
+/**
+ * Divide un importe entero entre ganadores. El residuo se entrega, en orden,
+ * a los primeros asientos elegibles para que el resultado sea reproducible.
+ */
+export function splitAmount(
+  amount: number,
+  playerIds: ReadonlyArray<string>,
+): { playerId: string; amount: number }[] {
+  if (amount < 0 || !Number.isInteger(amount)) {
+    throw new Error('El importe a dividir debe ser un entero no negativo');
+  }
+  if (playerIds.length === 0) return [];
+
+  const baseAmount = Math.floor(amount / playerIds.length);
+  const remainder = amount % playerIds.length;
+
+  return playerIds.map((playerId, index) => ({
+    playerId,
+    amount: baseAmount + (index < remainder ? 1 : 0),
+  }));
 }

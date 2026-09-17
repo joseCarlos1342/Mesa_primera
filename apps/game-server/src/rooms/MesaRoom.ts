@@ -5,7 +5,7 @@ import { AlertService } from "../services/AlertService";
 import { createRedisSubscriber } from "../services/redis";
 import type Redis from "ioredis";
 import * as crypto from "crypto";
-import { evaluateHand, compareHands, HandEvaluation } from "./combinations";
+import { evaluateHand, compareHands, resolveHandWinners, splitAmount } from "./combinations";
 import { createDeck as createDeckPure, shuffleDeck as shuffleDeckPure } from "./core/DeckManager";
 import { calculateSidePots as calculateSidePotsPure } from "./core/PotManager";
 import { handleAdminKick, handleAdminMute, handleAdminUnmute, handleAdminBan, handleDeleteRoom } from "./commands/AdminCommand";
@@ -132,6 +132,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
   public deck: string[] = [];
   /** Mapa de clientes conectados para el envío de mensajes privados. */
   public clientMap = new Map<string, Client>();
+  /** Cola única de acciones async para evitar carreras dentro de una sala. */
+  public actionQueue: Promise<void> = Promise.resolve();
   /** Espectadores admin (no reciben cartas, solo observan estado público). */
   public spectators = new Map<string, Client>();
   /** Identidad Supabase de cada espectador admin activo, indexada por sesión. */
@@ -899,6 +901,8 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Genera el seed de encriptación aleatorio y reparte el mazo.
    */
   public startNewGame() {
+    if (this.recoveryLocked) return;
+
     this.stopCountdown();
     this.clearTurnTimer();
 
@@ -1149,7 +1153,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         const soloPlayer = seatedConnected[0];
         soloPlayer.chips += this.state.pot;
         if (soloPlayer.supabaseUserId) {
-          SupabaseService.awardPot(soloPlayer.supabaseUserId, this.state.pot, 0, this.currentGameId).catch(console.error);
+          SupabaseService.awardPot(soloPlayer.supabaseUserId, this.state.pot, 0, this.currentGameId, undefined, {
+            operationId: `refund-pique-restart-pot-${this.currentGameId}-${soloPlayer.id}`,
+          }).catch(console.error);
         }
         this.state.lastAction = `${soloPlayer.nickname} recupera el pozo por falta de jugadores.`;
       }
@@ -1160,7 +1166,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         if (voyP) {
           voyP.chips += this.state.piquePot;
           if (voyP.supabaseUserId) {
-            SupabaseService.awardPot(voyP.supabaseUserId, this.state.piquePot, 0, this.currentGameId).catch(console.error);
+            SupabaseService.awardPot(voyP.supabaseUserId, this.state.piquePot, 0, this.currentGameId, undefined, {
+              operationId: `refund-pique-restart-pique-${this.currentGameId}-${voyP.id}`,
+            }).catch(console.error);
           }
         }
       }
@@ -1197,7 +1205,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (this.state.piquePot > 0 && voyPlayer) {
       voyPlayer.chips += this.state.piquePot;
       if (voyPlayer.supabaseUserId) {
-        SupabaseService.awardPot(voyPlayer.supabaseUserId, this.state.piquePot, 0, this.currentGameId).catch(console.error);
+        SupabaseService.awardPot(voyPlayer.supabaseUserId, this.state.piquePot, 0, this.currentGameId, undefined, {
+          operationId: `refund-pique-${this.currentGameId}-${voyPlayer.id}`,
+        }).catch(console.error);
       }
       this.state.lastAction = `${voyPlayer.nickname} recupera su apuesta del Pique ($${(this.state.piquePot / 100).toLocaleString()})`;
     }
@@ -1323,7 +1333,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.lastAction = `¡${winner.nickname} gana el Pique! (+$${piquePayout})`;
 
     if (winner.supabaseUserId) {
-      SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
+      SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId, undefined, {
+        operationId: `pique-${this.currentGameId}-${winnerId}`,
+      }).catch(console.error);
     }
     this.recordEvent({ event: 'pique_won', winner: winnerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
     this.state.piquePot = 0;
@@ -1353,7 +1365,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    */
   public afterPiqueResolution() {
     const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
-      .filter(p => !p.isFolded && p.connected);
+      .filter(p => !p.isFolded && (p.connected || p.isAllIn));
 
     console.log(`[MesaRoom] Jugadores restantes para pot principal: ${remaining.length}`);
 
@@ -1584,15 +1596,6 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.startPhaseDescarte();
   }
 
-  private compareHandsForPique(playerId: string, hand: HandEvaluation): HandEvaluation {
-    const manoId = this.apuesta4OriginalManoId || this.state.dealerId || this.state.activeManoId;
-    if (playerId !== manoId) {
-      return hand;
-    }
-
-    return { ...hand, points: hand.points + 1 };
-  }
-
   private startApuesta4PiqueShowdown(
     contestantIds: string[],
     winnerIds: string[],
@@ -1696,12 +1699,20 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       p.hasActed = false;
     }
 
-    // Broadcast a todos
-    this.broadcast("juego-validation-start", {
-      playersWithJuego: playersWithJuego.map(p => p.id),
+    // El estado de la mano es privado: no revelar públicamente quién tiene juego.
+    this.broadcast("juego-validation-open", {
       minPique: this.state.minPique,
       timeLimit: 30,
     });
+    for (const p of activePlayers) {
+      const playerWithJuego = playersWithJuego.find((candidate) => candidate.id === p.id);
+      this.clientMap.get(p.id)?.send("juego-validation-start", {
+        hasJuego: Boolean(playerWithJuego),
+        handType: playerWithJuego ? evaluateHand(p.cards).type : "NINGUNA",
+        minPique: this.state.minPique,
+        timeLimit: 30,
+      });
+    }
 
     // Timeout: si no responden en 30s, auto-pass para todos
     this.juegoValidationTimer = this.clock.setTimeout(() => {
@@ -1751,7 +1762,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
 
     // ── CASO: Todos pasaron ──
-    // Flujo normal: Mano gana pique por defecto → DESCARTE
+    // Flujo normal: sin reclamantes, el pique se integra al pozo principal.
     this.resolvePiqueAfterApuesta4();
     this.startPhaseDescarte();
   }
@@ -1770,27 +1781,12 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     callers: { playerId: string; amount: number }[],
     _activePlayers: Player[]
   ) {
-    // 1. Determinar claimant ganador por jerarquía
-    let winnerId = claimants[0];
-    if (claimants.length > 1) {
-      const typeRank: Record<string, number> = { 'SEGUNDA': 3, 'CHIVO': 2, 'PRIMERA': 1 };
-      const manoSeatIdx = this.seatOrder.indexOf(this.state.activeManoId);
-      let bestRank = 0;
-      let bestDist = Infinity;
-
-      for (const cid of claimants) {
-        const p = this.state.players.get(cid);
-        if (!p) continue;
-        const h = evaluateHand(p.cards);
-        const rank = typeRank[h.type] || 0;
-        const dist = ((this.seatOrder.indexOf(cid) - manoSeatIdx) + this.seatOrder.length) % this.seatOrder.length;
-        if (rank > bestRank || (rank === bestRank && dist < bestDist)) {
-          winnerId = cid;
-          bestRank = rank;
-          bestDist = dist;
-        }
-      }
-    }
+    // 1. Determinar todos los ganadores con la regla única de comparación.
+    // El bono se aplica antes de decidir si el pique debe dividirse.
+    const claimantPlayers = claimants
+      .map((id) => this.state.players.get(id))
+      .filter((player): player is Player => Boolean(player));
+    const winnerIds = resolveHandWinners(claimantPlayers, this.state.activeManoId);
 
     // 2. Todos los claimants: folded, revelar cartas
     for (const cid of claimants) {
@@ -1817,11 +1813,11 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (callers.length === 0) {
       const remaining = Array.from(this.state.players.values() as IterableIterator<Player>)
         .filter(p => !p.isFolded && p.connected);
-      this.startApuesta4PiqueShowdown(claimants, [winnerId], remaining.length <= 1 ? "CLEANUP" : "DESCARTE");
+      this.startApuesta4PiqueShowdown(claimants, winnerIds, remaining.length <= 1 ? "CLEANUP" : "DESCARTE");
       return;
     }
 
-    this.startApuesta4PiqueShowdown(claimants, [winnerId], "REOPEN_BETTING", callers);
+    this.startApuesta4PiqueShowdown(claimants, winnerIds, "REOPEN_BETTING", callers);
     return;
 
     // 5. Sin callers: verificar cuántos quedan
@@ -1855,7 +1851,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Si el caller tiene juego → gana el pique implícitamente.
    * Devuelve el exceso de apuesta sobre minPique SIN rake.
    */
-  private resolveCallersOnly(
+  private async resolveCallersOnly(
     callers: { playerId: string; amount: number }[],
     _activePlayers: Player[],
     _playersWithJuego: Player[]
@@ -1863,6 +1859,16 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     const mainCaller = callers[0];
     const callerPlayer = this.state.players.get(mainCaller.playerId);
     if (!callerPlayer) {
+      this.resolvePiqueAfterApuesta4();
+      this.startPhaseDescarte();
+      return;
+    }
+
+    // Toda respuesta Igualar se registra antes de tocar la memoria de la sala.
+    // Esto evita que la validación de juego cree fichas que no existen en ledger.
+    const appliedCallers = await this.collectValidationCallerContributions(callers);
+    const actualMainBet = appliedCallers.get(mainCaller.playerId) ?? 0;
+    if (actualMainBet <= 0) {
       this.resolvePiqueAfterApuesta4();
       this.startPhaseDescarte();
       return;
@@ -1885,20 +1891,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }
 
     // Devolver exceso sobre minPique SIN rake
-    const excessBet = Math.max(0, mainCaller.amount - this.state.minPique);
-
-    // Aplicar la apuesta del caller (deducir de chips, agregar al pot)
-    const actualBet = Math.min(mainCaller.amount, callerPlayer.chips);
-    callerPlayer.chips -= actualBet;
-    callerPlayer.roundBet += actualBet;
-    callerPlayer.totalMainBet += actualBet;
-    this.state.pot += actualBet;
-    callerPlayer.hasActed = true;
-
-    if (callerPlayer.roundBet > this.state.currentMaxBet) {
-      this.state.currentMaxBet = callerPlayer.roundBet;
-      this.state.highestBetPlayerId = callerPlayer.id;
-    }
+    const excessBet = Math.max(0, actualMainBet - this.state.minPique);
 
     // Devolver exceso al caller SIN rake
     if (excessBet > 0) {
@@ -1931,30 +1924,58 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Aplica las apuestas de los callers y reabre la ronda de apuestas.
    * Los jugadores que no igualaron deberán actuar (igualar, subir o pasar).
    */
-  private applyCallersAndReopenBetting(callers: { playerId: string; amount: number }[]) {
+  private async applyCallersAndReopenBetting(callers: { playerId: string; amount: number }[]) {
     this.state.phase = "APUESTA_4_CARTAS";
-
-    for (const c of callers) {
-      const p = this.state.players.get(c.playerId);
-      if (!p || p.chips <= 0) continue;
-
-      const actualBet = Math.min(c.amount, p.chips);
-      p.chips -= actualBet;
-      p.roundBet += actualBet;
-      p.totalMainBet += actualBet;
-      this.state.pot += actualBet;
-      p.hasActed = true;
-
-      if (p.roundBet > this.state.currentMaxBet) {
-        this.state.currentMaxBet = p.roundBet;
-        this.state.highestBetPlayerId = p.id;
-      }
-    }
+    await this.collectValidationCallerContributions(callers);
 
     // Reabrir ronda: los que no han actuado o no igualaron deben hacerlo
     // Empezar desde La Mano para mantener orden correcto
     this.state.turnPlayerId = this.state.activeManoId;
     this.advanceTurnBetting(this.state.activeManoId, () => this.resolveAndStartDescarte());
+  }
+
+  private async collectValidationCallerContributions(
+    callers: { playerId: string; amount: number }[],
+  ): Promise<Map<string, number>> {
+    const applied = new Map<string, number>();
+    for (const caller of callers) {
+      const player = this.state.players.get(caller.playerId);
+      if (!player || player.chips <= 0) continue;
+
+      const actualBet = Math.min(caller.amount, player.chips);
+      if (actualBet <= 0) continue;
+
+      if (player.supabaseUserId) {
+        const result = await SupabaseService.recordBet(
+          player.supabaseUserId,
+          actualBet,
+          this.currentGameId,
+          undefined,
+          {
+            roomId: this.roomId,
+            tableName: this.metadata?.tableName,
+            phase: 'JUEGO_VALIDACION',
+            operationId: `validation-call-${this.currentGameId}-${player.id}`,
+          },
+        );
+        if (!result.success) {
+          this.clientMap.get(player.id)?.send('error', { message: 'No se pudo registrar tu apuesta. Intenta de nuevo.' });
+          continue;
+        }
+      }
+
+      player.chips -= actualBet;
+      player.roundBet += actualBet;
+      player.totalMainBet += actualBet;
+      this.state.pot += actualBet;
+      player.hasActed = true;
+      if (player.roundBet > this.state.currentMaxBet) {
+        this.state.currentMaxBet = player.roundBet;
+        this.state.highestBetPlayerId = player.id;
+      }
+      applied.set(player.id, actualBet);
+    }
+    return applied;
   }
 
   /** Resuelve la competencia de pique entre jugadores que pasaron con juego en APUESTA_4_CARTAS. */
@@ -1979,28 +2000,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       return;
     }
 
-    const evaluations = contestants.map((contestant) => {
-      const hand = evaluateHand(contestant.cards);
-      return {
-        contestant,
-        comparedHand: this.compareHandsForPique(contestant.id, hand),
-      };
-    });
-
-    let best = evaluations[0].comparedHand;
-    let winnerIds = [evaluations[0].contestant.id];
-
-    for (let i = 1; i < evaluations.length; i++) {
-      const current = evaluations[i];
-      const result = compareHands(current.comparedHand, best);
-
-      if (result > 0) {
-        best = current.comparedHand;
-        winnerIds = [current.contestant.id];
-      } else if (result === 0) {
-        winnerIds.push(current.contestant.id);
-      }
-    }
+    const winnerIds = resolveHandWinners(contestants, this.state.activeManoId);
 
     for (const contestant of contestants) {
       contestant.revealedCards = contestant.cards;
@@ -2024,7 +2024,9 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     this.state.lastAction = `¡${winner.nickname} gana el Pique! (+$${(piquePayout / 100).toLocaleString()})`;
 
     if (winner.supabaseUserId) {
-      SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
+      SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId, undefined, {
+        operationId: `pique-apuesta4-${this.currentGameId}-${winnerId}`,
+      }).catch(console.error);
     }
     this.recordEvent({ event: 'pique_won_apuesta4', winner: winnerId, piquePot: this.state.piquePot, payout: piquePayout, rake: piqueRake, time: Date.now(), rng_state: this.getRngState() });
     this.state.piquePot = 0;
@@ -2034,25 +2036,33 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     if (winnerIds.length === 0 || this.state.piquePot <= 0) return;
 
     const totalPique = this.state.piquePot;
-    const shareBase = Math.floor(totalPique / winnerIds.length);
-    let remainder = totalPique % winnerIds.length;
+    const orderedWinnerIds = [...winnerIds].sort((left, right) => {
+      const leftSeat = this.seatOrder.indexOf(left);
+      const rightSeat = this.seatOrder.indexOf(right);
+      return (leftSeat === -1 ? Number.MAX_SAFE_INTEGER : leftSeat)
+        - (rightSeat === -1 ? Number.MAX_SAFE_INTEGER : rightSeat);
+    });
+    const totalRake = Math.ceil(totalPique * 0.05 / 100) * 100;
+    const payoutShares = splitAmount(totalPique - totalRake, orderedWinnerIds);
+    const rakeShares = splitAmount(totalRake, orderedWinnerIds);
     let paidOut = 0;
     const winnerNicknames: string[] = [];
 
-    for (const winnerId of winnerIds) {
+    for (let index = 0; index < orderedWinnerIds.length; index++) {
+      const winnerId = orderedWinnerIds[index];
       const winner = this.state.players.get(winnerId);
       if (!winner) continue;
 
-      const grossShare = shareBase + (remainder > 0 ? 1 : 0);
-      remainder = Math.max(0, remainder - 1);
-      const piqueRake = Math.min(grossShare, Math.ceil(grossShare * 0.05 / 100) * 100);
-      const piquePayout = grossShare - piqueRake;
+      const piquePayout = payoutShares[index]?.amount ?? 0;
+      const piqueRake = rakeShares[index]?.amount ?? 0;
       winner.chips += piquePayout;
       paidOut += piquePayout;
       winnerNicknames.push(winner.nickname);
 
       if (winner.supabaseUserId) {
-        SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId).catch(console.error);
+        SupabaseService.awardPot(winner.supabaseUserId, piquePayout, piqueRake, this.currentGameId, undefined, {
+          operationId: `pique-split-${this.currentGameId}-${winnerId}`,
+        }).catch(console.error);
       }
 
       this.recordEvent({
@@ -2061,7 +2071,7 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
         piquePot: totalPique,
         payout: piquePayout,
         rake: piqueRake,
-        winners: winnerIds,
+        winners: orderedWinnerIds,
         time: Date.now(),
         rng_state: this.getRngState(),
       });
@@ -2352,8 +2362,15 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
    * Ordena por totalMainBet ascendente y crea pots proporcionales.
    */
   public calculateSidePots(activePlayers: Player[]): { amount: number; eligiblePlayerIds: string[] }[] {
-    // Delegado a core/PotManager (refactor Fase 1.2). Comportamiento idéntico.
-    const sidePots = calculateSidePotsPure(activePlayers);
+    // Los folds siguen financiando el pozo, pero ya no pueden ganarlo.
+    const contributors = Array.from(this.state.players.values() as IterableIterator<Player>)
+      .filter((player) => player.totalMainBet > 0)
+      .map((player) => ({
+        id: player.id,
+        totalMainBet: player.totalMainBet,
+        eligible: activePlayers.some((activePlayer) => activePlayer.id === player.id),
+      }));
+    const sidePots = calculateSidePotsPure(contributors);
     const allocatedPot = sidePots.reduce((sum, sidePot) => sum + sidePot.amount, 0);
     const unallocatedPot = this.state.pot - allocatedPot;
 
@@ -2417,15 +2434,21 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
       winnerPayouts.set(overallWinnerId, existing);
     }
 
+    const settlementGameId = this.currentGameId;
     for (const [wId, { payout, rake }] of winnerPayouts) {
       const w = this.state.players.get(wId);
       if (w?.supabaseUserId) {
         SupabaseService.awardPot(w.supabaseUserId, payout, rake, this.currentGameId, undefined, {
           roomId: this.roomId,
           tableName: (this as any).metadata?.tableName || 'Mesa VIP',
+          operationId: `showdown-${this.currentGameId}-${wId}`,
           playersPresent: playersSnapshot.map(p => ({ odisplayName: p.nickname }))
         }).then(result => {
           if (!result.success) {
+            if (this.currentGameId === settlementGameId) {
+              const currentWinner = this.state.players.get(wId);
+              if (currentWinner) currentWinner.chips = Math.max(0, currentWinner.chips - payout);
+            }
             AlertService.settlementFailed(w.nickname, w.supabaseUserId, this.currentGameId, result.error || 'unknown', this.roomId);
           }
         }).catch(console.error);
@@ -2581,12 +2604,17 @@ export class MesaRoom extends Room<{ state: GameState, metadata: MesaMetadata }>
     }));
 
     if (winner.supabaseUserId) {
+      const settlementGameId = this.currentGameId;
       SupabaseService.awardPot(winner.supabaseUserId, payout, rake, this.currentGameId, undefined, {
         roomId: this.roomId,
         tableName: (this as any).metadata?.tableName || 'Mesa VIP',
+        operationId: `showdown-single-${this.currentGameId}-${winner.id}`,
         playersPresent: playersSnapshot.map(p => ({ odisplayName: p.nickname }))
       }).then(result => {
         if (!result.success) {
+          if (this.currentGameId === settlementGameId) {
+            winner.chips = Math.max(0, winner.chips - payout);
+          }
           AlertService.settlementFailed(winner.nickname, winner.supabaseUserId, this.currentGameId, result.error || 'unknown', this.roomId);
         }
       }).catch(console.error);

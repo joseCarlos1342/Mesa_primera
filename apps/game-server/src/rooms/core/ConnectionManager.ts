@@ -113,7 +113,15 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
 
   const requestedNickname = normalizeNickname(options.nickname, `Jugador_${client.sessionId}`);
   const avatarUrl = normalizeAvatarUrl(options.avatarUrl);
-  const chips = normalizeJoinChips(options.chips ?? 0);
+  const requestedChips = normalizeJoinChips(options.chips ?? 0);
+  let chips = requestedChips;
+  if (process.env.NODE_ENV !== 'test' && !process.env.VITEST && options.userId) {
+    const verifiedBalance = await SupabaseService.getWalletBalance(options.userId);
+    if (verifiedBalance === null) {
+      throw new Error('No se pudo verificar el saldo de la cuenta');
+    }
+    chips = verifiedBalance;
+  }
   const deviceId = options.deviceId;
 
   // ── Sanction enforcement: block players with active game/full/permanent sanctions ──
@@ -366,8 +374,8 @@ export async function handleConnectionLeave(room: MesaRoom, client: Client, code
   console.log(`[MesaRoom] dealerId preservado en ${r.state.dealerId} durante grace period para ${player.nickname}.`);
 
   try {
-    console.log(`[MesaRoom] Otorgando 120s de reconexión para ${player.nickname}...`);
-    await r.allowReconnection(client, 120);
+    console.log(`[MesaRoom] Otorgando 60s de reconexión para ${player.nickname}...`);
+    await r.allowReconnection(client, 60);
 
     player.connected = true;
     r.clientMap.set(client.sessionId, client);

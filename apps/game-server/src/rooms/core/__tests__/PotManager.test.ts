@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateSidePots, type SidePotPlayer } from '../PotManager';
 
 const p = (id: string, totalMainBet: number): SidePotPlayer => ({ id, totalMainBet });
+const folded = (id: string, totalMainBet: number): SidePotPlayer => ({ id, totalMainBet, eligible: false });
 
 describe('PotManager — calculateSidePots', () => {
   it('apuestas iguales producen un único pot con todos los elegibles', () => {
@@ -17,6 +18,12 @@ describe('PotManager — calculateSidePots', () => {
     expect(pots).toEqual([
       { amount: 150, eligiblePlayerIds: ['a', 'b', 'c'] },
       { amount: 100, eligiblePlayerIds: ['b', 'c'] },
+    ]);
+  });
+
+  it('incluye contribuciones de jugadores retirados pero no los hace elegibles', () => {
+    expect(calculateSidePots([folded('folded', 100), p('active', 100)])).toEqual([
+      { amount: 200, eligiblePlayerIds: ['active'] },
     ]);
   });
 

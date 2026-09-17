@@ -428,4 +428,26 @@ describe('ActionControls', () => {
       expect(onPasoJuegoResolved).toHaveBeenCalled();
     });
   });
+
+  describe('JUEGO_VALIDACION', () => {
+    it('shows the three server actions and sends the selected validation response', () => {
+      render(
+        <ActionControls
+          room={mockRoom}
+          phase="JUEGO_VALIDACION"
+          isMyTurn={true}
+          juegoValidation={{ hasJuego: true, handType: 'PRIMERA', minPique: 500000 }}
+          onJuegoValidationResolved={jest.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /pasar/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /igualar/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /llevo juego/i })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /llevo juego/i }));
+
+      expect(mockRoom.send).toHaveBeenCalledWith('juego-validation-response', { action: 'claim-juego' });
+    });
+  });
 });

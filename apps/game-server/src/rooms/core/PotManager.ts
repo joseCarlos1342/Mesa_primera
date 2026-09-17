@@ -16,6 +16,8 @@
 export interface SidePotPlayer {
   id: string;
   totalMainBet: number;
+  /** false para contribuyentes retirados: pagan el pozo, pero no lo ganan. */
+  eligible?: boolean;
 }
 
 export interface SidePot {
@@ -36,8 +38,9 @@ export function calculateSidePots(activePlayers: ReadonlyArray<SidePotPlayer>): 
   const levels = [...new Set(sorted.map((p) => p.totalMainBet))];
 
   for (const level of levels) {
-    const eligible = sorted.filter((p) => p.totalMainBet >= level);
-    const potAmount = (level - prevLevel) * eligible.length;
+    const contributors = sorted.filter((p) => p.totalMainBet >= level);
+    const eligible = contributors.filter((p) => p.eligible !== false);
+    const potAmount = (level - prevLevel) * contributors.length;
     if (potAmount > 0) {
       sidePots.push({
         amount: potAmount,

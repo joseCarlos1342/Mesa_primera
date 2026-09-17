@@ -21,6 +21,8 @@ describe('RulesModal', () => {
 
     expect(screen.getByText(/reglamento de primera/i)).toBeInTheDocument()
     expect(screen.getByText(/jerarquía de manos/i)).toBeInTheDocument()
+    expect(screen.getByText(/60 segundos/i)).toBeInTheDocument()
+    expect(screen.getByText(/carta del fondo/i)).toBeInTheDocument()
 
     const backdrop = Array.from(container.querySelectorAll('div')).find((element) =>
       element.className.includes('bg-black/80 backdrop-blur-sm')

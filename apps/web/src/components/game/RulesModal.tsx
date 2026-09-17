@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, BookOpen, AlertTriangle, ShieldCheck, Trophy } from 'lucide-react'
+import { OFFICIAL_RULEBOOK_VERSION } from '@/lib/official-rulebook'
 
 interface RulesModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export function RulesModal({ isOpen, onClose }: RulesModalProps) {
               {/* Introduction */}
               <section>
                 <p className="text-lg leading-relaxed">
-                  <strong className="text-[#f3edd7]">Primera</strong> es un juego de apuestas con baraja española donde el objetivo es lograr la mejor combinación de 4 cartas. El juego se divide en 5 fases de apuestas.
+                  <strong className="text-[#f3edd7]">Primera</strong> es un juego de apuestas con baraja española. El objetivo es formar la mejor combinación de 4 cartas y ganar los pozos correspondientes. Reglamento {OFFICIAL_RULEBOOK_VERSION}.
                 </p>
               </section>
 
@@ -57,12 +58,12 @@ export function RulesModal({ isOpen, onClose }: RulesModalProps) {
                   <ShieldCheck className="w-5 h-5" />
                   Las Fases del Juego
                 </h3>
-                <ul className="space-y-3 list-decimal list-inside pl-2">
-                  <li><strong className="text-[#f3edd7]">Pique Inicial (2 cartas):</strong> Se reparten 2 cartas. El jugador &quot;Mano&quot; apuesta primero. Puedes <em>Voy</em> o <em>Paso</em>.</li>
-                  <li><strong className="text-[#f3edd7]">Completar (2 cartas extra):</strong> Quienes hayan dicho &quot;Voy&quot;, reciben 2 cartas más (total 4).</li>
-                  <li><strong className="text-[#f3edd7]">Descarte (&quot;La Bajada&quot;):</strong> Arrojas cartas que no te sirvan y robas nuevas del mazo para mejorar tu mano.</li>
-                  <li><strong className="text-[#f3edd7]">El Farol (Guerra):</strong> Última ronda de apuestas fuertes con las 4 cartas definitivas.</li>
-                  <li><strong className="text-[#f3edd7]">Showdown:</strong> Todos muestran sus cartas. Gana la mejor jerarquía.</li>
+                  <ul className="space-y-3 list-decimal list-inside pl-2">
+                   <li><strong className="text-[#f3edd7]">Pique:</strong> Dos cartas, La Mano abre y se disputa un pozo separado.</li>
+                   <li><strong className="text-[#f3edd7]">Completar y apostar:</strong> Se reciben dos cartas más y se apuesta al pozo principal.</li>
+                   <li><strong className="text-[#f3edd7]">Validar y descartar:</strong> Se confirma el juego, se descartan cartas y se reciben reposiciones.</li>
+                   <li><strong className="text-[#f3edd7]">Guerra y Cánticos:</strong> Rondas adicionales con las cuatro cartas definitivas.</li>
+                   <li><strong className="text-[#f3edd7]">Declarar y Showdown:</strong> Se comparan manos, pozos y posibles pozos secundarios.</li>
                 </ul>
               </section>
 
@@ -79,7 +80,7 @@ export function RulesModal({ isOpen, onClose }: RulesModalProps) {
                   </div>
                   <div className="p-4 bg-[#1b4d3e]/30 border border-[#c0a060]/10 rounded-xl">
                     <h4 className="font-bold text-[#f3edd7] text-lg">2. Chivo 🐐</h4>
-                    <p className="text-sm mt-1">Tener en mano un <strong className="text-[#f3edd7]">As, un 6 y un 7</strong> del mismo palo (o cualquier palo acordado). Gana automáticamente contra Primera.</p>
+                    <p className="text-sm mt-1">Tener en mano un <strong className="text-[#f3edd7]">As, un 6 y un 7</strong> del mismo palo, más una cuarta carta. Gana contra Primera.</p>
                   </div>
                   <div className="p-4 bg-[#1b4d3e]/30 border border-[#c0a060]/10 rounded-xl">
                     <h4 className="font-bold text-[#f3edd7] text-lg">3. Primera ⭐</h4>
@@ -87,7 +88,7 @@ export function RulesModal({ isOpen, onClose }: RulesModalProps) {
                   </div>
                   <div className="p-4 bg-[#1b4d3e]/30 border border-[#c0a060]/10 rounded-xl">
                     <h4 className="font-bold text-[#f3edd7] text-lg">4. Mayor Puntaje (Puntos) 🔢</h4>
-                    <p className="text-sm mt-1">Si nadie tiene las manos anteriores (o hay empate), se suman los valores de las cartas. Cartas del mismo palo que se repitan en Primera anulan la mano.</p>
+                    <p className="text-sm mt-1">Si no existe una combinación superior, se toma la suma más alta de cartas del mismo palo. En Primera se suman las cuatro cartas, una por palo.</p>
                     <div className="mt-2 text-xs bg-black/20 p-3 rounded-lg border border-[#c0a060]/10 text-[#f3edd7]/50">
                       <strong className="text-[#c0a060]">Valores de las cartas:</strong>
                       <br/> 7 = 21 pts | 6 = 18 pts | As = 16 pts | 5 = 15 pts | 4 = 14 pts | 3 = 13 pts | 2 = 12 pts
@@ -98,13 +99,17 @@ export function RulesModal({ isOpen, onClose }: RulesModalProps) {
 
               {/* Warnings */}
               <section className="bg-[#c0a060]/10 border border-[#c0a060]/20 p-5 rounded-2xl">
-                <h3 className="text-lg font-bold text-[#c0a060] flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-[#c0a060] flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-5 h-5" />
                   Reglas de Desconexión
                 </h3>
                 <p className="text-sm text-[#f3edd7]/60">
-                  Si un jugador pierde la conexión a internet en medio de la partida, su mano se congela automáticamente. El jugador tiene exactamente <strong className="text-[#f3edd7]">5 minutos</strong> para regresar a la mesa usando el mismo enlace o reconectándose. Si no vuelve, el sistema abandonará su mano y perderá lo apostado.
+                  Si un jugador pierde la conexión a internet en medio de la partida, conserva su asiento y estado durante exactamente <strong className="text-[#f3edd7]">60 segundos</strong>. Si regresa dentro de ese plazo, recupera su mano y turno; después, el servidor libera el asiento y aplica la resolución de la fase.
                 </p>
+              </section>
+              <section className="bg-[#1b4d3e]/30 border border-[#c0a060]/20 p-5 rounded-2xl">
+                <h3 className="text-lg font-bold text-emerald-400 mb-2">Carta del fondo</h3>
+                <p className="text-sm text-[#f3edd7]/60">La carta revelada al terminar la reposición es informativa. No modifica puntaje, apuestas, jerarquía ni ganador.</p>
               </section>
             </div>
             

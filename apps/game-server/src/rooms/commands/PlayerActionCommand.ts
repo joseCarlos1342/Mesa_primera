@@ -11,9 +11,28 @@ import { SupabaseService } from "../../services/SupabaseService";
 
 type RoomCtx = MesaRoom;
 
+export function validateDroppedCards(hand: string, droppedCards: unknown): droppedCards is string[] {
+  if (droppedCards === undefined || droppedCards === null) return true;
+  if (!Array.isArray(droppedCards) || droppedCards.length > 4) return false;
+
+  const handCards = hand.split(',').filter(Boolean);
+  const uniqueDroppedCards = new Set(droppedCards);
+  return uniqueDroppedCards.size === droppedCards.length
+    && droppedCards.every((card): card is string => typeof card === 'string' && handCards.includes(card));
+}
+
+export function validateBetAmount(amount: unknown): amount is number {
+  return typeof amount === 'number' && Number.isFinite(amount) && Number.isInteger(amount) && amount > 0;
+}
+
 export async function handlePlayerAction(room: MesaRoom, client: Client, message: any): Promise<void> {
+  const operation = room.actionQueue.then(() => handlePlayerActionUnlocked(room, client, message));
+  room.actionQueue = operation.then(() => undefined, () => undefined);
+  await operation;
+}
+
+async function handlePlayerActionUnlocked(room: MesaRoom, client: Client, message: any): Promise<void> {
   const r: RoomCtx = room;
-  r.clearTurnTimer();
   if (r.state.turnPlayerId !== client.sessionId) return;
 
   const player = r.state.players.get(client.sessionId);
@@ -26,12 +45,18 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       console.log(`[MesaRoom] Acción inválida '${action}' de ${player.nickname} en fase PIQUE. Rechazada.`);
       return;
     }
+    if (message.amount !== undefined && !validateBetAmount(message.amount)) {
+      client.send('error', { message: 'El importe de la apuesta no es válido' });
+      return;
+    }
 
     // Guard contra doble procesamiento (race condition con async handler)
     if (player.hasActed) {
       console.warn(`[MesaRoom] ${player.nickname} ya actuó en esta ronda de PIQUE. Ignorando duplicado.`);
       return;
     }
+
+    r.clearTurnTimer();
 
     // Reiniciar contador de restarts cuando un jugador actúa
     r.piqueRestartCount = 0;
@@ -103,7 +128,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       if (r.piqueReopenActive) {
         r.piqueReopenPendingIds.delete(client.sessionId);
       }
-      const betAmount = message.amount || r.state.minPique;
+       const betAmount = message.amount ?? r.state.minPique;
       const actualBet = Math.min(betAmount, player.chips);
 
       // ── Privilegio de La Mano: fija el precio del pique ──
@@ -139,12 +164,18 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       } else {
         // Persist bet to DB before modifying RAM state
         if (player.supabaseUserId) {
-          const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, r.currentGameId, undefined, { roomId: r.roomId, tableName: r.metadata?.tableName, phase: 'PIQUE' });
+          const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, r.currentGameId, undefined, { roomId: r.roomId, tableName: r.metadata?.tableName, phase: 'PIQUE', operationId: `bet-${r.currentGameId}-${player.id}-PIQUE-${r.currentTimeline.length}` });
           if (result && !result.success && result.isBalanceError) {
             player.isFolded = true;
             r.state.lastAction = `${player.nickname} se bota (fondos insuficientes)`;
             if (player.id === r.state.activeManoId) r.transferMano();
             r.advanceTurnPhase2();
+            return;
+          }
+          if (result && !result.success) {
+            player.hasActed = false;
+            r.currentTimeline.pop();
+            client.send('error', { message: 'No se pudo registrar tu apuesta. Intenta de nuevo.' });
             return;
           }
         }
@@ -157,6 +188,12 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
     r.advanceTurnPhase2();
   } else if (r.state.phase === "DESCARTE") {
     const { action, droppedCards } = message;
+    if (action !== 'discard' && action !== 'paso') return;
+    if (action === 'discard' && !validateDroppedCards(player.cards, droppedCards)) {
+      client.send('error', { message: 'Las cartas descartadas no pertenecen a tu mano' });
+      return;
+    }
+    r.clearTurnTimer();
     player.hasActed = true;
     r.recordEvent({ event: 'action', phase: 'DESCARTE', player: client.sessionId, action, droppedCards, time: Date.now(), rng_state: r.getRngState() });
 
@@ -192,6 +229,12 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       console.log(`[MesaRoom] Acción inválida '${action}' de ${player.nickname} en fase ${phase}. Rechazada.`);
       return;
     }
+    if (action === 'voy' && !validateBetAmount(amount)) {
+      client.send('error', { message: 'El importe de la apuesta no es válido' });
+      return;
+    }
+
+    r.clearTurnTimer();
 
     r.recordEvent({ event: 'action', phase, player: client.sessionId, action, amount, time: Date.now(), rng_state: r.getRngState() });
 
@@ -259,7 +302,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       }
       // Persist to DB
       if (player.supabaseUserId) {
-        const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, r.currentGameId, undefined, { roomId: r.roomId, tableName: r.metadata?.tableName, phase });
+        const result = await SupabaseService.recordBet(player.supabaseUserId, actualBet, r.currentGameId, undefined, { roomId: r.roomId, tableName: r.metadata?.tableName, phase, operationId: `bet-${r.currentGameId}-${player.id}-${phase}-${r.currentTimeline.length}` });
         if (result && !result.success && result.isBalanceError) {
           player.isFolded = true;
           player.hasActed = true;
@@ -267,6 +310,11 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
           r.attemptManoRotation(client.sessionId, "Mano sin fondos en apuestas");
           if (player.id === r.state.activeManoId) r.transferMano();
           advanceNext();
+          return;
+        }
+        if (result && !result.success) {
+          r.currentTimeline.pop();
+          client.send('error', { message: 'No se pudo registrar tu apuesta. Intenta de nuevo.' });
           return;
         }
       }
@@ -293,7 +341,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       const actualCall = Math.min(callAmount, player.chips);
       // Persist to DB
       if (player.supabaseUserId) {
-        const result = await SupabaseService.recordBet(player.supabaseUserId, actualCall, r.currentGameId, undefined, { roomId: r.roomId, tableName: r.metadata?.tableName, phase });
+        const result = await SupabaseService.recordBet(player.supabaseUserId, actualCall, r.currentGameId, undefined, { roomId: r.roomId, tableName: r.metadata?.tableName, phase, operationId: `bet-${r.currentGameId}-${player.id}-${phase}-call-${r.currentTimeline.length}` });
         if (result && !result.success && result.isBalanceError) {
           player.isFolded = true;
           player.hasActed = true;
@@ -301,6 +349,11 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
           r.attemptManoRotation(client.sessionId, "Mano sin fondos al igualar");
           if (player.id === r.state.activeManoId) r.transferMano();
           advanceNext();
+          return;
+        }
+        if (result && !result.success) {
+          r.currentTimeline.pop();
+          client.send('error', { message: 'No se pudo registrar tu apuesta. Intenta de nuevo.' });
           return;
         }
       }
@@ -333,7 +386,7 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
       }
       // Persist to DB
       if (player.supabaseUserId) {
-        const result = await SupabaseService.recordBet(player.supabaseUserId, allInAmount, r.currentGameId, undefined, { roomId: r.roomId, tableName: r.metadata?.tableName, phase });
+        const result = await SupabaseService.recordBet(player.supabaseUserId, allInAmount, r.currentGameId, undefined, { roomId: r.roomId, tableName: r.metadata?.tableName, phase, operationId: `bet-${r.currentGameId}-${player.id}-${phase}-all-in-${r.currentTimeline.length}` });
         if (result && !result.success && result.isBalanceError) {
           player.isFolded = true;
           player.hasActed = true;
@@ -341,6 +394,11 @@ export async function handlePlayerAction(room: MesaRoom, client: Client, message
           r.attemptManoRotation(client.sessionId, "Mano sin fondos para resto");
           if (player.id === r.state.activeManoId) r.transferMano();
           advanceNext();
+          return;
+        }
+        if (result && !result.success) {
+          r.currentTimeline.pop();
+          client.send('error', { message: 'No se pudo registrar tu apuesta. Intenta de nuevo.' });
           return;
         }
       }

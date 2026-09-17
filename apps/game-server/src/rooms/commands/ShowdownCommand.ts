@@ -365,8 +365,8 @@ export function handleJuegoValidationResponse(room: MesaRoom, client: Client, me
 
   // Validar monto mínimo para "call"
   if (action === 'call') {
-    const betAmount = amount || r.state.minPique;
-    if (betAmount < r.state.minPique) return; // No puede apostar menos del mínimo
+    const betAmount = amount ?? r.state.minPique;
+    if (!Number.isSafeInteger(betAmount) || betAmount < r.state.minPique) return; // No puede apostar menos del mínimo
   }
 
   // Guardar respuesta

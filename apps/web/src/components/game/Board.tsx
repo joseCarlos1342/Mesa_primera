@@ -48,9 +48,13 @@ interface BoardProps {
   pasoJuegoChoice?: { hasJuego: boolean; handType: string } | null;
   /** Callback al resolver el prompt de paso-juego. */
   onPasoJuegoResolved?: () => void;
+  /** Decisión simultánea de JUEGO_VALIDACION para el jugador local. */
+  juegoValidation?: { hasJuego: boolean; handType: string; minPique: number } | null;
+  /** Limpia la decisión local después de enviarla al servidor. */
+  onJuegoValidationResolved?: () => void;
 }
 
-export function Board({ room, phase, pot, piquePot, players, myCards = "", minPique = 500_000, currentMaxBet = 0, disabledChips = [], validJuegoOption = null, piqueReopenActive = false, pasoJuegoChoice = null, onPasoJuegoResolved }: BoardProps) {
+export function Board({ room, phase, pot, piquePot, players, myCards = "", minPique = 500_000, currentMaxBet = 0, disabledChips = [], validJuegoOption = null, piqueReopenActive = false, pasoJuegoChoice = null, onPasoJuegoResolved, juegoValidation = null, onJuegoValidationResolved }: BoardProps) {
   useCardPreloader();
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [chipCounts, setChipCounts] = useState<Record<number, number>>({});
@@ -74,8 +78,11 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
 
   const myId = room?.sessionId ?? "";
   const currentPhase = room?.state?.phase ?? phase;
-  const isMyTurn = room ? room.state.turnPlayerId === myId : false;
   const me = players.find(p => p.id === myId);
+  const manoId = room?.state?.activeManoId || room?.state?.dealerId || '';
+  const isMyTurn = currentPhase === 'JUEGO_VALIDACION'
+    ? Boolean(me && !me.isFolded && me.connected)
+    : room ? room.state.turnPlayerId === myId : false;
   const getPlayerIndex = (id: string) => players.findIndex(p => p.id === id);
 
   const totalBet = Object.entries(chipCounts).reduce((sum, [denom, count]) => sum + Number(denom) * count, 0);
@@ -103,7 +110,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
 
   // Detect dealerId changes to trigger Mano transfer animation + announcement
   useEffect(() => {
-    const dealerId = room?.state?.dealerId || "";
+    const dealerId = manoId;
     const prevDealerId = prevDealerIdRef.current;
 
     if (dealerId && prevDealerId && dealerId !== prevDealerId && !hideMano) {
@@ -129,7 +136,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
     }
 
     prevDealerIdRef.current = dealerId;
-  }, [room?.state?.dealerId, players, hideMano, isRevealOverlayActive]);
+  }, [manoId, players, hideMano, isRevealOverlayActive]);
 
   // Flush pending mano transfer when the reveal overlay closes
   useEffect(() => {
@@ -273,7 +280,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
           player={p || { nickname: 'VACÍO', chips: null, connected: true }} 
           isActive={p && room.state.turnPlayerId === p.id} 
           isMe={false} 
-          isDealer={!hideMano && p && room.state.dealerId === p.id}
+          isDealer={!hideMano && p && manoId === p.id}
           points={undefined} /* Opponents don't show points, only for self */
           turnOrder={p?.turnOrder}
           isWaiting={p?.isWaiting}
@@ -660,7 +667,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
               <div className="flex flex-col items-start shrink-0 pointer-events-auto z-[51]">
                 {/* CHIPS: Stacked above the HUD during betting phases */}
                 <AnimatePresence>
-                  {isMyTurn && (phase === 'PIQUE' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS') && (
+                  {isMyTurn && (phase === 'PIQUE' || phase === 'APUESTA_4_CARTAS' || phase === 'GUERRA' || phase === 'CANTICOS' || phase === 'GUERRA_JUEGO') && (
                     <m.div 
                       className="mb-2"
                       initial={{ scale: 0.9, opacity: 0, y: 10 }}
@@ -696,15 +703,15 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                       <div className="flex flex-col items-center">
                         <span className="text-[11px] font-bold uppercase leading-none tracking-[0.08em] text-[#fdf0a6]/80 md:text-xs">Puntos</span>
                         <span className="font-mono text-base font-black leading-none text-[#d4af37] drop-shadow-[0_0_7px_rgba(212,175,55,0.3)] md:text-xl">
-                          {evaluateHand(myCards).points + (room.state.dealerId === myId ? 1 : 0)}
+                          {evaluateHand(myCards).points + (manoId === myId ? 1 : 0)}
                         </span>
                       </div>
                     </div>
                   )}
 
                   <div className="ml-auto flex items-center gap-1.5 border-l border-[#d4af37]/25 pl-2">
-                    {!hideMano && room.state.dealerId === myId && <ManoIcon size="xs" className="ml-1" />}
-                    {!hideMano && room.state.dealerId !== myId && (me?.turnOrder ?? 0) > 1 && (
+                    {!hideMano && manoId === myId && <ManoIcon size="xs" className="ml-1" />}
+                    {!hideMano && manoId !== myId && (me?.turnOrder ?? 0) > 1 && (
                       <div className="rounded border border-[#d4af37]/50 bg-[#0d2e1b] px-1 py-0.5 text-[11px] font-bold tracking-tighter text-[#d4af37]">{me.turnOrder}ª</div>
                     )}
                     {me.isAllIn && !me.passedWithJuego && (
@@ -799,9 +806,11 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
                   passedWithJuego={me?.passedWithJuego ?? false}
                   validJuegoOption={validJuegoOption}
                   piqueReopenActive={piqueReopenActive}
-                  pasoJuegoChoice={pasoJuegoChoice}
-                  onPasoJuegoResolved={onPasoJuegoResolved}
-                />
+                   pasoJuegoChoice={pasoJuegoChoice}
+                   onPasoJuegoResolved={onPasoJuegoResolved}
+                   juegoValidation={juegoValidation}
+                   onJuegoValidationResolved={onJuegoValidationResolved}
+                 />
               </div>
             </div>
             )}
@@ -838,7 +847,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
               players={players}
               pot={phase === 'SHOWDOWN' ? pot : 0}
               piquePot={piquePot}
-              dealerId={room.state.dealerId}
+              dealerId={manoId}
               onDismiss={() => room.send('dismiss-showdown')}
             />
           </m.div>

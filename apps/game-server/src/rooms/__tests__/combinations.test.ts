@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateHand, compareHands, HandEvaluation } from '../combinations';
+import { evaluateHand, compareHands, HandEvaluation, resolveHandWinners, splitAmount } from '../combinations';
 
 describe('Combinations & Hand Evaluation', () => {
   it('identificats NINGUNA for empty or insufficient cards', () => {
@@ -105,6 +105,42 @@ describe('Combinations & Hand Evaluation', () => {
       const sorted = [hand1, hand2, hand3].sort((a, b) => compareHands(b, a));
       expect(sorted[0].points).toBeGreaterThanOrEqual(sorted[1].points);
       expect(sorted[1].points).toBeGreaterThanOrEqual(sorted[2].points);
+    });
+
+    it('returns both players when two non-Mano hands remain exactly tied', () => {
+      const players = [
+        { id: 'player-a', cards: '1-O,2-O,3-O,4-O' },
+        { id: 'player-b', cards: '1-C,2-C,3-C,4-C' },
+        { id: 'mano', cards: '1-E,6-E,7-E,2-B' },
+      ];
+
+      expect(resolveHandWinners(players, 'mano')).toEqual(['player-a', 'player-b']);
+    });
+
+    it('keeps a residual tie when La Mano reaches the rival after +1', () => {
+      const players = [
+        { id: 'mano', cards: '1-O,2-O,3-O,4-O' },
+        { id: 'player-b', cards: '1-C,2-C,3-C,5-C' },
+      ];
+
+      expect(resolveHandWinners(players, 'mano')).toEqual(['mano', 'player-b']);
+    });
+
+    it('uses the Mano bonus to break an otherwise equal hand', () => {
+      const players = [
+        { id: 'mano', cards: '1-O,2-C,3-E,4-B' },
+        { id: 'player-b', cards: '1-O,2-C,3-E,4-B' },
+      ];
+
+      expect(resolveHandWinners(players, 'mano')).toEqual(['mano']);
+    });
+
+    it('splits a pot evenly and assigns indivisible units deterministically', () => {
+      expect(splitAmount(100, ['player-a', 'player-b', 'player-c'])).toEqual([
+        { playerId: 'player-a', amount: 34 },
+        { playerId: 'player-b', amount: 33 },
+        { playerId: 'player-c', amount: 33 },
+      ]);
     });
   });
 });

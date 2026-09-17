@@ -54,6 +54,21 @@ describe('SupabaseService — Settlement & Error Handling', () => {
       }));
     });
 
+    it('passes a stable settlement operation id for safe retries', async () => {
+      mockRpc.mockResolvedValue({
+        data: { success: true, balance_after: 500000 },
+        error: null,
+      });
+
+      await SupabaseService.awardPot('user-1', 100000, 5000, 'game-123', undefined, {
+        operationId: 'game-123-main-user-1',
+      });
+
+      expect(mockRpc).toHaveBeenCalledWith('award_pot', expect.objectContaining({
+        p_pot_details: expect.objectContaining({ operation_id: 'game-123-main-user-1' }),
+      }));
+    });
+
     it('returns error info on RPC failure instead of swallowing', async () => {
       mockRpc.mockResolvedValue({
         data: null,
