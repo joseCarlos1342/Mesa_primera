@@ -1,11 +1,13 @@
 packages:
   - "apps/*"
+  - "apps/web/tutorial-videos"
   - "packages/*"
 
 blockExoticSubdeps: false
 
 allowBuilds:
   core-js-pure: false
+  ffmpeg-static: true
   msgpackr-extract: true
   sharp: true
   supabase: true

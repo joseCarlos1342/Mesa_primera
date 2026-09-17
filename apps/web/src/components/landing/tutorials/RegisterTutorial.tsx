@@ -138,19 +138,18 @@ function OTPVerifyScreen() {
       <p className="text-[7px] text-text-secondary mb-1">Código enviado a</p>
       <p className="text-[10px] text-brand-gold font-mono mb-3">+57 300 *** 4567</p>
 
-      <div className="flex gap-1.5 mb-3">
-        {['4', '7', '2', '8', '1', '9'].map((digit, i) => (
-          <div
-            key={i}
-            className={`w-8 h-10 rounded-xl flex items-center justify-center text-base font-bold font-mono ${
-              i === 5
-                ? 'bg-black/50 border-2 border-white/10 text-text-secondary'
-                : 'bg-brand-gold/10 border-2 border-brand-gold text-brand-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]'
-            }`}
-          >
-            {digit}
-          </div>
-        ))}
+      <div className="w-full max-w-[220px] mb-3">
+        <label htmlFor="tutorial-otp" className="text-[7px] font-black text-brand-gold/60 uppercase tracking-widest ml-1 mb-1 block">
+          Código de verificación
+        </label>
+        <input
+          id="tutorial-otp"
+          aria-label="Código de verificación"
+          inputMode="numeric"
+          value="472819"
+          readOnly
+          className="w-full h-11 rounded-xl border-2 border-brand-gold bg-brand-gold/10 px-3 text-center text-lg font-bold tracking-[0.35em] text-brand-gold shadow-[0_0_12px_rgba(212,175,55,0.15)] outline-none"
+        />
       </div>
 
       <div className="w-44 h-9 bg-gradient-to-b from-brand-gold-light via-brand-gold to-brand-gold-dark rounded-xl flex items-center justify-center text-black font-black uppercase tracking-widest text-[8px] border-b-4 border-brand-gold-dark shadow-[0_10px 20px_rgba(0,0,0,0.4)]">

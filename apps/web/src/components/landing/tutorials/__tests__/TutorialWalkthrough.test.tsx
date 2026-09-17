@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import gsap from 'gsap'
 
 import { TutorialWalkthrough } from '../TutorialWalkthrough'
 
@@ -62,6 +63,7 @@ describe('TutorialWalkthrough', () => {
   ]
 
   beforeEach(() => {
+    jest.clearAllMocks()
     completeTimelineImmediately = true
     pendingTimelineComplete = undefined
   })
@@ -75,14 +77,17 @@ describe('TutorialWalkthrough', () => {
     expect(screen.getByText(/total pasos: 2/i)).toBeInTheDocument()
   })
 
-  it('cambia al siguiente paso y muestra hint horizontal cuando aplica', () => {
+  it('cambia al siguiente paso y aclara que no hay que girar el teléfono', () => {
     render(<TutorialWalkthrough steps={steps} />)
 
     fireEvent.click(screen.getByRole('button', { name: /ir al paso 2/i }))
 
     expect(screen.getByText('Pantalla 2')).toBeInTheDocument()
     expect(screen.getByTestId('mock-phone-frame')).toHaveAttribute('data-landscape', 'true')
-    expect(screen.getByText(/pantalla horizontal durante el juego/i)).toBeInTheDocument()
+    expect(screen.getByText(/vista de mesa horizontal/i)).toBeInTheDocument()
+    expect(screen.getByText(/no necesitas girar el teléfono/i)).toBeInTheDocument()
+    expect(screen.queryByText(/gira el teléfono/i)).not.toBeInTheDocument()
+    expect(screen.getByTestId('landscape-preview')).toBeInTheDocument()
   })
 
   it('permite volver al paso anterior y bloquea cambios fuera de rango', () => {
@@ -120,5 +125,53 @@ describe('TutorialWalkthrough', () => {
     fireEvent.click(screen.getByRole('button', { name: /volver a tutoriales/i }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('expone el tutorial como diálogo accesible', () => {
+    render(<TutorialWalkthrough steps={steps} />)
+
+    expect(screen.getByRole('dialog', { name: /tutorial interactivo/i })).toBeInTheDocument()
+  })
+
+  it('cambia de paso inmediatamente cuando se prefiere movimiento reducido', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = jest.fn().mockReturnValue({ matches: true }) as typeof window.matchMedia
+
+    render(<TutorialWalkthrough steps={steps} />)
+    fireEvent.click(screen.getByRole('button', { name: /ir al paso 2/i }))
+
+    expect(screen.getByText('Pantalla 2')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: /tutorial interactivo/i })).toBeInTheDocument()
+    expect(gsap.timeline).not.toHaveBeenCalled()
+
+    window.matchMedia = originalMatchMedia
+  })
+
+  it('muestra un estado seguro cuando no hay pasos', () => {
+    render(<TutorialWalkthrough steps={[]} />)
+
+    expect(screen.getByRole('dialog', { name: /tutorial interactivo/i })).toBeInTheDocument()
+    expect(screen.getByText(/no tiene pasos disponibles/i)).toBeInTheDocument()
+  })
+
+  it('muestra el video opcional con poster y controles accesibles', () => {
+    const { container } = render(
+      <TutorialWalkthrough
+        steps={steps}
+        video={{
+          src: '/tutorials/register-tutorial.mp4',
+          poster: '/tutorials/register-tutorial-poster.png',
+          title: 'Guía animada para registrarte',
+          captions: '/tutorials/register-tutorial.vtt',
+        }}
+      />,
+    )
+
+    const video = container.querySelector('video')
+    expect(video).toHaveAttribute('aria-label', 'Guía animada para registrarte')
+    expect(video).toHaveAttribute('controls')
+    expect(video).toHaveAttribute('poster', '/tutorials/register-tutorial-poster.png')
+    expect(video?.querySelector('source')).toHaveAttribute('src', '/tutorials/register-tutorial.mp4')
+    expect(video?.querySelector('track')).toHaveAttribute('src', '/tutorials/register-tutorial.vtt')
   })
 })

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #061a14;
+        color: #f3edd7;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 76% 45%, rgba(69, 153, 108, 0.27), transparent 38%),
+          radial-gradient(circle at 18% 80%, rgba(226, 176, 68, 0.1), transparent 28%),
+          #061a14;
+      }
+
+      #root::before {
+        position: absolute;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='.18'/%3E%3C/svg%3E");
+        content: "";
+        opacity: 0.16;
+        pointer-events: none;
+      }
+
+      .clip { position: absolute; }
+
+      .eyebrow {
+        color: #e2b044;
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .step-card {
+        left: 112px;
+        top: 196px;
+        width: 610px;
+        min-height: 290px;
+        padding: 40px;
+        border: 1px solid rgba(226, 176, 68, 0.35);
+        border-radius: 28px;
+        background: rgba(10, 42, 31, 0.78);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+        animation: copy-in 520ms cubic-bezier(.2,.8,.2,1) both;
+      }
+
+      .step-card h1 {
+        margin-top: 18px;
+        color: #f3edd7;
+        font-family: Georgia, serif;
+        font-size: 64px;
+        font-style: italic;
+        line-height: 0.98;
+        letter-spacing: -0.025em;
+      }
+
+      .step-card p {
+        margin-top: 22px;
+        max-width: 510px;
+        color: #c4c1b8;
+        font-size: 28px;
+        line-height: 1.25;
+      }
+
+      .step-number {
+        display: inline-flex;
+        width: 48px;
+        height: 48px;
+        align-items: center;
+        justify-content: center;
+        margin-top: 24px;
+        border: 1px solid rgba(226, 176, 68, 0.6);
+        border-radius: 50%;
+        color: #061a14;
+        background: #e2b044;
+        font-size: 24px;
+        font-weight: 900;
+      }
+
+      .screen-shell {
+        position: absolute;
+        left: 806px;
+        top: 62px;
+        width: 1000px;
+        height: 956px;
+        padding: 12px;
+        border: 1px solid rgba(226, 176, 68, 0.55);
+        border-radius: 34px;
+        background: #120806;
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.06);
+      }
+
+      .screen {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        border-radius: 24px;
+        background: #0a2a1f;
+      }
+
+      .app-shot {
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center center;
+      }
+
+      .focus {
+        position: absolute;
+        border: 5px solid #e2b044;
+        border-radius: 18px;
+        background: rgba(226, 176, 68, 0.08);
+        box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.14), 0 0 35px rgba(226, 176, 68, 0.36);
+        animation: focus-in 520ms cubic-bezier(.2,.8,.2,1) both;
+      }
+
+      .focus::after {
+        position: absolute;
+        right: 18px;
+        top: -44px;
+        padding: 10px 16px;
+        border: 1px solid rgba(226, 176, 68, 0.62);
+        border-radius: 999px;
+        color: #061a14;
+        background: #f0d78c;
+        content: attr(data-label);
+        font-size: 20px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .focus-card { left: 258px; top: 100px; width: 470px; height: 760px; }
+      .focus-fields { left: 294px; top: 245px; width: 398px; height: 135px; }
+      .focus-phone { left: 294px; top: 382px; width: 398px; height: 108px; }
+      .focus-identity { left: 274px; top: 492px; width: 440px; height: 224px; }
+      .focus-submit { left: 292px; top: 754px; width: 405px; height: 84px; }
+
+      .progress {
+        position: absolute;
+        left: 112px;
+        bottom: 112px;
+        width: 610px;
+        height: 6px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(243, 237, 215, 0.14);
+      }
+
+      .progress-fill {
+        width: 100%;
+        height: 100%;
+        border-radius: inherit;
+        background: #e2b044;
+        transform-origin: left center;
+        animation: progress 14s linear both;
+      }
+
+      @keyframes copy-in {
+        from { opacity: 0; transform: translateY(24px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @keyframes focus-in {
+        from { opacity: 0; transform: scale(0.96); }
+        to { opacity: 1; transform: scale(1); }
+      }
+
+      @keyframes progress {
+        from { transform: scaleX(0); }
+        to { transform: scaleX(1); }
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-elu1" id="root" data-composition-id="register-tutorial" data-no-timeline="" data-start="0" data-duration="14" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-v0hw" id="step-1" class="clip step-card" data-start="0" data-duration="2.8" data-track-index="1">
+        <span data-hf-id="hf-oqcx" class="eyebrow">Registro real</span>
+        <h1 data-hf-id="hf-sfbd">Empieza por tus datos</h1>
+        <p data-hf-id="hf-5x2o">Completa tu nombre, apodo y celular en la pantalla oficial de registro.</p>
+        <span data-hf-id="hf-95ae" class="step-number">1</span>
+      </div>
+      <div data-hf-id="hf-e33f" id="step-2" class="clip step-card" data-start="2.8" data-duration="2.8" data-track-index="1">
+        <span data-hf-id="hf-vaof" class="eyebrow">Paso 2 de 5</span>
+        <h1 data-hf-id="hf-njv0">Escribe tu identidad</h1>
+        <p data-hf-id="hf-lapt">Usa un nombre y apodo reconocibles para que tus amigos te encuentren.</p>
+        <span data-hf-id="hf-9jlf" class="step-number">2</span>
+      </div>
+      <div data-hf-id="hf-qzlx" id="step-3" class="clip step-card" data-start="5.6" data-duration="2.8" data-track-index="1">
+        <span data-hf-id="hf-oodi" class="eyebrow">Paso 3 de 5</span>
+        <h1 data-hf-id="hf-wv5s">Valida tu celular</h1>
+        <p data-hf-id="hf-fmcw">El número debe tener 10 dígitos y comenzar por 3. Recibirás un código SMS.</p>
+        <span data-hf-id="hf-9xwg" class="step-number">3</span>
+      </div>
+      <div data-hf-id="hf-t6mx" id="step-4" class="clip step-card" data-start="8.4" data-duration="2.6" data-track-index="1">
+        <span data-hf-id="hf-uvdl" class="eyebrow">Paso 4 de 5</span>
+        <h1 data-hf-id="hf-8r6j">Elige tu identidad</h1>
+        <p data-hf-id="hf-agga">Selecciona el avatar que te representará en la mesa. Es obligatorio.</p>
+        <span data-hf-id="hf-75r9" class="step-number">4</span>
+      </div>
+      <div data-hf-id="hf-notp" id="step-5" class="clip step-card" data-start="11" data-duration="3" data-track-index="1">
+        <span data-hf-id="hf-8hf4" class="eyebrow">Paso 5 de 5</span>
+        <h1 data-hf-id="hf-5rdz">Reclama tu lugar</h1>
+        <p data-hf-id="hf-lyw2">Verifica el desafío de seguridad y pulsa el botón dorado para continuar.</p>
+        <span data-hf-id="hf-7k2a" class="step-number">5</span>
+      </div>
+
+      <div data-hf-id="hf-h29h" class="screen-shell" data-layout-allow-overlap="">
+        <div data-hf-id="hf-cdmk" class="screen">
+          <img data-hf-id="hf-mc2z" id="register-screen-start" class="clip app-shot" data-start="0" data-duration="11" data-track-index="0" src="register/screenshots/scroll-000.png" alt="Pantalla real de registro de Primera Riverada">
+          <img data-hf-id="hf-eer2" id="register-screen-submit" class="clip app-shot" data-start="11" data-duration="3" data-track-index="0" src="register/screenshots/scroll-100.png" alt="Pantalla real de registro con el botón para reclamar el lugar">
+          <div data-hf-id="hf-1dm2" id="focus-card" class="clip focus focus-card" data-start="0" data-duration="2.8" data-track-index="2" data-label="Registro oficial"></div>
+          <div data-hf-id="hf-nn15" id="focus-fields" class="clip focus focus-fields" data-start="2.8" data-duration="2.8" data-track-index="2" data-label="Nombre y apodo"></div>
+          <div data-hf-id="hf-d5bp" id="focus-phone" class="clip focus focus-phone" data-start="5.6" data-duration="2.8" data-track-index="2" data-label="Número de celular"></div>
+          <div data-hf-id="hf-gyqo" id="focus-identity" class="clip focus focus-identity" data-start="8.4" data-duration="2.6" data-track-index="2" data-label="Avatar de mesa"></div>
+          <div data-hf-id="hf-7g5j" id="focus-submit" class="clip focus focus-submit" data-start="11" data-duration="3" data-track-index="2" data-label="Reclamar mi lugar"></div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-6f38" class="progress" data-layout-ignore=""><div data-hf-id="hf-b9gd" class="progress-fill"></div></div>
+    </div>
+  </body>
+</html>

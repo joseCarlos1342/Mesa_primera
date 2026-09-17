@@ -64,11 +64,12 @@ jest.mock('next/dynamic', () => ({
       }
 
       if (source.includes('TutorialWalkthrough')) {
-        return function MockDynamicTutorialWalkthrough(props: { onClose?: () => void }) {
+        return function MockDynamicTutorialWalkthrough(props: { onClose?: () => void; video?: { src: string; poster: string; captions: string } }) {
           return (
             <div data-testid="tutorial-walkthrough-dynamic">
               <button type="button" onClick={props.onClose}>Cerrar tutorial</button>
-              Tutorial walkthrough
+              {props.video && <span data-testid="tutorial-video-prop">{props.video.src}|{props.video.poster}|{props.video.captions}</span>}
+              <div role="region">Tutorial walkthrough</div>
             </div>
           )
         }
@@ -331,7 +332,7 @@ describe('LandingContent', () => {
     expect(screen.getByRole('heading', { name: /cómo jugar/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /regístrate/i, level: 3 })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /reglas oficiales/i })).toHaveAttribute('href', '/rules')
-    expect(screen.getByRole('link', { name: /política de seguridad/i })).toHaveAttribute('href', '/security-policy')
+    expect(screen.getByRole('link', { name: /política de divulgación responsable/i })).toHaveAttribute('href', '/security-policy')
   })
 
   it('permite navegar el carrusel de fotos con flechas y dots', () => {
@@ -420,10 +421,50 @@ describe('LandingContent', () => {
     fireEvent.click(screen.getByText(/cómo instalar la app/i))
 
     expect(await screen.findByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: /cómo instalar la app/i })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /cerrar tutorial/i }))
 
     expect(screen.queryByTestId('tutorial-walkthrough-dynamic')).not.toBeInTheDocument()
+  })
+
+  it('pasa el video y captions del catálogo al tutorial de registro', async () => {
+    render(<LandingContent />)
+
+    fireEvent.click(screen.getByRole('button', { name: /abrir tutorial: cómo registrarte/i }))
+
+    expect(await screen.findByTestId('tutorial-video-prop')).toHaveTextContent(
+      '/tutorials/register-tutorial.mp4|/tutorials/register-tutorial-poster.png|/tutorials/register-tutorial.vtt',
+    )
+  })
+
+  it('muestra los conteos reales de pasos en las tarjetas', () => {
+    render(<LandingContent />)
+
+    expect(screen.getAllByText('5 pasos')).toHaveLength(3)
+    expect(screen.getAllByText('4 pasos')).toHaveLength(5)
+    expect(screen.getByText('2 pasos')).toBeInTheDocument()
+  })
+
+  it('permite abrir una tarjeta de tutorial como botón accesible', async () => {
+    render(<LandingContent />)
+
+    const card = screen.getByRole('button', { name: /abrir tutorial: cómo registrarte/i })
+    expect(card).toHaveAttribute('type', 'button')
+
+    fireEvent.click(card)
+    expect(await screen.findByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
+  })
+
+  it('cierra el tutorial con Escape', async () => {
+    render(<LandingContent />)
+
+    fireEvent.click(screen.getByText(/cómo instalar la app/i))
+    expect(await screen.findByRole('dialog', { name: /cómo instalar la app/i })).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog', { name: /cómo instalar la app/i })).not.toBeInTheDocument()
   })
 
   it('navega carrusel de tutoriales y cierra tutorial al tocar backdrop', async () => {
@@ -464,6 +505,23 @@ describe('LandingContent', () => {
 
     unmount()
     expect(removeResizeListenerMock).toHaveBeenCalledWith(expect.any(Function))
+  })
+
+  it('reajusta el índice del carrusel al pasar de móvil a desktop', () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 500 })
+    render(<LandingContent />)
+
+    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
+    const next = within(tutorialsSection).getByRole('button', { name: /siguiente/i })
+
+    for (let index = 0; index < 8; index += 1) fireEvent.click(next)
+    expect(within(tutorialsSection).getByText('9 / 9')).toBeInTheDocument()
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 })
+    act(() => resizeListener?.())
+
+    expect(within(tutorialsSection).getByText('4 / 5')).toBeInTheDocument()
+    expect((tutorialsSection.querySelector('.h-full.bg-brand-gold') as HTMLElement).style.width).toBe('100%')
   })
 
   it('mantiene abierto el tutorial al hacer click dentro del contenido del modal', async () => {

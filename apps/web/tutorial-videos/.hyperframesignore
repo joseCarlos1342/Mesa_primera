@@ -1,0 +1,11 @@
+# Capture analysis is not required by the composition
+/register/extracted/
+/register/assets/fonts/
+/register/meta.json
+/register/AGENTS.md
+/register/CLAUDE.md
+/register/.cursorrules
+
+# Only the viewport frames used by index.html are render inputs
+/register/screenshots/full-page.png
+/register/screenshots/contact-sheet.jpg

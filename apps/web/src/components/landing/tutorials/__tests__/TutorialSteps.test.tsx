@@ -121,6 +121,19 @@ describe('landing tutorial steps', () => {
     }
   })
 
+  it('representa el OTP como un único campo de seis dígitos', () => {
+    render(registerSteps[1].screen)
+
+    expect(screen.getByRole('textbox', { name: /código de verificación/i })).toBeInTheDocument()
+    expect(screen.queryAllByRole('textbox')).toHaveLength(1)
+  })
+
+  it('muestra el paquete seleccionado al pasar de la billetera al depósito', () => {
+    render(walletSteps[1].screen)
+
+    expect(screen.getByTestId('wallet-pack-selected')).toHaveTextContent('$100.000')
+  })
+
   it('MockPhoneFrame renderiza variantes portrait y landscape', () => {
     const { rerender, container } = render(
       <MockPhoneFrame>

@@ -12,16 +12,26 @@ export interface TutorialStep {
   landscape?: boolean
 }
 
+export interface TutorialVideoAsset {
+  src: string
+  poster: string
+  title: string
+  captions: string
+}
+
 interface TutorialWalkthroughProps {
   steps: TutorialStep[]
   className?: string
   onClose?: () => void
+  dialog?: boolean
+  video?: TutorialVideoAsset
 }
 
-export function TutorialWalkthrough({ steps, className = '', onClose }: TutorialWalkthroughProps) {
+export function TutorialWalkthrough({ steps, className = '', onClose, dialog = true, video }: TutorialWalkthroughProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const screenRef = useRef<HTMLDivElement>(null)
   const isAnimating = useRef(false)
+  const transitionTimelineRef = useRef<gsap.core.Timeline | null>(null)
 
   const isLandscape = steps[currentStep]?.landscape ?? false
 
@@ -29,6 +39,11 @@ export function TutorialWalkthrough({ steps, className = '', onClose }: Tutorial
     (nextStep: number, direction: 'next' | 'prev') => {
       if (isAnimating.current || !screenRef.current) return
       if (nextStep < 0 || nextStep >= steps.length) return
+
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        setCurrentStep(nextStep)
+        return
+      }
 
       isAnimating.current = true
       const isForward = direction === 'next'
@@ -38,6 +53,7 @@ export function TutorialWalkthrough({ steps, className = '', onClose }: Tutorial
           isAnimating.current = false
         },
       })
+      transitionTimelineRef.current = tl
 
       tl.to(screenRef.current, {
         opacity: 0,
@@ -76,7 +92,7 @@ export function TutorialWalkthrough({ steps, className = '', onClose }: Tutorial
   )
 
   useEffect(() => {
-    if (screenRef.current) {
+    if (screenRef.current && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       gsap.fromTo(
         screenRef.current,
         { opacity: 0, y: 20 },
@@ -85,21 +101,59 @@ export function TutorialWalkthrough({ steps, className = '', onClose }: Tutorial
     }
   }, [])
 
+  useEffect(() => () => {
+    const timeline = transitionTimelineRef.current
+    if (timeline && typeof timeline.kill === 'function') timeline.kill()
+    transitionTimelineRef.current = null
+  }, [])
+
+  if (steps.length === 0) {
+    return (
+      <div role={dialog ? 'dialog' : 'region'} aria-modal={dialog ? 'true' : undefined} aria-labelledby={dialog ? 'tutorial-walkthrough-title' : undefined} className={`flex flex-col items-center justify-center gap-4 ${className}`}>
+        {dialog && <h2 id="tutorial-walkthrough-title" className="sr-only">Tutorial interactivo</h2>}
+        <p className="text-center text-text-secondary">Este tutorial no tiene pasos disponibles.</p>
+        {onClose && (
+          <button type="button" onClick={onClose} className="rounded-lg bg-brand-gold px-5 py-2.5 font-semibold text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light">
+            Volver a tutoriales
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className={`flex flex-col items-center justify-center gap-4 md:gap-6 ${className}`}>
+      <div role={dialog ? 'dialog' : 'region'} aria-modal={dialog ? 'true' : undefined} aria-labelledby={dialog ? 'tutorial-walkthrough-title' : undefined} className={`flex flex-col items-center justify-center gap-4 md:gap-6 ${className}`}>
+        {dialog && <h2 id="tutorial-walkthrough-title" className="sr-only">Tutorial interactivo</h2>}
+        {video && (
+          <figure className="w-full max-w-2xl overflow-hidden rounded-2xl border border-brand-gold/20 bg-black/30 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+            <video
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              poster={video.poster}
+              aria-label={video.title}
+              className="block aspect-video w-full object-cover"
+            >
+              <source src={video.src} type="video/mp4" />
+              <track kind="captions" src={video.captions} srcLang="es" label="Español" default />
+            </video>
+            <figcaption className="px-4 py-3 text-center text-sm text-text-secondary">
+              Guía animada con la interfaz real. Usa los pasos de abajo para avanzar a tu ritmo.
+            </figcaption>
+          </figure>
+        )}
       {/* Orientation hint — mobile only */}
       {isLandscape && (
-        <div className="md:hidden flex items-center gap-2 text-brand-gold/70 text-sm">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-          </svg>
-          <span className="text-xs font-medium">Pantalla horizontal durante el juego</span>
+        <div role="note" className="md:hidden flex flex-col items-center gap-1 text-brand-gold/80 text-sm text-center">
+          <span className="text-xs font-bold uppercase tracking-[0.12em]">Vista de mesa horizontal</span>
+          <span className="text-xs text-text-secondary">No necesitas girar el teléfono</span>
         </div>
       )}
 
       {/* Phone frame — width controlled per orientation */}
       <div className="shrink-0 w-full flex justify-center">
-        <div className={isLandscape ? 'w-full max-w-[560px] md:max-w-[640px]' : 'w-full max-w-[260px] md:max-w-[280px]'}>
+        <div data-testid={isLandscape ? 'landscape-preview' : undefined} className={isLandscape ? 'w-full max-w-[560px] md:max-w-[640px]' : 'w-full max-w-[260px] md:max-w-[280px]'}>
           <MockPhoneFrame landscape={isLandscape}>
             <div
               ref={screenRef}
@@ -125,7 +179,8 @@ export function TutorialWalkthrough({ steps, className = '', onClose }: Tutorial
       {onClose && (
         <button
           onClick={onClose}
-          className="mt-2 flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-text-secondary hover:text-white text-sm font-semibold transition-all"
+          type="button"
+          className="mt-2 flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-text-secondary hover:text-white text-sm font-semibold transition-[background-color,border-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
         >
           <X className="w-4 h-4" />
           Volver a tutoriales

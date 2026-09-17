@@ -1,0 +1,18 @@
+# HyperFrames verification output
+/snapshots/
+/.thumbnails/
+/renders/
+
+# Capture metadata and extracted page source are useful locally, not as inputs
+/register/extracted/
+/register/AGENTS.md
+/register/CLAUDE.md
+/register/.cursorrules
+
+# Keep only the two frames used by the composition
+/register/screenshots/*
+!/register/screenshots/scroll-000.png
+!/register/screenshots/scroll-100.png
+
+# The capture includes font subsets for analysis; the composition uses system Georgia
+/register/assets/fonts/*
