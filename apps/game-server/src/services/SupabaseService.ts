@@ -105,6 +105,17 @@ async function getOrCreateTableId(tableName: string): Promise<string> {
 }
 
 export class SupabaseService {
+  static async getWalletBalance(userId: string): Promise<number | null> {
+    if (!supabaseKey) return null;
+    const { data, error } = await supabase
+      .from('wallets')
+      .select('balance_cents')
+      .eq('user_id', userId)
+      .single();
+    if (error || typeof data?.balance_cents !== 'number') return null;
+    return data.balance_cents;
+  }
+
   /** Verifica en Supabase Auth la identidad usada exclusivamente en recovery. */
   static async validateRecoveryIdentity(accessToken: unknown, userId: string): Promise<boolean> {
     if (!supabaseKey || typeof accessToken !== "string" || !userId) return false;
@@ -369,11 +380,12 @@ export class SupabaseService {
     rake: number,
     gameId?: string,
     tableId?: string,
-    meta?: { roomId?: string; tableName?: string; playersPresent?: { odisplayName: string; odisplayAvatar?: string }[] }
+    meta?: { roomId?: string; tableName?: string; operationId?: string; playersPresent?: { odisplayName: string; odisplayAvatar?: string }[] }
   ): Promise<{ success: boolean; balance_after?: number; error?: string }> {
     if (!supabaseKey) return { success: true };
     try {
       const potDetails = {
+        operation_id: meta?.operationId || `${gameId || 'unknown'}-${userId}-${payout}-${rake}`,
         payout,
         rake,
         total: payout + rake,
@@ -412,7 +424,7 @@ export class SupabaseService {
     amount: number,
     gameId?: string,
     tableId?: string,
-    meta?: { roomId?: string; tableName?: string; phase?: string }
+    meta?: { roomId?: string; tableName?: string; phase?: string; operationId?: string }
   ) {
     if (!supabaseKey) return { success: true, balance_after: null };
     try {
@@ -422,9 +434,9 @@ export class SupabaseService {
         p_type: 'bet',
         p_direction: 'debit',
         p_game_id: gameId || null,
-        p_table_id: null,
+        p_table_id: tableId || null,
         p_description: meta?.phase ? `Apuesta en mesa (${meta.phase})` : 'Apuesta en mesa',
-        p_reference_id: `bet-${gameId}-${Date.now()}`,
+        p_reference_id: meta?.operationId || `bet-${gameId}-${Date.now()}`,
         p_metadata: {
           room_id: meta?.roomId || null,
           table_name: meta?.tableName || null,
@@ -669,7 +681,7 @@ export class SupabaseService {
     userId: string,
     amount: number,
     gameId?: string,
-    meta?: { roomId?: string; tableName?: string; reason?: string }
+    meta?: { roomId?: string; tableName?: string; reason?: string; operationId?: string }
   ) {
     if (!supabaseKey) return { success: true };
     if (amount <= 0) return { success: true };
@@ -682,7 +694,7 @@ export class SupabaseService {
         p_game_id: gameId || null,
         p_table_id: null,
         p_description: meta?.reason || 'Reembolso por cierre de sala',
-        p_reference_id: `refund-${gameId}-${Date.now()}`,
+         p_reference_id: meta?.operationId || `refund-${gameId}-${userId}-${meta?.reason || 'room_disposed'}`,
         p_metadata: {
           room_id: meta?.roomId || null,
           table_name: meta?.tableName || null,

@@ -19,7 +19,7 @@ jest.mock('next/dynamic', () => ({
     if ('phase' in props) {
       return (
         <div data-testid="board">
-          Board {String(props.phase)} cards={String(props.myCards)} disabled={JSON.stringify(props.disabledChips)} juego={JSON.stringify(props.validJuegoOption)} reopen={String(props.piqueReopenActive)} paso={JSON.stringify(props.pasoJuegoChoice)}
+           Board {String(props.phase)} cards={String(props.myCards)} disabled={JSON.stringify(props.disabledChips)} juego={JSON.stringify(props.validJuegoOption)} validation={JSON.stringify(props.juegoValidation)} reopen={String(props.piqueReopenActive)} paso={JSON.stringify(props.pasoJuegoChoice)}
           <button onClick={() => (props.onPasoJuegoResolved as () => void)()}>Resolver paso</button>
         </div>
       )
@@ -391,18 +391,28 @@ describe('GameRoomPage', () => {
     expect(screen.getByText('Voto registrado')).toBeInTheDocument()
 
     act(() => {
+      emitState({ phase: 'JUEGO_VALIDACION' })
+    })
+
+    act(() => {
       messageHandlers.get('room-config')?.({ disabledChips: [500, 1000] })
       messageHandlers.get('pique-reopen')?.({})
       messageHandlers.get('declarar-juego-option')?.({ hasJuego: true, handType: 'Primera' })
       messageHandlers.get('paso-juego-choice')?.({ hasJuego: true, handType: 'Primera' })
+      messageHandlers.get('juego-validation-start')?.({ hasJuego: true, handType: 'PRIMERA', minPique: 500000 })
       messageHandlers.get('banda')?.({ winnerNickname: 'Ana', totalBanda: 2000, bandaPerPlayer: 1000, details: [{ id: 1 }, { id: 2 }] })
     })
     expect(screen.getByText(/Ana \+\$/)).toBeInTheDocument()
+    expect(screen.getByText(/validation=\{"hasJuego":true/)).toBeInTheDocument()
 
     act(() => {
       messageHandlers.get('error')?.({ message: 'Pique mínimo no alcanzado' })
     })
     expect(screen.getByText('Pique mínimo no alcanzado')).toBeInTheDocument()
+
+    act(() => {
+      emitState({ phase: 'LOBBY' })
+    })
 
     act(() => {
       messageHandlers.get('insufficient-balance')?.({ required: 5000000, current: 1000, message: 'Recarga para seguir' })

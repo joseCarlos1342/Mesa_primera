@@ -10,12 +10,13 @@ Documento vivo que registra cada escenario de comportamiento del motor de juego 
 |----|------|-----------|--------|---------|
 | E-001 | APUESTA_4_CARTAS | Paso sin juego → fold inmediato | ✅ Correcto | 0.7.0 |
 | E-002 | APUESTA_4_CARTAS | Paso con juego → "Llevo Juego" (pique diferido) | ✅ Correcto | 0.7.0 |
-| E-003 | APUESTA_4_CARTAS | Doble "Llevo Juego" → resolución por jerarquía | ✅ Correcto | 0.7.0 |
-| E-004 | APUESTA_4_CARTAS | Nadie tiene juego → Mano gana pique por defecto | ✅ Correcto | 0.7.0 |
+| E-003 | APUESTA_4_CARTAS | Doble "Llevo Juego" → resolución por jerarquía y empate | ✅ Correcto | 4.0.0 |
+| E-004 | APUESTA_4_CARTAS | Nadie tiene juego → pique al pozo principal | ✅ Correcto | 4.0.0 |
 | E-005 | APUESTA_4_CARTAS | Cruzado — Mano reingresa tras apuesta de otro | ✅ Correcto | 0.7.0 |
 | E-006 | APUESTA_4_CARTAS | Excepción 7 jugadores — cartas de Mano barajadas | ✅ Correcto | 0.7.0 |
 | E-007 | APUESTA_4_CARTAS | Animación de recogida de cartas al naipe | ✅ Correcto | 0.7.1 |
 | E-008 | Recovery | Crash recovery con roster bloqueado, deadline y refund idempotente | ✅ Correcto | 0.7.2 |
+| E-009 | SHOWDOWN | Empate residual → división independiente de cada pozo | ✅ Correcto | 4.0.0 |
 
 ---
 
@@ -83,15 +84,15 @@ Cartas: P1=PRIMERA, P2=PRIMERA, P3=NINGUNA
 ## E-003: Doble "Llevo Juego" → Resolución por Jerarquía
 
 **Fase**: APUESTA_4_CARTAS  
-**Regla**: Cuando 2+ jugadores pasan con juego, ambos compiten solo por el pique. La resolución compara jerarquía de juego: `SEGUNDA > CHIVO > PRIMERA`. En empate, gana el más cercano a Mano en `seatOrder`.
+**Regla**: Cuando 2+ jugadores pasan con juego, ambos compiten solo por el pique. La resolución compara jerarquía y puntos con la misma regla del showdown: `SEGUNDA > CHIVO > PRIMERA`; La Mano activa recibe `+1` y un empate residual divide el pique.
 
 **Lógica del servidor**:
 1. Ambos jugadores: `isFolded=true`, `passedWithJuego=true`, `revealedCards=cartas`
 2. Ronda de apuestas continúa entre jugadores activos
 3. Al terminar → `resolvePiqueAfterApuesta4()`:
-   - Compara `typeRank`: SEGUNDA=3, CHIVO=2, PRIMERA=1
-   - Empate → distancia más corta a Mano en `seatOrder`
-   - `awardPiqueToContestant(winner)` → paga pique con 5% rake
+    - Compara combinación y puntos mediante `resolveHandWinners()`
+    - Aplica `+1` a La Mano activa
+    - `awardPiqueToContestant()` o `awardSplitPiqueToContestants()` paga con 5% rake
    - **Todos** los contestants: `revealedCards=""`, `collectPlayerCards()` → animación
 
 **Ejemplo**:
@@ -111,16 +112,16 @@ Cartas: P1=PRIMERA, P2=CHIVO, P3=PRIMERA
 
 ---
 
-## E-004: Nadie Tiene Juego → Mano Gana Pique por Defecto
+## E-004: Nadie Tiene Juego → Pique Al Pozo Principal
 
 **Fase**: APUESTA_4_CARTAS  
-**Regla**: Cuando todos pasan sin juego, la Mano gana el pique por defecto (devolución de los $20 iniciales). La Mano **conserva sus cartas** porque sigue activo en el pozo principal.
+**Regla**: Cuando nadie reclama juego, el pique no se adjudica por defecto: se suma al pozo principal. La Mano conserva sus cartas porque sigue activa.
 
 **Lógica del servidor**:
 1. Ningún jugador tiene `passedWithJuego = true` → `contestants.length === 0`
-2. `awardPiqueToContestant(manoId)` → pague pique a Mano
+2. `state.pot += state.piquePot`
 3. **NO** se llama `collectPlayerCards(manoId)` — Mano sigue jugando
-4. Pique resetado a 0
+4. `piquePot` se reinicia a 0 y el pozo se liquida en el showdown
 
 **Ejemplo**:
 ```
@@ -131,11 +132,38 @@ Pique: $300k
 1. P1 apuesta $500k
 2. P2 pasa → NINGUNA → fold, cartas recogidas
 3. P3 pasa → NINGUNA → fold, cartas recogidas
-4. Pique → Mano gana por defecto ($300k - 5% rake)
+4. Pique → se suma al pozo principal; el showdown determina el ganador
 5. P1 conserva sus cartas → showdown (solo queda él)
 ```
 
-**Tests**: `nadie tiene juego → Mano gana pique por defecto`
+**Tests**: `nadie tiene juego → pique se suma al pozo principal`
+
+---
+
+## E-009: Empate Residual → División De Cada Pozo
+
+**Fase**: SHOWDOWN
+**Regla**: Si los jugadores comparten categoría y puntos después de aplicar el bono de La Mano, todos son ganadores del pozo para el que son elegibles. El rake se calcula sobre el pozo completo y el neto se divide entre ellos.
+
+**Ejemplos**:
+```
+Caso A — dos jugadores no Mano:
+P1: As-2-3-4 de Oros = Segunda de 55
+P2: As-2-3-4 de Copas = Segunda de 55
+Resultado: ambos ganan y comparten el pozo.
+
+Caso B — La Mano alcanza al rival:
+La Mano: As-2-3-4 de Oros = 55 + 1 = 56
+P2: As-2-3-5 de Copas = Segunda de 56
+Resultado: ambos ganan y comparten el pozo.
+```
+
+**Lógica del servidor**:
+1. `resolveHandWinners()` evalúa categoría y puntos con el bono de La Mano.
+2. `splitAmount()` divide el neto en el orden de asientos elegibles.
+3. El mismo procedimiento se aplica por separado a cada side pot.
+
+**Tests**: `combinations.test.ts` y `MesaRoom.test.ts` cubren ambos casos y verifican que la suma de participaciones sea igual al neto del pozo.
 
 ---
 

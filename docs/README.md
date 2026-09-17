@@ -43,7 +43,7 @@ Esta carpeta es la fuente de verdad documental del monorepo. Describe el estado 
 - El login publico de jugador y recuperacion usan Cloudflare Turnstile.
 - El login de jugador soporta OTP, PIN, dispositivo confiable y passkeys WebAuthn.
 - El login admin exige password + MFA.
-- La reconexion real del jugador en mesa usa un grace period de `120s`.
+- La reconexión real del jugador en mesa usa un grace period de `60s`.
 - El token de supervision admin dura `60s` en Redis y solo sirve para abrir la sesion de observacion.
 - El ledger es inmutable y las mutaciones pasan por RPCs.
 

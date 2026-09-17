@@ -83,6 +83,8 @@ export default function GameRoomPage() {
   const [piqueReopenActive, setPiqueReopenActive] = useState(false)
   /** Prompt de resolución inmediata: Llevo Juego / No Llevo (paso definitivo con juego en APUESTA_4_CARTAS) */
   const [pasoJuegoChoice, setPasoJuegoChoice] = useState<{ hasJuego: boolean; handType: string } | null>(null)
+  /** Decisión simultánea privada de JUEGO_VALIDACION. */
+  const [juegoValidation, setJuegoValidation] = useState<{ hasJuego: boolean; handType: string; minPique: number } | null>(null)
   const hasAttemptedJoin = useRef(false)
   /** Marca si el jugador abandonó intencionalmente (evita auto-reconexión) */
   const abandonedRef = useRef(false)
@@ -449,6 +451,9 @@ export default function GameRoomPage() {
           } else if (state.turnPlayerId !== joinedRoom.sessionId) {
             setPasoJuegoChoice(null);
           }
+          if (state.phase !== 'JUEGO_VALIDACION') {
+            setJuegoValidation(null);
+          }
           // Limpiar reapertura de pique cuando sale de PIQUE
           if (state.phase !== 'PIQUE') {
             setPiqueReopenActive(false);
@@ -494,6 +499,11 @@ export default function GameRoomPage() {
         // Prompt de resolución inmediata: Llevo Juego / No Llevo (paso definitivo con juego)
         joinedRoom.onMessage("paso-juego-choice", (data: { hasJuego: boolean; handType: string }) => {
           setPasoJuegoChoice(data);
+        })
+
+        // Decisión privada: el servidor no revela a los demás quién tiene juego.
+        joinedRoom.onMessage("juego-validation-start", (data: { hasJuego: boolean; handType: string; minPique: number }) => {
+          setJuegoValidation(data);
         })
 
         // Animación: devolver cartas al mazo cuando un jugador no lleva juego
@@ -969,6 +979,8 @@ export default function GameRoomPage() {
             piqueReopenActive={piqueReopenActive}
             pasoJuegoChoice={pasoJuegoChoice}
             onPasoJuegoResolved={() => setPasoJuegoChoice(null)}
+            juegoValidation={juegoValidation}
+            onJuegoValidationResolved={() => setJuegoValidation(null)}
           />
         )}
 

@@ -192,6 +192,7 @@ describe('JUEGO_VALIDACION Phase', () => {
       .filter(Boolean);
 
     internalRoom.resolveJuegoValidation(activePlayers, playersWithJuego);
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     // Antes de reabrir la apuesta principal, debe mostrarse la mano del claimant
     const p2 = internalRoom.state.players.get(ids[1]);
@@ -202,6 +203,7 @@ describe('JUEGO_VALIDACION Phase', () => {
     expect(p2.isFolded).toBe(true);
 
     internalRoom.finalizeApuesta4PiqueShowdown();
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(internalRoom.state.piquePot).toBe(0); // Pique awarded after reveal closes
     expect(p2.revealedCards).toBe('');
@@ -262,6 +264,7 @@ describe('JUEGO_VALIDACION Phase', () => {
       .filter(Boolean);
 
     internalRoom.resolveJuegoValidation(activePlayers, playersWithJuego);
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     // P2 should be in PIQUE_REVEAL
     expect(internalRoom.state.phase).toBe('PIQUE_REVEAL');

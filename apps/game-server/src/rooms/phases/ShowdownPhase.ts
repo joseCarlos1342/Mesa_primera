@@ -8,8 +8,7 @@
  */
 import type { IGamePhase, PhaseContext } from "./IGamePhase";
 import { Player } from "../../schemas/GameState";
-import { evaluateHand, compareHands, HandEvaluation } from "../combinations";
-import { SupabaseService } from "../../services/SupabaseService";
+import { evaluateHand, resolveHandWinners, splitAmount } from "../combinations";
 
 import type { MesaRoom } from "../MesaRoom";
 type Ctx = MesaRoom;
@@ -23,7 +22,7 @@ export const showdownPhase: IGamePhase = {
 
     // Include isAllIn players (they stay to compete) + non-folded connected
     const activePlayers = (Array.from(r.state.players.values()) as Player[])
-      .filter((p: Player) => !p.isFolded && p.connected);
+      .filter((p: Player) => !p.isFolded && (p.connected || p.isAllIn));
 
     if (activePlayers.length === 0) {
       r.state.pot = 0;
@@ -86,19 +85,15 @@ export const showdownPhase: IGamePhase = {
     // Calculate side pots
     const sidePots = r.calculateSidePots(activePlayers);
 
-    // Evaluate hands — La Mano activa (activeManoId) gets +1 point tiebreaker
+    // Evaluate hands — La Mano activa (activeManoId) gets +1 point tiebreaker.
+    // If the bonus still leaves a tie, the corresponding pot is split.
     const manoId = r.state.activeManoId || r.state.dealerId;
-    const evaluateWithManoBonus = (player: Player): HandEvaluation => {
-      const evaluation = evaluateHand(player.cards);
-      return player.id === manoId
-        ? { ...evaluation, points: evaluation.points + 1 }
-        : evaluation;
-    };
 
     // Award each side pot to its best eligible hand
     let overallWinnerId = "";
     let totalPayout = 0;
     let totalRake = 0;
+    let lastPotWinnerCount = 0;
     const potWinners: { winnerId: string; potAmount: number; payout: number; rake: number }[] = [];
 
     for (const sp of sidePots) {
@@ -108,30 +103,48 @@ export const showdownPhase: IGamePhase = {
 
       if (eligible.length === 0) continue;
 
-      let winner = eligible[0];
-      let bestHand = evaluateWithManoBonus(winner);
-      for (let i = 1; i < eligible.length; i++) {
-        const p = eligible[i];
-        const pHand = evaluateWithManoBonus(p);
-        if (compareHands(pHand, bestHand) > 0) { winner = p; bestHand = pHand; }
-      }
-
       const rake = Math.ceil(sp.amount * 0.05 / 100) * 100;
       const payout = sp.amount - rake;
-      winner.chips += payout;
       totalPayout += payout;
       totalRake += rake;
-      overallWinnerId = winner.id;
-      potWinners.push({ winnerId: winner.id, potAmount: sp.amount, payout, rake });
+      const winnerIds = resolveHandWinners(eligible, manoId).sort((left, right) => {
+        const leftSeat = r.seatOrder.indexOf(left);
+        const rightSeat = r.seatOrder.indexOf(right);
+        return (leftSeat === -1 ? Number.MAX_SAFE_INTEGER : leftSeat)
+          - (rightSeat === -1 ? Number.MAX_SAFE_INTEGER : rightSeat);
+      });
+      lastPotWinnerCount = winnerIds.length;
+      const payoutShares = splitAmount(payout, winnerIds);
+      const rakeShares = splitAmount(rake, winnerIds);
 
-      console.log(`[MesaRoom] Side pot $${sp.amount}: ${winner.nickname} gana $${payout} (Rake: $${rake})`);
+      for (let i = 0; i < payoutShares.length; i++) {
+        const share = payoutShares[i];
+        const winner = r.state.players.get(share.playerId);
+        if (winner) winner.chips += share.amount;
+        potWinners.push({
+          winnerId: share.playerId,
+          potAmount: sp.amount,
+          payout: share.amount,
+          rake: rakeShares[i]?.amount ?? 0,
+        });
+      }
+
+      overallWinnerId = winnerIds[0] ?? overallWinnerId;
+      const winnerNames = winnerIds
+        .map((id) => r.state.players.get(id)?.nickname)
+        .filter(Boolean)
+        .join(' y ');
+      const tieLabel = winnerIds.length > 1 ? ' (pozo dividido)' : '';
+      console.log(`[MesaRoom] Side pot $${sp.amount}: ${winnerNames} gana(n) $${payout}${tieLabel}`);
     }
 
     // Determine overall winner for display (last/largest pot winner)
     const mainWinner = r.state.players.get(overallWinnerId);
     if (mainWinner) {
-      const bestHand = evaluateWithManoBonus(mainWinner);
-      r.state.lastAction = `¡${mainWinner.nickname} gana con ${bestHand.type}! (${bestHand.points} pts)`;
+       const bestHand = evaluateHand(mainWinner.cards);
+       r.state.lastAction = lastPotWinnerCount > 1
+         ? `¡Pozo dividido entre ${lastPotWinnerCount} jugadores!`
+         : `¡${mainWinner.nickname} gana con ${bestHand.type}! (${bestHand.points} pts)`;
     }
 
     // Sin timer automático — se espera "dismiss-showdown" de cualquier jugador

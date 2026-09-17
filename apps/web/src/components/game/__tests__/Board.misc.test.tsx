@@ -11,7 +11,7 @@ jest.mock('framer-motion', () => ({
 
 jest.mock('../PlayerBadge', () => ({ PlayerBadge: ({ player, isAllIn }: { player: { nickname?: string }; isAllIn?: boolean }) => <div data-testid="player-badge" data-all-in={String(Boolean(isAllIn))}>{player?.nickname ?? 'VACÍO'}</div> }))
 jest.mock('../ActionControls', () => ({
-  ActionControls: ({ onBetConfirm, onBetClear, onClearSelection, selectedCards, totalBet, pasoJuegoChoice, onPasoJuegoResolved }: any) => (
+  ActionControls: ({ onBetConfirm, onBetClear, onClearSelection, selectedCards, totalBet, pasoJuegoChoice, onPasoJuegoResolved, juegoValidation }: any) => (
     <div data-testid="action-controls">
       <span data-testid="total-bet">{totalBet}</span>
       <span data-testid="selected-count">{selectedCards.length}</span>
@@ -19,6 +19,7 @@ jest.mock('../ActionControls', () => ({
       <button type="button" onClick={onBetClear}>Limpiar apuesta</button>
       <button type="button" onClick={onClearSelection}>Limpiar selección</button>
       {pasoJuegoChoice && <button type="button" onClick={onPasoJuegoResolved}>Resolver paso juego</button>}
+      {juegoValidation && <span data-testid="juego-validation">{juegoValidation.handType}</span>}
     </div>
   ),
 }))
@@ -73,6 +74,25 @@ describe('Board misc guards and banners', () => {
   it('retorna null cuando room es null', () => {
     const { container } = render(<Board room={null} phase="PIQUE" pot={0} piquePot={0} players={players} />)
     expect(container.firstChild).toBeNull()
+  })
+
+  it('muestra la validación de juego aunque la fase no tenga turno individual', () => {
+    const room = createRoom()
+    room.state.phase = 'JUEGO_VALIDACION'
+    room.state.turnPlayerId = ''
+
+    render(
+      <Board
+        room={room}
+        phase="JUEGO_VALIDACION"
+        pot={0}
+        piquePot={0}
+        players={players}
+        juegoValidation={{ hasJuego: true, handType: 'PRIMERA', minPique: 500000 }}
+      />
+    )
+
+    expect(screen.getByTestId('juego-validation')).toHaveTextContent('PRIMERA')
   })
 
   it('muestra banner de admin observando cuando llega admin:status', async () => {

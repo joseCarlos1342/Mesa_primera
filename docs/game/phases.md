@@ -1,73 +1,57 @@
 # Fases del Servidor
 
-Fuente de verdad resumida de las fases activas del motor segun `apps/game-server/src/rooms/phases/`.
+Fuente viva del flujo que ejecuta `apps/game-server/src/rooms/phases/`. Los
+ids de este documento deben coincidir con `GameState.phase` y con el reglamento
+oficial versionado en `apps/web/src/lib/official-rulebook.ts`.
 
-## Fases registradas hoy
+## Flujo de una mano
 
-### 1. `LOBBY`
+```text
+LOBBY → STARTING → BARAJANDO → SORTEO_MANO → BARAJANDO → PIQUE_DEAL → PIQUE
+→ COMPLETAR → APUESTA_4_CARTAS → JUEGO_VALIDACION (si aplica) → DESCARTE
+→ COMPLETAR_DESCARTE → REVELAR_CARTA → GUERRA → CANTICOS (si aplica)
+→ DECLARAR_JUEGO → GUERRA_JUEGO (si aplica) → SHOWDOWN/SHOWDOWN_WAIT → LOBBY
+```
 
-- Estado de espera antes de iniciar una mano o entre manos.
-- Se suman jugadores, se validan condiciones de arranque y se marca readiness.
+## Fases y propósito
 
-### 2. `SORTEO_MANO`
+| Fase | Propósito |
+| --- | --- |
+| `LOBBY` | Esperar jugadores listos y validar el inicio de la mano. |
+| `STARTING` | Cuenta regresiva de cinco segundos. |
+| `BARAJANDO` | Preparar un mazo controlado por el servidor. |
+| `SORTEO_MANO` | En la primera mano, elegir La Mano con el primer Oro. |
+| `PIQUE_DEAL` | Repartir dos cartas a cada jugador activo. |
+| `PIQUE` | Resolver Voy/Paso y el pique separado. |
+| `COMPLETAR` | Repartir dos cartas adicionales hasta completar cuatro. |
+| `APUESTA_4_CARTAS` | Primera ronda de apuestas del pozo principal. |
+| `JUEGO_VALIDACION` | Decisión simultánea de juego tras todos los checks; dura 30 segundos. |
+| `DESCARTE` | Elegir cartas para conservar o descartar. |
+| `COMPLETAR_DESCARTE` | Reponer las cartas descartadas desde el fondo. |
+| `REVELAR_CARTA` | Mostrar la carta del fondo; no cambia el resultado. |
+| `GUERRA` | Ronda fuerte de apuestas con cuatro cartas. |
+| `CANTICOS` | Segunda ronda normal si Guerra tuvo apuestas. |
+| `DECLARAR_JUEGO` | Confirmar juego mediante evaluación autoritativa del servidor. |
+| `GUERRA_JUEGO` | Apuesta exclusiva entre quienes declararon juego. |
+| `SHOWDOWN` | Revelar, comparar y liquidar los pozos. |
+| `SHOWDOWN_WAIT` | Ventana de mostrar/ocultar cuando queda un ganador por abandono. |
 
-- Determina la mano inicial y orden de juego.
-- Implementada en `SorteoPhase`.
+## Reglas transversales
 
-### 3. `PIQUE`
+- La Mano activa abre cada ronda y recibe `+1` punto solo para desempates.
+- Si La Mano se retira o pierde el asiento, `transferMano()` asigna el siguiente jugador activo.
+- Los empates que persistan después del bono dividen el pozo correspondiente.
+- Cada side pot se compara y divide de forma independiente.
+- Las acciones inválidas no deben cancelar el temporizador del turno válido.
+- El turno normal dura 120 segundos; la reconexión no consentida dura 60 segundos.
+- `JUEGO_VALIDACION` entrega opciones privadas para no revelar las cartas de otro jugador.
+- La carta de `REVELAR_CARTA` es informativa: no interviene en puntos, apuestas ni ganador.
 
-- Fase inicial de entrada al juego y cobro del pique.
-- Tambien se gestiona desde `SorteoPhase`/`piquePhase` segun la extraccion actual.
+## Referencias de implementación
 
-### 4. `COMPLETAR`
-
-- Reparte hasta completar 4 cartas para quienes siguen activos.
-
-### 5. `APUESTA_4_CARTAS`
-
-- Primera ronda de apuesta con mano completa inicial.
-- Aqui tambien viven validaciones de flujo como juego servido y resolucion del pique segun escenario.
-- Si nadie gana o reclama el pique en esta ronda, el `piquePot` no se adjudica por defecto: se suma al pozo principal y lo cobra quien gane el `SHOWDOWN`.
-
-### 6. `DESCARTE`
-
-- Cada jugador decide que cartas descarta.
-
-### 7. `REEMPLAZO_DESCARTE`
-
-- El servidor repone cartas despues del descarte.
-
-### 8. `REVEAL_BOTTOM_CARD`
-
-- Se revela la carta del fondo cuando aplica la variante.
-
-### 9. `GUERRA`
-
-- Ronda principal de apuesta con manos ya consolidadas.
-
-### 10. `CANTICOS`
-
-- Registro y procesamiento de canticos antes del cierre.
-
-### 11. `DECLARAR_JUEGO`
-
-- Declaracion de juego cuando la mano lo exige.
-- Si exactamente un jugador declara juego valido y los demas declaran `No Tengo Juego`, ese jugador gana por prueba de juego y pasa a `SHOWDOWN` con revelacion obligatoria.
-- Ese caso no usa `SHOWDOWN_WAIT`: el rival llego a la fase final y tiene derecho a verificar la combinacion ganadora.
-
-### 12. `GUERRA_JUEGO`
-
-- Apuesta exclusiva entre jugadores que declararon juego.
-
-### 13. `SHOWDOWN`
-
-- Revelacion final, evaluacion de manos y cierre logico de la mano.
-- Cuando 2+ jugadores compiten, las cartas se revelan obligatoriamente.
-- Cuando queda un unico ganador por `DECLARAR_JUEGO`, tambien hay revelacion obligatoria para probar el juego ganador.
-- `SHOWDOWN_WAIT` queda reservado para victoria por abandono/default, cuando el resto se retiro antes del cierre y el ganador puede elegir mostrar o no mostrar.
-
-## Notas Importantes
-
-- La documentacion antigua que hablaba de `PIQUE_DEAL`, `PIQUE_REVEAL`, `JUEGO_VALIDACION` o `PAYOUT` como fases separadas ya no representa la implementacion actual.
-- El cierre financiero ocurre como parte del flujo de resolucion de mano, pero no esta modelado hoy como fase publica separada registrada en `phases/index.ts`.
-- La reconexion del jugador no es una fase: se gestiona transversalmente en `ConnectionManager.ts` con un grace period real de `120s`.
+- Estado: `apps/game-server/src/schemas/GameState.ts`.
+- Acciones: `apps/game-server/src/rooms/commands/PlayerActionCommand.ts` y `ShowdownCommand.ts`.
+- Comparación: `apps/game-server/src/rooms/combinations.ts`.
+- Pozos: `apps/game-server/src/rooms/core/PotManager.ts`.
+- Reconexión: `apps/game-server/src/rooms/core/ConnectionManager.ts`.
+- Reglamento visible: `apps/web/src/lib/official-rulebook.ts`.

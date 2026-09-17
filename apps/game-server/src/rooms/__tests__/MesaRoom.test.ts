@@ -2467,6 +2467,40 @@ describe('MesaRoom via Colyseus Testing', () => {
       expect(internalRoom.pendingShowdownData.overallWinnerId).toBe(ids[0]);
     });
 
+    it('splits a residual tie between non-Mano showdown players', async () => {
+      const { room, internalRoom, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-showdown-split-tie',
+        playerCount: 3,
+      });
+
+      internalRoom.seatOrder = ids;
+      room.state.activeManoId = ids[2];
+      room.state.dealerId = ids[2];
+      room.state.pot = 2_000_000;
+      room.state.piquePot = 0;
+      internalRoom.currentGameId = 'test-split-tie';
+      internalRoom.currentTimeline = [];
+
+      players[0].cards = '01-O,02-O,03-O,04-O';
+      players[0].totalMainBet = 1_000_000;
+      players[0].isFolded = false;
+      players[0].supabaseUserId = 'supa-split-a';
+      players[1].cards = '01-C,02-C,03-C,04-C';
+      players[1].totalMainBet = 1_000_000;
+      players[1].isFolded = false;
+      players[1].supabaseUserId = 'supa-split-b';
+      players[2].isFolded = true;
+
+      const chipsBeforeA = players[0].chips;
+      const chipsBeforeB = players[1].chips;
+      internalRoom.startPhase6Showdown();
+      await new Promise(r => setTimeout(r, 100));
+
+      expect(players[0].chips - chipsBeforeA).toBe(950_000);
+      expect(players[1].chips - chipsBeforeB).toBe(950_000);
+      expect(internalRoom.pendingShowdownData.potWinners).toHaveLength(2);
+    });
+
     it('dismiss-showdown cleans up and transitions to LOBBY', async () => {
       const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
         tableId: 'test-dismiss-showdown',
@@ -4092,7 +4126,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       expect(players[2].revealedCards).toBe('');
     });
 
-    it('nadie tiene juego → Mano gana pique por defecto', async () => {
+    it('nadie tiene juego → pique se suma al pozo principal', async () => {
       const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
         tableId: 'test-pique-nadie-juego',
         playerCount: 3,
@@ -4127,7 +4161,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       await new Promise(r => setTimeout(r, 200));
 
       // All opponents folded — P1 is alone
-      // Pique should be awarded to Mano (P1) by default since no one had juego
+      // Pique is merged into the main pot because nobody claimed juego.
       await new Promise(r => setTimeout(r, 300));
 
       const piqueRake = Math.ceil(300_000 * 0.05 / 100) * 100;
@@ -6576,6 +6610,25 @@ describe('MesaRoom via Colyseus Testing', () => {
 
       // Invalid action — player state unchanged
       expect(players[0].hasActed).toBe(false);
+    });
+
+    it('does not cancel the active turn timer for an invalid action', async () => {
+      const { room, internalRoom, clients, ids, players } = await createMesaTestContext(colyseus, {
+        tableId: 'test-inv-pique-timer',
+        playerCount: 3,
+      });
+
+      internalRoom.seatOrder = ids;
+      room.state.phase = 'PIQUE';
+      room.state.activeManoId = ids[0];
+      room.state.turnPlayerId = ids[0];
+      players.forEach(p => { p.isFolded = false; p.hasActed = false; p.cards = '01-O,03-C,05-E'; });
+      const clearTurnTimer = vi.spyOn(internalRoom, 'clearTurnTimer');
+
+      clients[0].send('action', { action: 'igualar' });
+      await new Promise(r => setTimeout(r, 200));
+
+      expect(clearTurnTimer).not.toHaveBeenCalled();
     });
 
     it('ignores already-acted player in PIQUE', async () => {
@@ -10783,7 +10836,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       clients[0].leave(false);
       await new Promise(r => setTimeout(r, 500));
 
-      expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 120);
+       expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 60);
     });
   });
 
@@ -11979,7 +12032,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       const leavePromise = internalRoom.onLeave({ sessionId: ids[0] } as any, 1006);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 120);
+       expect(internalRoom.allowReconnection).toHaveBeenCalledWith(expect.anything(), 60);
       expect(internalRoom.state.activeManoId).toBe(ids[0]);
       expect(internalRoom.state.turnPlayerId).toBe(ids[0]);
       expect(internalRoom.state.players.has(ids[0])).toBe(true);

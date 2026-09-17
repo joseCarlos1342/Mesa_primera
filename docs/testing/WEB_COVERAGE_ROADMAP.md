@@ -3387,6 +3387,6 @@ Criterios de salida:
   warnings preexistentes en assets generados de `public/`.
 - Riesgos abiertos: ventana residual de hasta 5 minutos para un JWT ya emitido,
   passkey server-side fail-closed, MFA/fallback de sesión, carreras asíncronas
-  de SupportChat, lease de recovery y el contrato de reconexión `60s/120s`.
+  de SupportChat, lease de recovery y el contrato oficial de reconexión de `60s`.
 - Siguiente lote: corregir el login passkey server-side antes de tocar SQL o
   el enrolamiento biométrico de navegador.

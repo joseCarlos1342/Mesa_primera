@@ -200,20 +200,16 @@ La app expone reglas en dos lugares:
 - La pestaña `Reglas` del layout del jugador.
 - El modal `Reglas del Juego` dentro de la mesa.
 
-Para tutoriales del flujo real de partida, hoy conviene priorizar el modal de mesa, porque describe el juego por fases.
+El contenido canónico está versionado en `apps/web/src/lib/official-rulebook.ts` y se presenta completo en `/rules`. El modal de mesa es un resumen operativo coherente con esa misma fuente.
 
 ### Fases que ve el jugador en el modal de mesa
 
-1. `Sorteo de mano`.
-2. `Pique`.
-3. `Completar`.
-4. `Apuesta de 4 cartas`.
-5. `Descarte`.
-6. `Reemplazo de descarte`.
-7. `Carta del fondo`.
-8. `Guerra`.
-9. `Canticos` y `Declarar juego` cuando aplica.
-10. `Showdown`.
+1. `Sorteo de mano` y reparto del `Pique`.
+2. `Completar` y `Apuesta de 4 cartas`.
+3. `Validación de juego` cuando todos hicieron check.
+4. `Descarte`, `Reemplazo de descarte` y `Carta del fondo`.
+5. `Guerra`, `Cánticos` y `Declarar juego` cuando aplica.
+6. `Guerra de Juego` y `Showdown`.
 
 ### Jerarquías visibles en el reglamento rápido
 
@@ -222,9 +218,9 @@ El modal enumera esta jerarquía de referencia:
 1. `Segunda`.
 2. `Chivo`.
 3. `Primera`.
-4. `Mayor Puntaje`.
+4. `Puntos`.
 
-Además, la interfaz comunica criterios de fair play y una advertencia importante de reconexión.
+La Mano recibe `+1` solo para el desempate. Si el empate continúa, se divide el pozo. La reconexión oficial es de `60 segundos`.
 
 ## 6. Otras secciones útiles para el jugador
 
@@ -360,7 +356,7 @@ La salida de mesa tiene confirmación explícita y la UI advierte que abandonar 
 
 ## 11. Reconexion y continuidad
 
-La experiencia actual opera con una ventana de reconexion de `120 segundos`.
+La experiencia actual opera con una ventana de reconexión de `60 segundos`.
 
 Si el jugador pierde conexión:
 
@@ -380,7 +376,7 @@ Resumen corto para tutoriales, soporte y material audiovisual:
 - Inicio de primera partida con `3` listos; luego con `2`.
 - Recarga manual entre `$10.000` y `$50.000.000`.
 - Transferencia mínima visible: `$1.000`.
-- Reconexion disponible durante `120 segundos`.
+- Reconexión disponible durante `60 segundos`.
 
 ## 13. Orden sugerido para futuros videos
 
