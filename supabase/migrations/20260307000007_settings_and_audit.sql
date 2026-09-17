@@ -22,7 +22,7 @@ CREATE POLICY "Admins can update settings"
 
 -- Pre-populate default rulebook
 INSERT INTO site_settings (id, value) VALUES 
-('rulebook', '{"content": "# Reglamento Oficial\n\n1. El rake es del 5%.\n2. Cero tolerancia al colusion.\n3. Todo intento de fraude resultará en ban permanente."}')
+('rulebook', '{"content": "# Anexo operativo del local\n\nEste espacio contiene horarios, avisos y normas operativas del local.\n\nLas reglas técnicas de Primera Riverada viven en el Reglamento Oficial versionado del producto y no se modifican desde este editor."}')
 ON CONFLICT (id) DO NOTHING;
 
 -- Table for Audit Logs

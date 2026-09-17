@@ -16,8 +16,9 @@ export function RulesEditor({ initialContent }: { initialContent: string }) {
       await updateRulebook(content);
       alert("Reglamento guardado exitosamente.");
       router.refresh();
-    } catch (e: any) {
-      alert("Error guardando el reglamento: " + e.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error desconocido";
+      alert("Error guardando el reglamento: " + message);
     } finally {
       setLoading(false);
     }

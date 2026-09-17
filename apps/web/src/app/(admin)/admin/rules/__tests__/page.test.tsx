@@ -34,5 +34,6 @@ describe('AdminRulesPage', () => {
     expect(screen.getByText('#')).toBeInTheDocument()
     expect(screen.getByText('Historial de Cambios')).toBeInTheDocument()
     expect(screen.getByText(/registro de auditoría/)).toBeInTheDocument()
+    expect(screen.getByText(/no modifica las reglas técnicas/i)).toBeInTheDocument()
   })
 })

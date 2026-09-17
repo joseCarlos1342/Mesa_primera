@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import { Shield, AlertTriangle, Clock, CheckCircle, Mail, ExternalLink, Award } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Política de Seguridad — Primera Riverada los 4 Ases',
+  title: 'Política de Divulgación Responsable — Primera Riverada los 4 Ases',
   description:
-    'Política de divulgación responsable de vulnerabilidades de Primera Riverada los 4 Ases. Cómo reportar fallos de seguridad y nuestro proceso de respuesta.',
+    'Cómo reportar vulnerabilidades de forma responsable en Primera Riverada los 4 Ases, qué pruebas están permitidas y qué respuesta puedes esperar.',
   alternates: { canonical: '/security-policy' },
   robots: { index: true, follow: true },
 }
@@ -26,10 +26,10 @@ export default function SecurityPolicyPage() {
           <Shield className="w-3.5 h-3.5" /> Divulgación Responsable
         </div>
         <h1 className="text-3xl md:text-5xl font-display font-black italic bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent leading-tight">
-          Política de Seguridad
+          Política de Divulgación Responsable
         </h1>
         <p className="text-text-secondary text-sm">
-          Última actualización: 19 de abril de 2026
+          Última actualización: 15 de septiembre de 2026
         </p>
         <p className="text-xs text-text-secondary/60 font-mono">
           <a
@@ -63,13 +63,13 @@ export default function SecurityPolicyPage() {
           1. Alcance
         </h2>
         <div className="ml-11 space-y-4 text-text-secondary leading-relaxed">
-          <p>Esta política cubre los siguientes sistemas gestionados por nosotros:</p>
+          <p>Esta política cubre, de forma general, los servicios que operamos:</p>
           <ul className="space-y-2 list-none">
             {[
-              'primerariveradalos4ases.com (sitio web principal y PWA)',
-              'API del servidor de juego en tiempo real',
-              'Sistema de autenticación y gestión de cuentas',
-              'Sistema de billetera digital y transacciones',
+              'Sitio web principal y PWA',
+              'Servicio de juego en tiempo real',
+              'Autenticación y gestión de cuentas',
+              'Billetera digital y transacciones',
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
                 <span className="text-brand-gold mt-1.5 text-xs">&#9830;</span>
@@ -81,8 +81,14 @@ export default function SecurityPolicyPage() {
             <p className="text-red-300 font-bold text-sm flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               Fuera de alcance: ataques de denegación de servicio (DoS/DDoS), ingeniería social contra empleados,
-              vulnerabilidades en infraestructura de terceros (Vercel, Supabase, Cloudflare) que no podemos controlar,
-              y reportes generados con escáneres automáticos sin verificación manual.
+              vulnerabilidades en infraestructura de terceros que no operamos y reportes generados con escáneres automáticos
+              sin verificación manual.
+            </p>
+          </div>
+          <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-xl p-4">
+            <p className="text-brand-gold text-sm font-bold">
+              No pruebes contra cuentas reales ni operaciones con dinero real. Usa únicamente cuentas, datos y escenarios
+              propios, sin acceder a información de terceros.
             </p>
           </div>
         </div>
@@ -109,7 +115,7 @@ export default function SecurityPolicyPage() {
             {[
               'Descripción clara del fallo y su impacto potencial',
               'Pasos detallados para reproducirlo (Proof of Concept)',
-              'URL o endpoint afectado',
+              'URL o endpoint afectado, sin incluir secretos ni tokens',
               'Capturas de pantalla o vídeo si aplica',
               'Tu nombre o alias (para agradecimientos, si lo deseas)',
             ].map((item) => (
@@ -121,8 +127,8 @@ export default function SecurityPolicyPage() {
           </ul>
           <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-xl p-4">
             <p className="text-brand-gold text-sm font-bold">
-              Por favor, no divulgues la vulnerabilidad públicamente hasta que la hayamos corregido y hayamos acordado
-              contigo una fecha de divulgación coordinada.
+              Por favor, no divulgues la vulnerabilidad públicamente hasta que la hayamos corregido o acordemos una fecha
+              de divulgación coordinada.
             </p>
           </div>
           <div className="bg-black/30 border border-white/10 rounded-xl p-4">
@@ -140,15 +146,15 @@ export default function SecurityPolicyPage() {
       <section className="space-y-4">
         <h2 className="flex items-center text-xl md:text-2xl font-display font-bold text-text-premium">
           <SectionIcon icon={Clock} />
-          3. Nuestros Compromisos
+          3. Objetivos de respuesta
         </h2>
         <div className="ml-11 space-y-4 text-text-secondary leading-relaxed">
-          <p>Cuando recibamos tu reporte nos comprometemos a:</p>
+          <p>Estos son nuestros objetivos de respuesta; pueden variar según la severidad y complejidad del caso:</p>
           <div className="grid gap-3">
             {[
               { tiempo: '48 horas', accion: 'Confirmación de recepción de tu reporte' },
               { tiempo: '7 días', accion: 'Evaluación inicial: confirmación o descarte de la vulnerabilidad' },
-              { tiempo: '30 días', accion: 'Corrección del fallo o plan de mitigación comunicado' },
+              { tiempo: '30 días', accion: 'Objetivo de mitigación inicial o actualización comunicada' },
               { tiempo: 'Acordado', accion: 'Divulgación pública coordinada contigo' },
             ].map((item) => (
               <div
@@ -164,7 +170,9 @@ export default function SecurityPolicyPage() {
             ))}
           </div>
           <p className="text-sm">
-            No tomaremos acciones legales contra investigadores que actúen de buena fe siguiendo esta política.
+            Cuando una investigación cumpla esta política y se realice de buena fe, no iniciaremos acciones legales por
+            el acto de reportar la vulnerabilidad. Esta protección no cubre fraude, acceso a datos ajenos, extorsión,
+            interrupción del servicio ni incumplimientos legales.
           </p>
         </div>
       </section>
@@ -180,6 +188,7 @@ export default function SecurityPolicyPage() {
           <ul className="space-y-2 list-none">
             {[
               'No acceder, modificar ni borrar datos de usuarios reales',
+              'No probar contra cuentas reales ni realizar operaciones con dinero real',
               'No interrumpir el servicio ni degradar la experiencia de otros usuarios',
               'No explotar la vulnerabilidad más allá de lo necesario para demostrarla',
               'No realizar ingeniería social contra nuestro equipo',
@@ -208,7 +217,7 @@ export default function SecurityPolicyPage() {
           </p>
           <div className="bg-black/30 border border-brand-gold/10 rounded-xl p-6 text-center">
             <p className="text-text-secondary/50 text-sm italic">
-              Sé el primero en contribuir a la seguridad de Primera Riverada los 4 Ases.
+              Sé el primero en contribuir responsablemente a la seguridad de Primera Riverada los 4 Ases.
             </p>
           </div>
         </div>
