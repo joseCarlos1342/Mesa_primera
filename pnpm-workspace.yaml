@@ -12,3 +12,23 @@ allowBuilds:
   sharp: true
   supabase: true
   unrs-resolver: true
+
+overrides:
+  '@rollup/plugin-terser': '^1.0.0'
+  elliptic: '^6.6.1'
+  flatted: '^3.4.2'
+  jsonwebtoken: '^9.0.3'
+  serialize-javascript: '^7.0.5'
+  socket.io-parser: '^4.2.7'
+  ws: '^8.21.0'
+  qs: '^6.16.0'
+  body-parser: '^2.3.0'
+  fast-uri: '^3.1.6'
+  browserslist: '^4.28.7'
+  baseline-browser-mapping: '^2.11.0'
+  nanoid: '^3.3.18'
+  vite: '^8.0.16'
+  '@babel/core': '^7.29.1'
+  'brace-expansion@^1.0.0': '1.1.18'
+  'brace-expansion@^2.0.0': '2.1.4'
+  'brace-expansion@^5.0.0': '5.0.9'
