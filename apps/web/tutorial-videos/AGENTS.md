@@ -24,41 +24,39 @@ The domain skills (`/hyperframes-core`, `/hyperframes-animation`, `/hyperframes-
 
 > **Tailwind v4 projects** (`hyperframes init --tailwind`): see `/hyperframes-core` → `references/tailwind.md`.
 
-> **Skill missing or stale?** Run `npx hyperframes skills update <name>` to install/refresh
-> the specific skill you need (the `/hyperframes` router does this automatically before
-> entering a workflow), or bare `npx hyperframes skills update` to refresh the core set plus
-> everything already installed — neither pulls the full set. Restart the agent session so
-> newly installed skills load.
+> **Skill missing or stale?** Do not refresh skills automatically during a reproducible
+> run. After explicit approval, use `pnpm dlx hyperframes@latest skills update <name>`
+> to refresh the specific skill and restart the agent session so newly installed skills load.
 
 ## Commands
 
 ```bash
-npm run dev          # human-operated foreground preview (blocks until stopped)
-npx hyperframes preview --background  # agent-safe persistent Studio preview
-npx hyperframes preview --status      # verify the persistent preview is listening
-npx hyperframes preview --stop        # stop it when review is finished
-npm run check        # lint + runtime + layout + motion + contrast (one command)
-npm run render       # render to MP4
-npm run publish      # publish and get a shareable link
-npx hyperframes lint --verbose  # include info-level findings
-npx hyperframes lint --json     # machine-readable output for CI
-npx hyperframes docs <topic> # reference docs in terminal
+pnpm run dev          # human-operated foreground preview (blocks until stopped)
+pnpm dlx hyperframes@0.8.41 preview --background  # persistent Studio preview
+pnpm dlx hyperframes@0.8.41 preview --status      # verify preview
+pnpm dlx hyperframes@0.8.41 preview --stop        # stop preview after review
+pnpm run check        # lint + runtime + layout + motion + contrast
+pnpm run render       # render to MP4
+pnpm run publish      # publish and get a shareable link
+pnpm dlx hyperframes@0.8.41 lint --verbose  # include info-level findings
+pnpm dlx hyperframes@0.8.41 lint --json     # machine-readable output for CI
+pnpm dlx hyperframes@0.8.41 docs <topic> # reference docs in terminal
 ```
 
-> **Agents must use `npx hyperframes preview --background` for Studio handoff.** Do not rely
-> on a shell/tool `run_in_background` wrapper around `npm run dev`: that foreground process
+> **Agents must use `pnpm dlx hyperframes@0.8.41 preview --background` for Studio handoff.** Do not rely
+> on a shell/tool `run_in_background` wrapper around `pnpm run dev`: that foreground process
 > remains owned by the invoking session and can disappear while the browser stays open,
 > leaving refreshes at `ERR_CONNECTION_TIMED_OUT`. Verify with `preview --status`, keep it
 > alive through review, and stop it explicitly with `preview --stop` afterward.
 
-> **Pinned CLI version.** These scripts pin an exact `hyperframes@X.Y.Z` so this project re-renders identically over time. Weeks later that pin lags fixes shipped since. To move up: `npx hyperframes@latest upgrade --project . --check` (shows the delta), then `npx hyperframes@latest upgrade --project .` to rewrite the pins. Always unpinned — the pinned script re-runs the old version against itself.
+> **Pinned CLI version.** These scripts pin `hyperframes@0.8.41` so this project re-renders identically over time. To move up, review the delta with `pnpm dlx hyperframes@latest upgrade --project . --check`, then update the pin deliberately.
 
 ## Documentation
 
 **For quick reference**, use the local CLI docs command (no network required):
 
 ```bash
-npx hyperframes docs <topic>
+pnpm dlx hyperframes@0.8.41 docs <topic>
 ```
 
 Topics: `data-attributes`, `gsap`, `compositions`, `rendering`, `examples`, `troubleshooting`
@@ -81,7 +79,7 @@ https://hyperframes.heygen.com/llms.txt
 After creating or editing any `.html` composition, **always** run the full check before considering the task complete:
 
 ```bash
-npm run check
+pnpm run check
 ```
 
 Fix all errors before presenting the result. Warnings should be reviewed before rendering.
