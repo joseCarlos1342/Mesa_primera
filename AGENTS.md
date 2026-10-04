@@ -81,7 +81,20 @@ pnpm exec supabase gen types typescript --linked > apps/web/src/types/supabase.t
 
 ## 4. CLI, Ops y Skills
 * **CLIs y gotchas del VPS** (puerto Redis 6380, versiones de herramientas): ver `.github/instructions/deploy-ops.instructions.md`.
-* **Skills**: `.agents/skills/<name>/SKILL.md`. Para elegir la correcta, ver `.github/instructions/skills-catalog.instructions.md`.
+* **Skills**: `.agents/skills/<name>/SKILL.md` es la fuente local prioritaria. Las skills globales solo son fallback cuando no existe una skill local equivalente. `agent/skills/` es una ruta obsoleta y no debe cargarse.
+* **Commits**: la política vive en `.github/instructions/commits.instructions.md` y la ejecución especializada en `.opencode/agents/deploy-and-commit.md` o el comando global `commit-all`. No se usa una skill de commit separada.
+
+### Precedencia de instrucciones
+
+Cuando dos fuentes discrepen, aplicar este orden:
+
+1. Reglas de seguridad e invariantes de este `AGENTS.md`.
+2. Instrucciones de dominio en `.github/instructions/`.
+3. Skills locales del proyecto.
+4. Skills globales y documentación genérica.
+5. Documentación externa vigente para APIs y CLIs.
+
+Las skills no deben actualizarse automáticamente durante una tarea reproducible. Una actualización de skill, dependencia o CLI requiere una decisión explícita y validación posterior.
 
 ## 5. Indice de instrucciones por dominio
 - Commits: `.github/instructions/commits.instructions.md`
@@ -133,4 +146,4 @@ pnpm --filter web run design:lint          # Valida ambos
 4. **Si toca UI**: leer el `DESIGN.md` correspondiente (`player` o `admin`) antes de escribir componentes.
 5. Implementar con tests cuando sea relevante.
 6. Validar (lint/typecheck/tests del area). Si se toco un `DESIGN.md`, correr `pnpm --filter web run design:lint`.
-7. Commit en espanol siguiendo `commits.instructions.md`.
+7. Solo commitear si el usuario lo solicita explícitamente; seguir `commits.instructions.md` y no hacer `push` salvo confirmación explícita.

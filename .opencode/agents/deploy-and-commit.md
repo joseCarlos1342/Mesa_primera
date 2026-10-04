@@ -4,7 +4,7 @@ mode: subagent
 temperature: 0.1
 color: "#10b981"
 permission:
-  edit: allow
+  edit: ask
   bash:
     "*": ask
     "git status*": allow
@@ -13,15 +13,17 @@ permission:
     "git add*": allow
     "git commit*": allow
     "git push*": ask
-    "git stash*": allow
-    "npm run lint*": allow
-    "npm run test*": allow
-    "npm run build*": allow
-    "npx tsc*": allow
-    "npx turbo*": allow
-    "supabase*": allow
-    "vercel*": allow
-    "gh*": allow
+    "pnpm --filter web test*": allow
+    "pnpm --filter web lint*": allow
+    "pnpm --filter web build*": allow
+    "pnpm --filter game-server test*": allow
+    "pnpm exec tsc*": allow
+    "pnpm exec turbo*": allow
+    "pnpm exec playwright*": allow
+    "pnpm exec supabase*": ask
+    "supabase*": ask
+    "vercel*": ask
+    "gh*": ask
   read: allow
   glob: allow
   grep: allow
@@ -67,9 +69,9 @@ Identificar grupos relacionados por proposit:
 
 ### Validar antes de commitear
 Para cada area afectada, ejecutar los checks correspondientes:
-- **Web**: `npm run lint --workspace=web` + `npx tsc --noEmit -p apps/web/tsconfig.json`
-- **Game-server**: `npx tsc --noEmit -p apps/game-server/tsconfig.json`
-- Si hay cambios criticos (auth, wallet, RLS, server actions): `npm run test --workspace=<area>`
+- **Web**: `pnpm --filter web lint` + `pnpm exec tsc --noEmit -p apps/web/tsconfig.json`
+- **Game-server**: `pnpm exec tsc --noEmit -p apps/game-server/tsconfig.json`
+- Si hay cambios criticos (auth, wallet, RLS, server actions): ejecutar el test del área con `pnpm --filter <area> test`.
 
 ### Formato de commit
 `<tipo>(<alcance>): <descripcion en imperativo, <=72 caracteres>`
@@ -125,11 +127,11 @@ Las tres plataformas de produccion de Mesa Primera:
   4. Si hay errores, reportar y proponer fix
 
 ### Base de Datos — Supabase
-- CLI: `supabase` v2.95.4 (`~/.local/bin/supabase`)
+- CLI: Supabase v2.98.2 from the workspace lockfile (`pnpm exec supabase`)
 - Comandos clave:
   - `supabase migration new <nombre>` — crear migracion
   - `supabase db push` — aplicar migraciones pendientes en produccion
-  - `supabase gen types typescript --local > apps/web/src/types/supabase.ts` — regenerar tipos
+  - `supabase gen types typescript --linked > apps/web/src/types/supabase.ts` — regenerar tipos desde Cloud
 - Flujo:
   1. Listar migraciones locales en `supabase/migrations/`
   2. Comparar con migraciones aplicadas en produccion
@@ -151,7 +153,7 @@ Las tres plataformas de produccion de Mesa Primera:
   5. Levantar nuevo contenedor con env vars (ver doc de referencia)
   6. Verificar: `docker ps --filter name=mesa` y `docker logs mesa-backend --tail 50`
 - **Caddy**: Reverse proxy HTTPS :443 → localhost:2567 (Colyseus) + :2568 (Socket.IO)
-- **Redis en VPS**: puerto 6379 (no 6380 — eso es local)
+- **Redis en VPS**: puerto 6380 dentro de la red privada `mesa-internal`; no asumir exposición pública.
 - Siempre documentar comando de rollback antes de ejecutar
 
 ---
@@ -183,8 +185,7 @@ Al finalizar, presentar un resumen consolidado de las tres plataformas:
 - Si un deploy falla, NO intentar rollback automatico — reportar al usuario
 
 ## Skills relevantes
-- `git-commit` — staging y mensajes de commit
-- `spanish-conventional-commits-rationale` — commits con contexto de negocio
+- `.github/instructions/commits.instructions.md` — staging, formato y mensajes de commit
 - `deploy-to-vercel` — deploys frontend
 - `deployment-confidence-any-day` — plan de release con rollback
 - `vps-hardening-and-runtime-ops` — operaciones en la VPS

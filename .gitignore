@@ -43,6 +43,11 @@ _agent/
 .github/agents/
 .github/instructions/
 
+# Project guidance and skill inventory are source-controlled; external skill
+# bodies under .agents/ remain machine-local runtime assets.
+!.github/instructions/
+!.github/instructions/*.instructions.md
+
 # ── Turbo / Vercel ──
 .turbo
 .vercel
@@ -111,6 +116,7 @@ test-update.js
 dev.sh
 skills-lock.json
 skills*.json
+!skills-lock.json
 *plan.md
 
 # ── Internal documentation (business logic, sprints, deployment) ──

@@ -34,7 +34,7 @@ pnpm exec supabase gen types typescript --linked > apps/web/src/types/supabase.t
 - **Required**: `REDIS_URL` (port 6380), `GAME_SERVER_URL`, `TWILIO_*`, `LIVEKIT_*`.
 ## Project Context & Rules
 - **Domain Rules**: Detailed rules live in `.github/instructions/*.instructions.md` and load automatically by `applyTo` (web, game-server, supabase, testing, deploy-ops, docs, commits, skills-catalog). Read those before working in each area.
-- **Core Rulebook**: `.cursorrules` holds the slim global core (principles, golden rule, index).
+- **Core Rulebook**: `AGENTS.md` holds the project core (principles, golden rules, stack and index).
 - **Technical Docs**: Always refer to `.github/rules/context7.md` for fetching current external library/SDK/CLI documentation via `ctx7`.
-- **Skills Catalog**: See `.github/instructions/skills-catalog.instructions.md` to pick the right skill per task. Use `find-docs` for external docs, `test-driven-development` before implementing, `git-commit` for commits, and `update-docs` for documentation sync.
-- **MCP Enforcement**: All financial operations must follow the atomic Ledger pattern defined in `@plan_primera.md` and `.github/instructions/supabase-rls.instructions.md`.
+- **Skills Catalog**: See `.github/instructions/skills-catalog.instructions.md` to pick the right skill per task. Use `find-docs` for external docs, `test-driven-development` when it fits the change, the commit instruction plus `deploy-and-commit` agent for commits, and `update-docs` for documentation sync.
+- **MCP Enforcement**: All financial operations must follow the atomic Ledger pattern defined in `docs/game/plan_primera.md` and `.github/instructions/supabase-rls.instructions.md`.
