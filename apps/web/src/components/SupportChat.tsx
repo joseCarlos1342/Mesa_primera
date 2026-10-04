@@ -18,6 +18,7 @@ import { getPlayerIssueMessages, listPlayerIssueTickets, type AdminIssueTicket, 
 import { closeIssueTicket } from '@/app/actions/admin-issues';
 import { IssueAttachmentComposer } from '@/components/IssueAttachmentComposer';
 import { IssueAttachmentList } from '@/components/IssueAttachmentList';
+import { createClient } from '@/utils/supabase/client';
 
 interface SupportChatProps {
   userId: string;
@@ -58,7 +59,6 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -74,8 +74,18 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
   const [attachmentVersion, setAttachmentVersion] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const pendingSocketEventsRef = useRef<Array<[string, unknown]>>([]);
 
   const isFinalized = ticketStatus === 'finalized';
+
+  const emitSocketEvent = useCallback((event: string, payload: unknown) => {
+    if (socketRef.current) {
+      socketRef.current.emit(event, payload);
+      return;
+    }
+    pendingSocketEventsRef.current.push([event, payload]);
+  }, []);
 
   useEffect(() => {
     if (!isOpen || isAdmin || view !== 'issues') return;
@@ -142,11 +152,27 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
 
   // Socket.IO connection and event listeners
   useEffect(() => {
+    let cancelled = false;
+    let s: Socket | null = null;
+    const handleOpenChat = () => setIsOpen(true);
+    window.addEventListener('open-support-chat', handleOpenChat);
+
+    void (async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled || !session?.access_token) return;
+
     const socketUrl = (typeof window !== 'undefined' && (window as any).__MESA_PRIMERA_RUNTIME_ENV__?.NEXT_PUBLIC_SOCKET_URL)
       || process.env.NEXT_PUBLIC_SOCKET_URL
       || (typeof window !== 'undefined' ? `${window.location.protocol === 'https:' ? 'https:' : 'http:'}//${window.location.hostname}:2568` : 'http://127.0.0.1:2568');
-    const s = io(`${socketUrl}/support`, { withCredentials: true });
-    setSocket(s);
+    s = io(`${socketUrl}/support`, {
+      auth: { accessToken: session.access_token },
+      withCredentials: true,
+    });
+    socketRef.current = s;
+    for (const [event, payload] of pendingSocketEventsRef.current.splice(0)) {
+      s.emit(event, payload);
+    }
 
     // Join ticket room for scoped messages
     if (activeTicketId) s.emit('support:join', activeTicketId);
@@ -180,29 +206,14 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
       if (data.ticketId === activeTicketId && ticketStatus === 'pending') setTicketStatus('attended');
     });
 
-    // Legacy compatibility
-    s.on('support:incoming', (data: { userId: string; message: string; ticketId: string }) => {
-      if (isAdmin && data.userId === userId && data.ticketId === activeTicketId) {
-        setMessages(prev => [...prev, { id: uuidv4(), sender: 'Usuario', text: data.message, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), ticketId: data.ticketId }]);
-      }
-    });
-    s.on('support:message', (data: { userId: string; message: string; ticketId: string }) => {
-      if (!isAdmin && data.userId === userId && data.ticketId === activeTicketId) {
-        setMessages(prev => [...prev, { id: uuidv4(), sender: 'Soporte', text: data.message, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), ticketId: data.ticketId }]);
-        window.dispatchEvent(new CustomEvent('support-notification', { detail: data }));
-        if (!isOpen) { try { const a = new Audio('/sounds/notification.mp3'); a.volume = 0.5; a.play().catch(() => undefined); } catch { /* Audio no disponible. */ } }
-      }
-    });
-    s.on('support:resolved', (data: { userId: string; ticketId: string }) => {
-      if (data.userId === userId && data.ticketId === activeTicketId) setTicketStatus('finalized');
-    });
-
-    const handleOpenChat = () => setIsOpen(true);
-    window.addEventListener('open-support-chat', handleOpenChat);
+    // Legacy support events are intentionally not subscribed.
+    })();
 
     return () => {
-      if (activeTicketId) s.emit('support:leave', activeTicketId);
-      s.disconnect();
+      cancelled = true;
+      if (activeTicketId) s?.emit('support:leave', activeTicketId);
+      s?.disconnect();
+      socketRef.current = null;
       window.removeEventListener('open-support-chat', handleOpenChat);
     };
   }, [isAdmin, userId, isOpen, activeTicketId, ticketStatus]);
@@ -257,15 +268,15 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
       const result = await closeSupportTicket(activeTicketId);
       if (result.error) { console.error('Error closing ticket:', result.error); return; }
       setTicketStatus('finalized');
-      socket?.emit('support:ticket-finalized', { ticketId: activeTicketId, closedByRole: isAdmin ? 'admin' : 'player' });
+      emitSocketEvent('support:ticket-finalized', { ticketId: activeTicketId, closedByRole: isAdmin ? 'admin' : 'player' });
     } finally {
       setIsClosingTicket(false);
     }
-  }, [activeTicketId, isFinalized, socket, isAdmin]);
+  }, [activeTicketId, isFinalized, emitSocketEvent, isAdmin]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !socket || !userId || isFinalized || isSending) return;
+    if (!input.trim() || !userId || isFinalized || isSending) return;
 
     const ticketId = activeTicketId || userId;
     const trimmed = input.trim();
@@ -288,22 +299,18 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
         const result = await createSupportTicket(ticketId, trimmed);
         if (result.error) { console.error('Failed to create ticket:', result.error); return; }
         setTicketStatus('pending');
-        socket.emit('support:ticket-created', { ticketId, userId, username: 'Usuario', preview: trimmed.slice(0, 100) });
-        socket.emit('support:message', { userId, message: trimmed, ticketId }); // Legacy
+        emitSocketEvent('support:ticket-created', { ticketId, userId, username: 'Usuario', preview: trimmed.slice(0, 100) });
       } else {
         // Subsequent messages: use RPC
         const result = await appendSupportMessage(ticketId, trimmed);
         if (result.error) { console.error('Failed to send message:', result.error); return; }
         const from = result.data?.from || (isAdmin ? 'admin' : 'player');
-        socket.emit('support:message-created', { ticketId, messageId: result.data?.message_id, message: trimmed, from, userId, timestamp: new Date().toISOString() });
+        emitSocketEvent('support:message-created', { ticketId, messageId: result.data?.message_id, message: trimmed, from, userId, timestamp: new Date().toISOString() });
         // Auto-transition: if admin replies to pending, it becomes attended
         if (isAdmin && ticketStatus === 'pending') {
           setTicketStatus('attended');
-          socket.emit('support:ticket-attended', { ticketId });
+          emitSocketEvent('support:ticket-attended', { ticketId });
         }
-        // Legacy compatibility
-        if (isAdmin) { socket.emit('support:reply', { userId, message: trimmed, ticketId }); }
-        else { socket.emit('support:message', { userId, message: trimmed, ticketId }); }
       }
     } finally {
       setIsSending(false);
@@ -341,11 +348,11 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         ticketId: activeTicketId,
       }]);
-      socket?.emit('support:attachment-added', { ticketId: activeTicketId, fileName: file.name, mimeType: file.type });
+      emitSocketEvent('support:attachment-added', { ticketId: activeTicketId, fileName: file.name, mimeType: file.type });
     } finally {
       setIsUploading(false);
     }
-  }, [activeTicketId, isFinalized, socket]);
+  }, [activeTicketId, isFinalized, emitSocketEvent]);
 
   if (embedded) {
     return (

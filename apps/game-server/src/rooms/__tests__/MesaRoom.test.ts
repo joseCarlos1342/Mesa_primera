@@ -3241,6 +3241,41 @@ describe('MesaRoom via Colyseus Testing', () => {
   // ───────────────────────────────────────────────────────────
 
   describe('Reconnection — ghost player matching', () => {
+    it('no transfiere el estado de un ghost autenticado a otro usuario con el mismo deviceId', async () => {
+      const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-reconnect-cross-user' });
+
+      const p1 = await colyseus.connectTo(room, { nickname: 'Victim', deviceId: 'device-shared', userId: 'supa-victim', chips: 10_000_000 });
+      await colyseus.connectTo(room, { nickname: 'P2', deviceId: 'device-cross-2', userId: 'supa-cross-2', chips: 10_000_000 });
+      await colyseus.connectTo(room, { nickname: 'P3', deviceId: 'device-cross-3', userId: 'supa-cross-3', chips: 10_000_000 });
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const oldPlayer = room.state.players.get(p1.sessionId)!;
+      room.state.phase = 'GUERRA';
+      oldPlayer.chips = 8_000_000;
+      oldPlayer.cards = '01-O,03-C,05-E,07-B';
+      oldPlayer.cardCount = 4;
+      oldPlayer.connected = false;
+
+      const attacker = await colyseus.connectTo(room, {
+        nickname: 'Attacker',
+        deviceId: 'device-shared',
+        userId: 'supa-attacker',
+        chips: 9_000_000,
+      });
+
+      await new Promise(r => setTimeout(r, 200));
+
+      const attackerPlayer = room.state.players.get(attacker.sessionId)!;
+      const victimPlayer = room.state.players.get(p1.sessionId);
+
+      expect(victimPlayer).toBeTruthy();
+      expect(victimPlayer?.supabaseUserId).toBe('supa-victim');
+      expect(attackerPlayer?.supabaseUserId).toBe('supa-attacker');
+      expect(attackerPlayer?.cards).not.toBe('01-O,03-C,05-E,07-B');
+      expect(attackerPlayer?.chips).toBe(9_000_000);
+    });
+
     it('restores player state when reconnecting with same deviceId', async () => {
       const room = await colyseus.createRoom<any>('mesa_primera', { tableId: 'test-reconnect-ghost' });
 
@@ -3273,7 +3308,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       const newClient = await colyseus.connectTo(room, {
         nickname: 'P1_reconnected',
         deviceId: 'device-ghost-1',
-        userId: 'supa-reconnect',
+        userId: 'supa-g1',
         chips: 9_000_000,
       });
 
@@ -3321,7 +3356,7 @@ describe('MesaRoom via Colyseus Testing', () => {
       const newClient = await colyseus.connectTo(room, {
         nickname: 'P1_lobby',
         deviceId: 'device-lobby-1',
-        userId: 'supa-lobby-reconnect',
+        userId: 'supa-l1',
         chips: 12_000_000,
       });
 

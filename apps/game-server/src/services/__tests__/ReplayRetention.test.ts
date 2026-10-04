@@ -67,6 +67,19 @@ describe('ReplayFileService — 7-day Retention', () => {
     expect(loaded!.players[0].nickname).toBe('Player1');
   });
 
+  it.each([
+    '../../outside',
+    '..\\outside',
+    '/absolute/path',
+    'game/child',
+    'game%2fchild',
+  ])('rechaza game_id inseguro: %s', (gameId) => {
+    const replay = makeReplay(gameId, new Date());
+
+    expect(ReplayFileService.save(replay)).toBe(false);
+    expect(ReplayFileService.load(gameId)).toBeNull();
+  });
+
   it('save retorna false cuando falla la escritura del archivo', () => {
     const replay = makeReplay('game-save-error', new Date());
     const monthDir = ReplayFileService.getMonthDirFor(replay.created_at);

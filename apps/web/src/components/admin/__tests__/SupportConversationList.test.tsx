@@ -25,7 +25,12 @@ jest.mock('@/utils/avatars', () => ({
 
 const mockIo = io as jest.MockedFunction<typeof io>
 const mockCloseSupportTicket = closeSupportTicket as jest.MockedFunction<typeof closeSupportTicket>
+const mockGetSession = jest.fn().mockResolvedValue({ data: { session: { access_token: 'token-admin' } } })
 const originalAudio = global.Audio
+
+jest.mock('@/utils/supabase/client', () => ({
+  createClient: jest.fn(() => ({ auth: { getSession: mockGetSession } })),
+}))
 
 type SocketHandler = (payload: never) => void
 
@@ -136,15 +141,19 @@ describe('SupportConversationList', () => {
     expect(screen.getByText(/Sesión #ticket-a · Atendido/)).toBeInTheDocument()
   })
 
-  it('usa runtime socket URL y muestra fallbacks de usuario sin nombre', () => {
+  it('usa runtime socket URL y muestra fallbacks de usuario sin nombre', async () => {
     ;(window as Window & typeof globalThis & { __MESA_PRIMERA_RUNTIME_ENV__?: { NEXT_PUBLIC_SOCKET_URL: string } }).__MESA_PRIMERA_RUNTIME_ENV__ = {
       NEXT_PUBLIC_SOCKET_URL: 'https://socket.runtime.test',
     }
     render(<SupportConversationList adminId="admin-1" initialTickets={[
       ticket({ id: 'fallback-user', user: { username: '', full_name: '', avatar_url: null } }),
     ]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
 
-    expect(mockIo).toHaveBeenCalledWith('https://socket.runtime.test/support', { withCredentials: true })
+    expect(mockIo).toHaveBeenCalledWith('https://socket.runtime.test/support', {
+      auth: { accessToken: 'token-admin' },
+      withCredentials: true,
+    })
     expect(screen.getByText('U')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Usuario'))
@@ -171,13 +180,14 @@ describe('SupportConversationList', () => {
     expect(screen.getByText('No hay historial')).toBeInTheDocument()
   })
 
-  it('incorpora tickets y mensajes realtime sin reabrir tickets finalizados', () => {
+  it('incorpora tickets y mensajes realtime sin reabrir tickets finalizados', async () => {
     render(
       <SupportConversationList
         adminId="admin-1"
         initialTickets={[ticket({ id: 'ticket-final-01', status: 'finalized', last_message_preview: 'Ya cerrado' })]}
       />
     )
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
 
     socket.trigger('support:ticket-created', { ticketId: 'ticket-new-001', userId: 'user-new', username: 'nuevo', preview: 'Hola soporte' })
     expect(screen.getByText(/Hola soporte/)).toBeInTheDocument()
@@ -202,11 +212,12 @@ describe('SupportConversationList', () => {
     expect(screen.queryByText('No debe cambiar')).not.toBeInTheDocument()
   })
 
-  it('continúa si el navegador bloquea audio de notificación', () => {
+  it('continúa si el navegador bloquea audio de notificación', async () => {
     global.Audio = jest.fn().mockImplementation(() => {
       throw new Error('audio blocked')
     }) as unknown as typeof Audio
     render(<SupportConversationList adminId="admin-1" initialTickets={[]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
 
     expect(() => socket.trigger('support:ticket-created', { ticketId: 'audio-blocked', userId: 'user-audio', username: 'audio', preview: 'Sin sonido' })).not.toThrow()
     expect(screen.getByText(/Sin sonido/)).toBeInTheDocument()
@@ -216,6 +227,7 @@ describe('SupportConversationList', () => {
     const play = jest.fn().mockRejectedValue(new DOMException('Autoplay bloqueado', 'NotAllowedError'))
     global.Audio = jest.fn().mockImplementation(() => ({ volume: 0, play })) as unknown as typeof Audio
     render(<SupportConversationList adminId="admin-1" initialTickets={[]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
 
     socket.trigger('support:ticket-created', {
       ticketId: 'audio-rejected', userId: 'user-audio', username: 'audio', preview: 'Continuar sin audio',
@@ -230,6 +242,7 @@ describe('SupportConversationList', () => {
       ticket({ id: 'ticket-close-1' }),
       ticket({ id: 'ticket-keep-open', user_id: 'user-2', last_message_preview: 'Sigo pendiente', user: { username: 'beto', full_name: 'Beto Club', avatar_url: null } }),
     ]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
 
     fireEvent.click(screen.getByText('Ana Mesa'))
     fireEvent.click(screen.getAllByRole('button', { name: /finalizar chat/i })[0])
@@ -248,6 +261,7 @@ describe('SupportConversationList', () => {
 
   it('finaliza el ticket desde el callback móvil', async () => {
     render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-mobile-close' })]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
     fireEvent.click(screen.getByText('Ana Mesa'))
 
     fireEvent.click(screen.getByRole('button', { name: /finalizar chat en móvil/i }))
@@ -263,6 +277,7 @@ describe('SupportConversationList', () => {
       .mockRejectedValueOnce(new Error('network down'))
       .mockResolvedValueOnce({ data: { closed_by_role: 'admin' } })
     render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-retry-close' })]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
     fireEvent.click(screen.getByText('Ana Mesa'))
     const closeButton = screen.getAllByRole('button', { name: /finalizar chat/i })[0]
 
@@ -285,6 +300,7 @@ describe('SupportConversationList', () => {
       ticket({ id: 'ticket-close-slow', last_message_preview: 'Cerrar lento' }),
       ticket({ id: 'ticket-stay-open', user_id: 'user-2', last_message_preview: 'Mantener abierto', user: { username: 'beto', full_name: 'Beto Club', avatar_url: null } }),
     ]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
     fireEvent.click(screen.getByText('Ana Mesa'))
     fireEvent.click(screen.getAllByRole('button', { name: /finalizar chat/i })[0])
     fireEvent.click(screen.getByText('Beto Club'))
@@ -297,8 +313,9 @@ describe('SupportConversationList', () => {
     expect(screen.getByTestId('support-chat')).toHaveTextContent('Chat ticket-stay-open user-2 admin embedded')
   })
 
-  it('actualiza estados por eventos realtime de atendido y finalizado', () => {
+  it('actualiza estados por eventos realtime de atendido y finalizado', async () => {
     render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'ticket-state-1' })]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
 
     socket.trigger('support:ticket-attended', { ticketId: 'ticket-state-1' })
     fireEvent.click(screen.getByRole('button', { name: 'ATENDIDOS' }))
@@ -330,22 +347,20 @@ describe('SupportConversationList', () => {
     expect(screen.getByText(/Finalizado real/)).toBeInTheDocument()
   })
 
-  it('procesa mensajes legacy existentes y crea tickets nuevos sin duplicar creados', () => {
+  it('procesa nuevos tickets autenticados sin duplicarlos', async () => {
     render(<SupportConversationList adminId="admin-1" initialTickets={[ticket({ id: 'legacy-1', last_message_preview: 'Antes' })]} />)
+    await waitFor(() => expect(mockIo).toHaveBeenCalled())
 
     socket.trigger('support:ticket-created', { ticketId: 'legacy-new', userId: 'user-new', username: 'nuevo', preview: 'Primer mensaje' })
     socket.trigger('support:ticket-created', { ticketId: 'legacy-new', userId: 'user-new', username: 'nuevo', preview: 'Duplicado' })
     expect(screen.getByText(/Primer mensaje/)).toBeInTheDocument()
     expect(screen.queryByText(/Duplicado/)).not.toBeInTheDocument()
 
-    socket.trigger('support:incoming', { ticketId: 'legacy-1', userId: 'user-1', message: 'Mensaje legacy actualizado' })
-    expect(screen.getByText(/Mensaje legacy actualizado/)).toBeInTheDocument()
-
-    socket.trigger('support:incoming', { userId: 'legacy-user-only', message: 'Ticket creado por legacy' })
-    expect(screen.getByText(/Ticket creado por legacy/)).toBeInTheDocument()
+    expect(screen.queryByText(/Mensaje legacy actualizado/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ticket creado por legacy/)).not.toBeInTheDocument()
   })
 
-  it('mantiene tickets finalizados intactos ante eventos legacy y muestra avatar cuando existe', () => {
+  it('mantiene tickets finalizados intactos y muestra avatar cuando existe', () => {
     render(
       <SupportConversationList
         adminId="admin-1"
@@ -357,8 +372,6 @@ describe('SupportConversationList', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'FINALIZADOS' }))
     expect(screen.getByTestId('support-avatar')).toBeInTheDocument()
-    socket.trigger('support:incoming', { ticketId: 'final-avatar', userId: 'user-1', message: 'No reabrir' })
-
     expect(screen.getByText(/Cerrado/)).toBeInTheDocument()
     expect(screen.queryByText(/No reabrir/)).not.toBeInTheDocument()
 

@@ -1,6 +1,5 @@
 import { defineServer, defineRoom, LobbyRoom, matchMaker } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
-import { monitor } from "@colyseus/monitor";
 import cors from "cors";
 import express from "express";
 import { MesaRoom } from "./rooms/MesaRoom";
@@ -99,8 +98,6 @@ export default defineServer({
             }
             res.json({ ok: true, data: replay });
         });
-
-        app.use("/colyseus", monitor());
 
         // ── Broadcast API: emit broadcast to all connected Socket.IO clients ──
 

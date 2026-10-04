@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { Clock, User, MessageCircle, CheckCircle2, History, Inbox, X } from 'lucide-react';
 import { SupportChat } from '@/components/SupportChat';
 import { getAvatarSvg } from '@/utils/avatars';
 import { closeSupportTicket, type SupportTicket, type SupportTicketStatus } from '@/app/actions/support';
+import { createClient } from '@/utils/supabase/client';
 
 type TicketWithUser = SupportTicket & {
   user: { username: string; full_name: string; avatar_url: string | null };
@@ -38,14 +39,37 @@ export function SupportConversationList({ initialTickets, adminId: _adminId, ini
   const [filter, setFilter] = useState<TicketFilter>('pending');
   const [isClosing, setIsClosing] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const pendingSocketEventsRef = useRef<Array<[string, unknown]>>([]);
+
+  const emitSocketEvent = useCallback((event: string, payload: unknown) => {
+    if (socketRef.current) {
+      socketRef.current.emit(event, payload);
+      return;
+    }
+    pendingSocketEventsRef.current.push([event, payload]);
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let s: Socket | null = null;
+
+    void (async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled || !session?.access_token) return;
+
     const socketUrl = (typeof window !== 'undefined' && (window as any).__MESA_PRIMERA_RUNTIME_ENV__?.NEXT_PUBLIC_SOCKET_URL)
       || process.env.NEXT_PUBLIC_SOCKET_URL
       || (typeof window !== 'undefined' ? `${window.location.protocol === 'https:' ? 'https:' : 'http:'}//${window.location.hostname}:2568` : 'http://127.0.0.1:2568');
-    const s = io(`${socketUrl}/support`, { withCredentials: true });
-    setSocket(s);
+    s = io(`${socketUrl}/support`, {
+      auth: { accessToken: session.access_token },
+      withCredentials: true,
+    });
+    socketRef.current = s;
+    for (const [event, payload] of pendingSocketEventsRef.current.splice(0)) {
+      s.emit(event, payload);
+    }
 
     // New ticket created by a player
     s.on('support:ticket-created', (data: { ticketId: string; userId: string; username: string; preview: string }) => {
@@ -112,40 +136,16 @@ export function SupportConversationList({ initialTickets, adminId: _adminId, ini
     });
 
     // Legacy compatibility: handle old-style incoming messages  
-    s.on('support:incoming', (data: any) => {
-      const ticketId = data.ticketId || data.userId;
-      setTickets(prev => {
-        const existing = prev.find(t => t.id === ticketId);
-        // CRITICAL FIX: never reset finalized tickets
-        if (existing?.status === 'finalized') return prev;
-        if (existing) {
-          return prev.map(t =>
-            t.id === ticketId
-              ? { ...t, last_message_preview: data.message, last_message_at: new Date().toISOString(), last_message_from: 'player' as const, awaitingResponse: true }
-              : t
-          );
-        }
-        // Truly new — add as pending
-        const newTicket: TicketWithUser = {
-          id: ticketId,
-          user_id: data.userId,
-          status: 'pending',
-          closed_at: null, closed_by: null, closed_by_role: null,
-          last_message_at: new Date().toISOString(),
-          last_message_from: 'player',
-          last_message_preview: data.message,
-          message_count: 1, attachment_count: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          user: { username: 'Nuevo', full_name: 'Usuario', avatar_url: null },
-          awaitingResponse: true,
-        };
-        playNotification();
-        return [newTicket, ...prev];
-      });
-    });
+    // Legacy support events are intentionally not subscribed: the server no
+    // longer accepts unauthenticated relay messages.
 
-    return () => { s.disconnect(); };
+    })();
+
+    return () => {
+      cancelled = true;
+      s?.disconnect();
+      socketRef.current = null;
+    };
   }, []);
 
   const handleClose = useCallback(async (ticketId: string) => {
@@ -162,14 +162,14 @@ export function SupportConversationList({ initialTickets, adminId: _adminId, ini
           ? { ...t, status: 'finalized' as const, closed_at: new Date().toISOString(), closed_by_role: 'admin', awaitingResponse: false }
           : t
       ));
-      socket?.emit('support:ticket-finalized', { ticketId, closedByRole: 'admin' });
+       emitSocketEvent('support:ticket-finalized', { ticketId, closedByRole: 'admin' });
       setSelectedTicketId(current => current === ticketId ? null : current);
     } catch {
       setCloseError('No se pudo finalizar el chat. Inténtalo nuevamente.');
     } finally {
       setIsClosing(false);
     }
-  }, [socket]);
+  }, [emitSocketEvent]);
 
   const filteredTickets = tickets.filter(t => t.status === filter);
   const activeTicket = tickets.find(t => t.id === selectedTicketId);

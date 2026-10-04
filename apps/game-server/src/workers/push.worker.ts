@@ -3,11 +3,13 @@ import { sendWebPush } from '../services/push-notifications';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || 'http://127.0.0.1:54321';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''; // Use service_role in prod
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 let supabase: any = null;
 if (supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+  console.error('[PushWorker] SUPABASE_SERVICE_ROLE_KEY is required; subscription queries are disabled.');
 }
 
 const connection = {

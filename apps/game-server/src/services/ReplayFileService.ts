@@ -52,6 +52,10 @@ export class ReplayFileService {
   private static initialized = false;
   private static cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
+  private static isSafeGameId(gameId: string): boolean {
+    return /^[A-Za-z0-9_-]{1,128}$/.test(gameId);
+  }
+
   private static ensureDir(dirPath: string): boolean {
     try {
       if (!fs.existsSync(dirPath)) {
@@ -91,6 +95,7 @@ export class ReplayFileService {
    * Retorna true si se guardó exitosamente.
    */
   static save(replay: ReplayData): boolean {
+    if (!this.isSafeGameId(replay.game_id)) return false;
     this.init();
     try {
       const monthDir = path.join(this.BASE_DIR, this.getMonthDir(replay.created_at));
@@ -111,6 +116,7 @@ export class ReplayFileService {
    * Busca en todas las subcarpetas mensuales si no se especifica mes.
    */
   static load(gameId: string): ReplayData | null {
+    if (!this.isSafeGameId(gameId)) return null;
     this.init();
     try {
       // Buscar en subcarpetas mensuales (más recientes primero)

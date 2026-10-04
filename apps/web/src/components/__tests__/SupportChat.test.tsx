@@ -21,10 +21,15 @@ const socket = {
   }),
   disconnect: jest.fn(),
 }
+const mockGetSession = jest.fn().mockResolvedValue({ data: { session: { access_token: 'token-player' } } })
 const originalAudio = window.Audio
 
 jest.mock('socket.io-client', () => ({
   io: jest.fn(() => socket),
+}))
+
+jest.mock('@/utils/supabase/client', () => ({
+  createClient: jest.fn(() => ({ auth: { getSession: mockGetSession } })),
 }))
 
 jest.mock('uuid', () => ({
@@ -316,11 +321,6 @@ describe('SupportChat', () => {
       'support:message-created',
       expect.objectContaining({ ticketId: 'ticket-1', message: 'Gracias por responder', from: 'player' })
     )
-    expect(socket.emit).toHaveBeenCalledWith('support:message', {
-      userId: 'user-1',
-      message: 'Gracias por responder',
-      ticketId: 'ticket-1',
-    })
   })
 
   it('evita duplicar mensajes mientras el envío anterior sigue pendiente', async () => {
@@ -423,32 +423,14 @@ describe('SupportChat', () => {
     expect(screen.getByText('Chat Finalizado')).toBeInTheDocument()
   })
 
-  it('procesa eventos legacy de soporte para admin y jugador', async () => {
-    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
-    const { unmount } = render(<SupportChat userId="user-1" embedded isAdmin ticketId="ticket-1" />)
-
-    await screen.findByText('Necesito ayuda con mi mesa')
-    await act(async () => {
-      socketHandlers.get('support:incoming')?.({ userId: 'user-1', ticketId: 'ticket-1', message: 'Legacy del jugador' })
-    })
-    expect(screen.getByText('Legacy del jugador')).toBeInTheDocument()
-
-    unmount()
-    socketHandlers.clear()
+  it('no registra listeners de eventos legacy de soporte', async () => {
     render(<SupportChat userId="user-1" embedded ticketId="ticket-1" />)
-    await screen.findByText('Necesito ayuda con mi mesa')
-    await act(async () => {
-      socketHandlers.get('support:message')?.({ userId: 'user-1', ticketId: 'ticket-1', message: 'Legacy de soporte' })
-      socketHandlers.get('support:resolved')?.({ userId: 'user-1', ticketId: 'ticket-1' })
-    })
 
-    expect(screen.getByText('Legacy de soporte')).toBeInTheDocument()
-    expect(screen.getByText('Chat Finalizado')).toBeInTheDocument()
-    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'support-notification' }))
-    await waitFor(() => {
-      expect(getSupportTicketHistory).toHaveBeenCalledTimes(2)
-      expect(getSupportTicket).toHaveBeenCalledTimes(2)
-    })
+    await screen.findByText('Necesito ayuda con mi mesa')
+
+    expect(socketHandlers.has('support:incoming')).toBe(false)
+    expect(socketHandlers.has('support:message')).toBe(false)
+    expect(socketHandlers.has('support:resolved')).toBe(false)
   })
 
   it('sube adjuntos y muestra el mensaje de archivo', async () => {
@@ -463,7 +445,7 @@ describe('SupportChat', () => {
     await waitFor(() => {
       expect(uploadSupportAttachment).toHaveBeenCalledWith('ticket-1', expect.any(FormData))
     })
-    expect(screen.getByText('📎 evidencia.png')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('📎 evidencia.png')).toBeInTheDocument())
     expect(socket.emit).toHaveBeenCalledWith('support:attachment-added', {
       ticketId: 'ticket-1',
       fileName: 'evidencia.png',
@@ -641,11 +623,6 @@ describe('SupportChat', () => {
 
     await waitFor(() => expect(appendSupportMessage).toHaveBeenCalledWith('ticket-1', 'Te ayudo ahora'))
     expect(socket.emit).toHaveBeenCalledWith('support:ticket-attended', { ticketId: 'ticket-1' })
-    expect(socket.emit).toHaveBeenCalledWith('support:reply', {
-      userId: 'user-1',
-      message: 'Te ayudo ahora',
-      ticketId: 'ticket-1',
-    })
   })
 
   it('no envia createSupportTicket cuando falla y no emite ticket-created', async () => {
@@ -717,24 +694,10 @@ describe('SupportChat', () => {
     expect(screen.getByText('Sin IDs').closest('div')?.parentElement).toBeInTheDocument()
   })
 
-  it('reproduce audio de notificacion legacy cuando el chat flotante esta cerrado', async () => {
-    const play = jest.fn(() => Promise.resolve())
-    const audioMock = jest.fn(() => ({ volume: 0.5, play }))
-    Object.defineProperty(window, 'Audio', { configurable: true, value: audioMock })
-
+  it('no registra el relay legacy de notificaciones', async () => {
     render(<SupportChat userId="user-1" ticketId="ticket-1" />)
-    await waitFor(() => expect(socketHandlers.has('support:message')).toBe(true))
-
-    await act(async () => {
-      socketHandlers.get('support:message')?.({
-        userId: 'user-1',
-        ticketId: 'ticket-1',
-        message: 'Legacy notificacion',
-      })
-    })
-
-    expect(audioMock).toHaveBeenCalledWith('/sounds/notification.mp3')
-    expect(play).toHaveBeenCalled()
+    await waitFor(() => expect(socketHandlers.has('support:message-created')).toBe(true))
+    expect(socketHandlers.has('support:message')).toBe(false)
   })
 
   it('no procesa adjuntos sin archivo o sin ticketId activo', async () => {

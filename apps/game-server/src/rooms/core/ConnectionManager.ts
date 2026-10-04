@@ -138,14 +138,14 @@ export async function handleConnectionJoin(room: MesaRoom, client: Client, optio
   r.clientMap.set(client.sessionId, client);
 
   // Ghost player cleanup and state restoration:
-  // Match by deviceId first, then fall back to userId (handles enforceSessionPolicy
-  // scenario where profiles.last_device_id differs from the original localStorage deviceId)
+  // Authenticated players must be matched by stable userId. A device-only match
+  // is safe only for anonymous ghosts, because deviceId is client-controlled.
   const playerEntries = Array.from(r.state.players.entries()) as Array<[string, Player]>;
   console.log(`[MesaRoom] onJoin: buscando ghost para deviceId=${deviceId}, userId=${options.userId}. Players: ${playerEntries.map(([id, p]) => `${p.nickname}(${id},dev=${p.deviceId},uid=${p.supabaseUserId},conn=${p.connected})`).join(', ')}`);
 
   const existingPlayerEntry = playerEntries.find(
-    ([_, p]) => (deviceId && p.deviceId === deviceId) ||
-                (options.userId && p.supabaseUserId === options.userId)
+    ([_, p]) => (options.userId && p.supabaseUserId === options.userId) ||
+                (deviceId && p.deviceId === deviceId && !p.supabaseUserId)
   );
 
   if (existingPlayerEntry) {

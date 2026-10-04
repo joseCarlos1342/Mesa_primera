@@ -4,12 +4,12 @@ import { redis } from './redis';
 import { REPLAY_VERSION, type ReplayFrame } from './ReplayV2';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 let supabase: any = null;
 
 if (!supabaseKey) {
-  console.warn('[SupabaseService] No Supabase key found (SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY). Database operations will silently fail.');
+  console.error('[SupabaseService] SUPABASE_SERVICE_ROLE_KEY is required; database writes are disabled.');
 } else {
   try {
     supabase = createClient(supabaseUrl, supabaseKey, {
@@ -87,6 +87,26 @@ export interface ExpireRecoveryIncidentInput {
   refunds: RecoveryRefundInput[];
 }
 
+export interface SocketIdentity {
+  userId: string;
+  role: 'admin' | 'player';
+}
+
+export interface SupportMessageEvent {
+  messageId: string;
+  ticketId: string;
+  message: string;
+  timestamp: string;
+  from: 'admin' | 'player';
+  userId: string;
+}
+
+export interface SupportTicketEventState {
+  status: 'pending' | 'attended' | 'finalized';
+  closedByRole: 'admin' | 'player' | null;
+  lastMessageFrom: 'admin' | 'player';
+}
+
 async function getOrCreateTableId(tableName: string): Promise<string> {
   if (cachedTableId) return cachedTableId;
   const { data: table } = await supabase.from('tables').select('id').limit(1).single();
@@ -127,6 +147,88 @@ export class SupabaseService {
       console.error("[SupabaseService] Error validating recovery identity:", error);
       return false;
     }
+  }
+
+  /** Valida la identidad y el rol para namespaces Socket.IO protegidos. */
+  static async getSocketIdentity(accessToken: unknown): Promise<SocketIdentity | null> {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY || typeof accessToken !== 'string' || !supabase) return null;
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+      const userId = authData.user?.id;
+      if (authError || !userId) return null;
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'player')) return null;
+
+      return { userId, role: profile.role };
+    } catch (error) {
+      console.error('[SupabaseService] Error validating Socket.IO identity:', error);
+      return null;
+    }
+  }
+
+  static async canAccessSupportTicket(ticketId: string, identity: SocketIdentity): Promise<boolean> {
+    if (identity.role === 'admin') return true;
+    if (!supabase) return false;
+
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('user_id')
+      .eq('id', ticketId)
+      .single();
+
+    return !error && data?.user_id === identity.userId;
+  }
+
+  static async getSupportTicketEventState(ticketId: string): Promise<SupportTicketEventState | null> {
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('status, closed_by_role, last_message_from')
+      .eq('id', ticketId)
+      .single();
+    if (error || !data) return null;
+
+    return {
+      status: data.status,
+      closedByRole: data.closed_by_role,
+      lastMessageFrom: data.last_message_from,
+    };
+  }
+
+  static async getSupportMessageEvent(
+    messageId: string,
+    ticketId: string,
+    identity: SocketIdentity,
+  ): Promise<SupportMessageEvent | null> {
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+      .from('support_messages')
+      .select('id, ticket_id, message, created_at, from_admin, user_id')
+      .eq('id', messageId)
+      .eq('ticket_id', ticketId)
+      .single();
+    if (error || !data) return null;
+
+    const expectedFromAdmin = identity.role === 'admin';
+    if (Boolean(data.from_admin) !== expectedFromAdmin) return null;
+    if (!expectedFromAdmin && data.user_id !== identity.userId) return null;
+
+    return {
+      messageId: data.id,
+      ticketId: data.ticket_id,
+      message: data.message,
+      timestamp: data.created_at,
+      from: expectedFromAdmin ? 'admin' : 'player',
+      userId: identity.userId,
+    };
   }
 
   static async loadPendingRecoveryCheckpoints(): Promise<PendingRecoveryCheckpoint[]> {
@@ -495,28 +597,8 @@ export class SupabaseService {
         rake: data?.rake
       };
     } catch (e) {
-      console.error('[SupabaseService] transfer_pique_banda failed, falling back to individual calls:', e);
-      // Fallback: individual recordBet + awardPot calls (non-atomic but better than losing data)
-      let totalBanda = 0;
-      for (const loser of losers) {
-        if (loser.amountCents <= 0) continue;
-        totalBanda += loser.amountCents;
-        await SupabaseService.recordBet(loser.userId, loser.amountCents, gameId, undefined, {
-          roomId: meta?.roomId,
-          tableName: meta?.tableName,
-          phase: 'BANDA'
-        });
-      }
-      const rake = Math.ceil(totalBanda * 0.05 / 100) * 100;
-      const payout = totalBanda - rake;
-      if (payout > 0) {
-        await SupabaseService.awardPot(winnerId, payout, rake, gameId, undefined, {
-          roomId: meta?.roomId,
-          tableName: meta?.tableName,
-          playersPresent: []
-        });
-      }
-      return { success: false, totalBanda, payout, rake, error: String(e) };
+      console.error('[SupabaseService] transfer_pique_banda failed; no non-atomic fallback will be attempted:', e);
+      return { success: false, error: String(e) };
     }
   }
 

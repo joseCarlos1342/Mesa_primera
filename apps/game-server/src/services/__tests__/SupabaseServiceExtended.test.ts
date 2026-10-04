@@ -161,12 +161,8 @@ describe('SupabaseService — Extended Coverage', () => {
       });
     });
 
-    it('transferPiqueBanda falls back to individual ledger calls when atomic RPC fails', async () => {
-      mockRpc
-        .mockResolvedValueOnce({ data: { error: 'rpc unavailable' }, error: null })
-        .mockResolvedValueOnce({ data: { balance_after: 90000 }, error: null })
-        .mockResolvedValueOnce({ data: { balance_after: 80000 }, error: null })
-        .mockResolvedValueOnce({ data: { balance_after: 118900 }, error: null });
+    it('no ejecuta movimientos no atomicos cuando falla la liquidacion atomica', async () => {
+      mockRpc.mockResolvedValueOnce({ data: { error: 'rpc unavailable' }, error: null });
 
       await expect(SupabaseService.transferPiqueBanda('winner-1', [
         { userId: 'loser-1', amountCents: 10000 },
@@ -174,28 +170,12 @@ describe('SupabaseService — Extended Coverage', () => {
         { userId: 'loser-3', amountCents: 10000 },
       ], 'game-1', { roomId: 'room-1', tableName: 'Mesa Principal' })).resolves.toEqual({
         success: false,
-        totalBanda: 20000,
-        payout: 19000,
-        rake: 1000,
         error: 'Error: rpc unavailable',
       });
 
-      expect(mockRpc).toHaveBeenNthCalledWith(2, 'process_ledger_entry', expect.objectContaining({
-        p_user_id: 'loser-1',
-        p_amount_cents: 10000,
-        p_direction: 'debit',
-        p_metadata: expect.objectContaining({ phase: 'BANDA' }),
-      }));
-      expect(mockRpc).toHaveBeenNthCalledWith(3, 'process_ledger_entry', expect.objectContaining({
-        p_user_id: 'loser-3',
-        p_amount_cents: 10000,
-        p_direction: 'debit',
-      }));
-      expect(mockRpc).toHaveBeenNthCalledWith(4, 'award_pot', expect.objectContaining({
-        p_winner_id: 'winner-1',
-        p_payout: 19000,
-        p_rake: 1000,
-      }));
+      expect(mockRpc).toHaveBeenCalledTimes(1);
+      expect(mockRpc).not.toHaveBeenCalledWith('process_ledger_entry', expect.anything());
+      expect(mockRpc).not.toHaveBeenCalledWith('award_pot', expect.anything());
     });
   });
 
