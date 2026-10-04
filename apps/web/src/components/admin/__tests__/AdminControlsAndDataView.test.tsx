@@ -224,6 +224,7 @@ describe('admin controls and data view', () => {
     expect(await screen.findByText('No fue posible enviar la respuesta')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar caso' }))
+    await waitFor(() => expect(mockCloseIssueTicket).toHaveBeenCalledWith('issue-1'))
     expect(await screen.findByText('No fue posible cerrar la consulta')).toBeInTheDocument()
 
     rerender(<IssueAdminActions issueId="issue-1" status="resolved" />)

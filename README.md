@@ -8,7 +8,7 @@
 *Multiplayer real-time card game engine for the traditional Spanish "Primera"*
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/joseCarlos1342/Mesa_primera/main.yml?style=flat-square&label=Build)](https://github.com/joseCarlos1342/Mesa_primera/actions)
-![Node version](https://img.shields.io/badge/Node.js->=20-3c873a?style=flat-square)
+![Node version](https://img.shields.io/badge/Node.js-24%20LTS-3c873a?style=flat-square)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
 [![Colyseus](https://img.shields.io/badge/Colyseus-0.17-blue?style=flat-square)](https://colyseus.io)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
@@ -102,9 +102,10 @@ The platform serves two distinct user groups through a **Dual-UI** architecture:
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org) >= 20
+- [Node.js](https://nodejs.org) 24 LTS
+- [pnpm](https://pnpm.io) 11
 - [Docker](https://www.docker.com) (for Redis)
-- A [Supabase](https://supabase.com) project (local or cloud)
+- A linked [Supabase](https://supabase.com) Cloud project
 
 ### Setup
 
@@ -112,33 +113,39 @@ The platform serves two distinct user groups through a **Dual-UI** architecture:
 # Clone and install
 git clone https://github.com/joseCarlos1342/Mesa_primera.git
 cd Mesa_primera
-npm install
+pnpm install
 
 # Start Redis
-docker compose up -d
+docker-compose up -d
 
 # Configure environment
 cp apps/web/.env.example apps/web/.env.local
 cp apps/game-server/.env.example apps/game-server/.env.local
 # Edit both .env.local files with your Supabase, Redis, and LiveKit credentials
 
-# Run database migrations
-npx supabase db reset
-npx supabase gen types typescript --local > apps/web/src/types/supabase.ts
+# Run linked Supabase Cloud migrations and regenerate types
+pnpm exec supabase db push
+pnpm exec supabase gen types typescript --linked > apps/web/src/types/supabase.ts
 
 # Start development (web + game server in parallel)
-npm run dev
+pnpm run dev
 
 # Start local web + local Colyseus + local Redis,
 # preserving the Supabase credentials already configured in each app
 ./dev.sh
+
+# Optional: expose the local web temporarily through Cloudflare Quick Tunnel
+CLOUDFLARE_TUNNEL=1 ./dev.sh
 ```
 
 > [!TIP]
-> The `npm run dev` command uses Turborepo to start both the Next.js app and the Colyseus game server concurrently.
+> The `pnpm run dev` command uses Turborepo to start both the Next.js app and the Colyseus game server concurrently.
 
 > [!TIP]
 > Use `./dev.sh` when you want to keep Supabase pointed at your existing cloud project but force the game engine and Socket.IO runtime to stay on `127.0.0.1` instead of any VPS URLs present in `.env.local`. If Docker is unavailable, the script falls back to a local `redis-server` process on port `6380` when that binary exists.
+
+> [!NOTE]
+> `CLOUDFLARE_TUNNEL=1 ./dev.sh` creates a temporary `trycloudflare.com` URL for the web on port `3000`. The URL is public and stops working when the script exits. Colyseus (`2567`) and Socket.IO (`2568`) remain local; this mode is intended for previewing the web, not for remote multiplayer sessions.
 
 ### Required environment variables
 
@@ -230,21 +237,21 @@ E2E suites cover:
 | Component | Platform |
 | :--- | :--- |
 | Frontend (Next.js) | **Vercel** |
-| Game Server (Colyseus) | **VPS** (Docker + PM2) |
+| Game Server (Colyseus) | **VPS** (Docker + systemd) |
 | Database | **Supabase Cloud** |
 | Redis | **VPS** (Docker, port 6380) |
 | Voice | **LiveKit Cloud** |
 
 ```bash
 # Deploy database migrations to production
-npx supabase db push
+pnpm exec supabase db push
 
 # Build for production
-npm run build --workspace=web
+pnpm --filter web build
 ```
 
 > [!CAUTION]
-> Always run `npx supabase db push` before deploying frontend changes that depend on new migrations.
+> Always run `pnpm exec supabase db push` before deploying frontend changes that depend on new migrations.
 
 Un cron job ejecuta esta verificación cada hora. Cualquier discrepancia bloquea automáticamente las transacciones del sistema y alerta al administrador.
 
