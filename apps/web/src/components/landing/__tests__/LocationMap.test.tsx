@@ -29,7 +29,7 @@ jest.mock('maplibre-gl', () => ({
     setPopup: markerSetPopupMock,
     addTo: markerAddToMock,
   })),
-}))
+}), { virtual: true })
 
 describe('LocationMapInner', () => {
   beforeEach(() => {

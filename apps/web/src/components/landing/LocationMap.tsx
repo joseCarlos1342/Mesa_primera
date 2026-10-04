@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { LOCAL_LOCATION } from './landingLocation'
 // CSS de MapLibre — importado aquí para que Next.js lo incluya en el bundle del cliente
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — maplibre-gl no incluye declaraciones de tipo para su CSS
@@ -8,15 +9,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
-export const LOCAL_LOCATION = {
-  lat: 2.9268522,
-  lng: -75.2866714,
-  address: 'Cra. 7 #06-87, Neiva, Huila',
-  name: 'Primera Riverada los 4 Ases',
-  gmapsPin: 'https://maps.google.com/maps?q=2.9268522,-75.2866714',
-  gmapsDir:
-    'https://maps.google.com/maps/dir/?api=1&destination=2.9268522,-75.2866714',
-} as const
+export { LOCAL_LOCATION }
 
 /* Carto Positron — free, no API key required, light/minimalist */
 const CARTO_STYLE =

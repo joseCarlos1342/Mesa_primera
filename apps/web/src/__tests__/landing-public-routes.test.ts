@@ -11,6 +11,18 @@
 import fs from 'fs'
 import path from 'path'
 
+/** La landing está dividida en secciones: se revisa el código de todas. */
+function readLandingSource(): string {
+  const landingDir = path.resolve(__dirname, '../components/landing')
+  const files = [
+    'LandingContent.tsx',
+    'LandingNav.tsx',
+    'landingLocation.ts',
+    ...fs.readdirSync(path.join(landingDir, 'sections')).map((file) => path.join('sections', file)),
+  ]
+  return files.map((file) => fs.readFileSync(path.join(landingDir, file), 'utf-8')).join('\n')
+}
+
 // ────────────────────────────────────────────────
 // 1. Middleware — public route whitelist
 // ────────────────────────────────────────────────
@@ -76,10 +88,6 @@ describe('Player dashboard route', () => {
 // 3. Public landing page
 // ────────────────────────────────────────────────
 describe('Public landing page', () => {
-  const landingContentPath = path.resolve(
-    __dirname,
-    '../components/landing/LandingContent.tsx',
-  )
   const rootLayoutPath = path.resolve(__dirname, '../app/layout.tsx')
 
   it('exists at app/page.tsx (root level)', () => {
@@ -88,20 +96,20 @@ describe('Public landing page', () => {
   })
 
   it('contains registration and login CTAs', () => {
-    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    const source = readLandingSource()
     expect(source).toContain('/register/player')
     expect(source).toContain('/login/player')
   })
 
   it('contains footer with privacy and terms links', () => {
-    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    const source = readLandingSource()
     expect(source).toContain('/privacy')
     expect(source).toContain('/terms')
     expect(source).toContain('https://gnesis.group')
   })
 
   it('contains social media links', () => {
-    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    const source = readLandingSource()
     expect(source).toContain('facebook')
     expect(source).toContain('instagram')
   })
@@ -218,33 +226,29 @@ describe('Legacy SEO page redirects', () => {
 // 6. Landing map section (ubicación del local)
 // ────────────────────────────────────────────────
 describe('Landing map section', () => {
-  const landingContentPath = path.resolve(
-    __dirname,
-    '../components/landing/LandingContent.tsx',
-  )
 
   it('contains a section with id="ubicacion"', () => {
-    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    const source = readLandingSource()
     expect(source).toContain('id="ubicacion"')
   })
 
   it('contains a Google Maps pin link with correct coordinates', () => {
-    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    const source = readLandingSource()
     expect(source).toContain('q=2.9268522,-75.2866714')
   })
 
   it('contains a Google Maps directions link with correct coordinates', () => {
-    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    const source = readLandingSource()
     expect(source).toContain('destination=2.9268522,-75.2866714')
   })
 
   it('contains the street address text', () => {
-    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    const source = readLandingSource()
     expect(source).toContain('Cra. 7 #06-87')
   })
 
   it('nav sections include ubicacion', () => {
-    const source = fs.readFileSync(landingContentPath, 'utf-8')
+    const source = readLandingSource()
     expect(source).toContain("id: 'ubicacion'")
   })
 })

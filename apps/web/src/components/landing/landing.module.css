@@ -1,0 +1,209 @@
+/* Landing "La baraja abierta": materiales de mesa y cartas.
+   Solo tokens de DESIGN-player.md (cuero, nogal, latón, dorado). */
+
+/* ── Materiales ─────────────────────────────────────────────── */
+
+.felt {
+  position: relative;
+  isolation: isolate;
+  background-color: #0a2c20;
+  background-image:
+    radial-gradient(ellipse 70% 55% at 62% 38%, rgb(69 153 108 / 0.32), transparent 70%),
+    radial-gradient(ellipse 120% 90% at 50% 40%, #0a2c20 35%, #0a2a1f 75%, #06170f 100%);
+}
+
+/* Grano del cuero: textura real del proyecto a baja opacidad. */
+.felt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url('/textures/noise.png');
+  background-size: 220px;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Canto de nogal que enmarca el paño. */
+.rim {
+  box-shadow:
+    inset 0 0 0 1px rgb(139 107 46 / 0.35),
+    inset 0 0 0 10px #35180f,
+    inset 0 0 0 11px rgb(139 107 46 / 0.4),
+    inset 0 0 0 22px #120806,
+    inset 0 30px 60px 22px rgb(0 0 0 / 0.45);
+}
+
+@media (max-width: 1023px) {
+  .rim {
+    box-shadow:
+      inset 0 0 0 1px rgb(139 107 46 / 0.35),
+      inset 0 0 0 6px #35180f,
+      inset 0 0 0 7px rgb(139 107 46 / 0.4),
+      inset 0 0 0 12px #120806,
+      inset 0 20px 40px 12px rgb(0 0 0 / 0.4);
+  }
+}
+
+.wood {
+  background-color: #120806;
+  background-image:
+    linear-gradient(180deg, rgb(53 24 15 / 0.55), transparent 30%, transparent 70%, rgb(53 24 15 / 0.4)),
+    radial-gradient(ellipse 80% 60% at 30% 0%, rgb(53 24 15 / 0.8), transparent 70%);
+}
+
+.brassRule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #8b6b2e 12%, #c5a059 50%, #8b6b2e 88%, transparent);
+  opacity: 0.6;
+}
+
+/* ── Carta ─────────────────────────────────────────────────── */
+
+.card {
+  display: block;
+  position: relative;
+  aspect-ratio: 416 / 638;
+  perspective: 900px;
+  border-radius: 7% / 4.6%;
+  transition:
+    transform 500ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 500ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cardInner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  border-radius: inherit;
+  box-shadow:
+    0 1px 1px rgb(0 0 0 / 0.35),
+    0 6px 14px -4px rgb(0 0 0 / 0.55);
+  transition: box-shadow 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cardFace,
+.cardBack {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.cardBack {
+  transform: rotateY(180deg);
+}
+
+/* Reparto: la carta llega boca abajo desde el mazo y se voltea. */
+.cardDeal .cardInner {
+  animation: deal 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(140ms + var(--deal-i, 0) * 32ms);
+}
+
+@keyframes deal {
+  0% {
+    opacity: 0;
+    transform: translate3d(-30%, -55%, 0) rotateZ(-10deg) rotateY(180deg);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateZ(0deg) rotateY(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardDeal .cardInner {
+    animation: none;
+  }
+  .card {
+    transition: none;
+  }
+}
+
+/* ── Tablero: estados que enseñan cada mano ────────────────── */
+
+.board[data-step]:not([data-step='deal']) .card {
+  opacity: 0.26;
+  filter: saturate(0.35) brightness(0.75);
+}
+
+.board[data-step] .card[data-lit='true'] {
+  opacity: 1;
+  filter: none;
+  transform: translateY(-7%) scale(1.06);
+  z-index: 1;
+}
+
+.board[data-step] .card[data-lit='true'] .cardInner {
+  box-shadow:
+    0 0 0 2px #e2b044,
+    0 14px 26px -6px rgb(0 0 0 / 0.7);
+}
+
+.board .colHead[data-lit='true'],
+.board .rowHead[data-lit='true'] {
+  color: #f0d78c;
+}
+
+.colHead,
+.rowHead {
+  transition: color 400ms ease;
+}
+
+/* ── Carril de tutoriales ──────────────────────────────────── */
+
+.rail {
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(197 160 89 / 0.35) transparent;
+  overscroll-behavior-x: contain;
+}
+
+.rail > * {
+  scroll-snap-align: start;
+}
+
+/* ── FAQ ───────────────────────────────────────────────────── */
+
+.faqItem > summary {
+  list-style: none;
+}
+
+.faqItem > summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqItem[open] .faqIcon {
+  transform: rotate(45deg);
+}
+
+.faqIcon {
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Cierre: abanico de una Primera ────────────────────────── */
+
+.fan {
+  display: flex;
+  justify-content: center;
+}
+
+.fan > * {
+  width: clamp(4.5rem, 16vw, 8.5rem);
+  margin-inline: -0.9rem;
+  transform-origin: 50% 120%;
+}
+
+.fan > *:nth-child(1) { transform: rotate(-15deg) translateY(10%); }
+.fan > *:nth-child(2) { transform: rotate(-5deg); }
+.fan > *:nth-child(3) { transform: rotate(5deg); }
+.fan > *:nth-child(4) { transform: rotate(15deg) translateY(10%); }

@@ -320,6 +320,13 @@ El lenguaje de formas combina lo clásico con lo moderno:
 - Texto crema (#f3edd7), placeholder en gris secundario.
 - Focus: borde dorado muted (#c5a059).
 
+### Landing pública ("La baraja abierta")
+
+- **Superficie de mesa:** paño de cuero (`surface-leather` → `surface-felt`, luz `surface-felt-highlight`) dentro de un canto de nogal (`surface-wood-rim`/`surface-wood`) dibujado con sombras internas. Se usa en el hero/tablero y en el cierre; el resto alterna negro (`background`) y nogal.
+- **PlayingCard:** cartas reales de `public/cards` vía `next/image`, sombra física con offset, reparto con volteo CSS 3D solo al cargar (desactivado con `prefers-reduced-motion`). El reverso web es `public/images/card-back-web.webp` (derivado de `card-back-rooster.png`).
+- **Tablero que enseña:** rejilla 4 palos × 7 valores; al leer cada mano se atenúa la baraja y se ilumina la combinación con anillo dorado. Valores en Geist Mono.
+- **Separadores:** filetes de latón de 1px (`border-brass`) en lugar de tarjetas; las listas (pasos, servicios, FAQ) son filas con regla, no cajas.
+
 ## Do's and Don'ts
 
 - **Do** usar dorado (#e2b044) solo para acciones primarias y acentos. Un máximo de 2-3 elementos dorados por pantalla.

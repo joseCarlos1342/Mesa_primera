@@ -1,9 +1,8 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { useGSAP } from '@gsap/react'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 import { LandingContent } from '../LandingContent'
+import { ClubSection } from '../sections/ClubSection'
+import { DeckBoard } from '../sections/DeckBoard'
 
 jest.mock('next/image', () => ({
   __esModule: true,
@@ -12,643 +11,459 @@ jest.mock('next/image', () => ({
   ),
 }))
 
-jest.mock('@gsap/react', () => ({
-  useGSAP: jest.fn(),
-}))
-
-jest.mock('gsap', () => {
-  const chain = {
-    from: jest.fn().mockReturnThis(),
-    fromTo: jest.fn().mockReturnThis(),
-    to: jest.fn().mockReturnThis(),
-    set: jest.fn().mockReturnThis(),
-    call: jest.fn().mockReturnThis(),
-  }
-
-  return {
-    __esModule: true,
-    default: {
-      registerPlugin: jest.fn(),
-      timeline: jest.fn(() => chain),
-      from: jest.fn(),
-      fromTo: jest.fn(),
-      to: jest.fn(),
-      set: jest.fn(),
-      utils: {
-        toArray: jest.fn(() => []),
-      },
-      matchMedia: jest.fn(() => ({ add: jest.fn() })),
-    },
-    ScrollTrigger: {
-      batch: jest.fn(),
-    },
-  }
-})
-
-jest.mock('gsap/ScrollTrigger', () => ({
-  ScrollTrigger: {
-    batch: jest.fn(),
-  },
+jest.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ href, children, onClick, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a
+      href={href}
+      {...props}
+      onClick={(event) => {
+        event.preventDefault()
+        onClick?.(event)
+      }}
+    >
+      {children}
+    </a>
+  ),
 }))
 
 jest.mock('next/dynamic', () => ({
   __esModule: true,
   default: jest.fn((loader: unknown) => {
-    if (typeof loader === 'function') {
-      const source = loader.toString()
-
-      if (source.includes('LocationMapInner')) {
-        return function MockDynamicLocationMap() {
-          return <div data-testid="location-map-dynamic">Mapa dinámico</div>
-        }
-      }
-
-      if (source.includes('TutorialWalkthrough')) {
-        return function MockDynamicTutorialWalkthrough(props: { onClose?: () => void; video?: { src: string; poster: string; captions: string } }) {
-          return (
-            <div data-testid="tutorial-walkthrough-dynamic">
-              <button type="button" onClick={props.onClose}>Cerrar tutorial</button>
-              {props.video && <span data-testid="tutorial-video-prop">{props.video.src}|{props.video.poster}|{props.video.captions}</span>}
-              <div role="region">Tutorial walkthrough</div>
-            </div>
-          )
-        }
+    const source = String(loader)
+    if (source.includes('LocationMapInner')) {
+      return function MockDynamicLocationMap() {
+        return <div data-testid="location-map-dynamic">Mapa dinámico</div>
       }
     }
-
-    return function MockDynamicComponent() {
-      return <div data-testid="dynamic-component" />
+    return function MockDynamicTutorialWalkthrough(props: {
+      onClose?: () => void
+      video?: { src: string; poster: string; captions: string }
+    }) {
+      return (
+        <div data-testid="tutorial-walkthrough-dynamic">
+          <button type="button" onClick={props.onClose}>Cerrar tutorial</button>
+          {props.video && (
+            <span data-testid="tutorial-video-prop">
+              {props.video.src}|{props.video.poster}|{props.video.captions}
+            </span>
+          )}
+        </div>
+      )
     }
   }),
 }))
 
-jest.mock('../tutorials/InstallAppTutorial', () => ({
-  installAppSteps: [{ label: 'Paso 1', screen: <div>Instalar app</div> }],
-}))
+jest.mock('../tutorials/InstallAppTutorial', () => ({ installAppSteps: [{ label: 'Paso 1', screen: <div>Instalar app</div> }] }))
+jest.mock('../tutorials/RegisterTutorial', () => ({ registerSteps: [{ label: 'Paso 1', screen: <div>Registro</div> }] }))
+jest.mock('../tutorials/LoginTutorial', () => ({ loginSteps: [{ label: 'Paso 1', screen: <div>Login</div> }] }))
+jest.mock('../tutorials/WalletTutorial', () => ({ walletSteps: [{ label: 'Paso 1', screen: <div>Wallet</div> }] }))
+jest.mock('../tutorials/WithdrawTutorial', () => ({ withdrawSteps: [{ label: 'Paso 1', screen: <div>Retiro</div> }] }))
+jest.mock('../tutorials/TransferTutorial', () => ({ transferSteps: [{ label: 'Paso 1', screen: <div>Transferencia</div> }] }))
+jest.mock('../tutorials/FirstGameTutorial', () => ({ firstGameSteps: [{ label: 'Paso 1', screen: <div>Primera partida</div> }] }))
+jest.mock('../tutorials/GameMenuTutorial', () => ({ gameMenuSteps: [{ label: 'Paso 1', screen: <div>Menu mesa</div> }] }))
+jest.mock('../tutorials/FriendsTutorial', () => ({ friendsSteps: [{ label: 'Paso 1', screen: <div>Amigos</div> }] }))
 
-jest.mock('../tutorials/RegisterTutorial', () => ({
-  registerSteps: [{ label: 'Paso 1', screen: <div>Registro</div> }],
-}))
+type ObserverEntry = { isIntersecting: boolean; target?: Element }
+interface MockObserver {
+  callback: (entries: ObserverEntry[]) => void
+  targets: Element[]
+  disconnect: jest.Mock
+}
 
-jest.mock('../tutorials/LoginTutorial', () => ({
-  loginSteps: [{ label: 'Paso 1', screen: <div>Login</div> }],
-}))
-
-jest.mock('../tutorials/WalletTutorial', () => ({
-  walletSteps: [{ label: 'Paso 1', screen: <div>Wallet</div> }],
-}))
-
-jest.mock('../tutorials/WithdrawTutorial', () => ({
-  withdrawSteps: [{ label: 'Paso 1', screen: <div>Retiro</div> }],
-}))
-
-jest.mock('../tutorials/TransferTutorial', () => ({
-  transferSteps: [{ label: 'Paso 1', screen: <div>Transferencia</div> }],
-}))
-
-jest.mock('../tutorials/FirstGameTutorial', () => ({
-  firstGameSteps: [{ label: 'Paso 1', screen: <div>Primera partida</div> }],
-}))
-
-jest.mock('../tutorials/GameMenuTutorial', () => ({
-  gameMenuSteps: [{ label: 'Paso 1', screen: <div>Menu mesa</div> }],
-}))
-
-jest.mock('../tutorials/FriendsTutorial', () => ({
-  friendsSteps: [{ label: 'Paso 1', screen: <div>Amigos</div> }],
-}))
-
-const originalMatchMedia = window.matchMedia
 const originalIntersectionObserver = window.IntersectionObserver
 const originalScrollIntoView = Element.prototype.scrollIntoView
-const originalScrollY = window.scrollY
-const originalAddEventListener = window.addEventListener
-const originalRemoveEventListener = window.removeEventListener
-const originalInnerWidth = window.innerWidth
+const originalScrollBy = Element.prototype.scrollBy
 const scrollIntoViewMock = jest.fn()
-const observeMock = jest.fn()
-const disconnectMock = jest.fn()
-let intersectionCallback: ((entries: Array<{ isIntersecting: boolean }>) => void) | null = null
-let intervalCallback: (() => void) | null = null
-let resizeListener: (() => void) | null = null
-let removeResizeListenerMock: jest.Mock | null = null
-let clearIntervalMock: jest.SpyInstance
+const scrollByMock = jest.fn()
+let observers: MockObserver[] = []
 
-type BatchOptions = {
-  onEnter: (batch: Element[]) => void
-  onLeaveBack: (batch: Element[]) => void
+function boardObserver(): MockObserver {
+  return observers.find((observer) => observer.targets.some((target) => target.hasAttribute('data-board-step')))!
+}
+
+function mapObserver(): MockObserver {
+  return observers.find((observer) => !observer.targets.some((target) => target.hasAttribute('data-board-step')))!
+}
+
+function tutorialsSection(): HTMLElement {
+  return screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
 }
 
 describe('LandingContent', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    intersectionCallback = null
-    intervalCallback = null
-    resizeListener = null
-    removeResizeListenerMock = jest.fn()
-
-    jest.spyOn(window, 'addEventListener').mockImplementation(((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
-      if (type === 'resize' && typeof listener === 'function') {
-        resizeListener = listener as () => void
-      }
-      return originalAddEventListener.call(window, type, listener, options)
-    }) as typeof window.addEventListener)
-    jest.spyOn(window, 'removeEventListener').mockImplementation(((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions) => {
-      if (type === 'resize') {
-        removeResizeListenerMock?.(listener)
-      }
-      return originalRemoveEventListener.call(window, type, listener, options)
-    }) as typeof window.removeEventListener)
-
-    jest.spyOn(window, 'setInterval').mockImplementation(((callback: TimerHandler) => {
-      intervalCallback = callback as () => void
-      return 1 as unknown as number
-    }) as unknown as typeof window.setInterval)
-    clearIntervalMock = jest.spyOn(window, 'clearInterval').mockImplementation(jest.fn())
-
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: jest.fn().mockImplementation(() => ({
-        matches: false,
-        media: '',
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      })),
-    })
-
+    observers = []
     Object.defineProperty(window, 'IntersectionObserver', {
       writable: true,
+      configurable: true,
       value: jest.fn().mockImplementation((callback) => {
-        intersectionCallback = callback
+        const observer: MockObserver = { callback, targets: [], disconnect: jest.fn() }
+        observers.push(observer)
         return {
-          observe: observeMock,
-          disconnect: disconnectMock,
+          observe: (target: Element) => observer.targets.push(target),
+          disconnect: observer.disconnect,
           unobserve: jest.fn(),
         }
       }),
     })
-
     Element.prototype.scrollIntoView = scrollIntoViewMock
+    Element.prototype.scrollBy = scrollByMock
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
-    Object.defineProperty(window, 'matchMedia', { writable: true, value: originalMatchMedia })
-    Object.defineProperty(window, 'IntersectionObserver', { writable: true, value: originalIntersectionObserver })
+    jest.clearAllMocks()
+    Object.defineProperty(window, 'IntersectionObserver', { writable: true, configurable: true, value: originalIntersectionObserver })
     Element.prototype.scrollIntoView = originalScrollIntoView
-    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: originalScrollY })
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth })
-    document.body.innerHTML = ''
+    Element.prototype.scrollBy = originalScrollBy
+    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 0 })
+    document.body.style.overflow = ''
   })
 
-  it('renderiza hero, CTAs y FAQs principales', () => {
+  it('renderiza la marca, los CTAs de registro y el tablero de 28 cartas', () => {
     render(<LandingContent />)
 
     expect(screen.getByRole('heading', { name: /primera riverada/i, level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /crear cuenta gratis/i })).toHaveAttribute('href', '/register/player')
+    expect(screen.getAllByRole('link', { name: /crear cuenta gratis/i })[0]).toHaveAttribute('href', '/register/player')
     expect(screen.getAllByRole('link', { name: /^iniciar sesión$/i })[0]).toHaveAttribute('href', '/login/player')
-    expect(screen.getByRole('heading', { name: /preguntas frecuentes/i, level: 2 })).toBeInTheDocument()
-    expect(screen.getByText(/¿dónde queda primera riverada los 4 ases/i)).toBeInTheDocument()
+
+    const board = screen.getByRole('figure', { name: /baraja española de 28 cartas/i })
+    expect(board).toHaveAttribute('data-step', 'deal')
+    expect(board.querySelectorAll('[data-card]')).toHaveLength(28)
+    expect(within(board).getByText('Baraja completa repartida sobre la mesa.')).toBeInTheDocument()
   })
 
-  it('configura animaciones GSAP de landing cuando el usuario permite movimiento', () => {
-    render(<LandingContent />)
-    ;(gsap.utils.toArray as jest.Mock).mockImplementation((selector: string) => Array.from(document.querySelectorAll(selector)))
-    ;(gsap.matchMedia as jest.Mock).mockReturnValue({ add: jest.fn((_, callback) => callback()) })
+  it('pinta el fondo del documento y lo restaura al desmontar', () => {
+    document.body.style.backgroundColor = 'red'
+    const { unmount } = render(<LandingContent />)
+    expect(document.body.style.backgroundColor).toBe('rgb(10, 10, 10)')
 
-    const animationCallback = (useGSAP as jest.Mock).mock.calls[0][0] as () => void
+    unmount()
+    expect(document.body.style.backgroundColor).toBe('red')
+  })
+
+  it('enseña la jerarquía oficial en orden con sus cartas', () => {
+    render(<LandingContent />)
+
+    const section = screen.getByRole('heading', { name: /cómo se gana/i, level: 2 }).closest('section') as HTMLElement
+    const titles = within(section).getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)
+    expect(titles).toEqual(['Segunda', 'Chivo', 'Primera', 'Puntos'])
+    expect(within(section).getByRole('img', { name: 'As de Copas' })).toBeInTheDocument()
+    expect(within(section).getByRole('link', { name: /lee el reglamento completo/i })).toHaveAttribute('href', '/rules')
+  })
+
+  it('ilumina en el tablero la mano que cruza el centro de la pantalla', () => {
+    render(<LandingContent />)
+
+    const board = screen.getByRole('figure', { name: /baraja española/i })
+    const observer = boardObserver()
+    const chivo = observer.targets.find((target) => target.getAttribute('data-board-step') === 'chivo')!
+
     act(() => {
-      animationCallback()
+      observer.callback([
+        { isIntersecting: false, target: observer.targets[0] },
+        { isIntersecting: true, target: chivo },
+      ])
     })
 
-    expect(gsap.timeline).toHaveBeenCalledWith({ defaults: { ease: 'power4.out' } })
-    expect(gsap.to).toHaveBeenCalledWith(expect.any(Element), expect.objectContaining({ repeat: -1, yoyo: true }))
-    expect(gsap.fromTo).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.objectContaining({ y: 40, opacity: 0, scale: 0.7 }),
-      expect.objectContaining({ scrollTrigger: expect.objectContaining({ start: 'top 85%' }) }),
-    )
-    expect(ScrollTrigger.batch).toHaveBeenCalledWith('[data-stagger-card]', expect.objectContaining({ start: 'top 88%' }))
-
-    const batchElement = document.querySelector('[data-stagger-card]') as Element
-    const batchOptions = (ScrollTrigger.batch as jest.Mock).mock.calls[0][1] as BatchOptions
-    batchOptions.onEnter([batchElement])
-    expect(gsap.to).toHaveBeenLastCalledWith(
-      [batchElement],
-      expect.objectContaining({ y: 0, opacity: 1, scale: 1, overwrite: true }),
-    )
-
-    batchOptions.onLeaveBack([batchElement])
-    expect(gsap.to).toHaveBeenLastCalledWith(
-      [batchElement],
-      expect.objectContaining({ y: 50, opacity: 0, scale: 0.92, overwrite: true }),
-    )
+    expect(board).toHaveAttribute('data-step', 'chivo')
+    const lit = Array.from(board.querySelectorAll('[data-lit="true"][data-card]')).map((el) => el.getAttribute('data-card'))
+    expect(lit.sort()).toEqual(['1-oros', '3-bastos', '6-oros', '7-oros'])
+    expect(within(board).getByText(/ejemplo de chivo/i)).toBeInTheDocument()
   })
 
-  it('omite animaciones GSAP si el usuario prefiere movimiento reducido', () => {
-    ;(window.matchMedia as jest.Mock).mockReturnValue({ matches: true })
+  it('desconecta el observador del tablero al desmontar', () => {
+    const { unmount } = render(<LandingContent />)
+    const observer = boardObserver()
+
+    unmount()
+    expect(observer.disconnect).toHaveBeenCalled()
+  })
+
+  it('no falla si el navegador no tiene IntersectionObserver', () => {
+    Object.defineProperty(window, 'IntersectionObserver', { writable: true, configurable: true, value: undefined })
+
+    render(<DeckBoard onInstallHint={jest.fn()} />)
+    expect(screen.getByRole('figure', { name: /baraja española/i })).toHaveAttribute('data-step', 'deal')
+  })
+
+  it('lleva al tutorial de instalación desde el aviso de app', () => {
     render(<LandingContent />)
 
-    const animationCallback = (useGSAP as jest.Mock).mock.calls[0][0] as () => void
-    act(() => {
-      animationCallback()
-    })
-
-    expect(gsap.timeline).not.toHaveBeenCalled()
-    expect(ScrollTrigger.batch).not.toHaveBeenCalled()
+    fireEvent.click(screen.getAllByRole('button', { name: /disponible como app/i })[0])
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
   })
 
-  it('abre y cierra el menú mobile', () => {
+  it('abre, navega y cierra el menú móvil', () => {
     render(<LandingContent />)
 
-    const openButton = screen.getByRole('button', { name: /abrir menú/i })
-    fireEvent.click(openButton)
+    const toggle = screen.getByRole('button', { name: /abrir menú/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(toggle)
+    expect(screen.getByRole('button', { name: /cerrar menú/i })).toHaveAttribute('aria-expanded', 'true')
 
-    const mobileNav = screen.getAllByRole('button', { name: 'Tutoriales' })
-    expect(mobileNav).toHaveLength(2)
-    expect(screen.getByRole('button', { name: /cerrar menú/i })).toBeInTheDocument()
+    const mobileMenu = document.getElementById('menu-movil') as HTMLElement
+    fireEvent.click(within(mobileMenu).getByRole('button', { name: 'Tutoriales' }))
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
+    expect(document.getElementById('menu-movil')).toBeNull()
   })
 
-  it('navega desde el menú mobile y lo cierra al elegir sección', () => {
+  it('cierra el menú móvil con Escape y al elegir iniciar sesión', () => {
     render(<LandingContent />)
 
     fireEvent.click(screen.getByRole('button', { name: /abrir menú/i }))
-    const tutorialButtons = screen.getAllByRole('button', { name: 'Tutoriales' })
-    fireEvent.click(tutorialButtons[1])
+    fireEvent.keyDown(document, { key: 'Enter' })
+    expect(document.getElementById('menu-movil')).not.toBeNull()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(document.getElementById('menu-movil')).toBeNull()
 
-    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
-    expect(screen.getByRole('button', { name: /abrir menú/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /abrir menú/i }))
+    fireEvent.click(within(document.getElementById('menu-movil') as HTMLElement).getByRole('link', { name: /iniciar sesión/i }))
+    expect(document.getElementById('menu-movil')).toBeNull()
   })
 
-  it('actualiza estado de scroll spy al desplazarse', () => {
+  it('navega al inicio desde la marca y a una sección desde el nav de escritorio', () => {
     render(<LandingContent />)
-    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 1000 })
-    const sectionOffsets: Record<string, number> = {
+
+    fireEvent.click(screen.getByRole('button', { name: /primera riverada los 4 ases/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'El club' })[0])
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('marca la sección activa al desplazarse', () => {
+    render(<LandingContent />)
+    const offsets: Record<string, number> = {
       inicio: 0,
-      nosotros: 450,
-      servicios: 900,
-      'como-jugar': 1300,
-      tutoriales: 1700,
-      faq: 2100,
-      ubicacion: 2500,
+      'como-se-gana': 800,
+      empezar: 3000,
+      club: 4000,
+      tutoriales: 5000,
+      faq: 6000,
+      ubicacion: 7000,
     }
-    for (const [id, offsetTop] of Object.entries(sectionOffsets)) {
+    for (const [id, offsetTop] of Object.entries(offsets)) {
       Object.defineProperty(document.getElementById(id)!, 'offsetTop', { configurable: true, value: offsetTop })
     }
+    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 4100 })
 
     act(() => {
       window.dispatchEvent(new Event('scroll'))
     })
 
-    expect(screen.getAllByRole('button', { name: 'Servicios' })[0]).toHaveClass('text-brand-gold')
+    expect(screen.getAllByRole('button', { name: 'El club' })[0]).toHaveAttribute('aria-current', 'true')
   })
 
-  it('navega al hacer click en el hint del hero', () => {
+  it('presenta los tres pasos y los enlaces de confianza', () => {
     render(<LandingContent />)
 
-    fireEvent.click(screen.getByRole('button', { name: /disponible como app/i }))
-
-    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
-  })
-
-  it('navega al inicio desde el botón de marca', () => {
-    render(<LandingContent />)
-
-    fireEvent.click(screen.getByRole('button', { name: /primera riverada los 4 ases/i }))
-
-    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
-  })
-
-  it('renderiza servicios, pasos y enlaces legales', () => {
-    render(<LandingContent />)
-
-    expect(screen.getByRole('heading', { name: /nuestro establecimiento/i, level: 2 })).toBeInTheDocument()
-    expect(screen.getByText(/juego de primera/i)).toBeInTheDocument()
-    expect(screen.getByText(/partidas de dominó/i)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /cómo jugar/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /en tres pasos, a la mesa/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /regístrate/i, level: 3 })).toBeInTheDocument()
+    expect(screen.getByText(/recarga vía nequi/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /reglas oficiales/i })).toHaveAttribute('href', '/rules')
     expect(screen.getByRole('link', { name: /política de divulgación responsable/i })).toHaveAttribute('href', '/security-policy')
   })
 
-  it('permite navegar el carrusel de fotos con flechas y dots', () => {
+  it('presenta el club, sus servicios y no muestra fotos inventadas', () => {
     render(<LandingContent />)
 
-    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section')
-    const photoTrack = photoCarouselSection?.querySelector('.flex.transition-transform') as HTMLElement
-    expect(photoCarouselSection).toBeTruthy()
-    expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
-
-    fireEvent.click(within(photoCarouselSection as HTMLElement).getAllByRole('button', { name: /siguiente/i })[0])
-    expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^mesas de juego$/i, level: 3 })).toBeInTheDocument()
-    expect(photoTrack.style.transform).toBe('translateX(-100%)')
-
-    fireEvent.click(within(photoCarouselSection as HTMLElement).getByRole('button', { name: /anterior/i }))
-    expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
-
-    fireEvent.click(within(photoCarouselSection as HTMLElement).getByRole('button', { name: /ir a slide 4/i }))
-    expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^eventos especiales$/i, level: 3 })).toBeInTheDocument()
+    const club = screen.getByRole('heading', { name: /el club en neiva/i, level: 2 }).closest('section') as HTMLElement
+    expect(within(club).getByText(/juego de primera/i)).toBeInTheDocument()
+    expect(within(club).getByText(/partidas de dominó/i)).toBeInTheDocument()
+    expect(within(club).getByRole('link', { name: /cra\. 7 #06-87/i })).toHaveAttribute('href', '#ubicacion')
+    expect(screen.queryByText(/foto próximamente/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('club-photos')).not.toBeInTheDocument()
   })
 
-  it('avanza automáticamente el carrusel de fotos y pausa con hover', () => {
-    render(<LandingContent />)
+  it('muestra las fotos del club cuando existen', () => {
+    render(
+      <ClubSection
+        address="Cra. 7 #06-87, Neiva, Huila"
+        photos={[{ src: '/club/mesa.jpg', alt: 'Mesa de Primera del club', width: 1200, height: 800 }]}
+      />,
+    )
 
-    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section') as HTMLElement
-    const carousel = photoCarouselSection.querySelector('.relative.overflow-hidden') as Element
-
-    act(() => {
-      intervalCallback?.()
-    })
-    expect(within(photoCarouselSection).getByRole('heading', { name: /^mesas de juego$/i, level: 3 })).toBeInTheDocument()
-
-    fireEvent.mouseEnter(carousel)
-    expect(clearIntervalMock).toHaveBeenCalled()
-
-    fireEvent.mouseLeave(carousel)
-    expect(window.setInterval).toHaveBeenCalled()
+    expect(screen.getByTestId('club-photos')).toBeInTheDocument()
+    expect(screen.getByAltText('Mesa de Primera del club')).toHaveAttribute('src', '/club/mesa.jpg')
   })
 
-  it('permite navegar el carrusel de fotos con gestos táctiles', () => {
+  it('muestra los tutoriales con sus pasos reales y desplaza el carril', () => {
     render(<LandingContent />)
 
-    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section') as HTMLElement
-    const carousel = photoCarouselSection.querySelector('.relative.overflow-hidden') as Element
+    const section = tutorialsSection()
+    expect(within(section).getAllByTestId('tutorial-card')).toHaveLength(9)
+    expect(within(section).getAllByText('5 pasos')).toHaveLength(3)
+    expect(within(section).getAllByText('4 pasos')).toHaveLength(5)
+    expect(within(section).getByText('2 pasos')).toBeInTheDocument()
+    expect(document.getElementById('instalar-app')).toHaveAttribute('aria-label', 'Abrir tutorial: Cómo instalar la app')
 
-    fireEvent.touchStart(carousel, { touches: [{ clientX: 200 }] })
-    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 20 }] })
-    expect(within(photoCarouselSection).getByRole('heading', { name: /^mesas de juego$/i, level: 3 })).toBeInTheDocument()
-
-    fireEvent.touchStart(carousel, { touches: [{ clientX: 20 }] })
-    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 200 }] })
-    expect(within(photoCarouselSection).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
+    fireEvent.click(within(section).getByRole('button', { name: /tutoriales siguientes/i }))
+    fireEvent.click(within(section).getByRole('button', { name: /tutoriales anteriores/i }))
+    expect(scrollByMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ behavior: 'smooth' }))
+    expect(scrollByMock).toHaveBeenCalledTimes(2)
   })
 
-  it('ignora gestos táctiles cortos en el carrusel de fotos', () => {
+  it('abre un tutorial, bloquea el scroll y lo cierra devolviendo el foco', async () => {
     render(<LandingContent />)
 
-    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section') as HTMLElement
-    const carousel = photoCarouselSection.querySelector('.relative.overflow-hidden') as Element
+    const card = screen.getByRole('button', { name: /abrir tutorial: cómo instalar la app/i })
+    card.focus()
+    fireEvent.click(card)
 
-    fireEvent.touchStart(carousel, { touches: [{ clientX: 120 }] })
-    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 90 }] })
-
-    expect(within(photoCarouselSection).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
-  })
-
-  it('pausa el autoplay al hacer hover y vuelve a rotar con el intervalo', () => {
-    render(<LandingContent />)
-
-    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section')
-    const carousel = photoCarouselSection?.querySelector('.relative.overflow-hidden')
-    expect(carousel).toBeTruthy()
-
-    act(() => {
-      intervalCallback?.()
-    })
-    expect(within(photoCarouselSection as HTMLElement).getByRole('heading', { name: /^mesas de juego$/i, level: 3 })).toBeInTheDocument()
-
-    fireEvent.mouseEnter(carousel as Element)
-    expect(clearIntervalMock).toHaveBeenCalled()
-  })
-
-  it('abre un tutorial y permite cerrarlo desde el overlay', async () => {
-    render(<LandingContent />)
-
-    fireEvent.click(screen.getByText(/cómo instalar la app/i))
-
+    expect(screen.getByRole('status')).toHaveTextContent(/cargando tutorial/i)
     expect(await screen.findByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: /cómo instalar la app/i })).toBeInTheDocument()
+    expect(document.body.style.overflow).toBe('hidden')
 
-    fireEvent.click(screen.getByRole('button', { name: /cerrar tutorial/i }))
+    fireEvent.click(screen.getByTestId('tutorial-walkthrough-dynamic'))
+    expect(screen.getByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
 
-    expect(screen.queryByTestId('tutorial-walkthrough-dynamic')).not.toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /cerrar tutorial/i }))
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(document.body.style.overflow).toBe('')
+    expect(card).toHaveFocus()
   })
 
-  it('pasa el video y captions del catálogo al tutorial de registro', async () => {
+  it('pasa video y subtítulos al tutorial de registro y cierra con Escape', async () => {
     render(<LandingContent />)
 
     fireEvent.click(screen.getByRole('button', { name: /abrir tutorial: cómo registrarte/i }))
-
     expect(await screen.findByTestId('tutorial-video-prop')).toHaveTextContent(
       '/tutorials/register-tutorial.mp4|/tutorials/register-tutorial-poster.png|/tutorials/register-tutorial.vtt',
     )
+
+    fireEvent.keyDown(document, { key: 'a' })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('muestra los conteos reales de pasos en las tarjetas', () => {
+  it('cierra el tutorial al tocar el fondo', async () => {
     render(<LandingContent />)
 
-    expect(screen.getAllByText('5 pasos')).toHaveLength(3)
-    expect(screen.getAllByText('4 pasos')).toHaveLength(5)
-    expect(screen.getByText('2 pasos')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /abrir tutorial: amigos/i }))
+    await screen.findByTestId('tutorial-walkthrough-dynamic')
+    fireEvent.click(screen.getByRole('dialog'))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('permite abrir una tarjeta de tutorial como botón accesible', async () => {
+  it('mantiene el foco dentro del tutorial con Tab', async () => {
     render(<LandingContent />)
 
-    const card = screen.getByRole('button', { name: /abrir tutorial: cómo registrarte/i })
-    expect(card).toHaveAttribute('type', 'button')
+    fireEvent.click(screen.getByRole('button', { name: /abrir tutorial: cómo iniciar sesión/i }))
+    await screen.findByTestId('tutorial-walkthrough-dynamic')
+    const dialog = screen.getByRole('dialog')
+    const only = screen.getByRole('button', { name: /cerrar tutorial/i })
+
+    fireEvent.keyDown(dialog, { key: 'ArrowDown' })
+    only.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(only).toHaveFocus()
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(only).toHaveFocus()
+
+    dialog.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(dialog).toHaveFocus()
+  })
+
+  it('ignora Tab cuando el tutorial no tiene elementos enfocables', () => {
+    render(<LandingContent />)
+
+    fireEvent.click(screen.getByRole('button', { name: /abrir tutorial: cómo cargar saldo/i }))
+    const dialog = screen.getByRole('dialog')
+    expect(() => fireEvent.keyDown(dialog, { key: 'Tab' })).not.toThrow()
+  })
+
+  it('muestra un error recuperable si el tutorial no carga', async () => {
+    const catalog = jest.requireActual('../tutorialCatalog') as typeof import('../tutorialCatalog')
+    const definition = catalog.getTutorialDefinition('withdraw')
+    const spy = jest.spyOn(definition, 'loader').mockRejectedValueOnce(new Error('offline'))
+    render(<LandingContent />)
+
+    fireEvent.click(screen.getByRole('button', { name: /abrir tutorial: cómo retirar saldo/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no se pudo cargar/i)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /volver a tutoriales/i }))
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    spy.mockRestore()
+  })
+
+  it('descarta la carga de un tutorial cerrado antes de terminar', async () => {
+    const catalog = jest.requireActual('../tutorialCatalog') as typeof import('../tutorialCatalog')
+    const definition = catalog.getTutorialDefinition('transfer')
+    let resolveSteps: (steps: never[]) => void = () => undefined
+    let rejectSteps: (error: Error) => void = () => undefined
+    const spy = jest
+      .spyOn(definition, 'loader')
+      .mockReturnValueOnce(new Promise((resolve) => { resolveSteps = resolve }))
+      .mockReturnValueOnce(new Promise((_, reject) => { rejectSteps = reject }))
+    render(<LandingContent />)
+    const card = screen.getByRole('button', { name: /abrir tutorial: cómo transferir saldo/i })
 
     fireEvent.click(card)
-    expect(await screen.findByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
-  })
-
-  it('cierra el tutorial con Escape', async () => {
-    render(<LandingContent />)
-
-    fireEvent.click(screen.getByText(/cómo instalar la app/i))
-    expect(await screen.findByRole('dialog', { name: /cómo instalar la app/i })).toBeInTheDocument()
-
     fireEvent.keyDown(document, { key: 'Escape' })
-
-    expect(screen.queryByRole('dialog', { name: /cómo instalar la app/i })).not.toBeInTheDocument()
-  })
-
-  it('navega carrusel de tutoriales y cierra tutorial al tocar backdrop', async () => {
-    render(<LandingContent />)
-
-    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
-    fireEvent.click(within(tutorialsSection).getByRole('button', { name: /siguiente/i }))
-    fireEvent.click(within(tutorialsSection).getByRole('button', { name: /anterior/i }))
-
-    const tutorialTrackViewport = tutorialsSection.querySelector('.overflow-hidden.flex-1') as Element
-    fireEvent.touchStart(tutorialTrackViewport, { touches: [{ clientX: 200 }] })
-    fireEvent.touchEnd(tutorialTrackViewport, { changedTouches: [{ clientX: 20 }] })
-
-    fireEvent.click(within(tutorialsSection).getByText(/cómo registrarte/i))
-    const overlay = await screen.findByTestId('tutorial-walkthrough-dynamic')
-    fireEvent.click(overlay.closest('.fixed')!)
-
-    expect(screen.queryByTestId('tutorial-walkthrough-dynamic')).not.toBeInTheDocument()
-  })
-
-  it('actualiza carrusel de tutoriales ante resize e ignora touchend sin inicio', () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 })
-    const { unmount } = render(<LandingContent />)
-
-    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
-    const tutorialTrackViewport = tutorialsSection.querySelector('.overflow-hidden.flex-1') as Element
-
-    expect(within(tutorialsSection).getByText('1 / 5')).toBeInTheDocument()
-
-    fireEvent.touchEnd(tutorialTrackViewport, { changedTouches: [{ clientX: 20 }] })
-    expect(within(tutorialsSection).getByText('1 / 5')).toBeInTheDocument()
-
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 500 })
-    act(() => {
-      resizeListener?.()
+    fireEvent.click(card)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await act(async () => {
+      resolveSteps([])
+      rejectSteps(new Error('tarde'))
     })
-    expect(within(tutorialsSection).getByText('1 / 9')).toBeInTheDocument()
 
-    unmount()
-    expect(removeResizeListenerMock).toHaveBeenCalledWith(expect.any(Function))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    spy.mockRestore()
   })
 
-  it('reajusta el índice del carrusel al pasar de móvil a desktop', () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 500 })
+  it('renderiza las preguntas frecuentes como acordeón con el texto en el DOM', () => {
     render(<LandingContent />)
 
-    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
-    const next = within(tutorialsSection).getByRole('button', { name: /siguiente/i })
-
-    for (let index = 0; index < 8; index += 1) fireEvent.click(next)
-    expect(within(tutorialsSection).getByText('9 / 9')).toBeInTheDocument()
-
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 })
-    act(() => resizeListener?.())
-
-    expect(within(tutorialsSection).getByText('4 / 5')).toBeInTheDocument()
-    expect((tutorialsSection.querySelector('.h-full.bg-brand-gold') as HTMLElement).style.width).toBe('100%')
+    expect(screen.getByRole('heading', { name: /preguntas frecuentes/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /¿dónde queda primera riverada los 4 ases/i, level: 3 })).toBeInTheDocument()
+    expect(screen.getByText(/valida tu número de celular/i)).toBeInTheDocument()
+    expect(document.querySelectorAll('#faq details')).toHaveLength(4)
   })
 
-  it('mantiene abierto el tutorial al hacer click dentro del contenido del modal', async () => {
-    render(<LandingContent />)
-
-    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
-    fireEvent.click(within(tutorialsSection).getByText(/cómo instalar la app/i))
-
-    const tutorial = await screen.findByTestId('tutorial-walkthrough-dynamic')
-    fireEvent.click(tutorial)
-
-    expect(screen.getByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
-  })
-
-  it('permite volver en el carrusel de tutoriales con gesto táctil hacia la derecha', () => {
-    render(<LandingContent />)
-
-    const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
-    const tutorialTrackViewport = tutorialsSection.querySelector('.overflow-hidden.flex-1') as Element
-
-    fireEvent.touchStart(tutorialTrackViewport, { touches: [{ clientX: 200 }] })
-    fireEvent.touchEnd(tutorialTrackViewport, { changedTouches: [{ clientX: 20 }] })
-    fireEvent.touchStart(tutorialTrackViewport, { touches: [{ clientX: 20 }] })
-    fireEvent.touchEnd(tutorialTrackViewport, { changedTouches: [{ clientX: 200 }] })
-
-    expect(within(tutorialsSection).getByText('1 / 5')).toBeInTheDocument()
-  })
-
-  it('muestra el mapa dinámico cuando el placeholder intersecta', () => {
+  it('carga el mapa solo cuando su espacio entra en pantalla', () => {
     render(<LandingContent />)
 
     expect(screen.getByText(/cargando mapa/i)).toBeInTheDocument()
-    act(() => {
-      intersectionCallback?.([{ isIntersecting: true }])
-    })
+    const observer = mapObserver()
+    act(() => observer.callback([{ isIntersecting: false }]))
+    expect(screen.queryByTestId('location-map-dynamic')).not.toBeInTheDocument()
 
+    act(() => observer.callback([{ isIntersecting: true }]))
     expect(screen.getByTestId('location-map-dynamic')).toBeInTheDocument()
-    expect(disconnectMock).toHaveBeenCalled()
+    expect(observer.disconnect).toHaveBeenCalled()
   })
 
-  it('renderiza ubicación, placeholder del mapa y CTAs externos', () => {
+  it('renderiza ubicación y enlaces externos de Google Maps', () => {
     render(<LandingContent />)
 
     expect(screen.getByRole('heading', { name: /cómo llegarnos/i, level: 2 })).toBeInTheDocument()
-    expect(screen.getAllByText(/cra. 7 #06-87, neiva, huila/i)).toHaveLength(2)
-    expect(screen.getByText(/cargando mapa/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/cra\. 7 #06-87, neiva, huila/i).length).toBeGreaterThanOrEqual(3)
     expect(screen.getByRole('link', { name: /ver en google maps/i })).toHaveAttribute('href', expect.stringContaining('maps.google.com/maps?q='))
     expect(screen.getByRole('link', { name: /cómo llegar/i })).toHaveAttribute('href', expect.stringContaining('maps.google.com/maps/dir/'))
   })
 
-  it('renderiza footer con enlaces y redes sociales', () => {
+  it('cierra con la invitación a la mesa y el footer completo', () => {
     render(<LandingContent />)
+
+    const closing = screen.getByRole('heading', { name: /siéntate a la mesa/i, level: 2 }).closest('section') as HTMLElement
+    expect(within(closing).getByRole('link', { name: /crear cuenta gratis/i })).toHaveAttribute('href', '/register/player')
 
     const footerNav = screen.getByRole('navigation', { name: /enlaces del sitio/i })
     expect(within(footerNav).getByRole('link', { name: /^iniciar sesión$/i })).toHaveAttribute('href', '/login/player')
     expect(within(footerNav).getByRole('link', { name: /crear cuenta/i })).toHaveAttribute('href', '/register/player')
     expect(within(footerNav).getByRole('link', { name: /política de privacidad/i })).toHaveAttribute('href', '/privacy')
     expect(within(footerNav).getByRole('link', { name: /términos y condiciones/i })).toHaveAttribute('href', '/terms')
-
     expect(screen.getByRole('link', { name: /facebook de primera riverada/i })).toHaveAttribute('href', expect.stringContaining('facebook.com'))
     expect(screen.getByRole('link', { name: /instagram de primera riverada/i })).toHaveAttribute('href', expect.stringContaining('instagram.com'))
     expect(screen.getByRole('link', { name: /correo electrónico de contacto/i })).toHaveAttribute('href', expect.stringContaining('mailto:'))
     expect(screen.getByRole('link', { name: /desarrollado por gnesis\.group/i })).toHaveAttribute('href', 'https://gnesis.group')
-    expect(screen.getByAltText('Gnesis.group')).toBeInTheDocument()
-  })
-
-  const remainingTutorials = [
-    'Cómo iniciar sesión',
-    'Cómo cargar saldo',
-    'Cómo retirar saldo',
-    'Cómo transferir saldo',
-    'Cómo jugar tu primera partida',
-    'Funciones del menú de mesa',
-    'Amigos',
-  ]
-
-  remainingTutorials.forEach((title) => {
-    it(`carga dinámicamente los pasos del tutorial "${title}"`, async () => {
-      render(<LandingContent />)
-
-      const tutorialsSection = screen.getByRole('heading', { name: /cómo usar la plataforma/i, level: 2 }).closest('section') as HTMLElement
-      fireEvent.click(within(tutorialsSection).getByText(title))
-
-      expect(await screen.findByTestId('tutorial-walkthrough-dynamic')).toBeInTheDocument()
-    })
-  })
-
-  it('navega al hacer click en botón de sección del nav desktop', () => {
-    render(<LandingContent />)
-
-    const nav = screen.getByRole('button', { name: /abrir menú/i }).closest('nav')!
-    const desktopButtons = within(nav).getAllByRole('button', { name: 'Nosotros' })
-    fireEvent.click(desktopButtons[0])
-
-    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth' })
-  })
-
-  it('cierra el menú mobile al hacer click en "Iniciar sesión"', () => {
-    render(<LandingContent />)
-
-    fireEvent.click(screen.getByRole('button', { name: /abrir menú/i }))
-    const nav = screen.getByRole('button', { name: /cerrar menú/i }).closest('nav')!
-    const loginLinks = within(nav).getAllByRole('link', { name: /^iniciar sesión$/i })
-    fireEvent.click(loginLinks[1])
-
-    expect(screen.getByRole('button', { name: /abrir menú/i })).toBeInTheDocument()
-  })
-
-  it('cierra el menú mobile al hacer click en "Crear cuenta"', () => {
-    render(<LandingContent />)
-
-    fireEvent.click(screen.getByRole('button', { name: /abrir menú/i }))
-    const nav = screen.getByRole('button', { name: /cerrar menú/i }).closest('nav')!
-    const registerLinks = within(nav).getAllByRole('link', { name: /crear cuenta/i })
-    fireEvent.click(registerLinks[1])
-
-    expect(screen.getByRole('button', { name: /abrir menú/i })).toBeInTheDocument()
-  })
-
-  it('ignora touchEnd en el carrusel de fotos sin touchStart previo', () => {
-    render(<LandingContent />)
-
-    const photoCarouselSection = screen.getByRole('heading', { name: /nuestro espacio/i, level: 2 }).closest('section') as HTMLElement
-    const carousel = photoCarouselSection.querySelector('.relative.overflow-hidden') as Element
-
-    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 20 }] })
-
-    expect(within(photoCarouselSection).getByRole('heading', { name: /^nuestro establecimiento$/i, level: 3 })).toBeInTheDocument()
+    expect(screen.getByText(/también conocido como primera riverada dario/i)).toHaveClass('sr-only')
   })
 })

@@ -13,11 +13,14 @@ describe('Landing GEO phase 2/3', () => {
   })
 
   it('adds a visible FAQ section and contextual trust links on landing', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../components/landing/LandingContent.tsx'),
-      'utf-8',
-    )
+    const landingDir = path.resolve(__dirname, '../components/landing')
+    const files = [
+      path.join(landingDir, 'LandingContent.tsx'),
+      ...fs.readdirSync(path.join(landingDir, 'sections')).map((file) => path.join(landingDir, 'sections', file)),
+    ]
+    const source = files.map((file) => fs.readFileSync(file, 'utf-8')).join('\n')
 
+    expect(source).toContain('<FaqSection />')
     expect(source).toContain('id="faq"')
     // JSX splits the heading: `Preguntas{' '} ... frecuentes`
     expect(source).toContain('Preguntas')
