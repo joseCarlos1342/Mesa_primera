@@ -41,6 +41,12 @@ describe('Admin Wallet Server Actions', () => {
     mockSupabase = {
       auth: {
         getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } } }),
+        mfa: {
+          getAuthenticatorAssuranceLevel: jest.fn().mockResolvedValue({
+            data: { currentLevel: 'aal2', nextLevel: 'aal2' },
+            error: null,
+          }),
+        },
       },
       from: jest.fn(),
       rpc: jest.fn().mockResolvedValue({ data: { success: true }, error: null }),
@@ -56,6 +62,18 @@ describe('Admin Wallet Server Actions', () => {
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } });
       const result = await processTransaction('req-1', 'completed');
       expect(result).toEqual({ error: 'No autenticado' });
+    });
+
+    it('rejects AAL1 admin sessions before processing a transaction', async () => {
+      mockSupabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
+        data: { currentLevel: 'aal1', nextLevel: 'aal2' },
+        error: null,
+      });
+
+      const result = await processTransaction('req-1', 'completed');
+
+      expect(result).toEqual({ error: 'Se requiere autenticación multifactor' });
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
     });
 
     it('returns error when RPC fails with supabase error', async () => {

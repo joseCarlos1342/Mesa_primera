@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { logAdminAction } from "./admin-audit";
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
 export type AdminUserView = {
   id: string;
   username: string;
@@ -27,7 +29,7 @@ export type AdminUserView = {
   };
 };
 
-async function ensureAdmin(supabase: any) {
+async function ensureAdmin(supabase: SupabaseServerClient) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) throw new Error("No autenticado");
 
@@ -38,6 +40,16 @@ async function ensureAdmin(supabase: any) {
     .single();
 
   if (userRecord?.role !== "admin") throw new Error("Acceso denegado");
+
+  try {
+    const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalError || aalData?.currentLevel !== "aal2") {
+      throw new Error("Se requiere autenticación multifactor");
+    }
+  } catch {
+    throw new Error("Se requiere autenticación multifactor");
+  }
+
   return userData.user.id;
 }
 

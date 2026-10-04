@@ -10,6 +10,15 @@ export async function processTransaction(requestId: string, status: 'completed' 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
+  try {
+    const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aalError || aalData?.currentLevel !== 'aal2') {
+      return { error: 'Se requiere autenticación multifactor' }
+    }
+  } catch {
+    return { error: 'Se requiere autenticación multifactor' }
+  }
+
   const { data, error } = await supabase.rpc('process_admin_transaction', {
     p_request_id: requestId,
     p_status: status

@@ -27,6 +27,12 @@ describe('Admin Users Server Actions', () => {
     mockSupabase = {
       auth: {
         getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-id' } } }),
+        mfa: {
+          getAuthenticatorAssuranceLevel: jest.fn().mockResolvedValue({
+            data: { currentLevel: 'aal2', nextLevel: 'aal2' },
+            error: null,
+          }),
+        },
       },
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -256,6 +262,31 @@ describe('Admin Users Server Actions', () => {
 
       await expect(adjustUserBalance('user-1', 1000, 'Test'))
         .rejects.toThrow('Database connection lost');
+    });
+
+    it('rechaza ajustes de saldo cuando la sesion admin esta en AAL1', async () => {
+      mockSupabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
+        data: { currentLevel: 'aal1', nextLevel: 'aal2' },
+        error: null,
+      });
+
+      await expect(adjustUserBalance('user-1', 1000, 'Test'))
+        .rejects.toThrow('Se requiere autenticación multifactor');
+
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+      expect(mockSupabase.auth.mfa.getAuthenticatorAssuranceLevel).toHaveBeenCalled();
+    });
+
+    it('falla cerrado si no puede determinar el nivel AAL', async () => {
+      mockSupabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
+        data: null,
+        error: null,
+      });
+
+      await expect(adjustUserBalance('user-1', 1000, 'Test'))
+        .rejects.toThrow('Se requiere autenticación multifactor');
+
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
     });
 
     it('should reject non-admin users', async () => {
