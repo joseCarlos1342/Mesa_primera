@@ -7,6 +7,9 @@ set -euo pipefail
 
 REDIS_FALLBACK_STARTED=0
 REDIS_FALLBACK_PID=""
+CLOUDFLARE_TUNNEL_PID=""
+CLOUDFLARE_TUNNEL_LOG=""
+CLOUDFLARE_TUNNEL_URL=""
 
 detect_public_dev_host() {
 	if [[ -n "${PUBLIC_DEV_HOST:-}" ]]; then
@@ -56,6 +59,10 @@ LOCAL_GAME_SERVER_URL="http://${LOCAL_GAME_SERVER_HOST}:${LOCAL_GAME_SERVER_PORT
 LOCAL_SOCKET_URL="http://${LOCAL_SOCKET_HOST}:${LOCAL_SOCKET_PORT}"
 LOCALHOST_WEB_URL="http://localhost:3000"
 LOCAL_WEB_URL="http://${PUBLIC_DEV_HOST}:3000"
+CLOUDFLARE_TUNNEL_ENABLED="${CLOUDFLARE_TUNNEL:-0}"
+CLOUDFLARE_TUNNEL_PORT="${CLOUDFLARE_TUNNEL_PORT:-3000}"
+CLOUDFLARE_TUNNEL_HOST="${CLOUDFLARE_TUNNEL_HOST:-127.0.0.1}"
+CLOUDFLARE_TUNNEL_ALLOWED_MAIL="${CLOUDFLARE_TUNNEL_ALLOWED_MAIL:-}"
 
 export GAME_SERVER_URL="${GAME_SERVER_URL:-$LOCAL_GAME_SERVER_URL}"
 export NEXT_PUBLIC_GAME_SERVER_URL="${NEXT_PUBLIC_GAME_SERVER_URL:-$LOCAL_GAME_SERVER_URL}"
@@ -71,6 +78,11 @@ echo "🌐 Web local pública: ${LOCAL_WEB_URL}"
 echo "🎯 Game server local: ${GAME_SERVER_URL}"
 echo "🔔 Socket local: ${SOCKET_URL}"
 echo "🗄️  Supabase: se mantiene la configuración existente de apps/web/.env.local y apps/game-server/.env.local"
+if [[ "${CLOUDFLARE_TUNNEL_ENABLED}" == "1" ]]; then
+	echo "☁️  Quick Tunnel de Cloudflare: se publicará la web en el puerto ${CLOUDFLARE_TUNNEL_PORT}"
+else
+	echo "☁️  Quick Tunnel de Cloudflare: desactivado (usa CLOUDFLARE_TUNNEL=1 ./dev.sh)"
+fi
 
 start_local_redis_fallback() {
 	if command -v redis-cli >/dev/null 2>&1 && redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" ping >/dev/null 2>&1; then
@@ -107,6 +119,14 @@ start_local_redis_fallback() {
 cleanup() {
 	local exit_code=$?
 
+	if [[ -n "${CLOUDFLARE_TUNNEL_PID}" ]] && kill -0 "${CLOUDFLARE_TUNNEL_PID}" 2>/dev/null; then
+		kill "${CLOUDFLARE_TUNNEL_PID}" 2>/dev/null || true
+		wait "${CLOUDFLARE_TUNNEL_PID}" 2>/dev/null || true
+	fi
+	if [[ -n "${CLOUDFLARE_TUNNEL_LOG}" ]]; then
+		rm -f "${CLOUDFLARE_TUNNEL_LOG}"
+	fi
+
 	fuser -k 3000/tcp 2567/tcp 2568/tcp >/dev/null 2>&1 || true
 	lsof -ti :3000,2567,2568 | xargs kill -9 2>/dev/null || true
 
@@ -140,6 +160,66 @@ wait_for_port() {
 
 	echo "❌ ${label} no empezó a escuchar en el puerto ${port}."
 	return 1
+}
+
+read_cloudflare_tunnel_url() {
+	local line=""
+	if [[ -z "${CLOUDFLARE_TUNNEL_LOG}" || ! -f "${CLOUDFLARE_TUNNEL_LOG}" ]]; then
+		return 1
+	fi
+
+	while IFS= read -r line; do
+		if [[ "${line}" =~ (https://[a-zA-Z0-9.-]+\.trycloudflare\.com) ]]; then
+			printf '%s\n' "${BASH_REMATCH[1]}"
+			return 0
+		fi
+	done < "${CLOUDFLARE_TUNNEL_LOG}"
+
+	return 1
+}
+
+start_cloudflare_tunnel() {
+	if [[ "${CLOUDFLARE_TUNNEL_ENABLED}" != "1" ]]; then
+		return 0
+	fi
+
+	if ! command -v cloudflared >/dev/null 2>&1; then
+		echo "⚠️  No se encontró cloudflared; se mantienen solo las URLs locales."
+		echo "   Instálalo desde https://developers.cloudflare.com/tunnel/downloads/"
+		return 0
+	fi
+
+	CLOUDFLARE_TUNNEL_LOG="$(mktemp "${TMPDIR:-/tmp}/mesa-primera-cloudflared.XXXXXX.log")"
+	local tunnel_args=(tunnel --url "http://${CLOUDFLARE_TUNNEL_HOST}:${CLOUDFLARE_TUNNEL_PORT}")
+	if [[ -n "${CLOUDFLARE_TUNNEL_ALLOWED_MAIL}" ]]; then
+		tunnel_args+=(--allowed-mail "${CLOUDFLARE_TUNNEL_ALLOWED_MAIL}")
+	fi
+
+	echo "☁️  Iniciando Quick Tunnel de Cloudflare hacia http://${CLOUDFLARE_TUNNEL_HOST}:${CLOUDFLARE_TUNNEL_PORT}..."
+	cloudflared "${tunnel_args[@]}" >"${CLOUDFLARE_TUNNEL_LOG}" 2>&1 &
+	CLOUDFLARE_TUNNEL_PID=$!
+
+	for ((i = 1; i <= 30; i++)); do
+		if CLOUDFLARE_TUNNEL_URL="$(read_cloudflare_tunnel_url)"; then
+			echo "☁️  URL temporal pública: ${CLOUDFLARE_TUNNEL_URL}"
+			if [[ -n "${CLOUDFLARE_TUNNEL_ALLOWED_MAIL}" ]]; then
+				echo "🔐 Acceso protegido para: ${CLOUDFLARE_TUNNEL_ALLOWED_MAIL}"
+			else
+				echo "⚠️  Cualquiera que tenga esta URL puede acceder a la web de desarrollo."
+			fi
+			return 0
+		fi
+
+		if ! kill -0 "${CLOUDFLARE_TUNNEL_PID}" 2>/dev/null; then
+			echo "⚠️  cloudflared terminó antes de publicar la URL; se mantienen las URLs locales."
+			CLOUDFLARE_TUNNEL_PID=""
+			return 0
+		fi
+		sleep 1
+	done
+
+	echo "⚠️  No se pudo obtener la URL de Cloudflare en 30 segundos; se mantienen las URLs locales."
+	return 0
 }
 
 # Matar procesos previos en los puertos clave (3000, 2567, 2568) de forma agresiva
@@ -187,6 +267,7 @@ echo "📱 Abre desde el móvil: ${LOCAL_WEB_URL}"
 wait_for_port 2567 "El game server" || exit 1
 wait_for_port 2568 "Socket.IO" || exit 1
 wait_for_port 3000 "La app web" || exit 1
+start_cloudflare_tunnel
 
 # Mantener el script vivo mientras ambos procesos sigan arriba.
 # `wait` y los PIDs resultaron inestables con los wrappers/respawns de dev,
@@ -205,6 +286,11 @@ while true; do
 	if ! is_port_listening 3000; then
 		echo "❌ La app web terminó inesperadamente."
 		exit 1
+	fi
+
+	if [[ -n "${CLOUDFLARE_TUNNEL_PID}" ]] && ! kill -0 "${CLOUDFLARE_TUNNEL_PID}" 2>/dev/null; then
+		echo "⚠️  El Quick Tunnel de Cloudflare terminó; las URLs locales siguen disponibles."
+		CLOUDFLARE_TUNNEL_PID=""
 	fi
 
 	sleep 2
