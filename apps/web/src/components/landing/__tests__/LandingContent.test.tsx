@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 
 import { LandingContent } from '../LandingContent'
+import { LandingNav } from '../LandingNav'
 import { ClubSection } from '../sections/ClubSection'
 import { DeckBoard } from '../sections/DeckBoard'
 
@@ -83,7 +84,18 @@ function boardObserver(): MockObserver {
 }
 
 function mapObserver(): MockObserver {
-  return observers.find((observer) => !observer.targets.some((target) => target.hasAttribute('data-board-step')))!
+  return observers.find(
+    (observer) => !observer.targets.some((target) => target.hasAttribute('data-board-step') || target.id === 'hero-cta'),
+  )!
+}
+
+function heroCtaObserver(): MockObserver {
+  return observers.find((observer) => observer.targets.some((target) => target.id === 'hero-cta'))!
+}
+
+function navRegisterLink(): HTMLElement | null {
+  const nav = screen.getByRole('navigation', { name: 'Principal' })
+  return within(nav).queryByRole('link', { name: /^crear cuenta$/i })
 }
 
 function tutorialsSection(): HTMLElement {
@@ -177,6 +189,27 @@ describe('LandingContent', () => {
 
     unmount()
     expect(observer.disconnect).toHaveBeenCalled()
+  })
+
+  it('el nav solo muestra "Crear cuenta" cuando el CTA del hero sale de pantalla', () => {
+    const { unmount } = render(<LandingContent />)
+    const observer = heroCtaObserver()
+    expect(navRegisterLink()).toBeNull()
+
+    act(() => observer.callback([{ isIntersecting: false, target: observer.targets[0] }]))
+    expect(navRegisterLink()).toHaveAttribute('href', '/register/player')
+
+    act(() => observer.callback([{ isIntersecting: true, target: observer.targets[0] }]))
+    expect(navRegisterLink()).toBeNull()
+
+    unmount()
+    expect(observer.disconnect).toHaveBeenCalled()
+  })
+
+  it('sin IntersectionObserver el nav muestra "Crear cuenta" siempre', () => {
+    Object.defineProperty(window, 'IntersectionObserver', { writable: true, configurable: true, value: undefined })
+    render(<LandingNav />)
+    expect(navRegisterLink()).toHaveAttribute('href', '/register/player')
   })
 
   it('no falla si el navegador no tiene IntersectionObserver', () => {

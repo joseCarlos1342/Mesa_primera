@@ -168,6 +168,7 @@ export function DeckBoard({ onInstallHint }: DeckBoardProps) {
 
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 md:mt-9">
             <Link
+              id="hero-cta"
               href="/register/player"
               className="group inline-flex min-h-[3.25rem] items-center gap-2.5 rounded-lg bg-brand-gold px-6 text-lg font-bold sm:px-7 text-[#0a0a0a] shadow-[0_8px_22px_-8px_rgba(0,0,0,0.7)] transition-colors duration-200 hover:bg-brand-gold-light active:bg-brand-gold-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a2c20]"
             >

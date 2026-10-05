@@ -20,6 +20,22 @@ export function LandingNav() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState('inicio')
+  // El CTA del hero ya ofrece "Crear cuenta": el nav solo lo muestra cuando ese botón sale de pantalla,
+  // para no tener dos botones dorados iguales en la primera vista.
+  const [heroCtaVisible, setHeroCtaVisible] = useState(true)
+
+  useEffect(() => {
+    const cta = document.getElementById('hero-cta')
+    if (!cta || typeof IntersectionObserver === 'undefined') {
+      setHeroCtaVisible(false)
+      return
+    }
+    const observer = new IntersectionObserver(([entry]) => setHeroCtaVisible(entry.isIntersecting), {
+      rootMargin: '-80px 0px 0px 0px',
+    })
+    observer.observe(cta)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const onScroll = () => {
@@ -97,12 +113,14 @@ export function LandingNav() {
           >
             Iniciar sesión
           </Link>
+          {!heroCtaVisible && (
           <Link
             href="/register/player"
             className="inline-flex min-h-11 items-center rounded-lg bg-brand-gold px-4 text-base font-bold text-[#0a0a0a] transition-colors hover:bg-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0a] sm:px-5"
           >
             Crear cuenta
           </Link>
+          )}
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}

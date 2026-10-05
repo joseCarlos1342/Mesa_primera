@@ -20,6 +20,17 @@ for (const width of widths) {
   })
 }
 
+test('el nav no duplica "Crear cuenta" mientras el CTA del hero está a la vista', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/', { waitUntil: 'networkidle' })
+
+  const navRegister = page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: /^crear cuenta$/i })
+  await expect(navRegister).toHaveCount(0)
+
+  await page.locator('#como-se-gana').scrollIntoViewIfNeeded()
+  await expect(navRegister).toBeVisible()
+})
+
 test('el tablero enseña cada mano al hacer scroll en escritorio', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/', { waitUntil: 'networkidle' })
