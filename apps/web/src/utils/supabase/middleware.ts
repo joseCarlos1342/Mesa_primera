@@ -90,7 +90,7 @@ export async function updateSession(
   const isVerifyPage = pathname === '/register/player/verify'
 
   // PREVENT REDIRECT FOR STATIC FILES
-  const isStaticFile = pathname.match(/\.(json|xml|txt|png|jpg|jpeg|gif|webp|svg|ico)$/)
+  const isStaticFile = pathname.match(/\.(json|xml|txt|png|jpg|jpeg|gif|webp|svg|ico|mjs)$/)
     || /^\/(?:sw\.js|worker-[^/]+\.js|workbox-[^/]+\.js)$/.test(pathname)
   if (isStaticFile) {
     return supabaseResponse

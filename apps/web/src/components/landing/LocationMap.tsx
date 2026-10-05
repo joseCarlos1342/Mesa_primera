@@ -15,6 +15,10 @@ export { LOCAL_LOCATION }
 const CARTO_STYLE =
   'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
 
+/* MapLibre v6 necesita su worker servido aparte (scripts/copy-maplibre-worker.mjs lo copia a public/).
+   Sin esto el mapa se monta pero nunca descarga las teselas: no se ven calles. */
+export const MAPLIBRE_WORKER_URL = '/maplibre/maplibre-gl-worker.mjs'
+
 /* ── Component ──────────────────────────────────────────────────── */
 
 export function LocationMapInner() {
@@ -24,11 +28,16 @@ export function LocationMapInner() {
     if (!containerRef.current) return
 
     let map: import('maplibre-gl').Map | null = null
+    // La importación es asíncrona: si el efecto se limpia antes (StrictMode, navegación rápida),
+    // no se debe crear el mapa; si no, quedan dos instancias superpuestas en el mismo contenedor.
+    let cancelled = false
 
     async function init() {
       const maplibre = await import('maplibre-gl')
 
-      if (!containerRef.current) return
+      if (cancelled || !containerRef.current) return
+
+      maplibre.setWorkerUrl(MAPLIBRE_WORKER_URL)
 
       map = new maplibre.Map({
         container: containerRef.current,
@@ -44,9 +53,8 @@ export function LocationMapInner() {
       )
       map.addControl(new maplibre.NavigationControl(), 'top-right')
 
-      map.on('load', () => {
-        if (!map) return
-
+      // El marcador es HTML y no depende del estilo: se agrega de inmediato, sin esperar 'load'.
+      {
         /* Custom gold marker element */
         const el = document.createElement('div')
         el.className = 'location-marker'
@@ -78,12 +86,13 @@ export function LocationMapInner() {
           .setLngLat([LOCAL_LOCATION.lng, LOCAL_LOCATION.lat])
           .setPopup(popup)
           .addTo(map)
-      })
+      }
     }
 
     init().catch(console.error)
 
     return () => {
+      cancelled = true
       map?.remove()
     }
   }, [])

@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# MapLibre worker (copiado desde node_modules en dev/build)
+/public/maplibre/

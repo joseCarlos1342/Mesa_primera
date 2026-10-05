@@ -50,6 +50,6 @@ export const config = {
       * - static media files (including tutorial videos)
      * Feel free to modify this pattern to include more paths.
      */
-      '/((?!_next/static|_next/image|og-image|favicon.ico|manifest.json|robots.txt|sitemap.xml|sw\\.js|worker-[^/]+\\.js|workbox-[^/]+\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm|mov|vtt|json|xml|txt)$).*)',
+      '/((?!_next/static|_next/image|og-image|favicon.ico|manifest.json|robots.txt|sitemap.xml|sw\\.js|worker-[^/]+\\.js|workbox-[^/]+\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm|mov|vtt|json|xml|txt|mjs)$).*)',
   ],
 }
