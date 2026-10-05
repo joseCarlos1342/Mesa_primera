@@ -13,7 +13,7 @@ export function useCardPreloader() {
 
     for (const suit of SUITS) {
       for (const value of VALUES) {
-        const src = `/cards/${value.toString().padStart(2, '0')}-${suit}.png?v=3`;
+        const src = `/cards/${value.toString().padStart(2, '0')}-${suit}.webp?v=4`;
         if (preloaded.has(src)) continue;
         preloaded.add(src);
         const img = new Image();
@@ -22,7 +22,7 @@ export function useCardPreloader() {
     }
 
     // Preload card back
-    const backSrc = '/images/card-back-rooster.png';
+    const backSrc = '/cards/dorso.svg';
     if (!preloaded.has(backSrc)) {
       preloaded.add(backSrc);
       const img = new Image();

@@ -2,7 +2,7 @@ import Image from 'next/image'
 import { cardImage, cardName, type Card } from './primeraHands'
 import styles from './landing.module.css'
 
-export const CARD_BACK_SRC = '/images/card-back-web.webp'
+export const CARD_BACK_SRC = '/cards/dorso.svg'
 
 interface PlayingCardProps {
   readonly card: Card
@@ -56,6 +56,7 @@ export function PlayingCard({
             height={638}
             sizes={sizes}
             loading={loading}
+            unoptimized
             className={styles.cardBack}
           />
         )}

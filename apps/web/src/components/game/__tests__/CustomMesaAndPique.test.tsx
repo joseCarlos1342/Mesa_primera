@@ -118,8 +118,8 @@ describe('PiqueRevealOverlay', () => {
 
     expect(screen.getByText('Muestra de Juego')).toBeInTheDocument()
     expect(screen.getByText(/Ana/)).toBeInTheDocument()
-    expect(screen.getByAltText('1 de Oros')).toHaveAttribute('src', '/cards/01-oros.png?v=3')
-    expect(screen.getByAltText('7 de Copas')).toHaveAttribute('src', '/cards/07-copas.png?v=3')
+    expect(screen.getByAltText('1 de Oros')).toHaveAttribute('src', '/cards/01-oros.webp?v=4')
+    expect(screen.getByAltText('7 de Copas')).toHaveAttribute('src', '/cards/07-copas.webp?v=4')
     expect(screen.getByText('2 cartas del mismo palo')).toBeInTheDocument()
 
     mockUseGSAPCallback?.()
@@ -137,7 +137,7 @@ describe('PiqueRevealOverlay', () => {
       />
     )
 
-    expect(screen.getByAltText('12 de E')).toHaveAttribute('src', '/cards/12-espadas.png?v=3')
+    expect(screen.getByAltText('12 de E')).toHaveAttribute('src', '/cards/12-espadas.webp?v=4')
     mockUseGSAPCallback?.()
     expect(gsap.set).toHaveBeenCalled()
   })

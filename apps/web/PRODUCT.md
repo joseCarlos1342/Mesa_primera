@@ -42,7 +42,7 @@ Es la mesa de un club real de Neiva (Cra. 7 #06-87), conocido también como Prim
 
 ## Evidence on Hand
 
-- 28 cartas reales en `public/cards/NN-palo.png` y reverso `public/images/card-back-rooster.png`.
+- 28 cartas reales en `public/cards/NN-palo.webp` (ilustradas a partir de la baraja física del club) y reverso `public/cards/dorso.svg`.
 - Video de tutorial de registro en `public/tutorials/`.
 - Dirección y coordenadas reales (`LocationMap.tsx`).
 - No hay fotos del establecimiento, testimonios, cifras de jugadores ni años de antigüedad verificados: no deben fabricarse.

@@ -193,7 +193,7 @@ function GameTableScreen() {
 
         {/* Deck */}
         <div className="relative w-8 h-11">
-          <div className="absolute inset-0 rounded border-2 border-[#d4af37]/40 overflow-hidden shadow-xl" style={{ backgroundImage: 'url(/images/card-back-rooster.png)', backgroundSize: 'cover' }} />
+          <div className="absolute inset-0 rounded border-2 border-[#d4af37]/40 overflow-hidden shadow-xl" style={{ backgroundImage: 'url(/cards/dorso.svg)', backgroundSize: 'cover' }} />
         </div>
       </div>
 
@@ -214,10 +214,10 @@ function GameTableScreen() {
           {/* CENTER: My cards */}
           <div className="flex items-end gap-0.5">
             {[
-              '/cards/01-copas.png',
-              '/cards/03-bastos.png',
-              '/cards/01-espadas.png',
-              '/cards/06-oros.png',
+              '/cards/01-copas.webp',
+              '/cards/03-bastos.webp',
+              '/cards/01-espadas.webp',
+              '/cards/06-oros.webp',
             ].map((src, i) => (
               <div key={i} className="w-[18px] h-[26px] rounded-[2px] overflow-hidden border border-white/20 shadow-md">
                 <Image src={src} alt="" width={52} height={76} className="w-full h-full object-cover" unoptimized />

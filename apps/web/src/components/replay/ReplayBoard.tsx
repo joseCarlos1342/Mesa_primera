@@ -348,7 +348,7 @@ export function ReplayBoard({ frame, cardFallbackByPlayerId, cardFallbackByUserI
             <div className="relative shrink-0">
               <div className="w-6 h-9 md:w-16 md:h-24 bg-[#0a0a0a] rounded-md md:rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
               <div className="w-6 h-9 md:w-16 md:h-24 bg-[#1a1a1a] rounded-md md:rounded-lg absolute translate-x-[1px] translate-y-[1px] md:translate-x-1 md:translate-y-1" />
-              <div className="w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border-[1.5px] md:border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center relative z-10">
+              <div className="w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border-[1.5px] md:border-[2px] border-[#d4af37]/40 bg-[url('/cards/dorso.svg')] bg-cover bg-center relative z-10">
                 <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-md md:rounded-lg" />
                 <div className="absolute inset-0 border border-white/10 rounded-md md:rounded-lg pointer-events-none" />
               </div>
@@ -356,7 +356,7 @@ export function ReplayBoard({ frame, cardFallbackByPlayerId, cardFallbackByUserI
               {bottomParsed && (
                 <div className="absolute top-1/2 -translate-y-1/2 left-[70%] z-[5] w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] rotate-[8deg]">
                   <img
-                    src={`/cards/${String(bottomParsed.value).padStart(2, '0')}-${bottomParsed.suit.toLowerCase()}.png?v=3`}
+                    src={`/cards/${String(bottomParsed.value).padStart(2, '0')}-${bottomParsed.suit.toLowerCase()}.webp?v=4`}
                     alt=""
                     className="w-full h-full object-cover"
                   />

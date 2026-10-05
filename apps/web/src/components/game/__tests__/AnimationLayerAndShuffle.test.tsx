@@ -94,7 +94,7 @@ describe('AnimationLayer', () => {
       }))
     })
 
-    expect(container.innerHTML.match(/card-back-rooster/g)).toHaveLength(2)
+    expect(container.innerHTML.match(/cards\/dorso\.svg/g)).toHaveLength(2)
 
     act(() => {
       jest.advanceTimersByTime(600)

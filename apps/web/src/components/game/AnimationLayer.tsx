@@ -141,7 +141,7 @@ export function AnimationLayer() {
                    priority={true}
                  />
               ) : (
-                 <div className="w-full h-full rounded-xl border-[2px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center shadow-md relative overflow-hidden">
+                 <div className="w-full h-full rounded-xl border-[2px] border-[#d4af37]/40 bg-[url('/cards/dorso.svg')] bg-cover bg-center shadow-md relative overflow-hidden">
                     <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] cursor-pointer" />
                  </div>
               )}

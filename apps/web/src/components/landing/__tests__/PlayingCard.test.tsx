@@ -29,7 +29,7 @@ describe('primeraHands', () => {
   it('arma la baraja de 28 cartas con imágenes reales', () => {
     expect(DECK).toHaveLength(28)
     expect(new Set(DECK.map(cardImage)).size).toBe(28)
-    expect(cardImage({ rank: 1, suit: 'oros' })).toBe('/cards/01-oros.png')
+    expect(cardImage({ rank: 1, suit: 'oros' })).toBe('/cards/01-oros.webp')
     expect(cardName({ rank: 1, suit: 'espadas' })).toBe('As de Espadas')
     expect(rankLabel(7)).toBe('7')
   })
@@ -65,7 +65,7 @@ describe('PlayingCard', () => {
     render(<PlayingCard card={{ rank: 6, suit: 'copas' }} sizes="100px" lit />)
 
     const image = screen.getByRole('img', { name: '6 de Copas' })
-    expect(image).toHaveAttribute('src', '/cards/06-copas.png')
+    expect(image).toHaveAttribute('src', '/cards/06-copas.webp')
     expect(image).toHaveAttribute('loading', 'lazy')
     expect(image.closest('[data-card]')).toHaveAttribute('data-lit', 'true')
   })
@@ -81,7 +81,7 @@ describe('PlayingCard', () => {
     expect(card).not.toHaveAttribute('data-lit')
     const images = container.querySelectorAll('img')
     expect(images).toHaveLength(2)
-    expect(images[1]).toHaveAttribute('src', '/images/card-back-web.webp')
+    expect(images[1]).toHaveAttribute('src', '/cards/dorso.svg')
     expect(images[0]).toHaveAttribute('loading', 'eager')
   })
 })

@@ -13,7 +13,7 @@ describe('Card', () => {
 
     const image = screen.getByRole('img', { name: '7 de Oros' })
 
-    expect(image).toHaveAttribute('src', '/cards/07-oros.png?v=3')
+    expect(image).toHaveAttribute('src', '/cards/07-oros.webp?v=4')
     expect(image).toHaveClass('opacity-0')
     expect(screen.getByRole('img').closest('.selected-card')).toBeInTheDocument()
 

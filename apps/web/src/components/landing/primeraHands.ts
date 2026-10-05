@@ -42,7 +42,7 @@ export function cardId(card: Card): string {
 }
 
 export function cardImage(card: Card): string {
-  return `/cards/${cardId(card)}.png`
+  return `/cards/${cardId(card)}.webp`
 }
 
 export function cardName(card: Card): string {

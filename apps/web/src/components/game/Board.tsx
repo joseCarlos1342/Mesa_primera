@@ -625,7 +625,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
              <div className="absolute h-9 w-6 translate-x-0.5 translate-y-0.5 rounded-md bg-[#0a0a0a] shadow-[2px_2px_15px_rgba(0,0,0,0.9)] md:h-24 md:w-16 md:translate-x-1.5 md:translate-y-1.5 md:rounded-lg" />
              <div className="absolute h-9 w-6 translate-x-[1px] translate-y-[1px] rounded-md bg-[#1a1a1a] md:h-24 md:w-16 md:translate-x-1 md:translate-y-1 md:rounded-lg" />
              {/* Top Card */}
-             <div data-testid="deck-card" className="relative z-10 h-9 w-6 overflow-hidden rounded-md border-[1.5px] border-[#d4af37]/40 bg-[url('/images/card-back-rooster.png')] bg-cover bg-center md:h-24 md:w-16 md:rounded-lg md:border-[2px]">
+             <div data-testid="deck-card" className="relative z-10 h-9 w-6 overflow-hidden rounded-md border-[1.5px] border-[#d4af37]/40 bg-[url('/cards/dorso.svg')] bg-cover bg-center md:h-24 md:w-16 md:rounded-lg md:border-[2px]">
                 <div className="pointer-events-none absolute inset-0 rounded-md shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] md:rounded-lg" />
                 <div className="pointer-events-none absolute inset-0 rounded-md border border-white/10 md:rounded-lg" />
              </div>
@@ -633,7 +633,7 @@ export function Board({ room, phase, pot, piquePot, players, myCards = "", minPi
              {room.state.bottomCard && (
                  <div data-testid="bottom-card" className="absolute left-[58%] top-1/2 z-[5] h-9 w-6 -translate-y-1/2 rotate-[8deg] overflow-hidden rounded-md border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] md:left-[58%] md:h-24 md:w-16 md:rounded-lg">
                  <img
-                   src={`/cards/${room.state.bottomCard.split('-')[0].padStart(2, '0')}-${({'O':'oros','C':'copas','E':'espadas','B':'bastos'} as Record<string,string>)[room.state.bottomCard.split('-')[1]] || room.state.bottomCard.split('-')[1]?.toLowerCase()}.png?v=3`}
+                   src={`/cards/${room.state.bottomCard.split('-')[0].padStart(2, '0')}-${({'O':'oros','C':'copas','E':'espadas','B':'bastos'} as Record<string,string>)[room.state.bottomCard.split('-')[1]] || room.state.bottomCard.split('-')[1]?.toLowerCase()}.webp?v=4`}
                    alt=""
                    className="h-full w-full object-cover"
                  />

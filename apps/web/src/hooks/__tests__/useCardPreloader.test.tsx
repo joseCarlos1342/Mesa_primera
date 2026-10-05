@@ -27,9 +27,9 @@ describe('useCardPreloader', () => {
     const { unmount } = render(<CardPreloaderProbe />)
 
     expect(loadedSources).toHaveLength(29)
-    expect(loadedSources).toContain('/cards/01-oros.png?v=3')
-    expect(loadedSources).toContain('/cards/07-bastos.png?v=3')
-    expect(loadedSources).toContain('/images/card-back-rooster.png')
+    expect(loadedSources).toContain('/cards/01-oros.webp?v=4')
+    expect(loadedSources).toContain('/cards/07-bastos.webp?v=4')
+    expect(loadedSources).toContain('/cards/dorso.svg')
 
     unmount()
     render(<CardPreloaderProbe />)

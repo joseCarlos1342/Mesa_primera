@@ -168,7 +168,7 @@ describe('Board misc guards and banners', () => {
 
     const { container } = render(<Board room={room} phase="PIQUE" pot={0} piquePot={0} players={players} />)
 
-    const bottomCardImage = container.querySelector('img[src="/cards/12-x.png?v=3"]')
+    const bottomCardImage = container.querySelector('img[src="/cards/12-x.webp?v=4"]')
     expect(bottomCardImage).toBeInTheDocument()
   })
 

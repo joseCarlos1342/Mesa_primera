@@ -36,7 +36,7 @@ function parseCard(cardStr: string) {
   };
   const mappedSuit = suitMap[suit] || suit?.toLowerCase();
   const paddedValue = value.toString().padStart(2, '0');
-  return { value, suit, src: `/cards/${paddedValue}-${mappedSuit}.png?v=3` };
+  return { value, suit, src: `/cards/${paddedValue}-${mappedSuit}.webp?v=4` };
 }
 
 export function ShowdownCinematic({ players, pot, piquePot, dealerId, onDismiss }: ShowdownCinematicProps) {

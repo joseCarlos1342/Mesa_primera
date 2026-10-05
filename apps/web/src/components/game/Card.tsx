@@ -33,7 +33,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
 
     const mappedSuit = suitNameObj[suit as string] || suit.toLowerCase();
 
-    return `/cards/${paddedValue}-${mappedSuit}.png?v=3`;
+    return `/cards/${paddedValue}-${mappedSuit}.webp?v=4`;
   }
 
   const cardImageSrc = getCardImage();
@@ -88,7 +88,7 @@ export function Card({ suit, value, isHidden = false, className = '', delay = 0,
 
       {/* Back of Card - Premium Rooster Design */}
       <div
-        className={`absolute inset-0 w-full h-full bg-[#0c1220] border-2 border-[#d4af37]/40 rounded-lg overflow-hidden bg-[url('/images/card-back-rooster.png')] bg-cover bg-center transition-opacity duration-300 ${isHidden ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`absolute inset-0 w-full h-full bg-white border-2 border-[#d4af37]/40 rounded-lg overflow-hidden bg-[url('/cards/dorso.svg')] bg-cover bg-center transition-opacity duration-300 ${isHidden ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         style={{ backfaceVisibility: 'hidden' }}
       >
         <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] pointer-events-none" />
