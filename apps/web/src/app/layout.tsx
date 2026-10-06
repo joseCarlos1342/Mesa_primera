@@ -30,6 +30,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
+  themeColor: "#0a2a1f",
 };
 
 export const metadata: Metadata = {
@@ -75,16 +76,16 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "48x48" },
-      { url: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
-      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icons/favicon-48.png", sizes: "48x48", type: "image/png" },
-      { url: "/icons/favicon-96.png", sizes: "96x96", type: "image/png" },
-      { url: "/icons/favicon-144.png", sizes: "144x144", type: "image/png" },
+      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
+      { url: "/favicon.ico?v=2", sizes: "16x16 32x32 48x48" },
+      { url: "/icons/favicon-16.png?v=2", sizes: "16x16", type: "image/png" },
+      { url: "/icons/favicon-32.png?v=2", sizes: "32x32", type: "image/png" },
+      { url: "/icons/favicon-48.png?v=2", sizes: "48x48", type: "image/png" },
+      { url: "/icons/favicon-96.png?v=2", sizes: "96x96", type: "image/png" },
+      { url: "/icons/favicon-144.png?v=2", sizes: "144x144", type: "image/png" },
     ],
-    shortcut: "/favicon.ico",
-    apple: "/icons/apple-touch-icon-180.png",
+    shortcut: "/favicon.ico?v=2",
+    apple: "/icons/apple-touch-icon-180.png?v=2",
   },
   robots: {
     index: true,

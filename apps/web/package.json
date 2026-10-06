@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "design:lint:player": "pnpm exec design.md lint src/design/DESIGN-player.md",
     "design:lint:admin": "pnpm exec design.md lint src/design/DESIGN-admin.md",
-    "design:lint": "pnpm run design:lint:player && pnpm run design:lint:admin"
+    "design:lint": "pnpm run design:lint:player && pnpm run design:lint:admin",
+    "icons:generate": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@colyseus/sdk": "^0.17.34",
