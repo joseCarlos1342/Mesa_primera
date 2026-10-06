@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Mail, MapPin } from 'lucide-react'
 import { PlayingCard } from '../PlayingCard'
-import { TEACHING_HANDS, cardId } from '../primeraHands'
+import { type Card, cardId } from '../primeraHands'
 import styles from '../landing.module.css'
 
 const SOCIAL = {
@@ -11,14 +11,20 @@ const SOCIAL = {
   email: 'soporte@primerariveradalos4ases.com',
 }
 
-const PRIMERA = TEACHING_HANDS.find((hand) => hand.kind === 'primera')!
+/** Los 4 ases, el guiño al nombre del club. */
+const FOUR_ACES: readonly Card[] = [
+  { rank: 1, suit: 'oros' },
+  { rank: 1, suit: 'copas' },
+  { rank: 1, suit: 'espadas' },
+  { rank: 1, suit: 'bastos' },
+]
 
 export function ClosingTable() {
   return (
     <section aria-labelledby="cierre-title" className={`${styles.felt} ${styles.rim} px-5 py-24 sm:px-8 md:py-32`}>
       <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
         <div className={styles.fan} aria-hidden="true">
-          {PRIMERA.cards.map((card) => (
+          {FOUR_ACES.map((card) => (
             <PlayingCard key={cardId(card)} card={card} sizes="(min-width: 768px) 140px, 18vw" decorative />
           ))}
         </div>
