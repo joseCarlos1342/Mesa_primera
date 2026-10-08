@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import ProfilePage from '../page'
 import { getMyStats } from '@/app/actions/stats'
 import { useAppLock } from '@/components/providers/AppLockProvider'
@@ -297,6 +297,30 @@ describe('ProfilePage', () => {
     expect(push).toHaveBeenCalledWith('/login/player')
 
     confirmSpy.mockRestore()
+  })
+
+  it('abre el selector de avatar, edita el nombre, cierra el modal OTP y descarta el aviso', async () => {
+    await renderLoadedProfile()
+
+    const fileInput = document.querySelector('#avatar-upload') as HTMLInputElement
+    const pickFile = jest.spyOn(fileInput, 'click').mockImplementation(() => {})
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar avatar' }))
+    expect(pickFile).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(screen.getByDisplayValue('Jose Test'), { target: { value: 'Jose Carlos' } })
+    expect(screen.getByDisplayValue('Jose Carlos')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+    const otpTitle = await screen.findByText('Verificar Número')
+    fireEvent.change(screen.getByPlaceholderText('000000'), { target: { value: '123' } })
+    fireEvent.click(within(otpTitle.closest('.relative') as HTMLElement).getAllByRole('button')[0])
+    expect(screen.queryByText('Verificar Número')).not.toBeInTheDocument()
+    expect(verifyOtp).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Activar bloqueo biométrico' }))
+    fireEvent.click(await screen.findByRole('button', { name: '¡Bloqueo biométrico activado!' }))
+    expect(screen.queryByText('¡Bloqueo biométrico activado!')).not.toBeInTheDocument()
   })
 
   it('muestra error cuando falla la actualizacion de profiles sin phoneOverride', async () => {
