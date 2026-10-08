@@ -27,6 +27,11 @@ const COLORS = {
   feltLight: '#1b4d3e',
   brass: '#8b6b2e',
   gold: '#e2b044',
+  // Nogal de la mesa (surface-wood / surface-wood-rim) más un brillo para que el canto
+  // se lea como madera café también a 48 px en el launcher.
+  wood: '#120806',
+  woodRim: '#35180f',
+  woodLight: '#6b3a1f',
 }
 
 const MASTER = 1024
@@ -54,6 +59,66 @@ function feltSvg(size, { rounded = true, rim = true } = {}) {
           rx="${Math.max(r - rimW * 1.35, 0)}" fill="none" stroke="${COLORS.gold}" stroke-opacity="0.55" stroke-width="${Math.max(size * 0.006, 1)}"/>`
       : ''
   }
+</svg>`)
+}
+
+/**
+ * Mesa de juego: canto de nogal (como la mesa de `DESIGN-player.md`) con un filete de latón
+ * y el paño verde dentro.
+ *   - `rounded`: icono "any" con esquinas redondeadas propias.
+ *   - `square`:  lienzo opaco a sangre (iOS aplica su propia máscara).
+ *   - `circle`:  maskable de Android; el paño es un círculo dentro de la zona segura (r=40%)
+ *                y la madera llena el resto, así el launcher recorta siempre sobre madera.
+ */
+function tableSvg(size, { shape = 'rounded', frame = 0.08, feltRadius = 0.31 } = {}) {
+  const outerR = shape === 'rounded' ? size * 0.22 : 0
+  const inset = size * frame
+  const brassW = Math.max(size * 0.012, 1)
+  const grain = Array.from({ length: 14 }, (_, i) => {
+    const y = ((i + 0.5) / 14) * size
+    const wobble = size * 0.012 * (i % 2 ? 1 : -1)
+    return `<path d="M0 ${y} C ${size * 0.3} ${y + wobble}, ${size * 0.7} ${y - wobble}, ${size} ${y}"
+      stroke="#000" stroke-opacity="${0.10 + (i % 3) * 0.04}" stroke-width="${size * 0.004}" fill="none"/>`
+  }).join('')
+
+  let felt
+  if (shape === 'circle') {
+    const r = size * feltRadius
+    const c = size / 2
+    felt = `<circle cx="${c}" cy="${c}" r="${r + brassW}" fill="${COLORS.brass}"/>
+      <circle cx="${c}" cy="${c}" r="${r}" fill="url(#felt)"/>
+      <circle cx="${c}" cy="${c}" r="${r}" fill="url(#lip)"/>`
+  } else {
+    const feltR = shape === 'rounded' ? Math.max(outerR - inset, size * 0.06) : size * 0.12
+    const w = size - inset * 2
+    felt = `<rect x="${inset - brassW}" y="${inset - brassW}" width="${w + brassW * 2}" height="${w + brassW * 2}"
+        rx="${feltR + brassW}" fill="${COLORS.brass}"/>
+      <rect x="${inset}" y="${inset}" width="${w}" height="${w}" rx="${feltR}" fill="url(#felt)"/>
+      <rect x="${inset}" y="${inset}" width="${w}" height="${w}" rx="${feltR}" fill="url(#lip)"/>`
+  }
+
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${COLORS.woodLight}"/>
+      <stop offset="0.5" stop-color="${COLORS.woodRim}"/>
+      <stop offset="1" stop-color="${COLORS.wood}"/>
+    </linearGradient>
+    <radialGradient id="felt" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="${COLORS.feltLight}"/>
+      <stop offset="1" stop-color="${COLORS.felt}"/>
+    </radialGradient>
+    <radialGradient id="lip" cx="50%" cy="50%" r="50%">
+      <stop offset="0.82" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.45"/>
+    </radialGradient>
+    <clipPath id="outer"><rect width="${size}" height="${size}" rx="${outerR}"/></clipPath>
+  </defs>
+  <g clip-path="url(#outer)">
+    <rect width="${size}" height="${size}" fill="url(#wood)"/>
+    ${grain}
+    ${felt}
+  </g>
 </svg>`)
 }
 
@@ -160,7 +225,8 @@ async function fanLayer(size, fit = 0.8) {
 
 async function fanIcon(size, opts) {
   const fan = await fanLayer(size, opts.fit)
-  let img = sharp(feltSvg(size, opts)).composite([{ input: fan }])
+  const bg = opts.table ? tableSvg(size, opts.table) : feltSvg(size, opts)
+  let img = sharp(bg).composite([{ input: fan }])
   if (opts.opaque) img = sharp(await img.png().toBuffer()).flatten({ background: COLORS.felt })
   return img.png({ compressionLevel: 9 }).toBuffer()
 }
@@ -252,9 +318,9 @@ async function main() {
   }
 
   // Master grande del abanico, reducido a cada tamaño para mantener nitidez.
-  const fanMaster = await fanIcon(MASTER, { rounded: true, rim: true, fit: 0.86 })
-  const appleMaster = await fanIcon(MASTER, { rounded: false, rim: false, opaque: true, fit: 0.82 })
-  const maskableMaster = await fanIcon(MASTER, { rounded: false, rim: false, opaque: true, fit: 0.66 })
+  const fanMaster = await fanIcon(MASTER, { table: { shape: 'rounded' }, fit: 0.86 })
+  const appleMaster = await fanIcon(MASTER, { table: { shape: 'square' }, opaque: true, fit: 0.82 })
+  const maskableMaster = await fanIcon(MASTER, { table: { shape: 'circle' }, opaque: true, fit: 0.66 })
   const down = (buf, size) => sharp(buf).resize(size, size, { kernel: 'lanczos3' }).png({ compressionLevel: 9 }).toBuffer()
 
   for (const size of [512, 384, 192]) write(`icons/icon-${size}.png`, await down(fanMaster, size))
