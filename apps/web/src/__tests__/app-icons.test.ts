@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 
+import { ICON_VERSION } from '@/lib/pwa/icon-version'
+
 const PUBLIC = path.resolve(__dirname, '../../public')
 
 interface ManifestIcon {
@@ -70,9 +72,27 @@ describe('Iconos de la app ("los 4 Ases")', () => {
 
   it('el layout apunta a archivos de icono existentes', () => {
     const layout = fs.readFileSync(path.resolve(__dirname, '../app/layout.tsx'), 'utf-8')
-    const urls = [...layout.matchAll(/["'](\/(?:icons\/[^"']+|favicon\.[a-z]+[^"']*))["']/g)].map((m) => m[1])
+    const urls = [...layout.matchAll(/["'`](\/(?:icons\/[^"'`]+|favicon\.[a-z]+[^"'`]*))["'`]/g)].map((m) => m[1])
     expect(urls.length).toBeGreaterThan(0)
     for (const url of urls) expect(fs.existsSync(publicFile(url))).toBe(true)
     expect(layout).toContain('themeColor: "#0a2a1f"')
+  })
+
+  it('el manifest declara un id estable igual al start_url (no rompe instalaciones existentes)', () => {
+    const manifest = readManifest() as ReturnType<typeof readManifest> & { id: string; start_url: string }
+    expect(manifest.id).toBe('/')
+    expect(manifest.start_url).toBe('/')
+  })
+
+  it('todas las URLs de icono del manifest y del layout llevan la versión por contenido', () => {
+    const version = fs.readFileSync(path.resolve(__dirname, '../lib/pwa/icon-version.ts'), 'utf-8').match(/'([0-9a-f]{8})'/)?.[1]
+    expect(version).toBe(ICON_VERSION)
+    for (const icon of readManifest().icons) expect(icon.src).toMatch(new RegExp(`\\?v=${ICON_VERSION}$`))
+
+    const layout = fs.readFileSync(path.resolve(__dirname, '../app/layout.tsx'), 'utf-8')
+    const urls = [...layout.matchAll(/["'`](\/(?:icons\/[^"'`]+|favicon\.[a-z]+[^"'`]*))["'`]/g)].map((m) => m[1])
+    for (const url of urls) expect(url).toMatch(/\?v=\$\{ICON_VERSION\}$/)
+    // Un <link rel="apple-touch-icon"> manual duplicaría el de metadata y sin versión.
+    expect(layout).not.toMatch(/rel=["']apple-touch-icon/)
   })
 })

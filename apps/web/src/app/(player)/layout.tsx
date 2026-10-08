@@ -7,6 +7,7 @@ import { NotificationCenter } from "@/components/NotificationCenter";
 import { SupportChat } from "@/components/SupportChat";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { PWAIconUpdateNotice } from "@/components/PWAIconUpdateNotice";
 import { PresenceTracker } from "@/components/PresenceTracker";
 import { PlayerAppLockWrapper } from "@/components/providers/PlayerAppLockWrapper";
 import { NotificationSocketProvider } from "@/components/providers/NotificationSocketProvider";
@@ -103,6 +104,7 @@ export default async function PlayerLayout({
 
       <BottomNav />
       <PWAInstallPrompt />
+      <PWAIconUpdateNotice />
       {user && <PresenceTracker />}
       {user && <SupportChat userId={user.id} />}
       {user && <NotificationSocketProvider userId={user.id} />}

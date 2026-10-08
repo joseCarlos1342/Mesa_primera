@@ -10,6 +10,8 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import process from 'node:process'
 
+import { syncIconVersion } from './icon-version.mjs'
+
 // sharp se toma del que ya instala Next (misma versión que usa next/image). No se declara
 // como dependencia directa: hacerlo obliga a pnpm a recalcular peers y duplica @colyseus/core
 // en el game-server, rompiendo su matchmaking en tests.
@@ -277,6 +279,10 @@ async function main() {
     .toBuffer()
   mkdirSync(path.join(PUBLIC, 'brand'), { recursive: true })
   write('brand/logo-transparent.svg', svgWrapping(logo, 160, 'Primera Riverada los 4 Ases'))
+
+  // Nueva URL de icono => Android/Chrome detecta el cambio en PWAs ya instaladas.
+  const { version } = syncIconVersion()
+  console.info(`  ✓ iconos v=${version}`)
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/copy-maplibre-worker.mjs && next dev --hostname 0.0.0.0 --port 3000",
-    "build": "node scripts/copy-maplibre-worker.mjs && next build --webpack",
+    "build": "node scripts/icon-version.mjs --check && node scripts/copy-maplibre-worker.mjs && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
@@ -13,7 +13,8 @@
     "design:lint:player": "pnpm exec design.md lint src/design/DESIGN-player.md",
     "design:lint:admin": "pnpm exec design.md lint src/design/DESIGN-admin.md",
     "design:lint": "pnpm run design:lint:player && pnpm run design:lint:admin",
-    "icons:generate": "node scripts/generate-icons.mjs"
+    "icons:generate": "node scripts/generate-icons.mjs",
+    "icons:version": "node scripts/icon-version.mjs"
   },
   "dependencies": {
     "@colyseus/sdk": "^0.17.34",

@@ -253,6 +253,24 @@ pnpm --filter web build
 > [!CAUTION]
 > Always run `pnpm exec supabase db push` before deploying frontend changes that depend on new migrations.
 
+### Cambiar el icono de la app (PWA)
+
+```bash
+pnpm --filter web icons:generate   # regenera iconos y actualiza la versión (?v=<hash>)
+pnpm --filter web icons:version    # solo recalcula la versión si editaste los PNG a mano
+```
+
+Commitea `public/icons/*`, `public/manifest.json` y `src/lib/pwa/icon-version.ts`. La versión es un hash del contenido de los iconos: solo cambia cuando cambia el icono, y `build` falla si quedó desactualizada.
+
+Qué ve quien ya tiene la app instalada:
+
+- **Android (Chrome):** al abrir la app, Chrome detecta la nueva URL del icono y pide confirmar el cambio. La confirmación es obligatoria por seguridad del navegador.
+- **Escritorio (Chrome/Edge):** opción "Revisar actualización de la app" en el menú ⋮.
+- **iPhone/iPad:** iOS nunca actualiza el icono instalado. La app muestra un aviso con los pasos para eliminarla y volver a agregarla desde Safari.
+
+> [!IMPORTANT]
+> No cambies `id` ni `start_url` del `manifest.json`: Chrome trataría la app como otra distinta y no actualizaría las instalaciones existentes.
+
 Un cron job ejecuta esta verificación cada hora. Cualquier discrepancia bloquea automáticamente las transacciones del sistema y alerta al administrador.
 
 ---

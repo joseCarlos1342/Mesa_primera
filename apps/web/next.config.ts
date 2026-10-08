@@ -15,6 +15,9 @@ const withPWA = withPWAInit({
   customWorkerSrc: "worker",
   disable: process.env.NODE_ENV === "development",
   register: true,
+  // El manifest debe llegar siempre de red: Chrome compara sus URLs de icono para
+  // detectar un icono nuevo en PWAs instaladas (ver scripts/icon-version.mjs).
+  publicExcludes: ["!noprecache/**/*", "!manifest.json"],
 });
 
 // ---------------------------------------------------------------------------
@@ -88,6 +91,10 @@ const nextConfig: NextConfig = {
       {
         source: "/og-image.png",
         headers: socialImageHeaders,
+      },
+      {
+        source: "/manifest.json",
+        headers: [{ key: "Cache-Control", value: "no-cache" }],
       },
     ];
   },

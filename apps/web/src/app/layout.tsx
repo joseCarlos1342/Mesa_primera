@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { Alegreya, Geist_Mono, Source_Sans_3 } from "next/font/google";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ClientErrorSuppressor } from "@/components/ClientErrorSuppressor";
+import { ICON_VERSION } from "@/lib/pwa/icon-version";
 import "./globals.css";
 
 const alegreya = Alegreya({
@@ -76,16 +77,16 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
-      { url: "/favicon.ico?v=2", sizes: "16x16 32x32 48x48" },
-      { url: "/icons/favicon-16.png?v=2", sizes: "16x16", type: "image/png" },
-      { url: "/icons/favicon-32.png?v=2", sizes: "32x32", type: "image/png" },
-      { url: "/icons/favicon-48.png?v=2", sizes: "48x48", type: "image/png" },
-      { url: "/icons/favicon-96.png?v=2", sizes: "96x96", type: "image/png" },
-      { url: "/icons/favicon-144.png?v=2", sizes: "144x144", type: "image/png" },
+      { url: `/favicon.svg?v=${ICON_VERSION}`, type: "image/svg+xml" },
+      { url: `/favicon.ico?v=${ICON_VERSION}`, sizes: "16x16 32x32 48x48" },
+      { url: `/icons/favicon-16.png?v=${ICON_VERSION}`, sizes: "16x16", type: "image/png" },
+      { url: `/icons/favicon-32.png?v=${ICON_VERSION}`, sizes: "32x32", type: "image/png" },
+      { url: `/icons/favicon-48.png?v=${ICON_VERSION}`, sizes: "48x48", type: "image/png" },
+      { url: `/icons/favicon-96.png?v=${ICON_VERSION}`, sizes: "96x96", type: "image/png" },
+      { url: `/icons/favicon-144.png?v=${ICON_VERSION}`, sizes: "144x144", type: "image/png" },
     ],
-    shortcut: "/favicon.ico?v=2",
-    apple: "/icons/apple-touch-icon-180.png?v=2",
+    shortcut: `/favicon.ico?v=${ICON_VERSION}`,
+    apple: [{ url: `/icons/apple-touch-icon-180.png?v=${ICON_VERSION}`, sizes: "180x180" }],
   },
   robots: {
     index: true,
@@ -249,7 +250,6 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="4 Ases" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" sizes="180x180" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#10b981" />
         {/* Preconnects innecesarios en landing pública eliminados */}
