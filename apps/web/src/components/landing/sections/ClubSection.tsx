@@ -7,7 +7,7 @@ const SERVICES = [
   { icon: Dices, label: 'Dominó', desc: 'Partidas de dominó presenciales y con amigos.' },
   { icon: Grid2x2, label: 'Mesas de parqués', desc: 'Juegos de mesa y parqués para pasar el rato.' },
   { icon: Coffee, label: 'Bebidas sin alcohol', desc: 'Café, jugos y refrescos para tu partida.' },
-  { icon: Wine, label: 'Bebidas con alcohol', desc: 'Cervezas, licores y cocteles disponibles.' },
+  { icon: Wine, label: 'Bebidas con alcohol', desc: 'Cervezas y licores disponibles.' },
 ]
 
 export interface ClubPhoto {

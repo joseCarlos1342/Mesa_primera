@@ -53,7 +53,7 @@ const socialLinkClass =
   'inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#8b6b2e]/60 text-[#d9d3bf] transition-colors hover:border-brand-gold hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light'
 
 const footerLinkClass =
-  'inline-flex min-h-11 items-center text-base text-[#d9d3bf] transition-colors hover:text-brand-gold-light whitespace-nowrap'
+  'inline-flex min-h-11 min-w-0 items-center break-words text-base text-[#d9d3bf] transition-colors hover:text-brand-gold-light'
 
 export function LandingFooter({ address }: { address: string }) {
   return (
@@ -69,14 +69,14 @@ export function LandingFooter({ address }: { address: string }) {
             </p>
           </div>
 
-          <nav aria-label="Enlaces del sitio" className="grid grid-cols-2 gap-x-8 md:grid-cols-1">
+          <nav aria-label="Enlaces del sitio" className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 md:grid-cols-1">
             <Link href="/login/player" className={footerLinkClass}>Iniciar sesión</Link>
             <Link href="/register/player" className={footerLinkClass}>Crear cuenta</Link>
             <Link href="/privacy" className={footerLinkClass}>Política de privacidad</Link>
             <Link href="/terms" className={footerLinkClass}>Términos y condiciones</Link>
           </nav>
 
-          <ul className="m-0 flex list-none gap-3 p-0" aria-label="Redes sociales">
+          <ul className="m-0 flex list-none justify-center gap-3 p-0 md:justify-start" aria-label="Redes sociales">
             <li>
               <a href={SOCIAL.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook de Primera Riverada los 4 Ases" className={socialLinkClass}>
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
@@ -98,7 +98,7 @@ export function LandingFooter({ address }: { address: string }) {
         <div className={`${styles.brassRule} mt-12`} aria-hidden="true" />
 
         <div className="mt-8 flex flex-col items-center justify-between gap-5 md:flex-row">
-          <p className="text-sm text-[#a0a0b0]">
+          <p className="text-center text-sm text-[#a0a0b0] md:text-left">
             © {new Date().getFullYear()} Primera Riverada los 4 Ases. Todos los derechos reservados.
           </p>
           <a
