@@ -264,9 +264,11 @@ Commitea `public/icons/*`, `public/manifest.json` y `src/lib/pwa/icon-version.ts
 
 Qué ve quien ya tiene la app instalada:
 
-- **Android (Chrome):** al abrir la app, Chrome detecta la nueva URL del icono y pide confirmar el cambio. La confirmación es obligatoria por seguridad del navegador.
+- **Android (Chrome ≥144):** al abrir la app, Chrome detecta la nueva URL del icono, pero no la aplica sola: el usuario debe aceptarla (diálogo o ⋮ → "Revisar actualización de la app"), y Chrome solo reinstala el WebAPK con la app cerrada, el teléfono cargando y con WiFi. Iniciar sesión no influye: la landing ya enlaza el manifest.
 - **Escritorio (Chrome/Edge):** opción "Revisar actualización de la app" en el menú ⋮.
-- **iPhone/iPad:** iOS nunca actualiza el icono instalado. La app muestra un aviso con los pasos para eliminarla y volver a agregarla desde Safari.
+- **iPhone/iPad:** iOS nunca actualiza el icono instalado.
+
+Por eso `PWAIconUpdateNotice` (montado en el layout raíz, oculto en `/admin`) muestra en la app instalada de iOS y Android los pasos para aceptar el icono o reinstalar. Aparece cuando la versión confirmada en el dispositivo no es la actual o no existe (instalaciones anteriores al aviso); "Entendido" la registra y "Recordar luego" lo pospone 7 días.
 
 > [!IMPORTANT]
 > No cambies `id` ni `start_url` del `manifest.json`: Chrome trataría la app como otra distinta y no actualizaría las instalaciones existentes.

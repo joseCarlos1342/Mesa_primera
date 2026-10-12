@@ -78,6 +78,12 @@ describe('Iconos de la app ("los 4 Ases")', () => {
     expect(layout).toContain('themeColor: "#0a2a1f"')
   })
 
+  it('el aviso de icono nuevo se monta una sola vez, en el layout raíz (cubre la landing)', () => {
+    const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), 'utf-8')
+    expect(read('../app/layout.tsx')).toContain('<PWAIconUpdateNotice />')
+    expect(read('../app/(player)/layout.tsx')).not.toContain('PWAIconUpdateNotice')
+  })
+
   it('el manifest declara un id estable igual al start_url (no rompe instalaciones existentes)', () => {
     const manifest = readManifest() as ReturnType<typeof readManifest> & { id: string; start_url: string }
     expect(manifest.id).toBe('/')

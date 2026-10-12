@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { Alegreya, Geist_Mono, Source_Sans_3 } from "next/font/google";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ClientErrorSuppressor } from "@/components/ClientErrorSuppressor";
+import { PWAIconUpdateNotice } from "@/components/PWAIconUpdateNotice";
 import { ICON_VERSION } from "@/lib/pwa/icon-version";
 import "./globals.css";
 
@@ -309,6 +310,8 @@ export default async function RootLayout({
         <FramerMotionProvider>
           {children}
         </FramerMotionProvider>
+        {/* Cubre landing, player y mesa; se oculta solo en /admin. */}
+        <PWAIconUpdateNotice />
         <SpeedInsights />
       </body>
     </html>
