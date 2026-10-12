@@ -56,7 +56,7 @@ function litCards(step: BoardStep): Set<string> {
   return new Set(hand ? hand.cards.map(cardId) : [])
 }
 
-function DeckBoardGrid({ step }: { step: BoardStep }) {
+export function DeckBoardGrid({ step }: { step: BoardStep }) {
   const lit = litCards(step)
   const litRanks = new Set(DECK.filter((card) => lit.has(cardId(card))).map((card) => card.rank))
   const litSuits = new Set(DECK.filter((card) => lit.has(cardId(card))).map((card) => card.suit))

@@ -509,56 +509,25 @@ describe('Friends page contrast compliance', () => {
 })
 
 // ────────────────────────────────────────────────
-// 19. Rules page — heading order
-// ────────────────────────────────────────────────
-describe('Rules page heading order', () => {
-  it('does not use h3 elements (sections should be h2)', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/(legal)/rules/page.tsx'),
-      'utf-8'
-    )
-    expect(source).not.toMatch(/<h3[\s>]/)
-  })
-
-  it('does not use h4 elements (support section should be h2)', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/(legal)/rules/page.tsx'),
-      'utf-8'
-    )
-    expect(source).not.toMatch(/<h4[\s>]/)
-  })
-})
-
-// ────────────────────────────────────────────────
-// 20. Rules page — contrast compliance
+// 19-20. Rules page — contraste
+// El orden de encabezados se verifica renderizando la página en
+// src/components/rules/__tests__/RulesContent.test.tsx ("no salta niveles").
 // ────────────────────────────────────────────────
 describe('Rules page contrast compliance', () => {
-  it('Footer does not use opacity-30 wrapper', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/(legal)/rules/page.tsx'),
-      'utf-8'
-    )
-    expect(source).not.toMatch(/className="[^"]*opacity-30[^"]*">\s*<p/)
+  const rulesSources = ['RulesContent.tsx', 'HandTimeline.tsx', 'RulebookAccordion.tsx'].map((file) =>
+    fs.readFileSync(path.resolve(__dirname, '../components/rules', file), 'utf-8'),
+  )
+
+  it('no atenúa el texto con opacidad', () => {
+    for (const source of rulesSources) {
+      expect(source).not.toMatch(/\bopacity-(?:[1-6]0)\b/)
+      expect(source).not.toMatch(/text-(?:white|\[#f3edd7\]|text-premium)\/[1-6]\d\b/)
+    }
   })
 
-  it('Support section does not use opacity-50 on text', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/(legal)/rules/page.tsx'),
-      'utf-8'
-    )
-    expect(source).not.toMatch(/opacity-50[\s\S]{0,20}">/)
-  })
-
-  it('Footer uses text-slate-500 or visible color instead of dimmed white', () => {
-    const source = fs.readFileSync(
-      path.resolve(__dirname, '../app/(legal)/rules/page.tsx'),
-      'utf-8'
-    )
-    const lines = source.split('\n')
-    const footerPIdx = lines.findIndex(l => l.includes('Estatutos Oficiales'))
-    // The class is on the <p> tag which is the previous line
-    const contextLines = lines.slice(Math.max(0, footerPIdx - 2), footerPIdx + 1).join('\n')
-    expect(contextLines).toMatch(/text-slate-[1-5]00/)
+  it('la página no sigue dentro del layout legal (tarjeta angosta)', () => {
+    expect(fs.existsSync(path.resolve(__dirname, '../app/(legal)/rules/page.tsx'))).toBe(false)
+    expect(fs.existsSync(path.resolve(__dirname, '../app/rules/page.tsx'))).toBe(true)
   })
 })
 

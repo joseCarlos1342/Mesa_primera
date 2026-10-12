@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
-import { Shield, AlertTriangle, Clock, CheckCircle, Mail, ExternalLink, Award } from 'lucide-react'
+import { Award, Check, ExternalLink, Mail, ShieldAlert, ShieldCheck, X } from 'lucide-react'
+import { PageNav } from '@/components/landing/PageNav'
+import { LandingFooter } from '@/components/landing/sections/ClosingFooter'
+import { LOCAL_LOCATION } from '@/components/landing/landingLocation'
+import styles from '@/components/landing/landing.module.css'
 
 export const metadata: Metadata = {
   title: 'Política de Divulgación Responsable — Primera Riverada los 4 Ases',
@@ -9,234 +13,322 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-function SectionIcon({ icon: Icon }: { icon: React.ComponentType<{ className?: string }> }) {
+const SECURITY_EMAIL = 'seguridad@primerariveradalos4ases.com'
+const LAST_UPDATED = '15 de septiembre de 2026'
+
+const IN_SCOPE = [
+  'Sitio web principal y PWA',
+  'Servicio de juego en tiempo real',
+  'Autenticación y gestión de cuentas',
+  'Billetera digital y transacciones',
+]
+
+const OUT_OF_SCOPE = [
+  'Ataques de denegación de servicio (DoS/DDoS)',
+  'Ingeniería social contra empleados',
+  'Vulnerabilidades en infraestructura de terceros que no operamos',
+  'Reportes generados con escáneres automáticos sin verificación manual',
+]
+
+const REPORT_CONTENTS = [
+  'Descripción clara del fallo y su impacto potencial',
+  'Pasos detallados para reproducirlo (Proof of Concept)',
+  'URL o endpoint afectado, sin incluir secretos ni tokens',
+  'Capturas de pantalla o vídeo si aplica',
+  'Tu nombre o alias (para agradecimientos, si lo deseas)',
+]
+
+const RESPONSE_TARGETS = [
+  { time: '48 horas', action: 'Confirmación de recepción de tu reporte' },
+  { time: '7 días', action: 'Evaluación inicial: confirmación o descarte de la vulnerabilidad' },
+  { time: '30 días', action: 'Objetivo de mitigación inicial o actualización comunicada' },
+  { time: 'Acordado', action: 'Divulgación pública coordinada contigo' },
+]
+
+const RESEARCH_RULES = [
+  'No acceder, modificar ni borrar datos de usuarios reales',
+  'No probar contra cuentas reales ni realizar operaciones con dinero real',
+  'No interrumpir el servicio ni degradar la experiencia de otros usuarios',
+  'No explotar la vulnerabilidad más allá de lo necesario para demostrarla',
+  'No realizar ingeniería social contra nuestro equipo',
+  'Reportar el hallazgo a nosotros antes que a terceros',
+]
+
+const eyebrow = 'text-sm font-bold uppercase tracking-[0.1em] text-[#c5a059]'
+const sectionTitle = 'font-display text-4xl font-bold leading-tight tracking-[-0.02em] text-text-premium md:text-5xl'
+const lead = 'mt-4 max-w-[52ch] text-lg leading-relaxed text-[#d9d3bf]'
+const callout = 'rounded-lg border border-brand-gold/60 bg-[#0a2c20] px-5 py-4 text-lg font-bold leading-relaxed text-text-premium'
+const textLink =
+  'inline-flex min-h-11 items-center gap-1.5 text-base font-semibold text-brand-gold-light underline decoration-brand-gold/50 underline-offset-4 hover:decoration-brand-gold'
+
+function Hero() {
   return (
-    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/20 mr-3 shrink-0">
-      <Icon className="w-4 h-4 text-brand-gold" />
-    </span>
+    <header className={`${styles.felt} ${styles.rim} px-5 pb-16 pt-14 sm:px-8 md:pb-24 md:pt-20 lg:px-14`}>
+      <div className="mx-auto grid max-w-[90rem] items-center gap-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <div>
+          <p className={eyebrow}>Divulgación responsable · Última actualización: {LAST_UPDATED}</p>
+          <h1 className="mt-4 font-display font-bold leading-[0.95] tracking-[-0.02em] text-text-premium [font-size:clamp(2.4rem,6vw,4.75rem)]">
+            Política de Divulgación <span className="italic text-brand-gold-light">Responsable</span>
+          </h1>
+          <div className="mt-6 max-w-[48ch] space-y-4 text-lg leading-relaxed text-[#d9d3bf] md:text-xl">
+            <p>
+              La seguridad de nuestros usuarios es nuestra máxima prioridad.{' '}
+              <strong className="text-text-premium">Primera Riverada los 4 Ases</strong> valora el trabajo de los
+              investigadores de seguridad y profesionales que nos ayudan a identificar vulnerabilidades de forma
+              responsable.
+            </p>
+            <p>
+              Si descubres un fallo de seguridad en nuestra plataforma, te pedimos que nos lo comuniques de forma privada
+              antes de divulgarlo públicamente. Esta política define cómo hacerlo y qué puedes esperar de nosotros.
+            </p>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <a
+              href={`mailto:${SECURITY_EMAIL}`}
+              className="group inline-flex min-h-[3.25rem] items-center gap-2.5 rounded-lg bg-brand-gold px-6 text-lg font-bold text-[#0a0a0a] shadow-[0_8px_22px_-8px_rgba(0,0,0,0.7)] transition-colors hover:bg-brand-gold-light active:bg-brand-gold-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a2c20]"
+            >
+              <Mail className="h-5 w-5" aria-hidden="true" />
+              Reportar una vulnerabilidad
+            </a>
+            <a href="/.well-known/security.txt" target="_blank" rel="noopener noreferrer" className={textLink}>
+              Ver security.txt <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+
+        <ShieldCheck
+          className="mx-auto hidden h-56 w-56 text-[#c5a059] lg:block"
+          strokeWidth={0.75}
+          aria-hidden="true"
+        />
+      </div>
+    </header>
+  )
+}
+
+function Scope() {
+  return (
+    <section id="alcance" aria-labelledby="alcance-title" className="bg-[#0a0a0a] px-5 py-20 sm:px-8 md:py-28 lg:px-14">
+      <div className="mx-auto max-w-[90rem]">
+        <p className={eyebrow}>Antes de probar</p>
+        <h2 id="alcance-title" className={`mt-3 ${sectionTitle}`}>
+          1. <span className="italic text-brand-gold-light">Alcance</span>
+        </h2>
+        <p className={lead}>Esta política cubre, de forma general, los servicios que operamos:</p>
+
+        <div className="mt-12 grid gap-0 md:grid-cols-2">
+          <div className="border-t border-[#8b6b2e]/45 py-8 md:border-t-0 md:py-0 md:pr-10">
+            <h3 className="flex items-center gap-3 text-2xl font-bold text-text-premium">
+              <ShieldCheck className="h-7 w-7 text-brand-gold" strokeWidth={1.5} aria-hidden="true" />
+              Dentro del alcance
+            </h3>
+            <ul className="m-0 mt-5 list-none space-y-3 p-0">
+              {IN_SCOPE.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-lg text-[#d9d3bf]">
+                  <Check className="mt-1 h-5 w-5 shrink-0 text-brand-gold" aria-hidden="true" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="border-t border-[#8b6b2e]/45 py-8 md:border-l md:border-t-0 md:py-0 md:pl-10">
+            <h3 className="flex items-center gap-3 text-2xl font-bold text-text-premium">
+              <ShieldAlert className="h-7 w-7 text-[#e74c3c]" strokeWidth={1.5} aria-hidden="true" />
+              Fuera de alcance
+            </h3>
+            <ul className="m-0 mt-5 list-none space-y-3 p-0">
+              {OUT_OF_SCOPE.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-lg text-[#d9d3bf]">
+                  <X className="mt-1 h-5 w-5 shrink-0 text-[#e74c3c]" aria-hidden="true" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <p className={`mt-10 ${callout}`}>
+          No pruebes contra cuentas reales ni operaciones con dinero real. Usa únicamente cuentas, datos y escenarios
+          propios, sin acceder a información de terceros.
+        </p>
+      </div>
+    </section>
+  )
+}
+
+function HowToReport() {
+  return (
+    <section
+      id="report"
+      aria-labelledby="report-title"
+      className={`${styles.felt} ${styles.rim} scroll-mt-20 px-5 py-20 sm:px-8 md:py-28 lg:px-14`}
+    >
+      <div className="mx-auto grid max-w-[90rem] gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
+        <div>
+          <p className={eyebrow}>Escríbenos</p>
+          <h2 id="report-title" className={`mt-3 ${sectionTitle}`}>
+            2. Cómo Reportar una <span className="italic text-brand-gold-light">Vulnerabilidad</span>
+          </h2>
+          <p className={lead}>Envía un correo a</p>
+          <a
+            href={`mailto:${SECURITY_EMAIL}`}
+            aria-label={`Escribir a ${SECURITY_EMAIL}`}
+            className="mt-2 inline-flex min-h-11 items-center gap-3 font-display text-xl font-bold text-brand-gold-light underline decoration-brand-gold/50 underline-offset-[6px] [overflow-wrap:anywhere] hover:decoration-brand-gold sm:text-2xl xl:text-3xl"
+          >
+            <Mail className="h-7 w-7 shrink-0" aria-hidden="true" />
+            <span>
+              seguridad@
+              <wbr />
+              primerariveradalos4ases.com
+            </span>
+          </a>
+          <p className={`mt-8 ${callout}`}>
+            Por favor, no divulgues la vulnerabilidad públicamente hasta que la hayamos corregido o acordemos una fecha
+            de divulgación coordinada.
+          </p>
+        </div>
+
+        <div>
+          <h3 className="text-2xl font-bold text-text-premium">Incluye en tu correo</h3>
+          <ol className="m-0 mt-6 list-none p-0">
+            {REPORT_CONTENTS.map((item, index) => (
+              <li key={item} className="flex items-baseline gap-5 border-t border-[#8b6b2e]/45 py-5 first:border-t-0 first:pt-0">
+                <span className="w-8 shrink-0 font-display text-4xl font-bold italic leading-none text-[#c5a059]" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <span className="text-lg leading-relaxed text-text-premium">{item}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-8 border-t border-[#8b6b2e]/45 pt-6 text-base leading-relaxed text-[#d9d3bf]">
+            Actualmente recibimos reportes por correo y mediante esta política pública. El campo de cifrado
+            (<code className="font-mono text-brand-gold-light">Encryption</code>) de{' '}
+            <code className="font-mono text-brand-gold-light">security.txt</code> aún no está habilitado porque no hemos
+            publicado una clave PGP pública. Esta mejora puede incorporarse más adelante si necesitamos recibir reportes
+            cifrados de vulnerabilidades especialmente sensibles.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ResponseTargets() {
+  return (
+    <section id="respuesta" aria-labelledby="respuesta-title" className="bg-[#0a0a0a] px-5 py-20 sm:px-8 md:py-28 lg:px-14">
+      <div className="mx-auto max-w-[90rem]">
+        <p className={eyebrow}>Qué esperar de nosotros</p>
+        <h2 id="respuesta-title" className={`mt-3 ${sectionTitle}`}>
+          3. Objetivos de <span className="italic text-brand-gold-light">respuesta</span>
+        </h2>
+        <p className={lead}>Estos son nuestros objetivos de respuesta; pueden variar según la severidad y complejidad del caso:</p>
+
+        <ol className="m-0 mt-12 grid list-none gap-0 p-0 md:grid-cols-4">
+          {RESPONSE_TARGETS.map((target, index) => (
+            <li
+              key={target.time}
+              className="relative border-l-2 border-[#8b6b2e]/45 pb-10 pl-8 last:pb-0 md:border-l-0 md:border-t-2 md:pb-0 md:pl-0 md:pr-6 md:pt-8"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute -left-[1.15rem] top-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-brand-gold bg-[#0a0a0a] font-mono text-base font-bold text-brand-gold-light md:-top-[1.15rem] md:left-0"
+              >
+                {index + 1}
+              </span>
+              <h3 className="font-display text-3xl font-bold italic text-brand-gold-light">{target.time}</h3>
+              <p className="mt-2 max-w-[28ch] text-lg leading-relaxed text-[#d9d3bf]">{target.action}</p>
+            </li>
+          ))}
+        </ol>
+
+        <div className={`mt-14 ${callout} font-normal`}>
+          <p>
+            <strong className="text-brand-gold-light">Protección para investigadores de buena fe.</strong> Cuando una
+            investigación cumpla esta política y se realice de buena fe, no iniciaremos acciones legales por el acto de
+            reportar la vulnerabilidad. Esta protección no cubre fraude, acceso a datos ajenos, extorsión, interrupción
+            del servicio ni incumplimientos legales.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ResearchRules() {
+  return (
+    <section id="reglas" aria-labelledby="reglas-title" className={`${styles.felt} ${styles.rim} px-5 py-20 sm:px-8 md:py-28 lg:px-14`}>
+      <div className="mx-auto max-w-[90rem]">
+        <p className={eyebrow}>Mientras investigas</p>
+        <h2 id="reglas-title" className={`mt-3 ${sectionTitle}`}>
+          4. Reglas de <span className="italic text-brand-gold-light">Investigación</span>
+        </h2>
+        <p className={lead}>Para ser elegible a nuestro reconocimiento, los investigadores deben:</p>
+        <ul className="m-0 mt-10 grid list-none gap-x-10 p-0 md:grid-cols-2">
+          {RESEARCH_RULES.map((rule) => (
+            <li key={rule} className="flex items-start gap-4 border-t border-[#8b6b2e]/45 py-5 text-lg leading-relaxed text-text-premium">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-gold text-[#0a0a0a]">
+                <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
+              </span>
+              <span>{rule}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+function Acknowledgements() {
+  return (
+    <section
+      id="acknowledgements"
+      aria-labelledby="acknowledgements-title"
+      className="scroll-mt-20 bg-[#0a0a0a] px-5 py-20 sm:px-8 md:py-28 lg:px-14"
+    >
+      <div className="mx-auto grid max-w-[90rem] gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-center lg:gap-20">
+        <div>
+          <p className={eyebrow}>Gracias</p>
+          <h2 id="acknowledgements-title" className={`mt-3 ${sectionTitle}`}>
+            5. <span className="italic text-brand-gold-light">Agradecimientos</span>
+          </h2>
+          <p className={lead}>
+            Agradecemos a todos los investigadores que han contribuido a mejorar la seguridad de nuestra plataforma de
+            forma responsable. Si reportas una vulnerabilidad válida y deseas ser reconocido, tu nombre o alias aparecerá
+            aquí con tu permiso.
+          </p>
+        </div>
+        <div className={`${styles.felt} ${styles.rim} flex flex-col items-center rounded-xl px-6 py-14 text-center`}>
+          <Award className="h-14 w-14 text-brand-gold" strokeWidth={1.25} aria-hidden="true" />
+          <p className="mt-5 max-w-[32ch] font-display text-2xl italic text-text-premium">
+            Sé el primero en contribuir responsablemente a la seguridad de Primera Riverada los 4 Ases.
+          </p>
+        </div>
+      </div>
+
+      <div className={`${styles.brassRule} mx-auto mt-20 max-w-[90rem]`} aria-hidden="true" />
+      <p className="mx-auto mt-6 flex max-w-[90rem] flex-wrap items-center gap-x-4 gap-y-1 text-base text-[#bdb7a6]">
+        Esta política sigue el estándar RFC 9116 (security.txt)
+        <a href="/.well-known/security.txt" target="_blank" rel="noopener noreferrer" className={`${textLink} font-mono`}>
+          /.well-known/security.txt <ExternalLink className="h-4 w-4" aria-hidden="true" />
+        </a>
+      </p>
+    </section>
   )
 }
 
 export default function SecurityPolicyPage() {
   return (
-    <article className="space-y-10">
-      {/* Header */}
-      <header className="text-center space-y-4 pb-8 border-b border-white/10">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/30 text-brand-gold text-[11px] font-black tracking-widest uppercase">
-          <Shield className="w-3.5 h-3.5" /> Divulgación Responsable
-        </div>
-        <h1 className="text-3xl md:text-5xl font-display font-black italic bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent leading-tight">
-          Política de Divulgación Responsable
-        </h1>
-        <p className="text-text-secondary text-sm">
-          Última actualización: 15 de septiembre de 2026
-        </p>
-        <p className="text-xs text-text-secondary/60 font-mono">
-          <a
-            href="/.well-known/security.txt"
-            className="hover:text-brand-gold transition-colors inline-flex items-center gap-1"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Ver security.txt <ExternalLink className="w-3 h-3" />
-          </a>
-        </p>
-      </header>
-
-      {/* Intro */}
-      <section className="text-text-secondary leading-relaxed space-y-4">
-        <p>
-          La seguridad de nuestros usuarios es nuestra máxima prioridad.{' '}
-          <strong className="text-text-premium">Primera Riverada los 4 Ases</strong> valora el trabajo de los
-          investigadores de seguridad y profesionales que nos ayudan a identificar vulnerabilidades de forma responsable.
-        </p>
-        <p>
-          Si descubres un fallo de seguridad en nuestra plataforma, te pedimos que nos lo comuniques de forma privada
-          antes de divulgarlo públicamente. Esta política define cómo hacerlo y qué puedes esperar de nosotros.
-        </p>
-      </section>
-
-      {/* Section 1 — Scope */}
-      <section className="space-y-4">
-        <h2 className="flex items-center text-xl md:text-2xl font-display font-bold text-text-premium">
-          <SectionIcon icon={Shield} />
-          1. Alcance
-        </h2>
-        <div className="ml-11 space-y-4 text-text-secondary leading-relaxed">
-          <p>Esta política cubre, de forma general, los servicios que operamos:</p>
-          <ul className="space-y-2 list-none">
-            {[
-              'Sitio web principal y PWA',
-              'Servicio de juego en tiempo real',
-              'Autenticación y gestión de cuentas',
-              'Billetera digital y transacciones',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <span className="text-brand-gold mt-1.5 text-xs">&#9830;</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="bg-red-950/30 border border-red-800/40 rounded-xl p-4 mt-4">
-            <p className="text-red-300 font-bold text-sm flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              Fuera de alcance: ataques de denegación de servicio (DoS/DDoS), ingeniería social contra empleados,
-              vulnerabilidades en infraestructura de terceros que no operamos y reportes generados con escáneres automáticos
-              sin verificación manual.
-            </p>
-          </div>
-          <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-xl p-4">
-            <p className="text-brand-gold text-sm font-bold">
-              No pruebes contra cuentas reales ni operaciones con dinero real. Usa únicamente cuentas, datos y escenarios
-              propios, sin acceder a información de terceros.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 2 — How to report */}
-      <section id="report" className="space-y-4 scroll-mt-8">
-        <h2 className="flex items-center text-xl md:text-2xl font-display font-bold text-text-premium">
-          <SectionIcon icon={Mail} />
-          2. Cómo Reportar una Vulnerabilidad
-        </h2>
-        <div className="ml-11 space-y-4 text-text-secondary leading-relaxed">
-          <p>
-            Envía un correo a{' '}
-            <a
-              href="mailto:seguridad@primerariveradalos4ases.com"
-              className="text-brand-gold hover:text-brand-gold-light transition-colors font-bold break-all"
-            >
-              seguridad@primerariveradalos4ases.com
-            </a>{' '}
-            incluyendo:
-          </p>
-          <ul className="space-y-2 list-none">
-            {[
-              'Descripción clara del fallo y su impacto potencial',
-              'Pasos detallados para reproducirlo (Proof of Concept)',
-              'URL o endpoint afectado, sin incluir secretos ni tokens',
-              'Capturas de pantalla o vídeo si aplica',
-              'Tu nombre o alias (para agradecimientos, si lo deseas)',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <span className="text-brand-gold mt-1.5 text-xs">&#9830;</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-xl p-4">
-            <p className="text-brand-gold text-sm font-bold">
-              Por favor, no divulgues la vulnerabilidad públicamente hasta que la hayamos corregido o acordemos una fecha
-              de divulgación coordinada.
-            </p>
-          </div>
-          <div className="bg-black/30 border border-white/10 rounded-xl p-4">
-            <p className="text-text-secondary text-sm leading-relaxed">
-              Actualmente recibimos reportes por correo y mediante esta política pública. El campo de cifrado
-              (`Encryption`) de `security.txt` aún no está habilitado porque no hemos publicado una clave PGP pública.
-              Esta mejora puede incorporarse más adelante si necesitamos recibir reportes cifrados de vulnerabilidades
-              especialmente sensibles.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 3 — Our commitments */}
-      <section className="space-y-4">
-        <h2 className="flex items-center text-xl md:text-2xl font-display font-bold text-text-premium">
-          <SectionIcon icon={Clock} />
-          3. Objetivos de respuesta
-        </h2>
-        <div className="ml-11 space-y-4 text-text-secondary leading-relaxed">
-          <p>Estos son nuestros objetivos de respuesta; pueden variar según la severidad y complejidad del caso:</p>
-          <div className="grid gap-3">
-            {[
-              { tiempo: '48 horas', accion: 'Confirmación de recepción de tu reporte' },
-              { tiempo: '7 días', accion: 'Evaluación inicial: confirmación o descarte de la vulnerabilidad' },
-              { tiempo: '30 días', accion: 'Objetivo de mitigación inicial o actualización comunicada' },
-              { tiempo: 'Acordado', accion: 'Divulgación pública coordinada contigo' },
-            ].map((item) => (
-              <div
-                key={item.tiempo}
-                className="flex items-center gap-4 bg-black/30 border border-brand-gold/10 rounded-xl p-4"
-              >
-                <span className="shrink-0 w-20 text-brand-gold font-black text-sm text-center">
-                  {item.tiempo}
-                </span>
-                <div className="h-8 w-px bg-brand-gold/20 shrink-0" />
-                <span className="text-text-secondary text-sm">{item.accion}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-sm">
-            Cuando una investigación cumpla esta política y se realice de buena fe, no iniciaremos acciones legales por
-            el acto de reportar la vulnerabilidad. Esta protección no cubre fraude, acceso a datos ajenos, extorsión,
-            interrupción del servicio ni incumplimientos legales.
-          </p>
-        </div>
-      </section>
-
-      {/* Section 4 — Rules */}
-      <section className="space-y-4">
-        <h2 className="flex items-center text-xl md:text-2xl font-display font-bold text-text-premium">
-          <SectionIcon icon={CheckCircle} />
-          4. Reglas de Investigación
-        </h2>
-        <div className="ml-11 space-y-4 text-text-secondary leading-relaxed">
-          <p>Para ser elegible a nuestro reconocimiento, los investigadores deben:</p>
-          <ul className="space-y-2 list-none">
-            {[
-              'No acceder, modificar ni borrar datos de usuarios reales',
-              'No probar contra cuentas reales ni realizar operaciones con dinero real',
-              'No interrumpir el servicio ni degradar la experiencia de otros usuarios',
-              'No explotar la vulnerabilidad más allá de lo necesario para demostrarla',
-              'No realizar ingeniería social contra nuestro equipo',
-              'Reportar el hallazgo a nosotros antes que a terceros',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-brand-green shrink-0 mt-0.5" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* Section 5 — Acknowledgements */}
-      <section id="acknowledgements" className="space-y-4 scroll-mt-8">
-        <h2 className="flex items-center text-xl md:text-2xl font-display font-bold text-text-premium">
-          <SectionIcon icon={Award} />
-          5. Agradecimientos
-        </h2>
-        <div className="ml-11 space-y-4 text-text-secondary leading-relaxed">
-          <p>
-            Agradecemos a todos los investigadores que han contribuido a mejorar la seguridad de nuestra plataforma
-            de forma responsable. Si reportas una vulnerabilidad válida y deseas ser reconocido, tu nombre o alias
-            aparecerá aquí con tu permiso.
-          </p>
-          <div className="bg-black/30 border border-brand-gold/10 rounded-xl p-6 text-center">
-            <p className="text-text-secondary/50 text-sm italic">
-              Sé el primero en contribuir responsablemente a la seguridad de Primera Riverada los 4 Ases.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* security.txt reference */}
-      <footer className="pt-4 border-t border-white/10 text-center space-y-2">
-        <p className="text-xs text-text-secondary/40 font-mono">
-          Esta política sigue el estándar RFC 9116 (security.txt)
-        </p>
-        <a
-          href="/.well-known/security.txt"
-          className="inline-flex items-center gap-1 text-xs text-brand-gold/60 hover:text-brand-gold transition-colors font-mono"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          /.well-known/security.txt <ExternalLink className="w-3 h-3" />
-        </a>
-      </footer>
-    </article>
+    <div className="min-h-screen bg-[#0a0a0a] font-sans text-text-premium selection:bg-brand-gold/30">
+      <PageNav />
+      <main>
+        <Hero />
+        <Scope />
+        <HowToReport />
+        <ResponseTargets />
+        <ResearchRules />
+        <Acknowledgements />
+      </main>
+      <LandingFooter address={LOCAL_LOCATION.address} />
+    </div>
   )
 }
