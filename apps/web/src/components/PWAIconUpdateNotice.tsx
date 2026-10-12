@@ -32,9 +32,15 @@ export function getInstalledPlatform(): InstalledPlatform | null {
   return null;
 }
 
-const STEPS: Record<InstalledPlatform, { intro: string; steps: ReactNode[] }> = {
+/** Una sola instrucción visible; los pasos detallados quedan plegados para quien los necesite. */
+const COPY: Record<InstalledPlatform, { message: ReactNode; helpLabel: string; steps: ReactNode[] }> = {
   ios: {
-    intro: "En iPhone el icono solo cambia si vuelves a agregar la app.",
+    message: (
+      <>
+        Para verlo, borra la app y vuelve a agregarla desde Safari. Tu cuenta y tu saldo no se pierden.
+      </>
+    ),
+    helpLabel: "Ver cómo",
     steps: [
       <>Mantén presionado el icono de <strong>4 Ases</strong> y toca <strong>Eliminar app</strong>.</>,
       <>Abre <strong>primerariveradalos4ases.com</strong> en Safari.</>,
@@ -42,16 +48,16 @@ const STEPS: Record<InstalledPlatform, { intro: string; steps: ReactNode[] }> = 
     ],
   },
   android: {
-    intro: "En Android tienes que aceptar el cambio de icono en Chrome.",
+    message: (
+      <>
+        Chrome te preguntará si quieres usar el icono nuevo. Toca <strong>Aceptar</strong>.
+      </>
+    ),
+    helpLabel: "¿No te aparece?",
     steps: [
-      <>Cierra la app por completo: quítala de las <strong>apps recientes</strong>.</>,
       <>
         Abre <strong>primerariveradalos4ases.com</strong> en Chrome, toca <strong>⋮</strong> y luego{" "}
-        <strong>Revisar actualización de la app</strong>. Si aparece un aviso de icono nuevo, acéptalo.
-      </>,
-      <>
-        Si no cambia: mantén presionado el icono, toca <strong>Desinstalar</strong> y vuelve a instalarla desde
-        Chrome con <strong>Agregar a pantalla principal</strong>.
+        <strong>Revisar actualización de la app</strong>.
       </>,
     ],
   },
@@ -83,7 +89,7 @@ export function PWAIconUpdateNotice() {
 
   if (!platform || isAdmin) return null;
 
-  const { intro, steps } = STEPS[platform];
+  const { message, helpLabel, steps } = COPY[platform];
 
   const acknowledge = () => {
     localStorage.setItem(ICON_VERSION_KEY, ICON_VERSION);
@@ -122,36 +128,32 @@ export function PWAIconUpdateNotice() {
         </div>
 
         <p id="pwa-icon-update-desc" className="mt-4 text-lg leading-[1.6]">
-          {intro} Tu cuenta y tu saldo no se pierden. Si tu icono ya se ve así, toca{" "}
-          <strong>Entendido</strong>.
+          {message}
         </p>
 
-        <ol className="mt-4 space-y-3 text-lg leading-[1.6]">
-          {steps.map((step, i) => (
-            <li key={i} className="flex items-start gap-3">
-              <span
-                aria-hidden="true"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold font-mono text-base font-bold text-[#0a0a0a]"
-              >
-                {i + 1}
-              </span>
-              <span>{step}</span>
-            </li>
-          ))}
-        </ol>
+        <details className="group mt-3 text-base leading-[1.6] text-[#d9d3bf]">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-brand-gold-light underline decoration-brand-gold/50 underline-offset-4 marker:content-none [&::-webkit-details-marker]:hidden">
+            {helpLabel}
+          </summary>
+          <ol className="mt-2 list-decimal space-y-2 pl-6 marker:font-bold marker:text-brand-gold">
+            {steps.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+        </details>
 
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-5 flex flex-col items-center gap-1">
           <button
             type="button"
             onClick={acknowledge}
-            className="min-h-12 w-full rounded-lg bg-brand-gold px-6 py-3 text-sm font-bold uppercase tracking-[0.1em] text-[#0a0a0a] transition-colors hover:bg-brand-gold-light active:bg-brand-gold-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold-light"
+            className="min-h-12 w-full rounded-lg bg-brand-gold px-6 py-3 text-base font-bold text-[#0a0a0a] transition-colors hover:bg-brand-gold-light active:bg-brand-gold-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold-light"
           >
             Entendido
           </button>
           <button
             type="button"
             onClick={remindLater}
-            className="min-h-12 w-full rounded-lg border border-brand-gold px-6 py-3 text-sm font-bold uppercase tracking-[0.1em] text-brand-gold transition-colors hover:bg-text-premium/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold-light"
+            className="min-h-11 px-4 text-base text-[#bdb7a6] underline decoration-[#bdb7a6]/40 underline-offset-4 transition-colors hover:text-text-premium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold-light"
           >
             Recordar luego
           </button>

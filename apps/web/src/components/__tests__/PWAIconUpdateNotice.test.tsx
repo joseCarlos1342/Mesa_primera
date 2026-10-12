@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { usePathname } from 'next/navigation'
 
 import { ICON_VERSION } from '@/lib/pwa/icon-version'
@@ -118,7 +118,6 @@ describe('PWAIconUpdateNotice', () => {
     const first = render(<PWAIconUpdateNotice />)
 
     expect(dialog()).toBeInTheDocument()
-    expect(screen.getByText(/si tu icono ya se ve así/i)).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /nuevo icono/i })).toHaveAttribute(
       'src',
       expect.stringContaining(`v=${ICON_VERSION}`),
@@ -140,31 +139,37 @@ describe('PWAIconUpdateNotice', () => {
     expect(dialog()).not.toBeInTheDocument()
   })
 
-  it('en iPhone muestra los pasos de reinstalación desde Safari y limpia el pospuesto', () => {
+  it('en iPhone da una sola instrucción y deja los pasos plegados en "Ver cómo"', () => {
     device({ ua: IPHONE, standalone: true })
     localStorage.setItem(ICON_VERSION_KEY, 'old00000')
     localStorage.setItem(ICON_NOTICE_SNOOZE_KEY, '1')
     render(<PWAIconUpdateNotice />)
 
     expect(dialog()).toBeInTheDocument()
-    expect(screen.getByText(/eliminar app/i)).toBeInTheDocument()
-    expect(screen.getByText(/agregar a pantalla de inicio/i)).toBeInTheDocument()
-    expect(screen.getByText(/safari/i)).toBeInTheDocument()
+    expect(screen.getByText(/borra la app y vuelve a agregarla desde safari/i)).toBeInTheDocument()
+    expect(screen.getByText(/tu saldo no se pierden/i)).toBeInTheDocument()
+    const help = screen.getByText('Ver cómo').closest('details')!
+    expect(help).not.toHaveAttribute('open')
+    expect(within(help).getByText(/eliminar app/i)).toBeInTheDocument()
+    expect(within(help).getByText(/agregar a pantalla de inicio/i)).toBeInTheDocument()
     expect(screen.queryByText(/revisar actualización de la app/i)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /entendido/i }))
     expect(localStorage.getItem(ICON_NOTICE_SNOOZE_KEY)).toBeNull()
   })
 
-  it('en Android muestra cómo aceptar el cambio en Chrome o reinstalar', () => {
+  it('en Android solo pide aceptar en Chrome, con un único paso alternativo y sin desinstalar', () => {
     device({ ua: ANDROID, displayStandalone: true })
     localStorage.setItem(ICON_VERSION_KEY, 'old00000')
     render(<PWAIconUpdateNotice />)
 
     expect(dialog()).toBeInTheDocument()
-    expect(screen.getByText(/revisar actualización de la app/i)).toBeInTheDocument()
-    expect(screen.getByText(/desinstalar/i)).toBeInTheDocument()
-    expect(screen.getByText(/apps recientes/i)).toBeInTheDocument()
+    expect(screen.getByText(/chrome te preguntará si quieres usar el icono nuevo/i)).toBeInTheDocument()
+    const help = screen.getByText('¿No te aparece?').closest('details')!
+    expect(help).not.toHaveAttribute('open')
+    expect(within(help).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(help).getByText(/revisar actualización de la app/i)).toBeInTheDocument()
+    expect(screen.queryByText(/desinstalar/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/safari/i)).not.toBeInTheDocument()
   })
 
