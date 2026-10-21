@@ -40,9 +40,12 @@ describe('RegisterVerifyPage', () => {
   it('renderiza el teléfono, los hidden inputs y el CTA base', () => {
     const { container } = render(<RegisterVerifyPage />)
 
-    expect(screen.getByRole('heading', { name: /confirma tu número/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /confirma tu número/i, level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Progreso' })).toHaveTextContent('Paso 2 de 4')
     expect(screen.getByText('+573001234567')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /código del sms/i })).toBeInTheDocument()
+    expect(screen.getAllByLabelText(/dígito \d de 6/i)[0]).toHaveAttribute('autocomplete', 'one-time-code')
+    expect(container.querySelector('input[type="hidden"][name="token"]')).toHaveValue('')
     expect(container.querySelector('input[name="phone"]')).toHaveValue('+573001234567')
     expect(container.querySelector('input[name="flow"]')).toHaveValue('register')
     expect(screen.getByRole('button', { name: /confirmar código/i })).toBeEnabled()

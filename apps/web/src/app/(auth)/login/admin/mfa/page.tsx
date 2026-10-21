@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { LockKeyhole } from 'lucide-react'
 import { redeemAdminRecoveryCode, verifyAdminTotp } from '../../../auth-actions'
+import { AdminAlert, AdminAuthShell, AdminButton, adminInputClass } from '@/components/auth/AdminAuthShell'
 
 export default function AdminMFAPage() {
   const [code, setCode] = useState('')
@@ -49,88 +51,72 @@ export default function AdminMFAPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white font-sans overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-amber-600 via-orange-500 to-amber-600 opacity-50" />
+    <AdminAuthShell
+      icon={LockKeyhole}
+      title="Verificación 2FA"
+      description="Ingresa el código de 6 dígitos de tu app autenticadora (Google Authenticator o Authy)."
+    >
+      <form onSubmit={handleVerify} className="space-y-5">
+        {error && <AdminAlert>{error}</AdminAlert>}
 
-      <div className="w-full max-w-md space-y-8 z-10 border border-slate-800 p-8 rounded-3xl bg-slate-900/40 backdrop-blur-xl shadow-2xl">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-500/10 rounded-2xl border border-amber-500/20 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Verificación 2FA
-          </h1>
-          <p className="text-slate-400 text-sm">
-            Ingresa el código de tu app autenticadora
-          </p>
-        </div>
-
-        <form onSubmit={handleVerify} className="space-y-6">
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-red-400 text-sm text-center font-medium">
-              {error}
-            </div>
-          )}
-
+        <div className="space-y-2">
+          <label htmlFor="admin-totp" className="block text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+            Código de la app
+          </label>
           <input
+            id="admin-totp"
             type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
             maxLength={6}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="000000"
             required
-            className="w-full h-16 text-center text-3xl font-black tracking-[0.8em] bg-black/40 border border-slate-800 rounded-2xl text-white placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all shadow-inner font-mono"
+            className={`${adminInputClass()} h-14 text-center font-mono text-2xl tabular-nums tracking-[0.5em] sm:text-2xl`}
           />
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading || code.length !== 6}
-            className="w-full h-12 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-black font-black uppercase tracking-widest text-xs rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-amber-600/20"
-          >
-            {loading ? 'Verificando...' : 'Verificar Código'}
-          </button>
-        </form>
+        <AdminButton type="submit" disabled={code.length !== 6} pending={loading}>
+          {loading ? 'Verificando...' : 'Verificar Código'}
+        </AdminButton>
+      </form>
 
-        <p className="text-center text-[10px] text-slate-400 uppercase tracking-widest">
-          Código generado por Google Authenticator / Authy
+      <section aria-labelledby="admin-recovery-title" className="mt-8 border-t border-white/10 pt-6">
+        <h2 id="admin-recovery-title" className="text-base font-bold text-white">
+          ¿Perdiste tu app autenticadora?
+        </h2>
+        <p className="mt-1 text-sm leading-6 text-slate-400">
+          Usa uno de tus recovery codes para invalidar el factor actual y volver a configurarlo.
         </p>
 
-        <div className="border-t border-white/10 pt-6">
-          <div className="mb-4 text-center">
-            <p className="text-[10px] text-cyan-300 uppercase tracking-[0.28em] font-black">Recuperación</p>
-            <p className="mt-2 text-sm text-slate-400">
-              Si perdiste tu app autenticadora, usa uno de tus recovery codes para invalidar el factor actual y volver a configurarlo.
-            </p>
-          </div>
+        <form onSubmit={handleRecovery} className="mt-4 space-y-4">
+          {recoveryError && <AdminAlert>{recoveryError}</AdminAlert>}
 
-          <form onSubmit={handleRecovery} className="space-y-4">
-            {recoveryError && (
-              <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-red-400 text-sm text-center font-medium">
-                {recoveryError}
-              </div>
-            )}
+          <label htmlFor="admin-recovery-code" className="sr-only">
+            Código de recuperación
+          </label>
+          <input
+            id="admin-recovery-code"
+            type="text"
+            autoComplete="off"
+            value={recoveryCode}
+            onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
+            placeholder="ABCD-EFGH-IJKL"
+            required
+            className={`${adminInputClass()} text-center font-mono tracking-[0.2em]`}
+          />
 
-            <input
-              type="text"
-              value={recoveryCode}
-              onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
-              placeholder="ABCD-EFGH-IJKL"
-              required
-              className="w-full h-14 text-center text-sm font-black tracking-[0.35em] bg-black/40 border border-slate-800 rounded-2xl text-white placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all shadow-inner font-mono"
-            />
-
-            <button
-              type="submit"
-              disabled={recoveryLoading || recoveryCode.trim().length < 12}
-              className="w-full h-12 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-40 text-slate-950 font-black uppercase tracking-widest text-xs rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-cyan-600/10"
-            >
-              {recoveryLoading ? 'Validando...' : 'Usar código de recuperación'}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
+          <AdminButton
+            type="submit"
+            variant="secondary"
+            disabled={recoveryCode.trim().length < 12}
+            pending={recoveryLoading}
+          >
+            {recoveryLoading ? 'Validando...' : 'Usar código de recuperación'}
+          </AdminButton>
+        </form>
+      </section>
+    </AdminAuthShell>
   )
 }

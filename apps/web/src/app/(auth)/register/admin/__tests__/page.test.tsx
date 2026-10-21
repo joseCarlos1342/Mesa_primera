@@ -24,8 +24,8 @@ describe('AdminRegisterPage', () => {
   it('renderiza alta admin con campos requeridos y link de login', () => {
     render(<AdminRegisterPage />)
 
-    expect(screen.getByText('Alta de Comandante')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'NUEVO ADMINISTRADOR' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Nuevo administrador', level: 1 })).toBeInTheDocument()
+    expect(screen.getByLabelText('Token de invitación')).toHaveAttribute('name', 'inviteToken')
     expect(screen.getByPlaceholderText('Admin Boss')).toHaveAttribute('name', 'fullName')
     expect(screen.getByPlaceholderText('admin@terminal.auth')).toHaveAttribute('name', 'email')
     expect(screen.getAllByPlaceholderText(/••/)).toHaveLength(2)

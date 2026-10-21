@@ -329,6 +329,13 @@ Las formas son modernas y amplias:
 - Texto blanco, placeholder en gris muted.
 - Focus: borde indigo.
 
+### Autenticación admin (login, 2FA, recuperación, alta)
+
+- **AdminAuthShell** (`src/components/auth/AdminAuthShell.tsx`): header compacto de 56px como el del panel y una tarjeta centrada de 28rem (`surface-card` al 40%, borde blanco/10, radio 32px) con icono indigo en contenedor de 48px y título `headline-lg`.
+- Campos de 48px sobre `surface` con label `label-lg` en `text-tertiary`; foco indigo, error `danger`, válido `success`. Códigos TOTP y recovery codes en Geist Mono.
+- Un botón primario indigo por formulario; el recovery code usa el secundario.
+- Sin rojo decorativo, líneas de escaneo, cursivas ni texto degradado: el rojo queda solo para errores.
+
 ## Do's and Don'ts
 
 - **Do** usar el color de acento semántico correcto para cada sección (indigo para finanzas, emerald para usuarios, etc.).

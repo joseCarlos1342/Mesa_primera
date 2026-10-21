@@ -90,10 +90,18 @@ async function fillPhoneAndBlur(value: string) {
   await waitFor(() => expect(input).toHaveValue(value.replace(/\D/g, '')))
 }
 
+function pinBoxes() {
+  return screen.queryAllByLabelText(/dígito \d de 6/i)
+}
+
+function hiddenPin() {
+  return document.querySelector('input[type="hidden"][name="pin"]') as HTMLInputElement
+}
+
 function fillPin(value: string) {
-  const input = screen.getByPlaceholderText('••••••')
-  fireEvent.change(input, { target: { value } })
-  return input
+  const [first] = pinBoxes()
+  fireEvent.change(first, { target: { value } })
+  return first
 }
 
 describe('PlayerLoginPage', () => {
@@ -119,9 +127,13 @@ describe('PlayerLoginPage', () => {
   it('renderiza el login base con PIN, turnstile y links clave', () => {
     renderPage()
 
-    expect(screen.getByRole('heading', { name: /bienvenido/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /inicia sesión/i, level: 1 })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('3001234567')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('••••••')).toBeInTheDocument()
+    expect(screen.getByLabelText('Tu número de celular')).toHaveAttribute('name', 'phone')
+    expect(screen.getByRole('group', { name: /tu clave de 6 dígitos/i })).toBeInTheDocument()
+    expect(pinBoxes()).toHaveLength(6)
+    expect(pinBoxes()[0]).toHaveAttribute('type', 'password')
+    expect(hiddenPin()).toHaveValue('')
     expect(screen.getByTestId('turnstile-widget')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /ingresar con google/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /recupérala aquí/i })).toHaveAttribute('href', '/recovery')
@@ -152,8 +164,21 @@ describe('PlayerLoginPage', () => {
     const pinInput = fillPin('12a')
     fireEvent.blur(pinInput)
 
-    expect(pinInput).toHaveValue('12')
+    expect(hiddenPin()).toHaveValue('12')
     expect(screen.getByText(/exactamente 6 dígitos numéricos/i)).toBeInTheDocument()
+
+    // Ya tocado: corregir revalida al escribir y muestra el estado válido.
+    fireEvent.paste(pinBoxes()[0], { clipboardData: { getData: () => '123456' } })
+    expect(hiddenPin()).toHaveValue('123456')
+    expect(screen.queryByText(/exactamente 6 dígitos numéricos/i)).not.toBeInTheDocument()
+  })
+
+  it('muestra la llegada de una sesión cerrada como aviso y no como error', () => {
+    setupSearchParams({ kicked: 'true' })
+    renderPage()
+
+    expect(screen.getByRole('status')).toHaveTextContent(/tu sesión anterior ha expirado/i)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('cambia a flujo OTP cuando el teléfono no tiene PIN', async () => {
@@ -163,7 +188,7 @@ describe('PlayerLoginPage', () => {
     await fillPhoneAndBlur('3001234567')
 
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('••••••')).not.toBeInTheDocument()
+      expect(pinBoxes()).toHaveLength(0)
     })
     expect(screen.getByText(/tu cuenta aún no tiene clave/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /enviar código sms/i })).toBeInTheDocument()
@@ -177,7 +202,7 @@ describe('PlayerLoginPage', () => {
     await fillPhoneAndBlur('3001234567')
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('••••••')).toBeInTheDocument()
+      expect(pinBoxes()).toHaveLength(6)
     })
     expect(screen.queryByText(/tu cuenta aún no tiene clave/i)).not.toBeInTheDocument()
   })
@@ -193,7 +218,8 @@ describe('PlayerLoginPage', () => {
 
     await fillPhoneAndBlur('3001234567')
 
-    expect(screen.getByText('...')).toBeInTheDocument()
+    expect(screen.getByText('Comprobando tu cuenta…')).toBeInTheDocument()
+    expect(screen.queryByTestId('field-valid')).not.toBeInTheDocument()
   })
 
   it('renderiza error del server action PIN y pending state del submit', () => {

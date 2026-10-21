@@ -35,10 +35,13 @@ describe('RecoveryPage', () => {
   it('renderiza base, turnstile y link a login', () => {
     render(<RecoveryPage />)
 
-    expect(screen.getByRole('heading', { name: /¿olvidaste tu clave\?/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /¿olvidaste tu clave\s?\?/i, level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Progreso' })).toHaveTextContent('Paso 1 de 3')
     expect(screen.getByPlaceholderText('3001234567')).toBeInTheDocument()
     expect(screen.getByTestId('turnstile-widget')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /iniciar sesión/i })).toHaveAttribute('href', '/login/player')
+    const loginLinks = screen.getAllByRole('link', { name: /iniciar sesión/i })
+    expect(loginLinks).toHaveLength(2)
+    loginLinks.forEach((link) => expect(link).toHaveAttribute('href', '/login/player'))
     expect(screen.getByRole('button', { name: /enviar código sms/i })).toBeEnabled()
   })
 
@@ -70,7 +73,7 @@ describe('RecoveryPage', () => {
     fireEvent.change(phoneInput, { target: { value: '3001234567' } })
 
     expect(screen.queryByText(/número inválido/i)).not.toBeInTheDocument()
-    expect(phoneInput).toHaveClass('border-green-500/40')
-    expect(screen.getByText('✓')).toBeInTheDocument()
+    expect(phoneInput.className).toContain('border-[#2ecc71]/70')
+    expect(screen.getByTestId('field-valid')).toBeInTheDocument()
   })
 })

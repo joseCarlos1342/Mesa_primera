@@ -63,8 +63,8 @@ describe('AdminLoginPage', () => {
 
     expect(screen.queryByText('Correo electrónico inválido')).not.toBeInTheDocument()
     expect(screen.queryByText('La contraseña debe tener al menos 8 caracteres')).not.toBeInTheDocument()
-    expect(email).toHaveClass('border-green-500/40')
-    expect(password).toHaveClass('border-green-500/40')
-    expect(screen.getByText('✓')).toBeInTheDocument()
+    expect(email.className).toContain('border-emerald-400/60')
+    expect(password.className).toContain('border-emerald-400/60')
+    expect(screen.getAllByTestId('field-valid')).toHaveLength(2)
   })
 })

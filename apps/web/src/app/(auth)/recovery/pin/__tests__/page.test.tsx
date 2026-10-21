@@ -22,19 +22,31 @@ describe('RecoveryPinPage', () => {
   })
 
   it('filtra PIN a digitos, valida longitud y confirmacion', () => {
-    render(<RecoveryPinPage />)
+    const { container } = render(<RecoveryPinPage />)
 
-    const inputs = screen.getAllByPlaceholderText('••••••')
-    fireEvent.change(inputs[0], { target: { value: '12a34b' } })
-    expect(inputs[0]).toHaveValue('1234')
-    fireEvent.blur(inputs[0])
+    expect(screen.getByRole('heading', { level: 1, name: /restablece tu clave/i })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Progreso' })).toHaveTextContent('Paso 3 de 3')
+    expect(container.querySelector('input[name="flow"]')).toHaveValue('recovery')
+
+    const pinGroup = screen.getByRole('group', { name: /nueva clave de 6 dígitos/i })
+    const confirmGroup = screen.getByRole('group', { name: /repite tu nueva clave/i })
+    const pinFirst = pinGroup.querySelector('input') as HTMLInputElement
+    const confirmFirst = confirmGroup.querySelector('input') as HTMLInputElement
+    const hiddenPin = container.querySelector('input[type="hidden"][name="pin"]')
+
+    fireEvent.change(pinFirst, { target: { value: '12a34b' } })
+    expect(hiddenPin).toHaveValue('1234')
+    fireEvent.blur(pinFirst)
     expect(screen.getByText('La clave debe ser exactamente 6 dígitos numéricos')).toBeInTheDocument()
 
-    fireEvent.change(inputs[0], { target: { value: '123456' } })
-    fireEvent.blur(inputs[0])
-    fireEvent.change(inputs[1], { target: { value: '654321' } })
-    fireEvent.blur(inputs[1])
+    fireEvent.paste(pinFirst, { clipboardData: { getData: () => '123456' } })
+    expect(screen.queryByText('La clave debe ser exactamente 6 dígitos numéricos')).not.toBeInTheDocument()
+    fireEvent.paste(confirmFirst, { clipboardData: { getData: () => '654321' } })
+    fireEvent.blur(confirmFirst)
     expect(screen.getByText('Las claves no coinciden')).toBeInTheDocument()
+
+    fireEvent.paste(confirmFirst, { clipboardData: { getData: () => '123456' } })
+    expect(screen.queryByText('Las claves no coinciden')).not.toBeInTheDocument()
   })
 
   it('muestra errores server-side y estado pendiente', () => {

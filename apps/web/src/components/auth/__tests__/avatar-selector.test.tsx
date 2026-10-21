@@ -7,7 +7,9 @@ describe('AvatarSelector', () => {
     render(<AvatarSelector onSelect={jest.fn()} selectedId="as-oros" />)
 
     expect(screen.getByText(/identidad en la mesa/i)).toBeInTheDocument()
-    expect(screen.getByText('REQUERIDO')).toBeInTheDocument()
+    expect(screen.getByText('Requerido')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /identidad en la mesa/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /as de oros/i })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /as de oros/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /rey de espadas/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /copa real/i })).toBeInTheDocument()

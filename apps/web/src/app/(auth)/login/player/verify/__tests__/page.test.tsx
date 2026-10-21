@@ -37,12 +37,13 @@ describe('VerifyPage', () => {
   it('renderiza telefono y conserva phone/flow en inputs ocultos', () => {
     const { container } = render(<VerifyPage />)
 
-    expect(screen.getByRole('heading', { name: 'Verifica tu Código' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Verifica tu código', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('3001234567')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('000000')).toHaveAttribute('maxLength', '6')
+    expect(screen.getAllByLabelText(/dígito \d de 6/i)).toHaveLength(6)
+    expect(container.querySelector('input[type="hidden"][name="token"]')).toBeInTheDocument()
     expect(container.querySelector('input[name="phone"]')).toHaveValue('3001234567')
     expect(container.querySelector('input[name="flow"]')).toHaveValue('register')
-    expect(screen.getByRole('button', { name: /código correcto/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /confirmar código/i })).toBeEnabled()
   })
 
   it('usa login como flujo por defecto y muestra error/estado pendiente', () => {

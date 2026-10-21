@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Mail, MapPin } from 'lucide-react'
 import { PlayingCard } from '../PlayingCard'
-import { type Card, cardId } from '../primeraHands'
+import { FOUR_ACES, cardId } from '../primeraHands'
 import styles from '../landing.module.css'
 
 const SOCIAL = {
@@ -10,14 +10,6 @@ const SOCIAL = {
   instagram: 'https://instagram.com/primerariveradalos4ases',
   email: 'soporte@primerariveradalos4ases.com',
 }
-
-/** Los 4 ases, el guiño al nombre del club. */
-const FOUR_ACES: readonly Card[] = [
-  { rank: 1, suit: 'oros' },
-  { rank: 1, suit: 'copas' },
-  { rank: 1, suit: 'espadas' },
-  { rank: 1, suit: 'bastos' },
-]
 
 export function ClosingTable() {
   return (

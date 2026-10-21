@@ -15,6 +15,9 @@ export interface Card {
   readonly suit: Suit
 }
 
+/** Los 4 ases, el guiño al nombre del club (cierre de la landing y panel del auth). */
+export const FOUR_ACES: readonly Card[] = SUITS.map((suit): Card => ({ rank: 1, suit }))
+
 export const SUIT_LABEL: Record<Suit, string> = {
   oros: 'Oros',
   copas: 'Copas',

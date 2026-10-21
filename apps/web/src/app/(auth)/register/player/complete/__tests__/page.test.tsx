@@ -89,8 +89,9 @@ describe('CompleteGoogleRegistrationPage', () => {
     fireEvent.change(phone, { target: { value: '3001234567' } })
 
     expect(screen.queryByText(/nombre.*requerido/i)).not.toBeInTheDocument()
-    expect(nickname).toHaveClass('border-green-500/40')
-    expect(screen.getAllByText('✓')).toHaveLength(3)
+    expect(nickname).not.toHaveAttribute('aria-invalid')
+    expect(nickname.className).toContain('border-[#2ecc71]/70')
+    expect(screen.getAllByTestId('field-valid')).toHaveLength(3)
   })
 
   it('mantiene el formulario disponible cuando Google no aporta datos', async () => {

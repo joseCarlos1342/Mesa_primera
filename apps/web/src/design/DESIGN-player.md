@@ -327,6 +327,18 @@ El lenguaje de formas combina lo clásico con lo moderno:
 - **Tablero que enseña:** rejilla 4 palos × 7 valores; al leer cada mano se atenúa la baraja y se ilumina la combinación con anillo dorado. Valores en Geist Mono.
 - **Separadores:** filetes de latón de 1px (`border-brass`) en lugar de tarjetas; las listas (pasos, servicios, FAQ) son filas con regla, no cajas.
 
+### Autenticación de jugador (login, registro, códigos, recuperación)
+
+Extiende "La baraja abierta" al auth (`src/components/auth/`). Sin tarjetas de cristal, botones 3D con brillo ni texto degradado.
+
+- **AuthShell (composición dividida):** `PageNav` arriba; en desktop, panel izquierdo de paño (`surface-leather`) con canto de nogal, abanico de los 4 ases, titular Alegreya con acento en cursiva `primary-light` y dirección del club; a la derecha el formulario sobre `background` en una columna de 30rem (38rem si hay dos columnas y avatares). En móvil el panel se vuelve una cabecera corta con el abanico pequeño y el titular. Un único `h1` por pantalla, en el formulario.
+- **Movimiento:** el reparto con volteo de las cartas solo ocurre en `/login/player` y `/register/player`; los pasos siguientes muestran las cartas quietas. Con `prefers-reduced-motion` no hay animación.
+- **AuthStepper:** "Paso X de N" en `primary-muted` con números en Geist Mono y un filete por paso (hecho `primary`, actual `primary-light`, pendiente `border-brass` al 40%). Registro: Tus datos → Código → Clave → Huella (celular y Google). Recuperación: Celular → Código → Nueva clave.
+- **AuthField:** label visible de 16px, campo de 56px sobre `surface-wood` con borde `border-brass`; foco dorado, error `danger`, válido `success` con icono. El prefijo `+57` y el celular van en Geist Mono. Ayuda y error enlazados con `aria-describedby`; el error se anuncia con `role="alert"`.
+- **CodeInput:** seis casillas de 64–72px en Geist Mono para código SMS y clave (`masked` las oculta). Pegado y autocompletar del SMS (`one-time-code`), retroceso y flechas; el valor viaja en un `input hidden` con el `name` que espera la server action.
+- **Botones:** primario `button-primary` de 56px (uno por pantalla); secundario con borde de latón para "Entrar con huella", Google y "Ahora no". Las acciones de la barra superior usan la variante discreta para no competir con el dorado del formulario.
+- **Avisos:** error con borde `danger` sobre nogal rojizo; aviso informativo sobre `surface-leather` con borde de latón (`role="status"`).
+
 ## Do's and Don'ts
 
 - **Do** usar dorado (#e2b044) solo para acciones primarias y acentos. Un máximo de 2-3 elementos dorados por pantalla.

@@ -1,0 +1,32 @@
+/* Auth "La baraja abierta": abanico de los 4 ases del panel de paño.
+   Misma geometría que `.fan` de la landing, con tamaño compacto en móvil. */
+
+.fan {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  padding-block: 0.4rem 0.9rem;
+  padding-inline: 0.75rem;
+}
+
+.fan > * {
+  width: 2.6rem;
+  margin-inline: -0.38rem;
+  transform-origin: 50% 120%;
+}
+
+.fan > *:nth-child(1) { transform: rotate(-15deg) translateY(10%); }
+.fan > *:nth-child(2) { transform: rotate(-5deg); }
+.fan > *:nth-child(3) { transform: rotate(5deg); }
+.fan > *:nth-child(4) { transform: rotate(15deg) translateY(10%); }
+
+@media (min-width: 1024px) {
+  .fan {
+    padding-block: 0 2rem;
+  }
+
+  .fan > * {
+    width: clamp(6rem, 8.5vw, 8.5rem);
+    margin-inline: -0.9rem;
+  }
+}

@@ -37,8 +37,8 @@ describe('RecoveryVerifyPage', () => {
   it('renderiza recuperacion con telefono y flujo recovery', () => {
     const { container } = render(<RecoveryVerifyPage />)
 
-    expect(screen.getByText('VERIFICACIÓN')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Confirma tu Identidad' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Progreso' })).toHaveTextContent('Paso 2 de 3')
+    expect(screen.getByRole('heading', { name: 'Confirma tu identidad', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('3009991122')).toBeInTheDocument()
     expect(container.querySelector('input[name="phone"]')).toHaveValue('3009991122')
     expect(container.querySelector('input[name="flow"]')).toHaveValue('recovery')

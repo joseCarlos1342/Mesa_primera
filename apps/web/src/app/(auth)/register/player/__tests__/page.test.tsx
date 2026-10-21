@@ -49,7 +49,9 @@ describe('PlayerRegisterPage', () => {
   it('renderiza formulario base, widgets y avatar hidden input inicial', () => {
     renderPage()
 
-    expect(screen.getByRole('heading', { name: /regístrate/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /crea tu cuenta/i, level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Progreso' })).toHaveTextContent('Paso 1 de 4')
+    expect(screen.getByLabelText('Nombre real')).toHaveAttribute('name', 'fullName')
     expect(screen.getByPlaceholderText('Jose Carlos')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('AsDelDestino')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('3001234567')).toBeInTheDocument()
@@ -81,7 +83,7 @@ describe('PlayerRegisterPage', () => {
     fireEvent.blur(fullNameInput, { target: { value: 'Jose Carlos' } })
 
     expect(screen.queryByText(/entre 2 y 80 caracteres/i)).not.toBeInTheDocument()
-    expect(screen.getAllByText('✓').length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId('field-valid').length).toBeGreaterThan(0)
   })
 
   it('actualiza contador de nickname y valida error local', () => {

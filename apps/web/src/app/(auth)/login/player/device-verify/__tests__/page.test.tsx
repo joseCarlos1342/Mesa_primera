@@ -37,8 +37,8 @@ describe('DeviceVerifyPage', () => {
   it('renderiza verificacion de dispositivo y fija el flujo device-verify', () => {
     const { container } = render(<DeviceVerifyPage />)
 
-    expect(screen.getByText('NUEVO DISPOSITIVO')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Verifica tu Identidad' })).toBeInTheDocument()
+    expect(screen.getByText(/dispositivo nuevo/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Verifica tu identidad', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('3005556677')).toBeInTheDocument()
     expect(container.querySelector('input[name="phone"]')).toHaveValue('3005556677')
     expect(container.querySelector('input[name="flow"]')).toHaveValue('device-verify')

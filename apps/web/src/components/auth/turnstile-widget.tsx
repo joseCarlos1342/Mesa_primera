@@ -52,7 +52,7 @@ export function TurnstileWidget() {
 
   if (!siteKey || scriptFailed) {
     return (
-      <p className="text-red-400 text-xs font-bold text-center" role="alert">
+      <p className="text-center text-base font-semibold text-[#f08a7e]" role="alert">
         No se pudo cargar la verificación de seguridad. Recarga la página e intenta de nuevo.
       </p>
     )

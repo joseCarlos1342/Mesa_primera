@@ -33,14 +33,27 @@ describe('Root layout viewport', () => {
 // 2. Auth pages — semantic landmark <main>
 // ────────────────────────────────────────────────
 describe('Auth pages have <main> landmark', () => {
-  it('(auth) layout.tsx exists and wraps children in a <main> element', async () => {
-    const { default: AuthLayout } = await import(
-      '@/app/(auth)/layout'
-    )
+  it('both auth shells wrap the form in a single <main>, with the nav outside it', async () => {
+    const { AuthShell } = await import('@/components/auth/AuthShell')
+    const { AdminAuthShell } = await import('@/components/auth/AdminAuthShell')
+    const { ShieldCheck } = await import('lucide-react')
+
+    const { unmount } = render(<AuthShell title="Login"><p>child</p></AuthShell>)
+    expect(screen.getAllByRole('main')).toHaveLength(1)
+    expect(screen.getByRole('main')).toHaveTextContent('child')
+    expect(screen.getByRole('main')).not.toContainElement(screen.getByRole('navigation'))
+    unmount()
+
+    render(<AdminAuthShell icon={ShieldCheck} title="Admin"><p>admin-child</p></AdminAuthShell>)
+    expect(screen.getAllByRole('main')).toHaveLength(1)
+    expect(screen.getByRole('main')).toHaveTextContent('admin-child')
+  })
+
+  it('(auth) layout does not add a second <main> around the shells', async () => {
+    const { default: AuthLayout } = await import('@/app/(auth)/layout')
     render(<AuthLayout><p>child</p></AuthLayout>)
-    const main = screen.getByRole('main')
-    expect(main).toBeInTheDocument()
-    expect(main).toHaveTextContent('child')
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+    expect(screen.getByText('child')).toBeInTheDocument()
   })
 })
 
