@@ -5,6 +5,8 @@
 .player-layout {
   --background: #0a0a0a;
   --foreground: #f3edd7;
+  color-scheme: dark;
+  accent-color: #e2b044;
 }
 
 /* Scrollbar theming scoped to player layout */
@@ -20,4 +22,16 @@
 }
 .player-layout ::-webkit-scrollbar-thumb:hover {
   background: rgba(197, 160, 89, 0.5);
+}
+
+.player-layout {
+  scrollbar-color: rgba(197, 160, 89, 0.35) transparent;
+}
+
+/* Aviso breve (Toast) */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
 }

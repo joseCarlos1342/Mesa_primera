@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { X, Crown, Coins, Layers, Users } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { AuthButton, AuthField } from "@/components/auth/AuthForm"
+import { PlayerSheet } from "@/components/player/PlayerSheet"
 
 const CHIP_DENOMS = [100000, 200000, 500000, 1000000, 2000000, 5000000] as const
 
@@ -16,17 +16,17 @@ const CHIP_COLORS: Record<number, { bg: string; label: string }> = {
 }
 
 const MIN_ENTRY_PRESETS = [
-  { value: 5_000_000, label: "$50,000" },
-  { value: 10_000_000, label: "$100,000" },
-  { value: 20_000_000, label: "$200,000" },
-  { value: 50_000_000, label: "$500,000" },
+  { value: 5_000_000, label: "$50.000" },
+  { value: 10_000_000, label: "$100.000" },
+  { value: 20_000_000, label: "$200.000" },
+  { value: 50_000_000, label: "$500.000" },
 ]
 
 const MIN_PIQUE_PRESETS = [
-  { value: 500_000, label: "$5,000" },
-  { value: 1_000_000, label: "$10,000" },
-  { value: 2_000_000, label: "$20,000" },
-  { value: 5_000_000, label: "$50,000" },
+  { value: 500_000, label: "$5.000" },
+  { value: 1_000_000, label: "$10.000" },
+  { value: 2_000_000, label: "$20.000" },
+  { value: 5_000_000, label: "$50.000" },
 ]
 
 interface CustomMesaModalProps {
@@ -81,185 +81,101 @@ export function CustomMesaModal({ isOpen, onClose, onCreateMesa, creating }: Cus
     setDisabledChips([])
   }
 
+  const close = () => {
+    resetForm()
+    onClose()
+  }
+
+  const option = (active: boolean) =>
+    `inline-flex min-h-12 items-center justify-center rounded-lg border px-2 font-mono text-lg font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light ${
+      active ? 'border-brand-gold bg-[#0a2c20] text-brand-gold-light' : 'border-[#8b6b2e]/60 text-[#d9d3bf] hover:border-brand-gold'
+    }`
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 30 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="relative bg-gradient-to-b from-[#0d1117] to-[#080c10] border-2 border-[#d4af37]/20 rounded-[2rem] w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-[0_50px_100px_rgba(0,0,0,0.8),0_0_60px_rgba(212,175,55,0.08)]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-gradient-to-b from-[#0d1117] to-[#0d1117]/95 backdrop-blur-xl px-6 pt-6 pb-4 border-b border-[#d4af37]/10">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center">
-                    <Crown className="w-5 h-5 text-[#d4af37]" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black italic uppercase tracking-wider text-white">Mesa Personalizada</h2>
-                    <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400 mt-0.5">Configuración del admin</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => { resetForm(); onClose(); }}
-                  className="p-2 hover:bg-white/5 rounded-xl transition-colors"
-                >
-                  <X className="w-5 h-5 text-slate-500" />
-                </button>
-              </div>
-            </div>
+    <PlayerSheet
+      open={isOpen}
+      onClose={close}
+      title="Mesa personalizada"
+      description="Configura entrada, pique y fichas permitidas."
+      closeLabel="Cerrar"
+      footer={
+        <AuthButton onClick={handleSubmit} disabled={!tableName.trim() || enabledCount < 1} pending={creating}>
+          {creating ? 'Creando…' : 'Crear mesa'}
+        </AuthButton>
+      }
+    >
+      <div className="space-y-7 pt-2">
+        <AuthField
+          label="Nombre de la mesa"
+          required
+          placeholder="Ej.: VIP Diamante, Mesa alta…"
+          maxLength={30}
+          value={tableName}
+          onChange={(e) => setTableName(e.target.value)}
+        />
 
-            <div className="px-6 py-5 space-y-6">
-              {/* Nombre de la Mesa */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80 flex items-center gap-2">
-                  <Layers className="w-3.5 h-3.5" />
-                  Nombre de la Mesa
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: VIP Diamante, Mesa Alta..."
-                  maxLength={30}
-                  className="w-full bg-black/60 border border-white/5 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#d4af37]/40 transition-colors text-sm font-bold"
-                  value={tableName}
-                  onChange={(e) => setTableName(e.target.value)}
-                />
-              </div>
-
-              {/* Máx Jugadores */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80 flex items-center gap-2">
-                  <Users className="w-3.5 h-3.5" />
-                  Máx. Jugadores
-                </label>
-                <div className="flex gap-2">
-                  {[3, 4, 5, 6, 7].map(n => (
-                    <button
-                      key={n}
-                      onClick={() => setMaxPlayers(n)}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all border ${
-                        maxPlayers === n
-                          ? "bg-[#d4af37]/15 border-[#d4af37]/40 text-[#d4af37] shadow-[0_0_15px_rgba(212,175,55,0.1)]"
-                          : "bg-black/40 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/10"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Entrada Mínima */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80 flex items-center gap-2">
-                  <Coins className="w-3.5 h-3.5" />
-                  Entrada Mínima (Saldo requerido)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {MIN_ENTRY_PRESETS.map(p => (
-                    <button
-                      key={p.value}
-                      onClick={() => setMinEntry(p.value)}
-                      className={`py-2.5 rounded-xl text-sm font-black transition-all border ${
-                        minEntry === p.value
-                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-                          : "bg-black/40 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/10"
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pique Mínimo */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80 flex items-center gap-2">
-                  <Coins className="w-3.5 h-3.5" />
-                  Pique Mínimo
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {MIN_PIQUE_PRESETS.map(p => (
-                    <button
-                      key={p.value}
-                      onClick={() => setMinPique(p.value)}
-                      className={`py-2.5 rounded-xl text-sm font-black transition-all border ${
-                        minPique === p.value
-                          ? "bg-amber-500/15 border-amber-500/40 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
-                          : "bg-black/40 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/10"
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Fichas Habilitadas */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#d4af37]/80">
-                  Fichas Habilitadas ({enabledCount}/{CHIP_DENOMS.length})
-                </label>
-                <div className="flex flex-wrap gap-2.5 justify-center py-2">
-                  {CHIP_DENOMS.map(denom => {
-                    const isEnabled = !disabledChips.includes(denom)
-                    const chip = CHIP_COLORS[denom]
-                    return (
-                      <button
-                        key={denom}
-                        onClick={() => toggleChip(denom)}
-                        className={`relative w-14 h-14 rounded-full flex items-center justify-center font-bold text-[11px] border-2 border-dashed transition-all ${chip.bg} ${
-                          isEnabled
-                            ? "ring-2 ring-emerald-400 scale-105 shadow-lg"
-                            : "opacity-25 scale-90 grayscale"
-                        }`}
-                      >
-                        {chip.label}
-                        {isEnabled && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-[11px] font-bold">✓</span>
-                          </span>
-                        )}
-                        {!isEnabled && (
-                          <span className="absolute inset-0 flex items-center justify-center">
-                            <span className="w-10 h-0.5 bg-red-500 rotate-45 absolute" />
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-                {enabledCount < 1 && (
-                  <p className="text-red-400 text-xs text-center font-bold">Debe haber al menos 1 ficha habilitada</p>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="sticky bottom-0 px-6 py-4 border-t border-[#d4af37]/10 bg-gradient-to-t from-[#080c10] to-[#080c10]/95 backdrop-blur-xl">
-              <button
-                onClick={handleSubmit}
-                disabled={creating || !tableName.trim() || enabledCount < 1}
-                className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#b8941f] text-slate-950 font-black uppercase tracking-[0.2em] text-sm transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_10px_30px_rgba(212,175,55,0.2)]"
-              >
-                {creating ? "CREANDO..." : "CREAR MESA PERSONALIZADA"}
+        <fieldset>
+          <legend className="mb-2 text-base font-semibold text-text-premium">Máximo de jugadores</legend>
+          <div className="grid grid-cols-5 gap-2">
+            {[3, 4, 5, 6, 7].map(n => (
+              <button key={n} type="button" aria-pressed={maxPlayers === n} onClick={() => setMaxPlayers(n)} className={option(maxPlayers === n)}>
+                {n}
               </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend className="mb-2 text-base font-semibold text-text-premium">Entrada mínima (saldo requerido)</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {MIN_ENTRY_PRESETS.map(p => (
+              <button key={p.value} type="button" aria-pressed={minEntry === p.value} onClick={() => setMinEntry(p.value)} className={option(minEntry === p.value)}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend className="mb-2 text-base font-semibold text-text-premium">Pique mínimo</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {MIN_PIQUE_PRESETS.map(p => (
+              <button key={p.value} type="button" aria-pressed={minPique === p.value} onClick={() => setMinPique(p.value)} className={option(minPique === p.value)}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend className="mb-2 text-base font-semibold text-text-premium">
+            Fichas habilitadas <span className="font-mono tabular-nums text-[#bdb7a6]">({enabledCount}/{CHIP_DENOMS.length})</span>
+          </legend>
+          <div className="flex flex-wrap justify-center gap-3 py-2">
+            {CHIP_DENOMS.map(denom => {
+              const isEnabled = !disabledChips.includes(denom)
+              const chip = CHIP_COLORS[denom]
+              return (
+                <button
+                  key={denom}
+                  type="button"
+                  onClick={() => toggleChip(denom)}
+                  aria-pressed={isEnabled}
+                  aria-label={`Ficha de ${chip.label}${isEnabled ? ', habilitada' : ', deshabilitada'}`}
+                  className={`relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed text-sm font-bold transition-[opacity,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light focus-visible:ring-offset-2 focus-visible:ring-offset-[#120806] ${chip.bg} ${
+                    isEnabled ? 'shadow-[0_0_0_2px_#e2b044]' : 'scale-90 opacity-30 grayscale'
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              )
+            })}
+          </div>
+          {enabledCount < 1 && (
+            <p role="alert" className="text-center text-base font-semibold text-[#f08a7e]">Debe haber al menos 1 ficha habilitada</p>
+          )}
+        </fieldset>
+      </div>
+    </PlayerSheet>
   )
 }

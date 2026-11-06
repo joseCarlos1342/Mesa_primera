@@ -113,8 +113,8 @@ describe('SupportChat', () => {
     act(() => window.dispatchEvent(new CustomEvent('open-support-chat')))
     fireEvent.click(screen.getByRole('button', { name: /reportar un problema/i }))
     fireEvent.click(screen.getByRole('button', { name: /depósito no acreditado/i }))
-    fireEvent.change(screen.getByLabelText('ID de transacción'), { target: { value: 'deposit-123' } })
-    fireEvent.change(screen.getByLabelText('Observaciones del error'), { target: { value: 'El saldo no se actualizó.' } })
+    fireEvent.change(screen.getByLabelText('Referencia del movimiento'), { target: { value: 'deposit-123' } })
+    fireEvent.change(screen.getByLabelText('¿Qué pasó?'), { target: { value: 'El saldo no se actualizó.' } })
     fireEvent.click(screen.getByRole('button', { name: /enviar reporte/i }))
 
     await waitFor(() => expect(createSupportIssue).toHaveBeenCalledWith(expect.objectContaining({
@@ -128,15 +128,15 @@ describe('SupportChat', () => {
     ;(createSupportIssue as jest.Mock).mockResolvedValueOnce({ error: 'No se pudo validar la referencia' })
     render(<SupportChat userId="user-1" />)
     act(() => window.dispatchEvent(new CustomEvent('open-support-chat')))
-    await screen.findByText('Centro de Ayuda')
+    await screen.findByRole('heading', { name: 'Soporte' })
     fireEvent.click(screen.getByRole('button', { name: /reportar un problema/i }))
     fireEvent.click(screen.getByRole('button', { name: /depósito no acreditado/i }))
-    fireEvent.change(screen.getByLabelText('ID de transacción'), { target: { value: 'deposit-1' } })
-    fireEvent.change(screen.getByLabelText('Observaciones del error'), { target: { value: 'Sigue sin acreditarse' } })
+    fireEvent.change(screen.getByLabelText('Referencia del movimiento'), { target: { value: 'deposit-1' } })
+    fireEvent.change(screen.getByLabelText('¿Qué pasó?'), { target: { value: 'Sigue sin acreditarse' } })
     fireEvent.click(screen.getByRole('button', { name: /enviar reporte/i }))
 
     expect(await screen.findByText('No se pudo validar la referencia')).toBeInTheDocument()
-    expect(screen.getByLabelText('Observaciones del error')).toHaveValue('Sigue sin acreditarse')
+    expect(screen.getByLabelText('¿Qué pasó?')).toHaveValue('Sigue sin acreditarse')
   })
 
   it('permite revisar y cerrar un reclamo abierto del jugador', async () => {
@@ -151,9 +151,9 @@ describe('SupportChat', () => {
 
     render(<SupportChat userId="user-1" />)
     act(() => window.dispatchEvent(new Event('open-support-chat')))
-    await screen.findByText('Centro de Ayuda')
+    await screen.findByRole('heading', { name: 'Soporte' })
     fireEvent.click(screen.getByRole('button', { name: /mis reclamos/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /table error/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /error en mesa o partida/i }))
     await act(async () => { await Promise.resolve() })
 
     expect(await screen.findByText('Estamos revisando la mesa.')).toBeInTheDocument()
@@ -162,8 +162,8 @@ describe('SupportChat', () => {
     await waitFor(() => expect(closeIssueTicket).toHaveBeenCalledWith('issue-1'))
     expect(await screen.findByText('El caso fue cerrado por el jugador.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Cerrar caso' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /mis reclamos/i }))
-    expect(await screen.findByRole('button', { name: /table error/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    expect(await screen.findByRole('button', { name: /error en mesa o partida/i })).toBeInTheDocument()
   })
 
   it('mantiene las acciones ocultas para un reclamo resuelto', async () => {
@@ -176,9 +176,9 @@ describe('SupportChat', () => {
 
     render(<SupportChat userId="user-1" />)
     act(() => window.dispatchEvent(new Event('open-support-chat')))
-    await screen.findByText('Centro de Ayuda')
+    await screen.findByRole('heading', { name: 'Soporte' })
     fireEvent.click(screen.getByRole('button', { name: /mis reclamos/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /deposit missing/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /depósito no acreditado/i }))
     await act(async () => { await Promise.resolve() })
 
     expect(await screen.findByText('Depósito resuelto')).toBeInTheDocument()
@@ -189,11 +189,11 @@ describe('SupportChat', () => {
   it('envía la referencia de mesa sin referencia financiera al reportar un error de juego', async () => {
     render(<SupportChat userId="user-1" />)
     act(() => window.dispatchEvent(new Event('open-support-chat')))
-    await screen.findByText('Centro de Ayuda')
+    await screen.findByRole('heading', { name: 'Soporte' })
     fireEvent.click(screen.getByRole('button', { name: /reportar un problema/i }))
     fireEvent.click(screen.getByRole('button', { name: /error en mesa o partida/i }))
-    fireEvent.change(screen.getByLabelText('ID de mesa'), { target: { value: 'room-7' } })
-    fireEvent.change(screen.getByLabelText('Observaciones del error'), { target: { value: 'La mano no avanzó' } })
+    fireEvent.change(screen.getByLabelText('Mesa'), { target: { value: 'room-7' } })
+    fireEvent.change(screen.getByLabelText('¿Qué pasó?'), { target: { value: 'La mano no avanzó' } })
     fireEvent.click(screen.getByRole('button', { name: /enviar reporte/i }))
 
     await waitFor(() => expect(createSupportIssue).toHaveBeenCalledWith(expect.objectContaining({
@@ -204,13 +204,13 @@ describe('SupportChat', () => {
   it('reporta la categoría otro sin asociar referencias financieras ni de mesa', async () => {
     render(<SupportChat userId="user-1" />)
     act(() => window.dispatchEvent(new Event('open-support-chat')))
-    await screen.findByText('Centro de Ayuda')
+    await screen.findByRole('heading', { name: 'Soporte' })
     fireEvent.click(screen.getByRole('button', { name: /reportar un problema/i }))
     fireEvent.click(screen.getByRole('button', { name: /otro problema/i }))
 
-    expect(screen.queryByLabelText('ID de transacción')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('ID de mesa')).not.toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Observaciones del error'), { target: { value: 'Necesito ayuda con otro caso' } })
+    expect(screen.queryByLabelText('Referencia del movimiento')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Mesa')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('¿Qué pasó?'), { target: { value: 'Necesito ayuda con otro caso' } })
     fireEvent.click(screen.getByRole('button', { name: /enviar reporte/i }))
 
     await waitFor(() => expect(createSupportIssue).toHaveBeenCalledWith({
@@ -278,9 +278,9 @@ describe('SupportChat', () => {
     fireEvent.click(await screen.findByRole('button', { name: /consulta ya archivada/i }))
 
     await screen.findByText('Necesito ayuda con mi mesa')
-    expect(await screen.findByText('Consulta Finalizada')).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText(/escrib/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /nueva solicitud/i })).toBeInTheDocument()
+    expect(await screen.findByText('Consulta finalizada')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Mensaje para soporte')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /nueva consulta/i })).toBeInTheDocument()
   })
 
   it('crea un ticket con el primer mensaje del jugador', async () => {
@@ -477,7 +477,7 @@ describe('SupportChat', () => {
     })
 
     expect(await screen.findByText('Necesito ayuda con mi mesa')).toBeInTheDocument()
-    fireEvent.click(screen.getByTitle('Cerrar consulta'))
+    fireEvent.click(screen.getByRole('button', { name: /cerrar consulta/i }))
 
     await waitFor(() => {
       expect(closeSupportTicket).toHaveBeenCalledWith('ticket-1')
@@ -486,7 +486,7 @@ describe('SupportChat', () => {
       ticketId: 'ticket-1',
       closedByRole: 'player',
     })
-    expect(screen.getByText('Consulta Finalizada')).toBeInTheDocument()
+    expect(screen.getByText('Consulta finalizada')).toBeInTheDocument()
   })
 
   it('muestra error al cerrar consulta si la accion falla', async () => {
@@ -498,13 +498,13 @@ describe('SupportChat', () => {
       window.dispatchEvent(new Event('open-support-chat'))
     })
     await screen.findByText('Necesito ayuda con mi mesa')
-    fireEvent.click(screen.getByTitle('Cerrar consulta'))
+    fireEvent.click(screen.getByRole('button', { name: /cerrar consulta/i }))
 
     await waitFor(() => expect(consoleError).toHaveBeenCalledWith('Error closing ticket:', 'No se pudo cerrar'))
-    expect(screen.queryByText('Consulta Finalizada')).not.toBeInTheDocument()
+    expect(screen.queryByText('Consulta finalizada')).not.toBeInTheDocument()
   })
 
-  it('permite abrir tickets con teclado desde la lista', async () => {
+  it('abre tickets desde la lista con el botón accesible', async () => {
     ;(listUserTickets as jest.Mock).mockResolvedValue({
       data: [
         {
@@ -522,7 +522,7 @@ describe('SupportChat', () => {
     })
 
     const ticket = await screen.findByRole('button', { name: /consulta con teclado/i })
-    fireEvent.keyDown(ticket, { key: ' ' })
+    fireEvent.click(ticket)
 
     expect(await screen.findByText('Necesito ayuda con mi mesa')).toBeInTheDocument()
   })
@@ -533,11 +533,11 @@ describe('SupportChat', () => {
     await act(async () => {
       window.dispatchEvent(new Event('open-support-chat'))
     })
-    expect(await screen.findByText('Centro de Ayuda')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Soporte' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar soporte' }))
 
-    expect(screen.queryByText('Centro de Ayuda')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Soporte' })).not.toBeInTheDocument()
   })
 
   it('crea una consulta desde el chat flotante no embebido', async () => {
@@ -548,7 +548,7 @@ describe('SupportChat', () => {
       window.dispatchEvent(new Event('open-support-chat'))
     })
     fireEvent.click(await screen.findByRole('button', { name: /nueva consulta/i }))
-    const input = screen.getByPlaceholderText('Escriba su mensaje aquí...')
+    const input = screen.getByLabelText('Mensaje para soporte')
     fireEvent.change(input, {
       target: { value: 'Consulta desde flotante' },
     })
@@ -581,7 +581,7 @@ describe('SupportChat', () => {
       window.dispatchEvent(new Event('open-support-chat'))
     })
     fireEvent.click(await screen.findByRole('button', { name: /nueva consulta/i }))
-    expect(screen.getByText(/cómo podemos asistirle/i)).toBeInTheDocument()
+    expect(screen.getByText(/en qué te ayudamos/i)).toBeInTheDocument()
 
     rerender(<SupportChat userId="user-1" embedded ticketId="ticket-final" />)
     expect(await screen.findByText('Chat Finalizado')).toBeInTheDocument()
@@ -601,14 +601,14 @@ describe('SupportChat', () => {
     await act(async () => {
       window.dispatchEvent(new Event('open-support-chat'))
     })
-    expect(await screen.findByText('Consulta Finalizada')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /nueva solicitud/i }))
+    expect(await screen.findByText('Consulta finalizada')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /nueva consulta/i }))
 
     await waitFor(() => {
       expect(getSupportTicketHistory).toHaveBeenCalledWith('uuid-ticket')
       expect(getSupportTicket).toHaveBeenCalledWith('uuid-ticket')
     })
-    expect(screen.getByText(/cómo podemos asistirle/i)).toBeInTheDocument()
+    expect(screen.getByText(/en qué te ayudamos/i)).toBeInTheDocument()
   })
 
   it('respuesta admin a ticket pendiente lo marca como atendido y emite legacy reply', async () => {
@@ -722,9 +722,9 @@ describe('SupportChat', () => {
       window.dispatchEvent(new Event('open-support-chat'))
     })
 
-    await screen.findByText('Consulta Finalizada')
-    // No hay botón de cerrar visible porque está finalizado
-    expect(screen.queryByTitle('Cerrar consulta')).not.toBeInTheDocument()
+    await screen.findByText('Consulta finalizada')
+    // No hay botón de cerrar consulta visible porque está finalizado
+    expect(screen.queryByRole('button', { name: /cerrar consulta/i })).not.toBeInTheDocument()
     expect(closeSupportTicket).not.toHaveBeenCalled()
     consoleError.mockRestore()
   })

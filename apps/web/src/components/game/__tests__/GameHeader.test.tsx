@@ -2,18 +2,13 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { GameHeader } from '../game-header'
 import { useFullscreen } from '@/hooks/useFullscreen'
 
-jest.mock('framer-motion', () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  motion: {
-    div: ({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-  },
-}))
-
 jest.mock('@/hooks/useFullscreen', () => ({
   useFullscreen: jest.fn(),
 }))
 
 const mockUseFullscreen = useFullscreen as jest.MockedFunction<typeof useFullscreen>
+
+const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'Opciones de la mesa' }))
 
 describe('GameHeader', () => {
   beforeEach(() => {
@@ -25,40 +20,54 @@ describe('GameHeader', () => {
     })
   })
 
-  it('abre el menu y dispara eventos de acciones principales', () => {
+  it('abre el menú (role=menu) y dispara eventos de las acciones principales', () => {
     const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
     render(<GameHeader />)
 
-    fireEvent.click(screen.getAllByRole('button')[0])
+    openMenu()
+    expect(screen.getByRole('menu', { name: 'Opciones de la mesa' })).toBeInTheDocument()
 
-    expect(screen.getByText('Opciones de Mesa')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Audio de Jugadores'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Audio de jugadores' }))
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'open-player-audio-modal' }))
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    fireEvent.click(screen.getByText('Reglas del Juego'))
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reglas del juego' }))
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'open-rules-modal' }))
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    fireEvent.click(screen.getByText('Llamar al Admin'))
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Llamar al admin' }))
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'open-table-help' }))
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    fireEvent.click(screen.getByText('Transferir Saldo'))
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Transferir saldo' }))
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'open-transfer-modal' }))
+
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Cargar saldo' }))
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'open-recharge-modal' }))
   })
 
-  it('dispara recarga desde el boton derecho', () => {
+  it('el botón del carrito (aria-label "Cargar saldo") emite open-recharge-modal', () => {
     const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
     render(<GameHeader />)
 
-    fireEvent.click(screen.getAllByRole('button')[1])
+    // El botón del carrito está siempre visible en la cabecera (no en el menú).
+    fireEvent.click(screen.getByRole('button', { name: 'Cargar saldo' }))
 
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'open-recharge-modal' }))
   })
 
-  it('muestra fullscreen si esta soportado y llama toggle', () => {
+  it('alterna el label del botón de opciones al abrir y cerrar', () => {
+    render(<GameHeader />)
+
+    openMenu()
+    expect(screen.getByRole('button', { name: 'Cerrar opciones de la mesa' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar opciones de la mesa' }))
+    expect(screen.getByRole('button', { name: 'Opciones de la mesa' })).toBeInTheDocument()
+  })
+
+  it('muestra pantalla completa si está soportada y llama toggle', () => {
     const toggle = jest.fn()
     mockUseFullscreen.mockReturnValue({
       isFullscreen: false,
@@ -67,13 +76,13 @@ describe('GameHeader', () => {
     })
     render(<GameHeader />)
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    fireEvent.click(screen.getByText('Pantalla Completa'))
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pantalla completa' }))
 
     expect(toggle).toHaveBeenCalledTimes(1)
   })
 
-  it('cambia copy cuando ya esta en pantalla completa y oculta opcion si no hay soporte', () => {
+  it('cambia el copy en pantalla completa y oculta la opción si no hay soporte', () => {
     mockUseFullscreen.mockReturnValue({
       isFullscreen: true,
       isSupported: true,
@@ -81,8 +90,8 @@ describe('GameHeader', () => {
     })
     const { rerender } = render(<GameHeader />)
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    expect(screen.getByText('Salir Pantalla Completa')).toBeInTheDocument()
+    openMenu()
+    expect(screen.getByRole('menuitem', { name: 'Salir de pantalla completa' })).toBeInTheDocument()
 
     mockUseFullscreen.mockReturnValue({
       isFullscreen: false,
@@ -91,38 +100,53 @@ describe('GameHeader', () => {
     })
     rerender(<GameHeader />)
 
+    // Cierra el menú abierto (click fuera) y vuelve a abrir.
     fireEvent.mouseDown(document.body)
-    fireEvent.click(screen.getAllByRole('button')[0])
-    expect(screen.queryByText('Pantalla Completa')).not.toBeInTheDocument()
+    openMenu()
+    expect(screen.queryByRole('menuitem', { name: 'Pantalla completa' })).not.toBeInTheDocument()
   })
 
-  it('confirma salida y ejecuta onMenuClick solo al aceptar', () => {
+  it('abre ConfirmDialog al abandonar y ejecuta onMenuClick solo al aceptar', () => {
     const onMenuClick = jest.fn()
     render(<GameHeader onMenuClick={onMenuClick} />)
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    fireEvent.click(screen.getByText('Abandonar Partida'))
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Abandonar partida' }))
 
-    expect(screen.getByText('¿Abandonar Mesa?')).toBeInTheDocument()
+    expect(screen.getByText('¿Abandonar la mesa?')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Cancelar'))
+    // Cancelar no debe abandonar (botón de pie del diálogo, sin aria-label).
+    const cancelButtons = screen.getAllByRole('button', { name: 'Cancelar' })
+    const footerCancel = cancelButtons.find((b) => b.getAttribute('aria-label') === null) ?? cancelButtons[0]
+    fireEvent.click(footerCancel)
     expect(onMenuClick).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    fireEvent.click(screen.getByText('Abandonar Partida'))
-    fireEvent.click(screen.getByText('Sí, Salir'))
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Abandonar partida' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, salir' }))
 
     expect(onMenuClick).toHaveBeenCalledTimes(1)
   })
 
-  it('cierra el menu al hacer click fuera', () => {
+  it('cierra el menú al hacer click fuera', () => {
     render(<GameHeader />)
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    expect(screen.getByText('Opciones de Mesa')).toBeInTheDocument()
+    openMenu()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
 
     fireEvent.mouseDown(document.body)
 
-    expect(screen.queryByText('Opciones de Mesa')).not.toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('cierra el menú con la tecla Escape', () => {
+    render(<GameHeader />)
+
+    openMenu()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 })

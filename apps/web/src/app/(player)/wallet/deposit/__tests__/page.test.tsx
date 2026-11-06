@@ -58,7 +58,7 @@ describe('DepositPage', () => {
     })
   })
 
-  it('muestra alert y redirige a wallet cuando onSuccess es llamado', async () => {
+  it('redirige a wallet cuando onSuccess es llamado', async () => {
     mockGet.mockReturnValue(null)
 
     render(<DepositPage />)
@@ -69,7 +69,6 @@ describe('DepositPage', () => {
 
     fireEvent.click(screen.getByText('Simulate Success'))
 
-    expect(window.alert).toHaveBeenCalledWith('Solicitud enviada correctamente. Se acreditará pronto.')
     expect(mockPush).toHaveBeenCalledWith('/wallet')
   })
 })

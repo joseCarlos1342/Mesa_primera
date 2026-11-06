@@ -1,6 +1,5 @@
 "use client";
-import { motion } from "framer-motion";
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { CheckCircle2, Info, XCircle } from "lucide-react";
 import { useEffect } from "react";
 
 export type ToastType = "success" | "error" | "info";
@@ -12,35 +11,28 @@ interface ToastProps {
   duration?: number;
 }
 
+const LOOK: Record<ToastType, { icon: typeof Info; iconClass: string; border: string }> = {
+  success: { icon: CheckCircle2, iconClass: "text-[#5fd38d]", border: "border-[#2ecc71]/50" },
+  error: { icon: XCircle, iconClass: "text-[#f08a7e]", border: "border-[#e74c3c]/60" },
+  info: { icon: Info, iconClass: "text-brand-gold-light", border: "border-[#8b6b2e]/80" },
+};
+
+/** Aviso breve sobre la barra inferior. Se anuncia con `role="status"` (o `alert` si es error). */
 export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
   useEffect(() => {
     const timer = setTimeout(onClose, duration);
     return () => clearTimeout(timer);
   }, [onClose, duration]);
 
-  const icons = {
-    success: <CheckCircle className="w-5 h-5 text-emerald-400" />,
-    error: <XCircle className="w-5 h-5 text-red-400" />,
-    info: <AlertCircle className="w-5 h-5 text-brand-gold" />,
-  };
-
-  const bgColors = {
-    success: "bg-emerald-950/90 border-emerald-500/30",
-    error: "bg-red-950/90 border-red-500/30",
-    info: "bg-slate-900/90 border-brand-gold/30",
-  };
+  const { icon: Icon, iconClass, border } = LOOK[type];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 50, scale: 0.9, x: "-50%" }}
-      animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
-      exit={{ opacity: 0, y: 20, scale: 0.9, x: "-50%" }}
-      className={`fixed bottom-24 left-1/2 z-[200] flex items-center gap-3 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-w-[300px] ${bgColors[type]}`}
+    <div
+      role={type === "error" ? "alert" : "status"}
+      className={`fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[250] mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-[#120806] px-4 py-3.5 shadow-[0_16px_36px_-12px_rgba(0,0,0,0.85)] motion-safe:animate-[toast-in_220ms_cubic-bezier(0.16,1,0.3,1)] lg:bottom-8 ${border}`}
     >
-      <div className="shrink-0">{icons[type]}</div>
-      <p className="text-[11px] font-black uppercase tracking-widest text-white leading-tight">
-        {message}
-      </p>
-    </motion.div>
+      <Icon className={`h-6 w-6 shrink-0 ${iconClass}`} aria-hidden="true" />
+      <p className="text-lg leading-snug text-text-premium">{message}</p>
+    </div>
   );
 }

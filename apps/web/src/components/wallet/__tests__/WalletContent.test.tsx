@@ -2,11 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import { WalletContent } from '../WalletContent'
 
-jest.mock('framer-motion', () => ({
-  m: {
-    section: ({ children, initial: _initial, animate: _animate, transition: _transition, whileHover: _whileHover, whileTap: _whileTap, ...props }: React.HTMLAttributes<HTMLElement> & Record<string, unknown>) => <section {...props}>{children}</section>,
-    div: ({ children, initial: _initial, animate: _animate, transition: _transition, whileHover: _whileHover, whileTap: _whileTap, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-  },
+const routerRefresh = jest.fn()
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: routerRefresh }),
 }))
 
 jest.mock('../TransactionModal', () => ({
@@ -37,29 +36,35 @@ const transactions = [
 ]
 
 describe('WalletContent', () => {
-  it('renderiza saldo, packs de carga y acciones principales', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('renderiza encabezado, saldo, carga rápida y acciones principales', () => {
     render(<WalletContent wallet={wallet} transactions={transactions} />)
 
-    expect(screen.getByText(/saldo en cartera/i)).toBeInTheDocument()
-    expect(screen.getByText('$2.750')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Billetera' })).toBeInTheDocument()
+    expect(screen.getByText('Tu saldo')).toBeInTheDocument()
+    expect(screen.getByText('2.750')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /cargar saldo/i })).toHaveAttribute('href', '/wallet/deposit')
     expect(screen.getByRole('link', { name: /retirar/i })).toHaveAttribute('href', '/wallet/withdraw')
     expect(screen.getByRole('button', { name: /transferir/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /ver todo/i })).toHaveAttribute('href', '/wallet/history')
-    expect(screen.getByRole('link', { name: /otro monto manual/i })).toHaveAttribute('href', '/wallet/deposit')
-    expect(screen.getByRole('link', { name: /pagas \$50.000/i })).toHaveAttribute('href', '/wallet/deposit?amount=50000')
-    expect(screen.getByText('Popular')).toBeInTheDocument()
+    expect(screen.getByText('Carga rápida')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /otro monto/i })).toHaveAttribute('href', '/wallet/deposit')
+    expect(screen.getByRole('link', { name: 'Cargar $50.000' })).toHaveAttribute('href', '/wallet/deposit?amount=50000')
   })
 
   it('renderiza estado vacío cuando no hay movimientos', () => {
     render(<WalletContent wallet={{ balance_cents: 0 }} transactions={[]} />)
 
-    expect(screen.getByText(/sin movimientos/i)).toBeInTheDocument()
+    expect(screen.getByText(/aún no tienes movimientos/i)).toBeInTheDocument()
   })
 
   it('abre el modal de transacción al hacer click en un movimiento', () => {
     render(<WalletContent wallet={wallet} transactions={transactions} />)
 
-    fireEvent.click(screen.getByText('Depósito'))
+    fireEvent.click(screen.getByText('Carga de saldo'))
 
     expect(screen.getByTestId('transaction-modal')).toHaveTextContent('open:true')
     expect(screen.getByTestId('transaction-modal')).toHaveTextContent('tx:w1')
@@ -68,7 +73,7 @@ describe('WalletContent', () => {
     expect(screen.getByTestId('transaction-modal')).toHaveTextContent('open:false')
   })
 
-  it('abre y cierra el modal de transferencias con el balance actual', () => {
+  it('abre y cierra el modal de transferencias refrescando la ruta', () => {
     render(<WalletContent wallet={wallet} transactions={transactions} />)
 
     fireEvent.click(screen.getByRole('button', { name: /transferir/i }))
@@ -78,20 +83,22 @@ describe('WalletContent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /cerrar transfer modal/i }))
     expect(screen.getByTestId('transfer-modal')).toHaveTextContent('open:false')
+    expect(routerRefresh).toHaveBeenCalledTimes(1)
   })
 
-  it('renderiza etiquetas de tipos y estados de movimientos', () => {
+  it('renderiza etiquetas de tipos y estados (solo no completados muestran tag)', () => {
     render(<WalletContent wallet={wallet} transactions={transactions} />)
 
-    expect(screen.getByText('Depósito')).toBeInTheDocument()
+    expect(screen.getByText('Carga de saldo')).toBeInTheDocument()
     expect(screen.getByText('Retiro')).toBeInTheDocument()
-    expect(screen.getByText('Transferencia Recibida')).toBeInTheDocument()
-    expect(screen.getByText('Éxito')).toBeInTheDocument()
-    expect(screen.getByText('Procesando')).toBeInTheDocument()
-    expect(screen.getByText('Fallido')).toBeInTheDocument()
+    expect(screen.getByText('Transferencia recibida')).toBeInTheDocument()
+    expect(screen.getByText('En revisión')).toBeInTheDocument()
+    expect(screen.getByText('Rechazado')).toBeInTheDocument()
+    // El depósito completado no muestra etiqueta de estado.
+    expect(screen.queryByText('Completado')).not.toBeInTheDocument()
   })
 
-  it('distingue variantes restantes de movimiento y usa cero para monto ausente', () => {
+  it('distingue variantes de movimiento y usa cero para monto ausente', () => {
     render(
       <WalletContent
         wallet={wallet}
@@ -105,9 +112,11 @@ describe('WalletContent', () => {
     )
 
     expect(screen.getByText('Reembolso')).toBeInTheDocument()
-    expect(screen.getByText('Transferencia Enviada')).toBeInTheDocument()
-    expect(screen.getByText('Ajuste')).toBeInTheDocument()
-    expect(screen.getByText('bonus')).toBeInTheDocument()
-    expect(screen.getByText('-$0')).toBeInTheDocument()
+    expect(screen.getByText('Transferencia enviada')).toBeInTheDocument()
+    expect(screen.getByText('Ajuste de saldo')).toBeInTheDocument()
+    expect(screen.getByText('Bono')).toBeInTheDocument()
+    // bonus débito con monto nulo → −$0
+    const monies = screen.getAllByTestId('money')
+    expect(monies.some((m) => m.textContent === '\u2212$0')).toBe(true)
   })
 })

@@ -1,46 +1,46 @@
 "use client";
 
-import { m } from "framer-motion";
-
 interface StatsTabsProps {
   activeTab: 'personal' | 'global';
   onChange: (tab: 'personal' | 'global') => void;
 }
 
+const TABS = [
+  { id: 'personal', label: 'Mis números' },
+  { id: 'global', label: 'Ranking' },
+] as const
+
+/** Control segmentado de 48px entre las estadísticas propias y el ranking. */
 export function StatsTabs({ activeTab, onChange }: StatsTabsProps) {
   return (
-    <div className="flex p-1 bg-black/40 backdrop-blur-xl border-2 border-white/5 rounded-2xl w-full max-w-sm mx-auto shadow-2xl">
-      <button
-        onClick={() => onChange('personal')}
-         className={`relative flex-1 py-3 text-xs font-bold uppercase tracking-[0.1em] transition-all duration-500 overflow-hidden rounded-xl ${
-          activeTab === 'personal' ? 'text-black' : 'text-text-secondary hover:text-text-premium'
-        }`}
-      >
-        {activeTab === 'personal' && (
-          <m.div
-            layoutId="activeTabStats"
-            className="absolute inset-0 bg-brand-gold shadow-[0_0_20px_rgba(202,171,114,0.4)]"
-            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-          />
-        )}
-        <span className="relative z-10">Mis Stats</span>
-      </button>
-      
-      <button
-        onClick={() => onChange('global')}
-         className={`relative flex-1 py-3 text-xs font-bold uppercase tracking-[0.1em] transition-all duration-500 overflow-hidden rounded-xl ${
-          activeTab === 'global' ? 'text-black' : 'text-text-secondary hover:text-text-premium'
-        }`}
-      >
-        {activeTab === 'global' && (
-          <m.div
-            layoutId="activeTabStats"
-            className="absolute inset-0 bg-brand-gold shadow-[0_0_20px_rgba(202,171,114,0.4)]"
-            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-          />
-        )}
-        <span className="relative z-10">Ranking Global</span>
-      </button>
+    <div role="tablist" aria-label="Vista de estadísticas" className="mb-8 grid max-w-md grid-cols-2 gap-1 rounded-xl border border-[#8b6b2e]/60 bg-[#120806] p-1">
+      {TABS.map(({ id, label }) => {
+        const active = activeTab === id
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`stats-tab-${id}`}
+            aria-selected={active}
+            aria-controls="stats-panel"
+            onClick={() => onChange(id)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+                event.preventDefault()
+                const next = id === 'personal' ? 'global' : 'personal'
+                onChange(next)
+                document.getElementById(`stats-tab-${next}`)?.focus()
+              }
+            }}
+            className={`min-h-12 rounded-lg text-lg font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light ${
+              active ? 'bg-[#0a2c20] text-brand-gold-light shadow-[inset_0_0_0_1px_rgba(197,160,89,0.6)]' : 'text-[#d9d3bf] hover:text-text-premium'
+            }`}
+          >
+            {label}
+          </button>
+        )
+      })}
     </div>
   );
 }

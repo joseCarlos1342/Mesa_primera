@@ -1,193 +1,148 @@
 'use client'
 
-import { m } from 'framer-motion'
-import { Wallet, Play, Users, TrendingUp, ArrowUpWideNarrow, Gamepad2, Plus, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { ArrowUpRight, BarChart3, Play, Plus, ReceiptText } from 'lucide-react'
 import { getWalletData } from '@/app/actions/wallet'
+import type { PlayerStats } from '@/app/actions/stats'
 import { TransactionModal } from '../wallet/TransactionModal'
-import { formatAmount } from '@/utils/format'
+import { BalancePanel } from '../player/BalancePanel'
+import { EmptyState, RowList, Section, Skeleton, playerButton, playerTextLink } from '../player/PlayerUI'
+import { TransactionRow, type PlayerTransaction } from '../player/transactions'
 
-interface PlayerDashboardProps {
-  initialData?: { wallet: any; transactions: any[] } | null
+interface WalletSnapshot {
+  readonly wallet: { readonly balance_cents?: number | null } | null
+  readonly transactions: readonly PlayerTransaction[]
 }
 
-export function PlayerDashboard({ initialData }: PlayerDashboardProps) {
-  const [data, setData] = useState<any>(initialData ?? null)
-  const [selectedTx, setSelectedTx] = useState<any | null>(null)
+interface PlayerDashboardProps {
+  readonly initialData?: WalletSnapshot | null
+  readonly stats?: Pick<PlayerStats, 'games_played' | 'games_won' | 'current_streak'> | null
+}
+
+export function PlayerDashboard({ initialData, stats }: PlayerDashboardProps) {
+  const [data, setData] = useState<WalletSnapshot | null>(initialData ?? null)
+  const [loading, setLoading] = useState(!initialData)
+  const [selectedTx, setSelectedTx] = useState<PlayerTransaction | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const handleTxClick = (tx: any) => {
-    setSelectedTx(tx)
-    setIsModalOpen(true)
-  }
-  const [loading, setLoading] = useState(!initialData)
-
   useEffect(() => {
-    // Si ya tenemos datos iniciales del servidor, refrescar silenciosamente
     if (initialData) return
-    getWalletData().then(res => {
-      setData(res)
+    getWalletData().then((res) => {
+      setData('error' in res ? null : (res as WalletSnapshot))
       setLoading(false)
     })
   }, [initialData])
 
-  const balance = data?.wallet?.balance_cents || 0
+  const handleTxClick = (tx: PlayerTransaction) => {
+    setSelectedTx(tx)
+    setIsModalOpen(true)
+  }
+
+  const balance = data?.wallet?.balance_cents ?? 0
+  const recent = (data?.transactions ?? []).slice(0, 3)
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-1000">
-      {/* Premium Balance Card - Main Visual Hook */}
-      <m.section 
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="relative overflow-hidden bg-black/40 border-2 border-brand-gold/30 p-8 md:p-12 rounded-[2.5rem] shadow-[0_40px_80px_rgba(0,0,0,0.6)] group"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_transparent_100%)] opacity-40 group-hover:opacity-60 transition-opacity duration-1000" />
-        
-        <div className="relative z-10 flex flex-col items-center text-center space-y-4 w-full">
-          <div className="flex flex-col items-center w-full px-2">
-            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-text-secondary mb-1">Saldo Disponible</span>
-            <div className="flex items-baseline justify-center gap-2 md:gap-4 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] w-full">
-              <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black italic bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-dark bg-clip-text text-transparent tracking-tight whitespace-nowrap pr-4">
-                ${formatAmount(balance)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-5 mt-4 w-full max-w-lg px-2">
-            <Link href="/wallet" className="flex-1 min-w-0">
-              <button className="group relative w-full h-20 bg-brand-gold text-black font-black uppercase tracking-widest text-[11px] sm:text-xs rounded-2xl transition-all duration-300 shadow-[0_4px_0_rgba(139,107,46,1),0_15px_30px_rgba(0,0,0,0.4)] hover:shadow-[0_2px_0_rgba(139,107,46,1),0_10px_20px_rgba(0,0,0,0.4)] active:scale-95 active:shadow-none flex items-center justify-center gap-3 overflow-hidden">
-                <Wallet className="w-5 h-5 shrink-0" />
-                <span className="truncate">Cargar Saldo</span>
-                <div className="absolute inset-0 bg-white/20 translate-x-[-100%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
-              </button>
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
+      <div className="min-w-0 space-y-10">
+        <h1 className="sr-only">Inicio</h1>
+        <BalancePanel cents={balance}>
+          <Link href="/lobby" className={`${playerButton.primary} w-full`}>
+            <Play className="h-5 w-5 fill-current" aria-hidden="true" />
+            Jugar ahora
+          </Link>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Link href="/wallet/deposit" className={`${playerButton.secondary} whitespace-nowrap bg-[#0a0a0a]/35 px-2 text-base sm:text-lg`}>
+              <Plus className="h-5 w-5" aria-hidden="true" />
+              Cargar saldo
             </Link>
-            <Link href="/lobby" className="flex-1 min-w-0">
-              <button className="group relative w-full h-20 bg-black/60 backdrop-blur-xl text-brand-gold border-2 border-brand-gold/40 rounded-2xl font-black text-[11px] sm:text-xs uppercase tracking-[0.2em] shadow-[0_4px_0_rgba(202,171,114,0.1),0_15px_30px_rgba(0,0,0,0.4)] hover:bg-brand-gold/10 transition-all duration-500 flex items-center justify-center gap-3 overflow-hidden active:scale-95">
-                <Play className="w-5 h-5 shrink-0 fill-current" />
-                <span className="truncate">Ir al Lobby</span>
-                <div className="absolute inset-0 bg-brand-gold/20 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-500" />
-              </button>
+            <Link href="/wallet/withdraw" className={`${playerButton.secondary} whitespace-nowrap bg-[#0a0a0a]/35 px-2 text-base sm:text-lg`}>
+              <ArrowUpRight className="h-5 w-5" aria-hidden="true" />
+              Retirar
             </Link>
           </div>
-        </div>
-      </m.section>
+        </BalancePanel>
 
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-2 gap-6">
-        <QuickActionCard 
-          icon={TrendingUp} 
-          label="Estadísticas" 
-          href="/stats" 
-          color="bg-black/40 border-brand-gold/20" 
-        />
-        <QuickActionCard 
-          icon={Users} 
-          label="Amigos" 
-          href="/friends" 
-          color="bg-black/40 border-brand-gold/20" 
-        />
+        <Section
+          id="inicio-juego"
+          title="Tu juego"
+          aside={
+            <Link href="/stats" className={playerTextLink}>
+              Estadísticas
+            </Link>
+          }
+        >
+          {stats ? (
+            <dl className="mt-4 grid grid-cols-3 divide-x divide-[#8b6b2e]/35">
+              <StatCell label="Partidas" value={stats.games_played} />
+              <StatCell label="Ganadas" value={stats.games_won} />
+              <StatCell label="Racha" value={stats.current_streak} />
+            </dl>
+          ) : (
+            <Link
+              href="/stats"
+              className="mt-4 flex min-h-14 items-center gap-3 rounded-lg text-lg text-[#d9d3bf] transition-colors hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
+            >
+              <BarChart3 className="h-6 w-6 text-[#c5a059]" aria-hidden="true" />
+              Juega tu primera partida y aquí verás tus números.
+            </Link>
+          )}
+        </Section>
       </div>
 
-      {/* Recent Activity Section */}
-      <section className="space-y-6 pt-4">
-        <div className="flex justify-between items-center px-2">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">Actividad Reciente</h3>
-          <Link href="/wallet/history" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-brand-gold transition-colors">Ver todo →</Link>
-        </div>
-        
-        <div className="space-y-4">
-          {loading ? (
-            [1, 2, 3].map(i => <div key={i} className="h-24 bg-black/20 rounded-3xl animate-pulse border border-white/5" />)
-          ) : data?.transactions?.length > 0 ? (
-            data.transactions.slice(0, 3).map((tx: any) => (
-              <div 
-                key={tx.id} 
-                onClick={() => handleTxClick(tx)}
-                className="group bg-black/30 border-2 border-white/5 hover:border-brand-gold/20 p-4 md:p-5 rounded-[2rem] flex items-center justify-between gap-4 transition-all duration-300 hover:bg-black/50 overflow-hidden cursor-pointer active:scale-[0.98]"
-              >
-                <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-inner ${
-                    tx.type === 'deposit' 
-                      ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/20'
-                      : tx.type === 'win'
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      : tx.type === 'refund'
-                      ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                      : tx.type === 'bet' || tx.type === 'rake'
-                      ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                      : 'bg-white/5 text-text-secondary border border-white/10'
-                  }`}>
-                    {tx.type === 'deposit' ? <Plus className="w-5 h-5" /> :
-                     tx.type === 'win' ? <TrendingUp className="w-5 h-5" /> :
-                     tx.type === 'refund' ? <RotateCcw className="w-5 h-5" /> :
-                     tx.type === 'bet' || tx.type === 'rake' ? <Gamepad2 className="w-5 h-5" /> :
-                     <ArrowUpWideNarrow className="w-5 h-5" />}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-display font-black text-sm md:text-base italic uppercase tracking-tight text-text-premium truncate group-hover:text-brand-gold transition-all">
-                      {tx.type === 'deposit' ? 'Depósito' :
-                       tx.type === 'withdrawal' ? 'Retiro' :
-                       tx.type === 'win' ? 'Ganancia' :
-                       tx.type === 'bet' ? 'Apuesta' :
-                       tx.type === 'rake' ? 'Comisión' :
-                       tx.type === 'refund' ? 'Reembolso' :
-                       tx.type}
-                    </p>
-                    <p className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-[0.2em] truncate">
-                      {new Date(tx.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} • {new Date(tx.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="shrink-0 text-right space-y-1">
-                  <span className={`block text-lg md:text-xl font-display font-black italic tracking-tighter ${
-                    tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? 'text-brand-gold' : 'text-text-premium'
-                  }`}>
-                    {tx.type === 'deposit' || tx.type === 'win' || tx.type === 'refund' ? '+' : '-'}${formatAmount(Math.abs(tx.amount_cents || 0))}
-                  </span>
-                  <div className="flex justify-end">
-                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-[0.2em] ${
-                      tx.status === 'completed' ? 'bg-brand-gold/10 text-brand-gold border-brand-gold/30' :
-                      tx.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/30' :
-                      'bg-brand-red/10 text-brand-red border-brand-red/30'
-                    }`}>
-                      {tx.status === 'completed' ? 'Éxito' : tx.status === 'pending' ? 'Procesando' : 'Fallido'}
-                    </span>
-                  </div>
+      <Section
+        id="inicio-movimientos"
+        title="Últimos movimientos"
+        aside={
+          <Link href="/wallet/history" className={playerTextLink}>
+            Ver todo
+          </Link>
+        }
+      >
+        {loading ? (
+          <div className="mt-2 space-y-5 py-3" data-testid="dashboard-loading">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-11 w-11" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3.5 w-1/3" />
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="p-12 text-center bg-black/20 rounded-[2.5rem] border-2 border-dashed border-white/5">
-              <p className="text-text-secondary text-xs font-black uppercase tracking-[0.3em]">Bóveda Vacía</p>
-            </div>
-          )}
-        </div>
-      </section>
+            ))}
+          </div>
+        ) : recent.length > 0 ? (
+          <RowList label="Últimos movimientos">
+            {recent.map((tx) => (
+              <li key={tx.id}>
+                <TransactionRow tx={tx} onSelect={handleTxClick} />
+              </li>
+            ))}
+          </RowList>
+        ) : (
+          <EmptyState
+            icon={ReceiptText}
+            title="Aún no tienes movimientos"
+            text="Cuando cargues saldo o juegues una mesa, lo verás aquí."
+            action={
+              <Link href="/wallet/deposit" className={`${playerButton.secondary} w-full`}>
+                Cargar saldo
+              </Link>
+            }
+          />
+        )}
+      </Section>
 
-      <TransactionModal 
-        transaction={selectedTx}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      <TransactionModal transaction={selectedTx} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   )
 }
 
-function QuickActionCard({ icon: Icon, label, href, color }: any) {
+function StatCell({ label, value }: { readonly label: string; readonly value: number }) {
   return (
-    <Link href={href}>
-      <m.div 
-        whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}
-        whileTap={{ scale: 0.95 }}
-        className={`${color} border-2 p-8 rounded-[2.5rem] flex flex-col items-center gap-5 shadow-2xl transition-all hover:bg-brand-gold/5 group`}
-      >
-        <div className="p-5 rounded-2xl bg-brand-gold/10 border-2 border-brand-gold/10 group-hover:border-brand-gold transition-all duration-500 shadow-inner">
-          <Icon className="w-8 h-8 text-brand-gold drop-shadow-[0_0_8px_rgba(202,171,114,0.4)]" />
-        </div>
-        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-text-secondary group-hover:text-text-premium transition-colors">{label}</span>
-      </m.div>
-    </Link>
+    <div className="px-3 py-1 text-center first:pl-0 last:pr-0">
+      <dt className="text-base text-[#bdb7a6]">{label}</dt>
+      <dd className="mt-1 font-mono text-[1.75rem] font-medium leading-none text-text-premium tabular-nums">{value}</dd>
+    </div>
   )
 }

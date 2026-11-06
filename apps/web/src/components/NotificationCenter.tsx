@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Bell, CheckCircle, Info, BellRing, UserPlus, Gamepad2, Trash2, ExternalLink } from 'lucide-react';
+import { Bell, CheckCheck, ChevronRight, Info, MessageCircle, UserPlus, Gamepad2, Trash2, Wallet } from 'lucide-react';
+import { PlayerSheet } from '@/components/player/PlayerSheet';
 import { createClient } from '@/utils/supabase/client';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -160,172 +161,140 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
 
   const formatNotifDate = (dateStr: string) => {
     try {
-      return format(new Date(dateStr), 'dd/MM/yy HH:mm');
+      return format(new Date(dateStr), 'dd/MM HH:mm');
     } catch {
       return '';
     }
   };
 
+  const hasDestination = (type: string) => NAVIGABLE_TYPES.has(type);
+
   return (
-    <div className="relative z-[60]">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 md:w-12 md:h-12 bg-black/40 rounded-xl md:rounded-2xl flex items-center justify-center border-2 border-brand-gold/20 hover:border-brand-gold/50 hover:bg-black/60 transition-all relative shadow-[0_10px_30px_rgba(0,0,0,0.5)] active:scale-90 group backdrop-blur-xl"
-        aria-label="Notificaciones"
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        aria-label={unreadCount > 0 ? `Notificaciones, ${unreadCount} sin leer` : 'Notificaciones'}
+        aria-haspopup="dialog"
+        className={`relative inline-flex h-12 w-12 items-center justify-center rounded-lg border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light ${
+          unreadCount > 0
+            ? 'border-brand-gold bg-[#0a2c20] text-brand-gold-light'
+            : 'border-[#8b6b2e]/60 text-[#d9d3bf] hover:border-brand-gold hover:text-brand-gold-light'
+        }`}
       >
-        <Bell className={`w-5 h-5 md:w-6 md:h-6 transition-all duration-500 ${unreadCount > 0 ? 'text-brand-gold drop-shadow-[0_0_8px_rgba(202,171,114,0.6)] animate-pulse' : 'text-text-secondary group-hover:text-text-premium'}`} />
+        <Bell className="h-6 w-6" aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-gradient-to-br from-brand-gold-light to-brand-gold-dark text-black text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-[0_4px_10px_rgba(202,171,114,0.4)] border-2 border-slate-950">
+          <span
+            aria-hidden="true"
+            className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-gold px-1 font-mono text-sm font-semibold tabular-nums text-[#0a0a0a] shadow-[0_0_0_2px_#0a0a0a]"
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
-      {isOpen && (
-        <div className="fixed md:absolute top-24 md:top-20 inset-x-3 md:inset-auto md:right-0 w-auto md:w-[26rem] flex flex-col overflow-hidden z-[100] animate-in fade-in slide-in-from-top-4 duration-300 rounded-2xl"
-          style={{
-            background: 'linear-gradient(160deg, #0f2a18 0%, #091910 100%)',
-            border: '1px solid rgba(212,175,55,0.35)',
-            boxShadow: '0 0 0 1px rgba(212,175,55,0.06), 0 32px 72px rgba(0,0,0,0.85)',
-          }}
-        >
-          {/* Top shimmer */}
-          <div className="absolute top-0 left-0 right-0 h-px pointer-events-none"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent)' }}
-          />
-
-          {/* Header */}
-          <div className="px-5 py-4 flex flex-wrap gap-y-2 justify-between items-center"
-            style={{ borderBottom: '1px solid rgba(212,175,55,0.15)', background: 'rgba(212,175,55,0.04)' }}
-          >
-            <div className="flex items-center gap-2.5">
-              <BellRing className="w-4 h-4 flex-shrink-0" style={{ color: '#d4af37' }} />
-              <h3 className="text-xs font-black uppercase tracking-[0.22em] italic"
-                style={{ fontFamily: "'Playfair Display', serif", color: '#fdf0a6' }}
-              >
-                Notificaciones
-              </h3>
-            </div>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all flex-shrink-0"
-                style={{
-                  color: '#d4af37',
-                  border: '1px solid rgba(212,175,55,0.3)',
-                  background: 'rgba(212,175,55,0.06)',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(212,175,55,0.18)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(212,175,55,0.06)';
-                }}
-              >
-                Limpiar todo
-              </button>
-            )}
+      <PlayerSheet
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Notificaciones"
+        description={
+          unreadCount > 0 ? `${unreadCount} sin leer` : notifications.length > 0 ? 'Todas leídas.' : 'Estás al día.'
+        }
+        closeLabel="Cerrar notificaciones"
+        footer={
+          unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={markAllRead}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-[#8b6b2e]/80 text-lg font-semibold text-text-premium transition-colors hover:border-brand-gold hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
+            >
+              <CheckCheck className="h-5 w-5" aria-hidden="true" />
+              Marcar todas como leídas
+            </button>
+          ) : undefined
+        }
+      >
+        {notifications.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-center">
+            <span aria-hidden="true" className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[#8b6b2e]/60 bg-[#0a0a0a] text-brand-gold-light">
+              <Bell className="h-6 w-6" />
+            </span>
+            <p className="font-display text-[1.375rem] font-bold text-text-premium">No tienes notificaciones</p>
+            <p className="mt-2 max-w-[32ch] text-base text-[#bdb7a6]">Aquí verás invitaciones, solicitudes de amistad y movimientos de saldo.</p>
           </div>
-          
-          {/* Content area */}
-          <div className="max-h-[70vh] md:max-h-[30rem] overflow-y-auto custom-scrollbar p-3 space-y-2">
-            {notifications.length === 0 ? (
-              <div className="p-12 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
-                  style={{ background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.12)' }}
-                >
-                  <Bell className="w-8 h-8" style={{ color: 'rgba(212,175,55,0.25)' }} />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'rgba(253,240,166,0.3)' }}>
-                  Tu buzón está vacío
-                </p>
-              </div>
-            ) : (
-              notifications.map(n => (
-                <div
-                  key={n.id}
-                  className="group relative rounded-xl transition-all duration-200"
-                  style={{
-                    background: !n.read_at
-                      ? 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.05) 100%)'
-                      : 'rgba(255,255,255,0.04)',
-                    border: !n.read_at
-                      ? '1px solid rgba(212,175,55,0.3)'
-                      : '1px solid rgba(255,255,255,0.07)',
-                  }}
-                >
-                  <div className="p-4">
-                    {/* Top row: icon + title + timestamp */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {n.type?.startsWith('friend') ? (
-                          <UserPlus className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d4af37' }} />
-                        ) : n.type === 'game_invite' ? (
-                          <Gamepad2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d4af37' }} />
-                        ) : n.type?.startsWith('deposit') ? (
-                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0 text-emerald-400" />
-                        ) : (
-                          <Info className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d4af37' }} />
-                        )}
-                        <h4 className="text-xs font-black uppercase italic truncate"
-                          style={{ color: !n.read_at ? '#fdf0a6' : 'rgba(253,240,166,0.65)' }}
-                        >
-                          {n.title}
-                        </h4>
-                      </div>
-                      {/* Timestamp — fixed width, no overflow */}
-                      <time className="text-[10px] font-mono flex-shrink-0 tabular-nums"
-                        style={{ color: 'rgba(212,175,55,0.5)' }}
-                        dateTime={n.created_at}
-                      >
+        ) : (
+          <ul className="divide-y divide-[#8b6b2e]/30 border-y border-[#8b6b2e]/30">
+            {notifications.map((n) => {
+              const Icon = notificationIcon(n.type);
+              const unread = !n.read_at;
+              return (
+                <li key={n.id} className="flex gap-3 py-4">
+                  <span
+                    aria-hidden="true"
+                    className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border ${
+                      unread ? 'border-brand-gold/70 bg-[#0a2c20] text-brand-gold-light' : 'border-[#8b6b2e]/40 bg-[#0a0a0a] text-[#bdb7a6]'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className={`text-lg font-semibold leading-snug ${unread ? 'text-text-premium' : 'text-[#d9d3bf]'}`}>
+                        {unread && <span className="sr-only">Sin leer: </span>}
+                        {n.title}
+                      </h3>
+                      <time className="shrink-0 pt-0.5 font-mono text-sm tabular-nums text-[#bdb7a6]" dateTime={n.created_at}>
                         {formatNotifDate(n.created_at)}
                       </time>
                     </div>
-
-                    {/* Body */}
-                    <p className="text-xs leading-relaxed mb-3 pl-5"
-                      style={{ color: 'rgba(253,240,166,0.6)' }}
-                    >
-                      {formatNotificationBody(n.body)}
-                    </p>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 pl-5">
+                    <p className="mt-1 text-base leading-relaxed text-[#d9d3bf] [overflow-wrap:anywhere]">{formatNotificationBody(n.body)}</p>
+                    <div className="mt-3 flex items-center gap-2">
+                      {hasDestination(n.type) && (
+                        <button
+                          type="button"
+                          onClick={() => handleNavigate(n)}
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#8b6b2e]/80 px-4 text-base font-semibold text-text-premium transition-colors hover:border-brand-gold hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
+                        >
+                          Abrir
+                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleNavigate(n)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
-                        style={{ background: 'rgba(212,175,55,0.1)', color: '#d4af37', border: '1px solid rgba(212,175,55,0.2)' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(212,175,55,0.22)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(212,175,55,0.1)')}
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Ir
-                      </button>
-                      <button
+                        type="button"
                         onClick={(e) => handleDelete(e, n.id)}
                         disabled={isDeleting === n.id}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40"
-                        style={{ background: 'rgba(239,68,68,0.08)', color: 'rgb(248,113,113)', border: '1px solid rgba(239,68,68,0.18)' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.2)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
+                        aria-label={`Borrar notificación: ${n.title}`}
+                        className="ml-auto inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#f08a7e] transition-colors hover:bg-[#2a0f0c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light disabled:opacity-50"
                       >
-                        <Trash2 className="w-3 h-3" />
-                        {isDeleting === n.id ? '...' : 'Borrar'}
+                        <Trash2 className="h-5 w-5" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="px-4 py-3 text-center" style={{ borderTop: '1px solid rgba(212,175,55,0.1)' }}>
-            <span className="text-[9px] font-black tracking-[0.25em] uppercase" style={{ color: 'rgba(212,175,55,0.3)' }}>
-              Primera Riverada · Notificaciones
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </PlayerSheet>
+    </>
   );
+}
+
+const NAVIGABLE_TYPES = new Set([
+  'game_invite',
+  'friend_request',
+  'friend_accepted',
+  'friend_removed',
+  'direct_message',
+  'deposit_success',
+  'withdraw_success',
+  'wallet_update',
+]);
+
+function notificationIcon(type: string) {
+  if (type?.startsWith('friend')) return UserPlus;
+  if (type === 'game_invite') return Gamepad2;
+  if (type === 'direct_message') return MessageCircle;
+  if (type?.startsWith('deposit') || type?.startsWith('withdraw') || type === 'wallet_update') return Wallet;
+  return Info;
 }

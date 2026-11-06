@@ -3,19 +3,16 @@ import userEvent from '@testing-library/user-event'
 import { StatsDashboard } from '../stats-dashboard'
 import { claimBonus } from '@/app/actions/bonus'
 
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} alt={props.alt ?? ''} />,
+}))
+
 jest.mock('@/app/actions/bonus', () => ({
   claimBonus: jest.fn(),
 }))
 
 jest.mock('canvas-confetti', () => jest.fn())
-
-jest.mock('framer-motion', () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  m: {
-    div: ({ children, whileHover: _whileHover, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-    p: ({ children, initial: _initial, animate: _animate, transition: _transition, ...props }: React.HTMLAttributes<HTMLParagraphElement> & Record<string, unknown>) => <p {...props}>{children}</p>,
-  },
-}))
 
 const stats = {
   games_played: 5,

@@ -5,6 +5,7 @@ import WalletPage from '../wallet/page'
 import DepositPage from '../wallet/deposit/page'
 import LeaderboardPage from '../leaderboard/page'
 import { getWalletData } from '@/app/actions/wallet'
+import { getMyStats } from '@/app/actions/stats'
 import { getLobbyTables } from '@/app/actions/admin-tables'
 import { getLeaderboard } from '@/app/actions/social-actions'
 
@@ -16,14 +17,12 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: searchParamsGet }),
 }))
 
-jest.mock('framer-motion', () => ({
-  motion: {
-    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
-  },
-}))
-
 jest.mock('@/app/actions/wallet', () => ({
   getWalletData: jest.fn(),
+}))
+
+jest.mock('@/app/actions/stats', () => ({
+  getMyStats: jest.fn(),
 }))
 
 jest.mock('@/app/actions/admin-tables', () => ({
@@ -35,8 +34,10 @@ jest.mock('@/app/actions/social-actions', () => ({
 }))
 
 jest.mock('@/components/dashboard/PlayerDashboard', () => ({
-  PlayerDashboard: ({ initialData }: { initialData: unknown }) => (
-    <div data-testid="player-dashboard">Dashboard: {initialData ? 'con datos' : 'sin datos'}</div>
+  PlayerDashboard: ({ initialData, stats }: { initialData: unknown; stats: unknown }) => (
+    <div data-testid="player-dashboard">
+      Dashboard: {initialData ? 'con datos' : 'sin datos'} Stats: {stats ? 'con stats' : 'sin stats'}
+    </div>
   ),
 }))
 
@@ -65,6 +66,7 @@ jest.mock('../leaderboard/_components/leaderboard-table', () => ({
 }))
 
 const mockGetWalletData = getWalletData as jest.MockedFunction<typeof getWalletData>
+const mockGetMyStats = getMyStats as jest.MockedFunction<typeof getMyStats>
 const mockGetLobbyTables = getLobbyTables as jest.MockedFunction<typeof getLobbyTables>
 const mockGetLeaderboard = getLeaderboard as jest.MockedFunction<typeof getLeaderboard>
 
@@ -72,15 +74,19 @@ describe('player shell pages', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     searchParamsGet.mockReturnValue(null)
+    mockGetMyStats.mockResolvedValue(null)
   })
 
-  it('dashboard pasa datos de wallet al panel del jugador', async () => {
+  it('dashboard pasa datos de wallet y estadísticas al panel del jugador', async () => {
     mockGetWalletData.mockResolvedValue({ wallet: { balance_cents: 125000 }, transactions: [] } as never)
+    mockGetMyStats.mockResolvedValue({ games_played: 1, games_won: 1, current_streak: 1 } as never)
 
     render(await DashboardPage())
 
     expect(mockGetWalletData).toHaveBeenCalledTimes(1)
+    expect(mockGetMyStats).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('player-dashboard')).toHaveTextContent('con datos')
+    expect(screen.getByTestId('player-dashboard')).toHaveTextContent('con stats')
   })
 
   it('dashboard usa null si wallet responde error', async () => {
@@ -91,7 +97,16 @@ describe('player shell pages', () => {
     expect(screen.getByTestId('player-dashboard')).toHaveTextContent('sin datos')
   })
 
-  it('lobby es dinamico y entrega mesas comunes/custom al componente realtime', async () => {
+  it('dashboard tolera que getMyStats falle', async () => {
+    mockGetWalletData.mockResolvedValue({ wallet: { balance_cents: 1 }, transactions: [] } as never)
+    mockGetMyStats.mockRejectedValue(new Error('boom'))
+
+    render(await DashboardPage())
+
+    expect(screen.getByTestId('player-dashboard')).toHaveTextContent('sin stats')
+  })
+
+  it('lobby es dinámico y entrega mesas comunes/custom al componente realtime', async () => {
     mockGetLobbyTables.mockResolvedValue({
       common: [{ id: 'table-common' }],
       custom: [{ id: 'table-custom' }, { id: 'table-vip' }],
@@ -104,7 +119,7 @@ describe('player shell pages', () => {
     expect(screen.getByTestId('lobby')).toHaveTextContent('Comunes: 1 Custom: 2')
   })
 
-  it('lobby cae a listas vacias si falla la carga de mesas', async () => {
+  it('lobby cae a listas vacías si falla la carga de mesas', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
     mockGetLobbyTables.mockRejectedValue(new Error('redis offline'))
 
@@ -123,12 +138,12 @@ describe('player shell pages', () => {
     expect(screen.getByTestId('wallet-content')).toHaveTextContent('Saldo: 99000 Movimientos: 1')
   })
 
-  it('wallet muestra error de conexion si falla la carga', async () => {
+  it('wallet muestra alerta de error si falla la carga', async () => {
     mockGetWalletData.mockResolvedValue({ error: 'Sesion expirada' } as never)
 
     render(await WalletPage())
 
-    expect(screen.getByText('Error de Conexión')).toBeInTheDocument()
+    expect(screen.getByText(/no pudimos cargar tu billetera/i)).toBeInTheDocument()
     expect(screen.getByText('Sesion expirada')).toBeInTheDocument()
   })
 
@@ -153,7 +168,6 @@ describe('player shell pages', () => {
   })
 
   it('deposit precarga el monto de querystring y vuelve a wallet al completar', async () => {
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {})
     searchParamsGet.mockReturnValue('5000')
 
     render(<DepositPage />)
@@ -161,9 +175,6 @@ describe('player shell pages', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Depositar 5000' }))
 
     expect(searchParamsGet).toHaveBeenCalledWith('amount')
-    expect(alertSpy).toHaveBeenCalledWith('Solicitud enviada correctamente. Se acreditará pronto.')
     expect(routerPush).toHaveBeenCalledWith('/wallet')
-    alertSpy.mockRestore()
   })
-
 })

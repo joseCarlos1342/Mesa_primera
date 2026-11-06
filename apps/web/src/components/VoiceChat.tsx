@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -13,6 +12,7 @@ import {
 } from '@livekit/components-react';
 import { Track, ConnectionState } from 'livekit-client';
 import { Mic, MicOff, VolumeX } from 'lucide-react';
+import { PlayerSheet } from '@/components/player/PlayerSheet';
 import { useGamePermissions } from '@/hooks/useGamePermissions';
 
 interface VoiceChatProps {
@@ -104,18 +104,17 @@ export function VoiceChat({ roomName, username, showSpeakers = false }: VoiceCha
       {/* Overlay to handle AudioContext if blocked */}
       <StartAudio 
         label="Activar Audio" 
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm group"
+        className="group fixed inset-0 z-[100] flex items-center justify-center bg-black/70"
       >
-        <div className="bg-[#0d211a] border-2 border-[#c0a060] p-8 rounded-3xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300 shadow-[0_20px_50px_rgba(0,0,0,0.9)]">
-           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#c0a060] to-[#8b6b2e] flex items-center justify-center animate-bounce">
-              <VolumeX className="w-8 h-8 text-white" />
-           </div>
-           <p className="text-[#fdf0a6] font-bold text-center max-w-xs uppercase tracking-widest text-sm">
-             El navegador bloqueó el audio automático.<br/>Haz clic para escuchar a los jugadores.
-           </p>
-           <div className="mt-2 px-6 py-3 bg-[#c0a060] text-black font-black uppercase rounded-xl hover:scale-105 transition-transform">
-             CONECTAR SONIDO
-           </div>
+        <div className="mx-4 flex w-full max-w-sm flex-col items-center gap-3 rounded-xl border border-[#8b6b2e] bg-[#120806] p-6 text-center shadow-[0_24px_60px_-16px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(240,170,105,0.28)]">
+          <span aria-hidden="true" className="flex h-14 w-14 items-center justify-center rounded-full border border-[#8b6b2e] bg-[#0a2c20] text-brand-gold-light">
+            <VolumeX className="h-7 w-7" />
+          </span>
+          <p className="font-display text-[1.5rem] font-bold leading-tight text-text-premium">Activa el sonido de la mesa</p>
+          <p className="text-base leading-relaxed text-[#d9d3bf]">El navegador pausó el audio. Toca para escuchar a los jugadores.</p>
+          <span className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-brand-gold px-6 text-lg font-bold text-[#0a0a0a] group-hover:bg-brand-gold-light">
+            Activar sonido
+          </span>
         </div>
       </StartAudio>
 
@@ -140,14 +139,21 @@ function CustomMicToggle({ forcedMuted }: { forcedMuted: boolean }) {
     if (forcedMuted) void localParticipant?.setMicrophoneEnabled(false);
   }, [forcedMuted, localParticipant]);
 
+  const [micNotice, setMicNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!micNotice) return;
+    const t = setTimeout(() => setMicNotice(null), 6000);
+    return () => clearTimeout(t);
+  }, [micNotice]);
+
   const toggleMic = async () => {
     if (!localParticipant || isPending || !isConnected || isAdminMuted) return;
 
     if (micUnavailable) {
-      alert(
+      setMicNotice(
         micPermission === 'denied'
-          ? 'Denegaste el permiso del micrófono. Debes habilitarlo en los ajustes del navegador.'
-          : 'Error: Tu navegador bloqueó el acceso al micrófono porque esta conexión no es segura (HTTPS). Si juegas en red local, usa \'localhost\' o configura un túnel seguro.'
+          ? 'Denegaste el permiso del micrófono. Actívalo en los ajustes del navegador.'
+          : 'El navegador bloqueó el micrófono porque la conexión no es segura (HTTPS).'
       );
       return;
     }
@@ -157,15 +163,19 @@ function CustomMicToggle({ forcedMuted }: { forcedMuted: boolean }) {
       await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
     } catch (e: any) {
       console.error('Failed to toggle mic', e);
-      alert('Error al intentar activar el micrófono. Verifica tus permisos o hardware.');
+      setMicNotice('No se pudo activar el micrófono. Revisa los permisos o el dispositivo.');
     } finally {
       setIsPending(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {/* Visualizer removed */}
+    <div className="relative flex items-center gap-2">
+      {micNotice && (
+        <p role="alert" className="absolute bottom-full right-0 mb-2 w-64 rounded-lg border border-[#e74c3c]/70 bg-[#2a0f0c] px-3 py-2 text-base leading-snug text-[#f6d5d0] shadow-[0_12px_28px_-10px_rgba(0,0,0,0.9)]">
+          {micNotice}
+        </p>
+      )}
 
       <button 
         onClick={toggleMic}
@@ -244,35 +254,24 @@ export function PlayerAudioModal({ isOpen, onClose }: { isOpen: boolean, onClose
   // Filter out the local user so we don't try to "mute" ourselves in the playback
   const remoteParticipants = participants.filter(p => p.identity !== localParticipant?.identity);
 
-  if (!isOpen) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-[#0d211a] border-2 border-[#c0a060]/40 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(192,160,96,0.1)] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-        
-        <div className="p-4 border-b border-[#c0a060]/20 flex justify-between items-center bg-black/20">
-          <h2 className="text-xl font-black text-[#fdf0a6] uppercase tracking-widest flex items-center gap-2" style={{ textShadow: "0px 2px 4px rgba(0,0,0,0.8)" }}>
-            <Mic className="w-6 h-6 text-[#c0a060]" />
-            Audio de Jugadores
-          </h2>
-          <button onClick={onClose} className="p-2 text-[#f3edd7]/40 hover:text-[#f3edd7] hover:bg-[#1b4d3e]/60 rounded-full transition-colors">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </button>
-        </div>
-
-        <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 custom-scrollbar">
-          {remoteParticipants.length === 0 ? (
-            <p className="text-center text-[#f3edd7]/40 font-bold py-8">No hay otros jugadores en la sala.</p>
-          ) : (
-            remoteParticipants.map(p => (
-              <PlayerAudioRow key={p.identity} participant={p} />
-            ))
-          )}
-        </div>
-
-      </div>
-    </div>,
-    document.body
+  return (
+    <PlayerSheet
+      open={isOpen}
+      onClose={onClose}
+      title="Audio de jugadores"
+      description="Silencia a quien quieras solo para ti. Los demás no lo notan."
+      closeLabel="Cerrar audio de jugadores"
+    >
+      {remoteParticipants.length === 0 ? (
+        <p className="py-8 text-center text-lg text-[#bdb7a6]">No hay otros jugadores con voz en la mesa.</p>
+      ) : (
+        <ul className="divide-y divide-[#8b6b2e]/30 border-y border-[#8b6b2e]/30">
+          {remoteParticipants.map(p => (
+            <PlayerAudioRow key={p.identity} participant={p} />
+          ))}
+        </ul>
+      )}
+    </PlayerSheet>
   );
 }
 
@@ -301,41 +300,34 @@ function PlayerAudioRow({ participant }: { participant: any }) {
 
   const hasTrack = !!audioTrack?.track;
 
-  return (
-    <div className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${
-      isMuted 
-        ? 'bg-red-950/20 border-red-500/20' 
-        : 'bg-[#1b4d3e]/30 border-[#c0a060]/10'
-    }`}>
-      <div className="flex items-center gap-3">
-        <span className={`w-3 h-3 rounded-full border border-black/50 transition-colors min-w-3
-          ${isSpeaking 
-            ? 'bg-gradient-to-br from-[#4ade80] to-[#16a34a] shadow-[0_0_10px_rgba(74,222,128,0.5)]' 
-            : isMuted ? 'bg-red-800' : 'bg-[#1b4d3e]'
-          }`} 
-        />
-        <span className="text-[#f3edd7] font-bold text-lg truncate max-w-[150px]">
-          {participant.name !== 'Jugador' ? participant.name || participant.identity : participant.identity}
-        </span>
-      </div>
+  const name = participant.name !== 'Jugador' ? participant.name || participant.identity : participant.identity;
 
-      <button 
+  return (
+    <li className="flex min-h-16 items-center justify-between gap-3 py-2">
+      <span className="flex min-w-0 items-center gap-3">
+        <span
+          aria-hidden="true"
+          className={`h-3 w-3 shrink-0 rounded-full ${isSpeaking ? 'bg-[#2ecc71]' : isMuted ? 'bg-[#e74c3c]' : 'bg-[#35180f] shadow-[inset_0_0_0_1px_rgba(139,107,46,0.8)]'}`}
+        />
+        <span className="min-w-0">
+          <span className="block truncate text-lg font-semibold text-text-premium">{name}</span>
+          <span className="block text-sm text-[#bdb7a6]">{isSpeaking ? 'Hablando' : isMuted ? 'Silenciado para ti' : 'Con voz'}</span>
+        </span>
+      </span>
+
+      <button
+        type="button"
         onClick={toggleMute}
         disabled={!hasTrack}
-        className={`px-4 py-2 rounded-lg font-black text-sm uppercase tracking-wider transition-all shadow-md active:translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed
-          ${isMuted 
-            ? 'bg-gradient-to-b from-red-500 to-red-700 text-white border border-red-400 border-b-[3px] border-b-red-900' 
-            : 'bg-gradient-to-b from-[#1b4d3e] to-[#0d211a] text-[#f3edd7]/70 border border-[#c0a060]/20 border-b-[3px] border-b-black/40 hover:border-[#c0a060]/40 hover:text-[#f3edd7]'
-          }
-        `}
+        aria-pressed={isMuted}
+        aria-label={isMuted ? `Activar voz de ${name}` : `Silenciar a ${name}`}
+        className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-lg border px-4 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light disabled:cursor-not-allowed disabled:opacity-40 ${
+          isMuted ? 'border-[#e74c3c]/70 bg-[#2a0f0c] text-[#f6d5d0]' : 'border-[#8b6b2e]/80 text-text-premium hover:border-brand-gold'
+        }`}
       >
-        {isMuted ? (
-          <span className="flex items-center gap-2">
-            <VolumeX className="w-4 h-4" />
-            Silenciado
-          </span>
-        ) : 'Silenciar'}
+        {isMuted && <VolumeX className="h-5 w-5" aria-hidden="true" />}
+        {isMuted ? 'Silenciado' : 'Silenciar'}
       </button>
-    </div>
+    </li>
   );
 }

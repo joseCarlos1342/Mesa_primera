@@ -132,10 +132,10 @@ export function OneSignalPushOptIn({ userId, compact = false }: OneSignalPushOpt
         disabled={busy}
         aria-label="Activar notificaciones push"
         className={compact
-          ? 'flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-100 transition hover:bg-indigo-500/20 disabled:opacity-50'
+          ? 'inline-flex h-12 w-12 items-center justify-center rounded-lg border border-brand-gold/80 bg-[#0a2c20] text-brand-gold-light transition-colors hover:border-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light disabled:opacity-50'
           : 'flex items-center gap-2 rounded-button border border-brand-gold/30 bg-black/30 px-4 py-3 text-sm font-bold text-brand-gold transition hover:bg-brand-gold/10 disabled:opacity-50'}
       >
-        <BellRing className="h-4 w-4" aria-hidden="true" />
+        <BellRing className={compact ? 'h-6 w-6' : 'h-4 w-4'} aria-hidden="true" />
         {!compact && (busy ? 'Activando…' : 'Activar avisos')}
       </button>
       {error && <span role="alert" className="text-xs text-danger">{error}</span>}

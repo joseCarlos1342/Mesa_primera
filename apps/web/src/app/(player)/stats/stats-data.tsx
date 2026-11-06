@@ -1,5 +1,6 @@
 import { getMyStats, getLeaderboard } from '@/app/actions/stats'
 import { getBonusStatus } from '@/app/actions/bonus'
+import { Skeleton } from '@/components/player/PlayerUI'
 
 /** Async server component that fetches data and passes it down. */
 export async function StatsData() {
@@ -15,12 +16,18 @@ export async function StatsData() {
 
 export function StatsLoadingSkeleton() {
   return (
-    <div className="space-y-8 animate-pulse">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[1, 2, 3, 4].map(i => <div key={i} className="h-40 rounded-[2.5rem] bg-white/5 border-2 border-white/5" />)}
+    <div className="space-y-10" aria-busy="true" aria-label="Cargando estadísticas">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="space-y-3">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-9 w-16" />
+          </div>
+        ))}
       </div>
-      <div className="h-60 rounded-[2.5rem] bg-white/5 border-2 border-white/5" />
-      <div className="h-40 rounded-[2.5rem] bg-white/5 border-2 border-white/5" />
+      {[1, 2, 3].map((i) => (
+        <Skeleton key={i} className="h-20 w-full" />
+      ))}
     </div>
   )
 }

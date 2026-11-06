@@ -79,7 +79,7 @@ export function AuthField({
           id={inputId}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={`${fieldBase} ${fieldToneClass(tone)} h-14 text-lg ${prefix ? 'pl-16' : 'pl-4'} pr-12 ${
+          className={`${fieldBase} ${fieldToneClass(tone)} h-14 text-lg ${prefix ? (prefix.length <= 1 ? 'pl-10' : 'pl-16') : 'pl-4'} pr-12 ${
             mono ? 'font-mono tabular-nums tracking-[0.04em]' : ''
           } ${className}`}
           {...inputProps}

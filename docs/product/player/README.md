@@ -56,27 +56,38 @@ Después del registro existe una pantalla opcional para activar biometría. Adem
 
 ## 2. Inicio y navegación principal
 
-La experiencia del jugador vive dentro de un layout común con navegación inferior, soporte, notificaciones y presencia en línea.
+La experiencia del jugador vive dentro de un layout común con cabecera, navegación inferior, soporte, notificaciones y presencia en línea. El diseño es móvil primero; en escritorio la barra inferior pasa a un riel lateral a la izquierda.
+
+### Cabecera
+
+- Avatar y alias del jugador: llevan al `Perfil`.
+- Botón `Soporte`: abre el chat de soporte (muestra un punto dorado si hay mensaje nuevo).
+- Botón `Notificaciones`: abre la lista de avisos con el número sin leer.
+- Botón para activar notificaciones push, solo mientras el permiso del navegador no se ha decidido.
+
+`Cerrar sesión` ya no está en la cabecera: vive al final del `Perfil` y pide confirmación.
 
 ### Navegación inferior
 
 Las secciones visibles hoy son:
 
-- `Inicio`.
-- `Billetera`.
-- `Estadísticas`.
-- `Amigos`.
-- `Reglas`.
+- `Inicio` (`/dashboard`).
+- `Mesas` (`/lobby`).
+- `Billetera` (`/wallet`, también marcada en depósito, retiro e historial).
+- `Amigos` (`/friends`).
+- `Perfil` (`/profile`, también marcada en `Estadísticas`).
+
+La barra se oculta dentro de la mesa de juego (`/play/...`).
 
 ### Qué ve el jugador en Inicio
 
 El dashboard principal concentra las acciones de mayor uso:
 
-- Saldo actual.
-- Botón `Cargar Saldo`.
-- Botón `Ir al Lobby`.
-- Accesos rápidos a estadísticas y amigos.
-- Actividad reciente.
+- Saldo actual sobre el paño verde.
+- Botón principal `Jugar ahora` (lleva a `Mesas`).
+- Botones `Cargar saldo` y `Retirar`.
+- `Tu juego`: partidas, ganadas y racha, con enlace a `Estadísticas`.
+- `Últimos movimientos` (tres) con enlace `Ver todo` al historial.
 
 La home debe entenderse como el centro operativo del jugador, no solo como una portada.
 
@@ -87,11 +98,12 @@ La billetera es uno de los recorridos más importantes porque condiciona el acce
 ### Qué ofrece la billetera
 
 - Visualización del saldo.
+- Acción principal `Cargar saldo`.
 - Acceso a `Retirar`.
-- Acceso a `Transferir`.
-- Packs rápidos de recarga.
-- Entrada a historial completo.
-- Detalle modal por transacción.
+- Acceso a `Transferir` (hoja en 4 pasos: buscar por celular, confirmar jugador, monto y revisión).
+- `Carga rápida` con montos fijos y `Otro monto`.
+- Entrada a `Historial` (con filtros `Todos`, `Cargas`, `Retiros`, `Transferencias`, `Otros`, agrupado por mes).
+- Detalle de cada movimiento en una hoja inferior (fecha, canal, saldo después, referencia y comprobante).
 
 ### Recargar saldo
 
@@ -114,7 +126,7 @@ Cuando el envío sale bien, el mensaje de producto deja claro que la solicitud f
 
 ### Retirar saldo
 
-La pantalla de retiro pide monto y datos bancarios. La interfaz expone hoy estas reglas al jugador:
+La pantalla de retiro pide monto y la cuenta donde se recibe el dinero (entidad, número y titular). Si la solicitud falla, el error se muestra en la misma pantalla. La interfaz expone hoy estas reglas al jugador:
 
 - Tiempo estimado: `1 a 12 horas hábiles`.
 - La cuenta o alias debe coincidir con el titular.
@@ -140,7 +152,7 @@ Reglas visibles hoy:
 
 El historial expone movimientos como:
 
-- Depósito.
+- Carga de saldo.
 - Retiro.
 - Reembolso.
 - Transferencia enviada.
@@ -149,9 +161,9 @@ El historial expone movimientos como:
 
 Los estados visibles para el jugador son:
 
-- `Éxito`.
-- `Procesando`.
-- `Fallido`.
+- `Completado` (no se muestra etiqueta en la lista; solo en el detalle).
+- `En revisión`.
+- `Rechazado`.
 
 ## 4. Soporte y ayuda
 
@@ -159,7 +171,7 @@ Mesa Primera distingue dos tipos de ayuda y conviene separarlos en la documentac
 
 ### Soporte general
 
-En el layout del jugador existe un disparador de cabecera identificado como `Soporte con el Host`.
+En la cabecera del jugador existe el botón `Soporte`; también se abre desde `Perfil` → `Ayuda` → `Hablar con soporte`. En móvil ocupa la pantalla completa y en escritorio es un panel lateral.
 
 Desde allí el jugador puede:
 
@@ -168,6 +180,7 @@ Desde allí el jugador puede:
 - Seguir conversaciones en tiempo real.
 - Adjuntar archivos.
 - Cerrar tickets.
+- `Reportar un problema` (carga no acreditada, transferencia no recibida, retiro no recibido, error en mesa u otro) y seguirlo en `Mis reclamos`.
 
 Estados del ticket hoy:
 
@@ -175,7 +188,6 @@ Estados del ticket hoy:
 - `attended`.
 - `finalized`.
 
-La sección `Reglas` también ofrece un CTA `Contactar` que abre el mismo soporte general.
 
 ### Llamar al admin dentro de la mesa
 
@@ -190,14 +202,14 @@ Motivos disponibles hoy:
 
 Regla editorial útil para tutoriales:
 
-- `Soporte con el Host` = dudas generales de cuenta, billetera o atención.
+- `Soporte` = dudas generales de cuenta, billetera o atención.
 - `Llamar al Admin` = incidente puntual mientras la partida está abierta.
 
 ## 5. Reglas básicas visibles en la experiencia actual
 
 La app expone reglas en dos lugares:
 
-- La pestaña `Reglas` del layout del jugador.
+- `Perfil` → `Ayuda` → `Reglas del juego` (abre `/rules`).
 - El modal `Reglas del Juego` dentro de la mesa.
 
 El contenido canónico está versionado en `apps/web/src/lib/official-rulebook.ts` y se presenta completo en `/rules`. El modal de mesa es un resumen operativo coherente con esa misma fuente.
@@ -226,21 +238,26 @@ La Mano recibe `+1` solo para el desempate. Si el empate continúa, se divide el
 
 ### Estadísticas
 
-La sección `Estadísticas` consolida rendimiento, leaderboard y estado de bonus cuando aplica.
+La sección `Estadísticas` se abre desde `Inicio` y desde `Perfil`. Tiene dos pestañas: `Mis números` (partidas, porcentaje de victorias, racha, manos especiales Segunda/Chivo/Primera con sus cartas y `Bono del mes`) y `Ranking` (categorías `Partidas`, `Rachas`, `Especiales`, con la fila del jugador marcada como `Tú`).
 
 ### Amigos
 
 La sección `Amigos` sirve para:
 
-- Ver contactos.
-- Gestionar solicitudes.
-- Agregar nuevos amigos.
-- Chatear de forma directa.
-- Ver presencia o disponibilidad.
+- Ver contactos con su estado en texto (`En línea`, `En partida`, `Desconectado`).
+- Gestionar solicitudes (`Aceptar` / `Rechazar`).
+- Agregar nuevos amigos con el botón `Agregar` (búsqueda por nombre, apodo o celular).
+- Enviar `Mensaje` (chat a pantalla completa en móvil) e `Invitar` a jugar.
+- Cambiar el apodo de un amigo.
+- Eliminar un amigo, con confirmación.
 
 ### Repeticiones
 
-La sección `Replays` aparece como `MIS GRABACIONES` y funciona como archivo de partidas o grabaciones disponibles para revisión.
+La sección `Repeticiones` (`/replays`) se abre desde `Mesas`. Lista las mesas jugadas con fecha, horario, rivales, número de partidas y resultado neto, filtrables por `7 días`, `30 días`, `90 días`, `Todo` o un rango de fechas (`Elegir fechas`). Cada mesa abre sus partidas (`Ganaste` / `Perdiste`, bote y resultado) y cada partida abre el reproductor.
+
+El reproductor usa **la misma mesa que la partida en vivo** (nogal, canto, paño, pozos y mazo salen del componente compartido `TableSurface`). Tiene barra para arrastrar a cualquier momento, paso anterior y siguiente, reproducir o pausar, velocidad `0.5x` a `4x` y pantalla completa. En un teléfono en horizontal la mesa ocupa toda la pantalla con controles flotantes. Debajo aparecen `Resumen`, `Manos finales` con las cartas reales y la `Línea de tiempo`.
+
+Las cartas privadas de los demás jugadores solo se muestran si se revelaron en la partida.
 
 ### Salón de la Fama
 
@@ -252,29 +269,30 @@ Desde Perfil se editan:
 
 - Username.
 - Nombre completo.
-- Teléfono.
+- Teléfono (cambiarlo exige un código SMS).
 - Avatar.
-- Seguridad de acceso.
+- Seguridad de acceso (bloqueo con huella o rostro).
+
+Además muestra `Tu juego` con enlace a `Estadísticas`, la sección `Ayuda` (soporte, reglas, términos y privacidad) y `Cerrar sesión` al final.
 
 ## 7. Del inicio al lobby
 
-El acceso al lobby normalmente nace desde `Inicio` con el botón `Ir al Lobby`, aunque el jugador también termina llegando allí después de revisar saldo o explorar mesas.
+El acceso al lobby nace desde la pestaña `Mesas` o desde `Inicio` con el botón `Jugar ahora`, aunque el jugador también termina llegando allí después de revisar saldo o explorar mesas.
 
 ### Qué ofrece el lobby
 
-- Recordatorio del balance.
-- Acceso rápido a recarga.
-- Entrada a repeticiones.
-- Lista de mesas disponibles.
+- Estado real de la conexión con el servidor de juego: punto verde `Mesas en línea` con los contadores de mesas, mesas en juego y jugadores; dorado `Conectando con las mesas…`; rojo `Sin conexión con las mesas` con botón `Reintentar` (también reintenta solo cada 8 segundos). Sin conexión, los botones de las mesas quedan deshabilitados.
+- Saldo con `Cargar saldo` (abre la misma hoja de carga de la Billetera sin salir del lobby) y acceso a `Repeticiones`.
+- `Mesas del club` y, si existen, `Otras mesas` (personalizadas o abiertas por el admin).
+- Para el admin: `Nueva mesa`, `Mesa personalizada` y `Cerrar` en cada mesa abierta, con confirmación.
 
 ### Qué ve el jugador en cada mesa
 
-Las tarjetas de mesa muestran, como mínimo:
+Cada mesa se muestra sobre paño con:
 
-- Nombre de la mesa.
-- Entrada requerida.
-- Pique configurado.
-- Capacidad máxima.
+- Nombre de la mesa y estado: `Libre`, `Con jugadores` o `Llena`.
+- `Entrada`, `Pique` y `Jugadores` ocupados sobre la capacidad (por ejemplo `3/7`), con una barra de puestos.
+- Un único botón: `Abrir mesa` (nadie sentado), `Entrar` (ya hay jugadores) o `Mesa llena`.
 
 Valores de referencia confirmados para la configuración común por defecto:
 
@@ -290,7 +308,7 @@ Los valores exactos pueden cambiar si la mesa fue creada con configuración pers
 
 ### Saldo mínimo
 
-La app valida el saldo antes de dejar entrar. En la configuración común actual, si el jugador tiene menos de `$50.000`, verá un mensaje de fondos insuficientes y un camino directo para recargar.
+La app valida el saldo antes de dejar entrar. Si no alcanza la entrada de la mesa (en la configuración común, `$50.000`), aparece el aviso `Necesitas al menos $X de saldo para entrar a <mesa>…` y se abre la hoja de `Cargar saldo`. Si el servidor rechaza la entrada (por ejemplo, por una sanción), el lobby muestra su motivo.
 
 ### Jugadores mínimos para iniciar
 
@@ -309,23 +327,24 @@ Cuando alguien entra fuera de `LOBBY`, no se incorpora de inmediato a la mano en
 
 ## 9. Sala de espera dentro de la mesa
 
-Una vez dentro de la ruta de juego, el jugador entra primero a la `Sala de Espera`.
+Una vez dentro de la ruta de juego, el jugador entra primero a la `Sala de espera`, dibujada sobre la misma mesa (nogal y paño). En un teléfono en horizontal entra completa sin desplazarse.
 
 ### Elementos visibles en espera
 
-- Contador de jugadores, por ejemplo `Jugadores: X / 7`.
-- Indicador de `Pique Mínimo`.
-- Estado de preparación.
-- Botón `¡Estoy Listo!`.
-- Botón `Anular Listo` si ya se marcó.
-- Acceso a recarga cuando falta saldo.
+- Contador de jugadores, por ejemplo `Jugadores 2/7`.
+- `Pique mínimo` con la banda por jugador, `Proponer otro pique` y la votación (`Aceptar` / `Rechazar`, votos a favor y en contra).
+- Lista de jugadores con avatar, saldo y estado escrito: `Listo` o `No listo`, más `Puesto libre` hasta completar el mínimo.
+- Botón `Estoy listo` (o `Ya no estoy listo` si ya se marcó).
+- Mensajes de estado: `Falta 1 jugador para empezar…`, `Listos X de Y…` y la cuenta regresiva `La partida empieza en N`.
+- Aviso de saldo insuficiente con `Cargar saldo`.
 
 ### Permisos y orientación
 
 La experiencia de mesa añade dos condiciones importantes:
 
-- En móvil, la UI pide usar orientación horizontal para jugar.
-- Puede aparecer un banner no bloqueante para conceder `Micrófono` y `Notificaciones`.
+- En móvil, la UI pide usar orientación horizontal para jugar (`Gira tu teléfono`).
+- Puede aparecer el aviso no bloqueante `Activa la voz y los avisos` con el botón `Permitir` para `Micrófono` y `Notificaciones`.
+- Si el navegador pausa el audio, aparece `Activa el sonido de la mesa`.
 
 ## 10. Acciones disponibles durante la partida
 
@@ -335,12 +354,15 @@ El encabezado de mesa concentra las acciones rápidas del jugador.
 
 Opciones visibles hoy:
 
-- `Audio de Jugadores`.
-- `Reglas del Juego`.
-- `Llamar al Admin`.
-- `Transferir Saldo`.
-- `Pantalla Completa`.
-- `Abandonar Partida`.
+Se abre con el botón `Opciones de la mesa` (arriba a la izquierda, en sala de espera y en partida):
+
+- `Audio de jugadores`.
+- `Reglas del juego`.
+- `Llamar al admin`.
+- `Transferir saldo`.
+- `Cargar saldo`.
+- `Pantalla completa`.
+- `Abandonar partida`.
 
 ### Acceso rápido a recarga
 
@@ -348,11 +370,15 @@ En la esquina superior derecha existe un botón de carrito que abre la recarga s
 
 ### Audio de jugadores
 
-La mesa incorpora chat de voz. El jugador puede abrir su panel de audio desde el menú y activar o desactivar micrófono según permisos y contexto del navegador.
+La mesa incorpora chat de voz. Desde `Audio de jugadores` cada jugador puede silenciar a otros solo para sí. Si el micrófono no está disponible, el aviso aparece junto al botón del micrófono (no como alerta del navegador).
 
 ### Abandonar la partida
 
-La salida de mesa tiene confirmación explícita y la UI advierte que abandonar en ese momento implica perder lo ya apostado en la mano.
+La salida de mesa pide confirmación (`¿Abandonar la mesa?` → `Sí, salir`) y advierte que lo ya apostado se queda en la mesa. Al salir, el jugador vuelve a `Mesas`.
+
+### Confirmaciones y avisos
+
+Todas las confirmaciones del jugador (cerrar sesión, abandonar la mesa, eliminar amigo, cerrar mesa en el lobby) usan la misma hoja de la app: sube desde abajo en móvil y aparece centrada en pantallas grandes, con `Cancelar` y la acción en rojo. La app ya no usa ventanas nativas del navegador (`alert` / `confirm`) en la zona del jugador. Si otra persona inicia sesión con la misma cuenta, la mesa se cierra y el login muestra el aviso de sesión iniciada en otro dispositivo.
 
 ## 11. Reconexion y continuidad
 

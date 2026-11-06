@@ -16,34 +16,14 @@ interface BannerData {
 
 const TYPE_CONFIG: Record<BroadcastType, {
   icon: typeof Megaphone;
-  gradient: string;
-  accentColor: string;
+  border: string;
+  iconClass: string;
   label: string;
 }> = {
-  system_announcement: {
-    icon: Megaphone,
-    gradient: 'linear-gradient(135deg, rgba(212,175,55,0.95) 0%, rgba(184,134,11,0.95) 100%)',
-    accentColor: '#0a180e',
-    label: 'ANUNCIO',
-  },
-  maintenance: {
-    icon: AlertTriangle,
-    gradient: 'linear-gradient(135deg, rgba(245,158,11,0.95) 0%, rgba(217,119,6,0.95) 100%)',
-    accentColor: '#0a180e',
-    label: 'MANTENIMIENTO',
-  },
-  promo: {
-    icon: Sparkles,
-    gradient: 'linear-gradient(135deg, rgba(16,185,129,0.95) 0%, rgba(5,150,105,0.95) 100%)',
-    accentColor: '#0a180e',
-    label: 'PROMOCIÓN',
-  },
-  security: {
-    icon: ShieldAlert,
-    gradient: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(185,28,28,0.95) 100%)',
-    accentColor: '#fff',
-    label: 'SEGURIDAD',
-  },
+  system_announcement: { icon: Megaphone, border: 'border-[#c5a059]', iconClass: 'text-brand-gold-light', label: 'Anuncio' },
+  maintenance: { icon: AlertTriangle, border: 'border-[#e2b044]', iconClass: 'text-brand-gold', label: 'Mantenimiento' },
+  promo: { icon: Sparkles, border: 'border-[#45996c]', iconClass: 'text-[#7fe0a6]', label: 'Promoción' },
+  security: { icon: ShieldAlert, border: 'border-[#e74c3c]', iconClass: 'text-[#f08a7e]', label: 'Seguridad' },
 };
 
 const AUTO_DISMISS_MS = 15_000;
@@ -52,7 +32,6 @@ export function BroadcastBanner({ userId }: { userId: string }) {
   const [banners, setBanners] = useState<BannerData[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const bannerRef = useRef<HTMLDivElement>(null);
-  const shimmerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Inject keyframes once
@@ -147,22 +126,12 @@ export function BroadcastBanner({ userId }: { userId: string }) {
     if (!visible || !bannerRef.current) return;
 
     const el = bannerRef.current;
-    gsap.set(el, { yPercent: -100, opacity: 0 });
-    gsap.to(el, {
-      yPercent: 0,
-      opacity: 1,
-      duration: 0.6,
-      ease: 'power3.out',
-    });
-
-    // Shimmer sweep
-    if (shimmerRef.current) {
-      gsap.fromTo(
-        shimmerRef.current,
-        { xPercent: -100 },
-        { xPercent: 200, duration: 1.5, ease: 'power2.inOut', delay: 0.4 }
-      );
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion) {
+      gsap.set(el, { yPercent: -100, opacity: 0 });
+      gsap.to(el, { yPercent: 0, opacity: 1, duration: 0.35, ease: 'power3.out' });
     }
+
 
     // Auto-dismiss
     timeoutRef.current = setTimeout(() => {
@@ -210,85 +179,30 @@ export function BroadcastBanner({ userId }: { userId: string }) {
       ref={bannerRef}
       role="alert"
       aria-live="polite"
-      className="fixed top-0 left-0 right-0 z-200 pointer-events-auto"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      className="pointer-events-auto fixed inset-x-0 top-0 z-200 px-3 lg:pl-[calc(7rem+0.75rem)]"
+      style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))' }}
     >
-      <div
-        className="relative overflow-hidden backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.6)]"
-        style={{ background: config.gradient }}
-      >
-        {/* Shimmer sweep */}
-        <div
-          ref={shimmerRef}
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
-            width: '40%',
-          }}
-        />
-
-        <div className="relative max-w-4xl mx-auto px-4 py-3 sm:py-4 flex items-start gap-3 sm:gap-4">
-          {/* Icon */}
-          <div
-            className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mt-0.5"
-            style={{
-              background: 'rgba(0,0,0,0.15)',
-              border: '1px solid rgba(0,0,0,0.1)',
-            }}
-          >
-            <Icon className="w-5 h-5" style={{ color: config.accentColor }} />
+      <div className={`relative mx-auto max-w-2xl overflow-hidden rounded-lg border bg-[#120806] shadow-[0_16px_36px_-12px_rgba(0,0,0,0.9)] ${config.border}`}>
+        <div className="flex items-start gap-3 px-4 py-3.5">
+          <Icon className={`mt-0.5 h-6 w-6 shrink-0 ${config.iconClass}`} aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className={`text-sm font-semibold ${config.iconClass}`}>{config.label}</p>
+            <h4 className="text-lg font-semibold leading-snug text-text-premium">{visible.title}</h4>
+            <p className="mt-0.5 line-clamp-3 text-base leading-relaxed text-[#d9d3bf]">{visible.body}</p>
           </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className="text-[9px] font-black uppercase tracking-[0.3em] px-2 py-0.5 rounded-md"
-                style={{
-                  color: config.accentColor,
-                  background: 'rgba(0,0,0,0.12)',
-                }}
-              >
-                {config.label}
-              </span>
-            </div>
-            <h4
-              className="text-sm sm:text-base font-black uppercase italic leading-tight truncate"
-              style={{ color: config.accentColor }}
-            >
-              {visible.title}
-            </h4>
-            <p
-              className="text-xs sm:text-sm leading-relaxed mt-1 line-clamp-2 opacity-80"
-              style={{ color: config.accentColor }}
-            >
-              {visible.body}
-            </p>
-          </div>
-
-          {/* Dismiss button */}
           <button
+            type="button"
             onClick={() => handleDismiss(visible.broadcastId)}
-            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 mt-0.5"
-            style={{
-              background: 'rgba(0,0,0,0.15)',
-              color: config.accentColor,
-            }}
+            className="-mr-2 -mt-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[#d9d3bf] transition-colors hover:bg-[#35180f] hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
             aria-label="Cerrar anuncio"
           >
-            <X className="w-4 h-4" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-
-        {/* Progress bar (auto-dismiss timer) */}
-        <div className="h-0.5 w-full" style={{ background: 'rgba(0,0,0,0.1)' }}>
+        <div className="h-0.5 w-full bg-[#35180f]" aria-hidden="true">
           <div
-            className="h-full"
-            style={{
-              background: config.accentColor,
-              opacity: 0.3,
-              animation: `shrink-bar ${AUTO_DISMISS_MS}ms linear forwards`,
-            }}
+            className="h-full bg-[#8b6b2e] motion-reduce:hidden"
+            style={{ animation: `shrink-bar ${AUTO_DISMISS_MS}ms linear forwards` }}
           />
         </div>
       </div>

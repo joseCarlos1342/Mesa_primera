@@ -91,15 +91,19 @@ describe('Game page layout shell', () => {
     expect(shellSource).toMatch(/h-\[100dvh\] overflow-hidden/)
   })
 
-  it('loading state must not use h-screen + overflow-hidden together', () => {
+  it('loading state must not use a fixed h-screen + overflow-hidden together', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../app/play/[id]/page.tsx'),
       'utf-8'
     )
-    // Loading and error states should not use h-screen + overflow-hidden
+    // Loading and error states should not trap zoom with a FIXED h-screen +
+    // overflow-hidden. `min-h-screen` (que permite crecer el contenido) sí es
+    // aceptable, por lo que excluimos esa variante del chequeo.
     // Only check static className="..." strings (not template literals with conditionals)
-    const staticClassLines = source.split('\n').filter(line => 
-      line.includes('className="') && line.includes('h-screen') && line.includes('overflow-hidden')
+    const staticClassLines = source.split('\n').filter(line =>
+      line.includes('className="')
+      && /(?<!min-)h-screen/.test(line)
+      && line.includes('overflow-hidden')
     )
     expect(staticClassLines).toHaveLength(0)
   })

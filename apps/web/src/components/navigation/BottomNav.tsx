@@ -1,65 +1,73 @@
 'use client'
 
-import { Home, Wallet, BarChart2, Users, BookOpen } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { Home, LayoutGrid, UserRound, Users, Wallet } from 'lucide-react'
+import landing from '@/components/landing/landing.module.css'
 
-const NAV_ITEMS = [
-  { label: 'Inicio', icon: Home, href: '/dashboard' },
-  { label: 'Billetera', icon: Wallet, href: '/wallet' },
-  { label: 'Estadísticas', icon: BarChart2, href: '/stats' },
-  { label: 'Amigos', icon: Users, href: '/friends' },
-  { label: 'Reglas', icon: BookOpen, href: '/rules' },
-]
+export const NAV_ITEMS = [
+  { label: 'Inicio', icon: Home, href: '/dashboard', match: ['/dashboard'] },
+  { label: 'Mesas', icon: LayoutGrid, href: '/lobby', match: ['/lobby'] },
+  { label: 'Billetera', icon: Wallet, href: '/wallet', match: ['/wallet'] },
+  { label: 'Amigos', icon: Users, href: '/friends', match: ['/friends'] },
+  { label: 'Perfil', icon: UserRound, href: '/profile', match: ['/profile', '/stats'] },
+] as const
 
+/** Pestaña activa por prefijo de ruta: `/wallet/deposit` marca Billetera. */
+export function isNavActive(pathname: string, match: readonly string[]): boolean {
+  return match.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
+/**
+ * Navegación principal del jugador: barra inferior de nogal en móvil y riel
+ * lateral desde `lg`. Se oculta en la mesa de juego.
+ */
 export function BottomNav() {
-  const pathname = usePathname()
-
-  // Hide BottomNav in game table
+  const pathname = usePathname() ?? ''
   if (pathname.includes('/play/')) return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-slate-950/90 backdrop-blur-2xl border-t border-brand-gold/20 pb-safe shadow-[0_-15px_60px_rgba(0,0,0,0.9)]">
-      <div className="flex justify-between items-center h-20 md:h-24 max-w-2xl mx-auto px-4 sm:px-8">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href
+    <nav
+      aria-label="Secciones"
+      className={`${landing.wood} fixed inset-x-0 bottom-0 z-[100] shadow-[inset_0_1px_0_rgba(197,160,89,0.45),0_-12px_28px_-14px_rgba(0,0,0,0.9)] lg:inset-x-auto lg:left-0 lg:top-0 lg:w-28 lg:shadow-[inset_-1px_0_0_rgba(197,160,89,0.4)]`}
+    >
+      <Link
+        href="/dashboard"
+        aria-label="Primera Riverada los 4 Ases, inicio"
+        className="hidden h-24 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light lg:flex"
+      >
+        <Image src="/brand/logo-transparent.svg" alt="" width={56} height={56} className="h-14 w-14" />
+      </Link>
+      <ul className="mx-auto grid max-w-xl grid-cols-5 pb-[env(safe-area-inset-bottom)] lg:mt-2 lg:flex lg:max-w-none lg:flex-col lg:gap-1 lg:px-2 lg:pb-0">
+        {NAV_ITEMS.map(({ label, icon: Icon, href, match }) => {
+          const active = isNavActive(pathname, match)
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive ? 'page' : undefined}
-              className="flex-1 min-w-0 group"
-            >
-              <div className="flex flex-col items-center justify-center gap-1.5">
-                <div className={cn(
-                  "relative p-2.5 rounded-2xl transition-all duration-500",
-                  isActive ? "text-brand-gold drop-shadow-[0_4px_12px_rgba(226,176,68,0.3)] bg-brand-gold/5" : "text-slate-500 group-hover:text-text-premium"
-                )}>
-                  <item.icon className={cn(
-                    "w-6 h-6 md:w-8 md:h-8 transition-transform duration-500",
-                    isActive ? "scale-110" : "scale-100"
-                  )} />
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeNavIndicator"
-                      className="absolute inset-0 bg-brand-gold/10 rounded-2xl border border-brand-gold/40"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </div>
-                <span className={cn(
-                  "text-[12px] md:text-[13px] font-bold uppercase tracking-[0.08em] md:tracking-[0.12em] transition-all duration-500 truncate px-1",
-                  isActive ? "text-brand-gold scale-105" : "text-slate-600 group-hover:text-text-premium"
-                )}>
-                  {item.label}
-                </span>
-              </div>
-            </Link>
+            <li key={href}>
+              <Link
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                className={`group relative flex min-h-[4.25rem] flex-col items-center justify-center gap-1 px-1 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold-light lg:min-h-[5rem] lg:rounded-lg ${
+                  active ? 'text-brand-gold-light lg:bg-[#0a2c20]' : 'text-[#bdb7a6] hover:text-text-premium lg:hover:bg-[#1b0d08]'
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`absolute left-1/2 top-0 h-[3px] w-10 -translate-x-1/2 rounded-b-full bg-brand-gold transition-opacity duration-200 lg:left-0 lg:top-1/2 lg:h-10 lg:w-[3px] lg:translate-x-0 lg:-translate-y-1/2 lg:rounded-b-none lg:rounded-r-full ${
+                    active ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
+                <Icon
+                  aria-hidden="true"
+                  strokeWidth={active ? 2.25 : 1.75}
+                  className={`h-6 w-6 ${active ? 'text-brand-gold' : 'text-[#c5a059]/80 group-hover:text-[#c5a059]'}`}
+                />
+                <span className="truncate leading-none">{label}</span>
+              </Link>
+            </li>
           )
         })}
-      </div>
+      </ul>
     </nav>
   )
 }

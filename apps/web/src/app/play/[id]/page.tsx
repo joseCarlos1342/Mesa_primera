@@ -5,13 +5,13 @@ import { useParams, useRouter } from 'next/navigation'
 import { client } from '@/lib/colyseus'
 import { createClient } from '@/utils/supabase/client'
 import { Room } from '@colyseus/sdk'
-import { Loader2, ArrowLeft, Users, AlertCircle, RotateCcw } from 'lucide-react'
+import { Loader2, ArrowLeft, AlertCircle, RotateCcw } from 'lucide-react'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { RulesModal } from '@/components/game/RulesModal'
 import { ReconnectOverlay } from '@/components/game/ReconnectOverlay'
 import { GameHeader } from '@/components/game/game-header'
 import dynamic from 'next/dynamic'
-import { formatCurrency, formatAmount } from '@/utils/format'
+import { formatAmount } from '@/utils/format'
 
 const Board = dynamic(
   () => import('../../../components/game/Board').then(mod => mod.Board),
@@ -26,6 +26,8 @@ import { DepositModal } from '@/components/game/DepositModal'
 import { TableHelpModal } from '@/components/game/TableHelpModal'
 import { GameTransferModal } from '@/components/game/TransferModal'
 import { PermissionsGate } from '@/components/game/PermissionsGate'
+import { WaitingRoom } from '@/components/game/WaitingRoom'
+import { TableSurface } from '@/components/game/TableSurface'
 import { getPlayRoomShellClassName } from './play-room-shell'
 import { resolveRecoveredRoom, type RecoveredRoom } from '@/app/actions/recovery'
 
@@ -559,7 +561,8 @@ export default function GameRoomPage() {
           abandonedRef.current = true; // prevent auto-reconnection
           // Clear reconnection token so the kicked session can't re-enter
           sessionStorage.removeItem(`reconnectionToken_${roomId}`);
-          alert(data?.message || "Se ha iniciado sesión en otro dispositivo. Tu sesión actual ha expirado.");
+          // El login muestra el aviso de sesión iniciada en otro dispositivo (?kicked=true).
+          void data;
           joinedRoom?.leave(true);
           router.push('/login/player?kicked=true');
         })
@@ -595,45 +598,39 @@ export default function GameRoomPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#073926] relative">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
-        <Loader2 className="h-10 w-10 animate-spin text-[#d4af37] mb-4 relative z-10" />
-        <h2 className="text-lg font-bold tracking-[0.12em] text-[#fdf0a6]/80 uppercase relative z-10 text-center px-6">Conectando a la mesa...</h2>
+      <div role="status" className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden" style={{ backgroundColor: '#120806' }}>
+        <TableSurface />
+        <Loader2 className="relative z-10 mb-4 h-10 w-10 text-brand-gold motion-safe:animate-spin" aria-hidden="true" />
+        <h2 className="relative z-10 px-6 text-center font-display text-[1.75rem] font-bold text-text-premium">Sentándote a la mesa…</h2>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#073926] text-[#f3edd7] p-6 text-center relative">
-        {/* Felt texture */}
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
-        {/* Subtle warm glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
-
-        <div className="relative z-10 bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/30 p-10 rounded-3xl max-w-md w-full shadow-[0_20px_60px_rgba(0,0,0,0.6),_0_0_40px_rgba(212,175,55,0.05)] flex flex-col items-center">
-          <div className="w-14 h-14 rounded-full bg-[#0a180e] border-2 border-[#d4af37]/40 flex items-center justify-center mb-5 shadow-[0_0_20px_rgba(212,175,55,0.15)]">
-            <AlertCircle className="w-7 h-7 text-[#d4af37]" />
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold font-display text-[#fdf0a6] uppercase tracking-[0.12em] mb-3">Error de Conexión</h2>
-          <div className="h-px w-24 bg-[#d4af37]/30 mb-4" />
-          <p className="text-[#8faa96] mb-8 text-sm md:text-base leading-relaxed">{error}</p>
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden p-6" style={{ backgroundColor: '#120806' }}>
+        <TableSurface />
+        <div role="alert" className="relative z-10 flex w-full max-w-md flex-col items-center rounded-xl border border-[#8b6b2e] bg-[#120806]/95 p-8 text-center shadow-[0_24px_60px_-16px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(240,170,105,0.28)]">
+          <span aria-hidden="true" className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[#e74c3c]/60 bg-[#2a0f0c] text-[#f08a7e]">
+            <AlertCircle className="h-7 w-7" />
+          </span>
+          <h2 className="font-display text-[1.75rem] font-bold text-text-premium">No pudimos entrar a la mesa</h2>
+          <p className="mt-2 text-lg leading-relaxed text-[#d9d3bf]">{error}</p>
           <button
+            type="button"
             onClick={() => {
               sessionStorage.removeItem(`reconnectionToken_${roomId}`);
-              router.push('/');
+              router.push('/lobby');
             }}
-            className="inline-flex items-center justify-center gap-3 w-full bg-gradient-to-b from-[#0f2e1a] to-[#071a0e] hover:from-[#143d23] hover:to-[#0c2414] border border-[#d4af37]/20 hover:border-[#d4af37]/40 px-8 py-4 rounded-2xl transition-all shadow-[0_10px_20px_rgba(0,0,0,0.4)] hover:-translate-y-1 active:translate-y-1 active:scale-95 text-[#fdf0a6] uppercase font-bold tracking-widest text-sm"
+            className="mt-7 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-brand-gold px-6 text-lg font-bold text-[#0a0a0a] transition-colors hover:bg-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
           >
-            <ArrowLeft className="h-5 w-5 text-[#d4af37]" />
-            Vuelve al Lobby
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            Volver a las mesas
           </button>
         </div>
       </div>
     )
   }
-
 
   return (
     <PermissionsGate>
@@ -641,17 +638,13 @@ export default function GameRoomPage() {
 
         {/* ── ORIENTATION WARNING (global, cubre LOBBY y GAME) ── */}
       {isPortrait && (
-        <div className="fixed inset-0 z-[1000] bg-[#073926] flex flex-col items-center justify-center p-8 text-center">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-multiply pointer-events-none" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#d4af37]/8 blur-[120px] rounded-full pointer-events-none" />
-
-          <div className="relative z-10 mb-8 w-24 h-24 flex items-center justify-center bg-[#0a180e]/80 rounded-3xl border border-[#d4af37]/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)] animate-[spin_4s_ease-in-out_infinite]">
-            <RotateCcw className="w-14 h-14 text-[#d4af37]" />
-          </div>
-          <h2 className="relative z-10 text-3xl font-bold text-[#fdf0a6] mb-3 italic uppercase tracking-[0.1em]">Gira tu Dispositivo</h2>
-          <div className="relative z-10 h-px w-24 bg-[#d4af37]/30 mb-4" />
-          <p className="relative z-10 text-[#8faa96] text-base leading-relaxed max-w-xs">
-            Para jugar en <span className="text-[#d4af37] font-bold uppercase tracking-wider">Primera Riverada</span>, necesitas usar tu pantalla en horizontal.
+        <div role="dialog" aria-modal="true" aria-labelledby="gira-titulo" className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-[#0a0a0a] p-8 text-center">
+          <span aria-hidden="true" className="mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-[#8b6b2e] bg-[#0a2c20] text-brand-gold-light">
+            <RotateCcw className="h-10 w-10" />
+          </span>
+          <h2 id="gira-titulo" className="font-display text-[2rem] font-bold leading-tight text-text-premium">Gira tu teléfono</h2>
+          <p className="mt-3 max-w-xs text-lg leading-relaxed text-[#d9d3bf]">
+            La mesa de Primera Riverada se juega en horizontal, para que veas a todos los jugadores.
           </p>
         </div>
       )}
@@ -668,7 +661,7 @@ export default function GameRoomPage() {
           room.send('abandon');
           room.leave(true);
         }
-        router.push('/');
+        router.push('/lobby');
       }} />
 
       {/* MAIN GAME AREA */}
@@ -698,272 +691,24 @@ export default function GameRoomPage() {
           </div>
         )}
         {phase === 'LOBBY' ? (
-          <div className="relative text-center w-full min-h-full flex flex-col items-center justify-center px-2 pt-14 pb-4 md:p-8 md:pt-20">
-            {/* Main Panel */}
-            <div className="relative z-10 w-full max-w-5xl bg-[#0a180e]/90 backdrop-blur-2xl border border-[#d4af37]/25 rounded-2xl md:rounded-[3rem] p-3 md:p-14 landscape:p-3 shadow-[0_40px_100px_rgba(0,0,0,0.6),_0_0_60px_rgba(212,175,55,0.04)] flex flex-col items-center max-h-[85vh] landscape:max-h-[80vh] overflow-hidden custom-scrollbar space-y-0">
-              <div className="w-full flex flex-col items-center overflow-y-auto overflow-x-hidden custom-scrollbar space-y-4 md:space-y-12 py-2 md:py-2 px-1">
-
-                <div className="flex flex-col items-center gap-2 md:gap-6">
-                  {/* Row 1: Icon + Title */}
-                  <div className="flex flex-row items-center gap-2 md:gap-5">
-                    <Users className="w-6 h-6 md:w-16 landscape:w-8 text-[#c5a059] drop-shadow-[0_0_15px_rgba(197,160,89,0.5)] flex-shrink-0" />
-                    <h2 className="text-2xl md:text-6xl landscape:text-2xl font-display font-bold italic text-accent-gold-shimmer leading-none tracking-tight select-none uppercase drop-shadow-premium">
-                      Sala de Espera
-                    </h2>
-                  </div>
-
-                  {/* Row 2: Players Status (Centered below) */}
-                  <div className="flex items-center gap-3">
-                    <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
-                    <p className="text-[#f3edd7]/75 text-[11px] md:text-sm font-bold uppercase tracking-[0.12em] whitespace-nowrap">
-                      Jugadores: <span className="text-[#c5a059] text-[11px] md:text-[16px]">{players.length}</span> <span className="opacity-40">/ 7</span>
-                    </p>
-                    <div className="h-0.5 w-6 md:w-12 bg-[#c5a059]/30 rounded-full" />
-                  </div>
-                </div>
-
-                {/* ── Pique Mínimo Config ── */}
-                <div className="w-full px-2 md:px-10">
-                  <div className="bg-[#071a0e]/80 border border-[#d4af37]/20 rounded-xl p-3 md:p-5 flex flex-col items-center gap-1.5">
-                    <span className="text-[11px] md:text-xs font-bold uppercase tracking-[0.12em] text-[#c5a059]/80">Pique Mínimo</span>
-                    <span className="text-xl md:text-3xl font-black text-[#fdf0a6] tracking-tight">
-                      ${formatAmount(minPique)}
-                    </span>
-                    <span className="text-[11px] md:text-xs text-[#a8c2ad] font-medium uppercase tracking-[0.08em]">
-                      Banda: ${minPique >= 1_000_000 ? '5,000' : '2,000'} por jugador
-                    </span>
-
-                    {/* Propuesta activa: mostrar votación */}
-                    {proposedPique > 0 ? (
-                      <div className="bg-[#0f2e1a]/90 border border-[#d4af37]/30 rounded-xl p-3 w-full flex flex-col items-center gap-2 mt-1">
-                          <span className="text-[11px] md:text-xs text-[#c5a059] uppercase tracking-[0.08em] font-bold">
-                          {players.find((p: any) => p.id === proposedPiqueBy)?.nickname || 'Jugador'} propone:
-                        </span>
-                        <span className="text-lg md:text-2xl font-black text-[#fdf0a6]">
-                          ${formatAmount(proposedPique)}
-                        </span>
-                        <div className="flex items-center gap-3 text-[11px] md:text-xs text-[#a8c2ad] font-medium">
-                          <span className="text-emerald-400">✓ {piqueVotesFor}</span>
-                          <span className="text-red-400">✗ {piqueVotesAgainst}</span>
-                          <span className="opacity-50">/ {piqueVotersTotal}</span>
-                        </div>
-                        {room && room.sessionId !== proposedPiqueBy && !hasVotedPique && (
-                          <div className="flex gap-2 mt-1">
-                            <button
-                              onClick={() => { room.send('vote_pique', { approve: true }); setHasVotedPique(true); }}
-                              className="px-4 py-2 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold text-[11px] md:text-xs uppercase tracking-[0.08em] border border-emerald-500/30 transition-all active:scale-95"
-                            >
-                              Aceptar
-                            </button>
-                            <button
-                              onClick={() => { room.send('vote_pique', { approve: false }); setHasVotedPique(true); }}
-                              className="px-4 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-white font-bold text-[11px] md:text-xs uppercase tracking-[0.08em] border border-red-500/30 transition-all active:scale-95"
-                            >
-                              Rechazar
-                            </button>
-                          </div>
-                        )}
-                        {room && room.sessionId === proposedPiqueBy && (
-                          <span className="text-[11px] text-[#c5a059]/80 uppercase tracking-[0.08em] italic">Tu propuesta</span>
-                        )}
-                        {hasVotedPique && room?.sessionId !== proposedPiqueBy && (
-                          <span className="text-[11px] text-emerald-400/80 uppercase tracking-[0.08em] italic">Voto registrado</span>
-                        )}
-                      </div>
-                    ) : (
-                      /* Botón para proponer cambio */
-                      room && !showPiqueOptions ? (
-                        <button
-                          onClick={() => setShowPiqueOptions(true)}
-                          className="mt-1 px-4 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#c5a059] font-bold text-[11px] md:text-xs uppercase tracking-[0.08em] hover:border-[#d4af37]/50 transition-all active:scale-95"
-                        >
-                          Cambiar Pique
-                        </button>
-                      ) : room && showPiqueOptions ? (
-                        <div className="flex flex-wrap gap-2 mt-2 justify-center">
-                          {[500_000, 1_000_000, 2_000_000, 5_000_000].map(amount => (
-                            <button
-                              key={amount}
-                              onClick={() => {
-                                room.send('propose_pique', { amount });
-                                setShowPiqueOptions(false);
-                              }}
-                              disabled={amount === minPique}
-                              className="px-3 py-1.5 rounded-xl bg-[#0a180e] border border-[#d4af37]/20 text-[#fdf0a6] font-bold text-[11px] md:text-xs hover:border-[#d4af37]/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                            >
-                              ${formatAmount(amount)}
-                            </button>
-                          ))}
-                          <button
-                            onClick={() => setShowPiqueOptions(false)}
-                            className="px-3 py-1.5 rounded-xl text-[#a8c2ad] text-[11px] md:text-xs hover:text-white transition-all"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : null
-                    )}
-                  </div>
-                </div>
-
-                {/* Player Plates Grid - More Spacious */}
-                {players.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-14 w-full px-2 md:px-10 justify-items-center mt-2">
-                    {players.map(p => {
-                      const isMe = room?.sessionId === p.id;
-                      return (
-                        <div
-                          key={p.id}
-                          className={`
-                          w-full flex items-center gap-3 md:gap-6 px-3 md:px-8 py-3 md:py-6 rounded-xl md:rounded-3xl border transition-all duration-300
-                          ${p.isReady
-                              ? 'bg-[#0f2e1a]/90 border-[#d4af37]/30 shadow-[0_10px_30px_rgba(0,0,0,0.4)]'
-                              : 'bg-[#071a0e]/60 border-white/5 shadow-inner opacity-50'}
-                        `}
-                        >
-                          {/* LED Gem */}
-                          <div className={`
-                          w-3 h-3 md:w-5 md:h-5 rounded-full flex-shrink-0 border border-black/50
-                          ${p.isReady
-                              ? 'bg-gradient-to-br from-[#2ecc71] to-[#27ae60] shadow-[0_0_15px_rgba(46,204,113,0.8)]'
-                              : 'bg-gradient-to-br from-[#e74c3c] to-[#c0392b] shadow-[inset_0_1px_4px_rgba(0,0,0,0.8)]'} 
-                          ${isMe ? 'animate-pulse' : ''}
-                        `} />
-
-                          <div className="flex flex-col items-start overflow-hidden flex-1">
-                            <span className={`text-[#f3edd7] font-semibold tracking-tight truncate w-full text-left text-sm md:text-2xl`}>
-                              {p.nickname} {isMe ? <span className="text-[#c5a059] font-normal text-[11px] md:text-sm ml-2 tracking-[0.12em] uppercase opacity-80">(Tú)</span> : ''}
-                            </span>
-                            <span className="text-[#c5a059] font-mono font-bold tracking-[0.1em] text-[11px] md:text-lg mt-1 opacity-90">
-                              {formatCurrency(p.chips)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
-
-                {room && (
-                  <div className="flex flex-col items-center w-full">
-                    {/* ── Alerta de saldo insuficiente ── */}
-                    {insufficientBalance && (
-                      <div className="w-full max-w-sm mb-4 bg-[#2a1008]/90 border border-[#e74c3c]/40 rounded-2xl px-5 py-4 backdrop-blur-md flex flex-col items-center gap-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="w-5 h-5 text-[#e74c3c] flex-shrink-0" />
-                          <span className="text-[#f3edd7] font-bold text-xs md:text-sm text-center leading-snug">
-                            {insufficientBalance.message}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => { setShowDeposit(true); }}
-                          className="w-full h-12 md:h-14 bg-gradient-to-b from-[#d4af37] via-[#c5a028] to-[#8a6d1c] hover:from-[#fdf0a6] hover:via-[#d4af37] hover:to-[#c5a028] text-[#1a0a00] rounded-xl font-bold text-sm md:text-base shadow-[0_10px_20px_rgba(0,0,0,0.6)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all uppercase tracking-[0.1em] border border-[#d4af37]/40 border-b-[3px] border-b-[#5c4613]"
-                        >
-                          Cargar Fichas
-                        </button>
-                      </div>
-                    )}
-
-                    {insufficientBalance ? (
-                      /* Botón deshabilitado cuando no tiene saldo */
-                      <button
-                        disabled
-                        className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#4b5563] to-[#374151] text-[#9ca3af] rounded-2xl font-bold text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-inner uppercase tracking-[0.1em] border border-white/5 cursor-not-allowed opacity-60"
-                      >
-                        Saldo Insuficiente
-                      </button>
-                    ) : players.find(p => p.id === room?.sessionId)?.isReady ? (
-                      <button
-                        onClick={() => room.send('toggleReady', { isReady: false })}
-                          className="w-full max-w-sm h-16 md:h-20 bg-gradient-to-b from-[#e74c3c] via-[#c0392b] to-[#922b21] hover:from-[#f1948a] hover:via-[#e74c3c] hover:to-[#c0392b] text-[#f3edd7] rounded-2xl font-bold text-sm md:text-xl landscape:h-12 landscape:text-xs shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-[0.1em] border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#7b241c] tactile-button"
-                      >
-                        Anular Listo
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => room.send('toggleReady', { isReady: true })}
-                          className="w-full max-w-sm min-h-[64px] h-16 md:h-20 bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8449] hover:from-[#82e0aa] hover:via-[#2ecc71] hover:to-[#27ae60] text-[#f3edd7] rounded-2xl font-bold text-sm md:text-xl landscape:h-14 landscape:min-h-[50px] landscape:text-sm shadow-[0_15px_30px_rgba(0,0,0,0.8)] hover:-translate-y-1 active:translate-y-1 transition-all uppercase tracking-[0.1em] border border-white/20 border-b-[4px] md:border-b-[6px] border-b-[#186a3b] tactile-button"
-                      >
-                        ¡Estoy Listo!
-                      </button>
-                    )}
-                    {/* Status Messages Below Button */}
-                    <div className="min-h-12 md:min-h-16 mt-2 md:mt-6 flex flex-col justify-center items-center landscape:mt-2">
-                      {(() => {
-                        const isFirst = room?.state.isFirstGame ?? true;
-                        const requiredMin = isFirst ? (room?.state.minPlayers || 3) : 2;
-                        return players.length < requiredMin ? (
-                          <p className="text-[#a0a0b0] uppercase tracking-[0.1em] text-[11px] md:text-base font-bold text-center">
-                            Esperando al menos <span className="text-[#f3edd7]">{requiredMin} jugadores</span>...
-                          </p>
-                        ) : null;
-                      })()}
-                      {players.length >= (room?.state.isFirstGame ? (room?.state.minPlayers || 3) : 2) && (
-                        <>
-                          {countdown > 0 && countdown <= 5 ? (
-                            /* ── Countdown de 5 segundos: indicador circular premium ── */
-                            <div className="flex flex-col items-center gap-4 w-full max-w-xs animate-in fade-in zoom-in duration-300">
-                              {/* Circular countdown */}
-                              <div className="relative w-24 h-24 md:w-28 md:h-28">
-                                {/* Track */}
-                                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.15)" strokeWidth="6" />
-                                  <circle
-                                    cx="50" cy="50" r="42"
-                                    fill="none"
-                                    stroke="url(#countdownGradient)"
-                                    strokeWidth="6"
-                                    strokeLinecap="round"
-                                    strokeDasharray={2 * Math.PI * 42}
-                                    strokeDashoffset={2 * Math.PI * 42 * (1 - countdown / 5)}
-                                    className="transition-all duration-1000 ease-linear"
-                                    style={{ filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.6))' }}
-                                  />
-                                  <defs>
-                                    <linearGradient id="countdownGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                      <stop offset="0%" stopColor="#d4af37" />
-                                      <stop offset="100%" stopColor="#fdf0a6" />
-                                    </linearGradient>
-                                  </defs>
-                                </svg>
-                                {/* Number */}
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <span
-                                    key={countdown}
-                                    className="text-[#fdf0a6] text-4xl md:text-5xl font-black font-display italic drop-shadow-[0_0_20px_rgba(212,175,55,0.6)] animate-in zoom-in duration-200"
-                                  >
-                                    {countdown}
-                                  </span>
-                                </div>
-                              </div>
-                              <p className="text-[#c5a059] font-bold uppercase tracking-[0.12em] text-[11px] md:text-xs">
-                                Iniciando partida
-                              </p>
-                            </div>
-                          ) : (
-                            /* ── Estado de espera cuando no hay countdown ── */
-                            (() => {
-                              const readyCount = players.filter((p: any) => p.isReady).length;
-                              const totalActive = players.length;
-                              if (readyCount < totalActive) {
-                                return (
-                                  <p className="text-[#d4af37]/80 uppercase tracking-widest text-sm md:text-base font-bold flex items-center gap-2">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Esperando listos ({readyCount}/{totalActive})
-                                  </p>
-                                );
-                              }
-                              return null;
-                            })()
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <WaitingRoom
+            room={room}
+            players={players}
+            requiredPlayers={(room?.state.isFirstGame ?? true) ? (room?.state.minPlayers || 3) : 2}
+            countdown={countdown}
+            minPique={minPique}
+            proposedPique={proposedPique}
+            proposedPiqueBy={proposedPiqueBy}
+            piqueVotesFor={piqueVotesFor}
+            piqueVotesAgainst={piqueVotesAgainst}
+            piqueVotersTotal={piqueVotersTotal}
+            hasVotedPique={hasVotedPique}
+            onVoted={() => setHasVotedPique(true)}
+            showPiqueOptions={showPiqueOptions}
+            onTogglePiqueOptions={setShowPiqueOptions}
+            insufficientBalance={insufficientBalance}
+            onRecharge={() => setShowDeposit(true)}
+          />
         ) : (
           <Board
             room={room}

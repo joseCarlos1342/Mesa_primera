@@ -112,7 +112,7 @@ describe('OneSignalPushOptIn', () => {
     await initialize(client)
 
     const button = await screen.findByRole('button', { name: 'Activar notificaciones push' })
-    expect(button).toHaveClass('h-10')
+    expect(button).toHaveClass('h-12')
     expect(button).not.toHaveTextContent('Activar avisos')
   })
 

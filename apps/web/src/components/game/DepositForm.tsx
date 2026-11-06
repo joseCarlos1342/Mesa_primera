@@ -3,15 +3,20 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { createDepositRequest } from '@/app/actions/wallet'
-import { Upload, Landmark, Copy, Check, ShieldCheck } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Check, Copy, ImageUp } from 'lucide-react'
 import { depositAmountSchema, observationsSchema, validateImageFile } from '@/lib/validations'
+import { AuthAlert, AuthButton, AuthField } from '@/components/auth/AuthForm'
+import { TextareaField } from '@/components/player/PlayerUI'
 
 interface DepositFormProps {
   initialAmount?: string
   onSuccess?: () => void
 }
 
+const NEQUI_NUMBER = '3125822841'
+const BLOCKED_KEYS = ['.', ',', 'e', 'E', '+', '-']
+
+/** Formulario de carga: datos de Nequi, monto, comprobante y notas. Se usa en la billetera y en la mesa. */
 export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps) {
   const [amount, setAmount] = useState(initialAmount)
   const [observations, setObservations] = useState('')
@@ -21,33 +26,47 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
   const [copied, setCopied] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
   const supabase = createClient()
 
-  // Formatted amount display
   const amountNum = Number(amount)
-  const amountFormatted = !isNaN(amountNum) && amountNum > 0
-    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(amountNum)
-    : null
+  const amountFormatted =
+    !isNaN(amountNum) && amountNum > 0
+      ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(amountNum)
+      : null
 
   function setFieldError(field: string, msg: string | null) {
-    setFieldErrors(prev => {
-      if (msg === null) { const next = { ...prev }; delete next[field]; return next }
+    setFieldErrors((prev) => {
+      if (msg === null) {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      }
       return { ...prev, [field]: msg }
     })
   }
 
   function validateAmount(val: string) {
     const n = Number(val)
-    if (!val || isNaN(n)) { setFieldError('amount', 'Ingresa un monto válido'); return false }
+    if (!val || isNaN(n)) {
+      setFieldError('amount', 'Ingresa un monto válido')
+      return false
+    }
     const r = depositAmountSchema.safeParse(Math.round(n))
-    if (!r.success) { setFieldError('amount', r.error.issues?.[0]?.message ?? 'Monto inválido'); return false }
+    if (!r.success) {
+      setFieldError('amount', r.error.issues?.[0]?.message ?? 'Monto inválido')
+      return false
+    }
     setFieldError('amount', null)
     return true
   }
 
   function validateObs(val: string) {
     const r = observationsSchema.safeParse(val)
-    if (!r.success) { setFieldError('observations', r.error.issues?.[0]?.message ?? 'Texto inválido'); return false }
+    if (!r.success) {
+      setFieldError('observations', r.error.issues?.[0]?.message ?? 'Texto inválido')
+      return false
+    }
     setFieldError('observations', null)
     return true
   }
@@ -68,8 +87,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
         return
       }
       setFile(selectedFile)
-      const url = URL.createObjectURL(selectedFile)
-      setPreviewUrl(url)
+      setPreviewUrl(URL.createObjectURL(selectedFile))
     } else {
       setFile(null)
       setPreviewUrl(null)
@@ -77,7 +95,7 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
   }
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText('3125822841')
+    navigator.clipboard.writeText(NEQUI_NUMBER)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -86,243 +104,170 @@ export function DepositForm({ initialAmount = '', onSuccess }: DepositFormProps)
     e.preventDefault()
     setFormError(null)
 
-    // Client-side validation before upload
     const amountOk = validateAmount(amount)
-    if (!file) { setFieldError('file', 'El comprobante de pago es obligatorio'); return }
+    if (!file) {
+      setFieldError('file', 'El comprobante de pago es obligatorio')
+      return
+    }
     if (!amountOk || Object.keys(fieldErrors).length > 0) return
 
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) throw new Error('Usuario no autenticado')
 
       const filePath = `${user.id}/${Date.now()}_${file.name}`
-      const { data, error: storageError } = await supabase.storage
-        .from('deposits')
-        .upload(filePath, file)
+      const { data, error: storageError } = await supabase.storage.from('deposits').upload(filePath, file)
 
       if (storageError) throw storageError
 
       const result = await createDepositRequest(Number(amount), data.path, observations)
       if (result?.error) throw new Error(result.error)
 
-      if (onSuccess) {
-        onSuccess()
-      } else {
-        alert('Solicitud enviada correctamente. Se acreditará pronto.')
-      }
-    } catch (err: any) {
-      setFormError(err.message)
+      setSent(true)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'No pudimos enviar la solicitud.')
     } finally {
       setLoading(false)
     }
   }
 
+  if (sent) {
+    return (
+      <div role="status" className="flex flex-col items-center py-6 text-center">
+        <span aria-hidden="true" className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#2ecc71]/50 bg-[#0a2c20] text-[#5fd38d]">
+          <Check className="h-8 w-8" />
+        </span>
+        <p className="font-display text-[1.625rem] font-bold text-text-premium">Solicitud enviada</p>
+        <p className="mt-2 max-w-[34ch] text-lg leading-relaxed text-[#d9d3bf]">
+          Revisaremos el comprobante y el saldo se acreditará pronto. Te avisaremos en Notificaciones.
+        </p>
+        <div className="mt-7 w-full max-w-xs">
+          <AuthButton onClick={() => onSuccess?.()}>Listo</AuthButton>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-10 landscape:space-y-4 lg:space-y-6 py-2 landscape:py-0">
-      {/* Bank Details Card - Premium VIP Design */}
-      <div className="relative group overflow-hidden bg-gradient-to-br from-black/40 to-black/60 border-2 border-[#c0a060]/30 p-6 md:p-6 lg:p-6 landscape:p-4 rounded-[2rem] landscape:rounded-2xl shadow-[0_25px_50px_rgba(0,0,0,0.5)] transition-all hover:border-[#c0a060]/60">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#c0a060]/5 rounded-full blur-[100px] -mr-32 -mt-32 group-hover:bg-[#c0a060]/10 transition-all duration-1000 pointer-events-none" />
-        
-        <div className="flex flex-col gap-6 md:gap-4 landscape:gap-3 relative z-10 w-full">
-          <div className="space-y-4 md:space-y-3 landscape:space-y-2 text-center w-full">
-            <div className="flex items-center justify-center gap-4">
-              <div className="w-12 h-12 landscape:w-10 landscape:h-10 bg-gradient-to-br from-[#c0a060]/20 to-[#8b6b2e]/10 rounded-xl flex items-center justify-center border-2 border-[#c0a060]/30 shadow-[0_0_20px_rgba(192,160,96,0.1)]">
-                <Landmark className="w-6 h-6 landscape:w-5 landscape:h-5 text-[#c0a060]" />
-              </div>
-              <div className="text-left">
-                <span className="text-[#c0a060]/80 text-[11px] md:text-xs landscape:text-[11px] font-bold uppercase tracking-[0.1em] block drop-shadow-sm leading-none mb-1">Cuenta de Transferencia</span>
-                <span className="text-[#f3edd7] text-base md:text-lg font-bold tracking-tight">Nequi Personal</span>
-              </div>
-            </div>
-            
-            <div className="inline-block relative">
-              <span className="font-display text-4xl md:text-4xl lg:text-4xl landscape:text-3xl font-black text-[#f3edd7] tracking-[0.05em] italic drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] select-all px-2 whitespace-nowrap">
-                3125822841
-              </span>
-              <div className="absolute -bottom-2 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-[#c0a060]/40 to-transparent blur-[1px]" />
-            </div>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-2 landscape:mt-0">
-            <button 
-              type="button"
-              onClick={copyToClipboard}
-              className={`w-full sm:w-auto lg:w-56 px-6 h-14 landscape:h-11 rounded-xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border-2 active:scale-95 shadow-xl ${
-                copied 
-                  ? 'bg-accent-gold-shimmer text-slate-950 border-[#f0d78c] shadow-accent-gold/40' 
-                  : 'bg-brand-gold/5 text-[#c0a060] border-[#c0a060]/20 hover:bg-brand-gold/10 hover:border-[#c0a060]/60 hover:shadow-accent-gold/10'
-              }`}
-            >
-              {copied ? <Check className="w-5 h-5 mx-1" /> : <Copy className="w-5 h-5 mx-1" />}
-              <span>{copied ? '¡Copiado!' : 'Copiar Número'}</span>
-            </button>
-          </div>
+    <div className="space-y-9">
+      <div className="rounded-xl border border-[#8b6b2e]/60 bg-[#120806] p-5 sm:p-6">
+        <p className="text-base font-semibold text-[#d9d3bf]">
+          <span className="mr-2 font-mono text-brand-gold-light">1</span>Envía el dinero a esta cuenta Nequi personal
+        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+          <p className="select-all font-mono text-[2rem] font-medium leading-none tabular-nums tracking-[0.02em] text-text-premium">
+            {NEQUI_NUMBER}
+          </p>
+          <button
+            type="button"
+            onClick={copyToClipboard}
+            aria-label={copied ? 'Número copiado' : 'Copiar número'}
+            className={`inline-flex min-h-12 items-center gap-2 rounded-lg border px-4 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light ${
+              copied
+                ? 'border-[#2ecc71]/60 text-[#7fe0a6]'
+                : 'border-[#8b6b2e]/80 text-text-premium hover:border-brand-gold hover:text-brand-gold-light'
+            }`}
+          >
+            {copied ? <Check className="h-5 w-5" aria-hidden="true" /> : <Copy className="h-5 w-5" aria-hidden="true" />}
+            {copied ? 'Copiado' : 'Copiar'}
+          </button>
         </div>
       </div>
 
-      <form onSubmit={handleUpload} className="space-y-8 landscape:space-y-3 lg:space-y-5">
-        {/* Form-level error */}
-        {formError && (
-          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-400 text-sm font-bold flex items-center gap-3">
-            <span className="text-lg">⚠️</span>
-            {formError}
-          </div>
-        )}
+      <form onSubmit={handleUpload} className="space-y-7" noValidate>
+        <p className="text-base font-semibold text-[#d9d3bf]">
+          <span className="mr-2 font-mono text-brand-gold-light">2</span>Cuéntanos cuánto enviaste y sube el comprobante
+        </p>
 
-        {/* Amount Section */}
-        <div className="space-y-3 landscape:space-y-2">
-          <div className="flex items-center gap-4 ml-6">
-            <div className="w-2 h-2 rounded-full bg-[#c0a060] shadow-[0_0_12px_rgba(192,160,96,0.8)] animate-pulse" />
-            <label className="text-xs font-black text-[#f3edd7]/60 uppercase tracking-[0.4em] drop-shadow-sm">Monto a Cargar ($)</label>
-          </div>
-          <div className="relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-              <span className="text-3xl font-display font-black text-[#c0a060] italic pr-2 opacity-60">$</span>
-            </div>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value)
-                if (e.target.value) validateAmount(e.target.value)
-              }}
-              onKeyDown={(e) => {
-                if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault()
-              }}
-              onBlur={(e) => validateAmount(e.target.value)}
-              placeholder="0"
-              required
-              min={10000}
-              max={50000000}
-              step={1000}
-              className={`w-full h-16 md:h-16 lg:h-16 landscape:h-12 pl-14 md:pl-16 pr-6 bg-black/40 border-2 rounded-2xl md:rounded-[2rem] landscape:rounded-xl text-3xl md:text-4xl landscape:text-2xl font-display font-black text-[#f3edd7] placeholder:text-brand-gold/10 focus:outline-none focus:bg-black/60 transition-all italic tracking-tight shadow-[inset_0_4px_15px_rgba(0,0,0,0.6)]
-                ${fieldErrors.amount ? 'border-red-500/60 focus:border-red-500/80' : 'border-brand-gold/10 focus:border-[#c0a060]/60'}`}
-            />
-          </div>
-          {fieldErrors.amount && (
-            <p className="text-red-400 text-xs font-bold ml-6">{fieldErrors.amount}</p>
-          )}
-          {!fieldErrors.amount && amountFormatted && (
-            <p className="text-[#c0a060]/60 text-xs font-bold ml-6">{amountFormatted}</p>
-          )}
-          {!fieldErrors.amount && !amountFormatted && (
-            <p className="text-[#f3edd7]/70 text-[11px] font-medium ml-6 uppercase tracking-[0.1em]">Mínimo $10.000 — Máximo $50.000.000 COP</p>
-          )}
-          <p className="text-[#c0a060]/70 text-[11px] font-medium ml-6">Por favor, escribe el número sin puntos ni comas</p>
-        </div>
+        {formError && <AuthAlert>{formError}</AuthAlert>}
 
-        {/* Upload Section */}
-        <div className="space-y-4 landscape:space-y-2">
-          <div className="flex items-center gap-4 ml-6">
-            <div className="w-2 h-2 rounded-full bg-[#c0a060] shadow-[0_0_12px_rgba(192,160,96,0.8)]" />
-            <label className="text-xs font-black text-[#f3edd7]/60 uppercase tracking-[0.4em]">Subir Comprobante de Pago</label>
-          </div>
-          <div className={`relative group min-h-[220px] md:min-h-[200px] landscape:min-h-[120px] border-2 border-dashed rounded-[2rem] md:rounded-[2.5rem] landscape:rounded-2xl flex flex-col items-center justify-center hover:border-[#c0a060]/50 transition-all cursor-pointer overflow-hidden bg-black/30 shadow-[inset_0_4px_20px_rgba(0,0,0,0.4)]
-            ${fieldErrors.file ? 'border-red-500/50' : 'border-[#c0a060]/20'}`}>
-            <AnimatePresence mode="wait">
-              {previewUrl ? (
-                <motion.div 
-                  key="preview"
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  className="relative w-full h-full min-h-[220px] md:min-h-[200px] landscape:min-h-[120px]"
-                >
-                  <img 
-                    src={previewUrl} 
-                    className="w-full h-full object-contain p-4" 
-                    alt="Vista previa" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end justify-center pb-8">
-                    <p className="text-[#f3edd7] text-[11px] md:text-xs font-bold uppercase tracking-[0.1em] bg-[#c0a060]/20 backdrop-blur-md px-6 py-2.5 rounded-xl border-2 border-[#c0a060]/30 shadow-xl">Reemplazar Comprobante</p>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key="upload-prompt"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center space-y-4 md:space-y-4 landscape:space-y-2 p-8 landscape:p-4"
-                >
-                  <div className="w-16 h-16 md:w-20 md:h-20 landscape:w-12 landscape:h-12 bg-[#c0a060]/10 rounded-2xl landscape:rounded-xl flex items-center justify-center mx-auto border-2 border-[#c0a060]/20 shadow-2xl group-hover:scale-110 group-hover:bg-[#c0a060]/20 transition-all duration-700">
-                    <Upload className="h-8 w-8 md:h-10 md:w-10 landscape:h-6 landscape:w-6 text-[#c0a060] drop-shadow-[0_0_10px_rgba(192,160,96,0.5)]" />
-                  </div>
-                  <div className="px-2">
-                    <p className="text-[#f3edd7] text-base md:text-lg landscape:text-sm font-black uppercase tracking-[0.2em] leading-tight">Presiona para subir</p>
-            <p className="text-[#f3edd7]/70 text-[11px] md:text-xs font-medium uppercase tracking-[0.1em] mt-2 landscape:mt-1">PNG, JPG o Captura de pantalla</p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        <AuthField
+          label="Monto que enviaste"
+          type="number"
+          inputMode="numeric"
+          prefix="$"
+          mono
+          value={amount}
+          onChange={(e) => {
+            setAmount(e.target.value)
+            if (e.target.value) validateAmount(e.target.value)
+          }}
+          onKeyDown={(e) => {
+            if (BLOCKED_KEYS.includes(e.key)) e.preventDefault()
+          }}
+          onBlur={(e) => validateAmount(e.target.value)}
+          placeholder="0"
+          required
+          min={10000}
+          max={50000000}
+          step={1000}
+          error={fieldErrors.amount}
+          hint={amountFormatted ? `Vas a cargar ${amountFormatted}.` : 'Sin puntos ni comas. Mínimo $10.000, máximo $50.000.000.'}
+        />
+
+        <div className="space-y-2">
+          <p className="text-base font-semibold text-text-premium" id="deposit-proof-label">
+            Comprobante de pago
+          </p>
+          <label
+            className={`relative flex min-h-44 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed bg-[#120806] text-center transition-colors focus-within:ring-2 focus-within:ring-brand-gold-light hover:border-brand-gold ${
+              fieldErrors.file ? 'border-[#e74c3c]' : 'border-[#8b6b2e]/80'
+            }`}
+          >
+            {previewUrl ? (
+              <>
+                <img src={previewUrl} className="max-h-72 w-full object-contain p-3" alt="Vista previa del comprobante" />
+                <span className="mb-3 inline-flex min-h-11 items-center rounded-lg border border-[#8b6b2e]/80 bg-[#0a0a0a]/80 px-4 text-base font-semibold text-text-premium">
+                  Cambiar imagen
+                </span>
+              </>
+            ) : (
+              <span className="flex flex-col items-center gap-3 px-6 py-8">
+                <ImageUp className="h-9 w-9 text-[#c5a059]" aria-hidden="true" />
+                <span className="text-lg font-semibold text-text-premium">Toca para subir la captura</span>
+                <span className="text-base text-[#bdb7a6]">JPG, PNG, WebP o GIF, hasta 5 MB</span>
+              </span>
+            )}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={handleFileChange}
-              className="absolute inset-0 opacity-0 cursor-pointer z-20"
+              aria-labelledby="deposit-proof-label"
+              aria-invalid={fieldErrors.file ? true : undefined}
+              className="absolute inset-0 cursor-pointer opacity-0"
             />
-          </div>
+          </label>
           {fieldErrors.file && (
-            <p className="text-red-400 text-xs font-bold ml-6">{fieldErrors.file}</p>
-          )}
-          {!fieldErrors.file && (
-            <p className="text-[#f3edd7]/70 text-[11px] font-medium ml-6 uppercase tracking-[0.1em]">JPG, PNG, WebP o GIF — Máx. 5 MB</p>
-          )}
-        </div>
-
-        {/* Observations Section */}
-        <div className="space-y-4 landscape:space-y-2">
-           <div className="flex items-center gap-4 ml-6">
-            <div className="w-2 h-2 rounded-full bg-[#c0a060]/30" />
-            <label className="text-xs font-black text-[#f3edd7]/40 uppercase tracking-[0.4em]">
-              Notas adicionales (Opcional)
-              <span className={`ml-3 font-mono ${observations.length > 450 ? 'text-yellow-400/80' : 'text-[#f3edd7]/20'}`}>
-                {observations.length}/500
-              </span>
-            </label>
-          </div>
-          <textarea
-            value={observations}
-            maxLength={500}
-            onChange={(e) => {
-              setObservations(e.target.value)
-              validateObs(e.target.value)
-            }}
-            placeholder="Escribe aquí cualquier observación..."
-            className={`w-full h-24 md:h-24 landscape:h-16 p-6 md:p-6 landscape:p-4 bg-black/30 border-2 rounded-2xl md:rounded-[2rem] landscape:rounded-xl text-sm md:text-base font-medium text-[#f3edd7] focus:outline-none focus:bg-black/50 transition-all resize-none shadow-[inset_0_4px_15px_rgba(0,0,0,0.5)] placeholder:text-[#f3edd7]/10
-              ${fieldErrors.observations ? 'border-red-500/40 focus:border-red-500/60' : 'border-brand-gold/5 focus:border-[#c0a060]/40'}`}
-          />
-          {fieldErrors.observations && (
-            <p className="text-red-400 text-xs font-bold ml-6">{fieldErrors.observations}</p>
+            <p role="alert" className="text-base font-semibold text-[#f08a7e]">
+              {fieldErrors.file}
+            </p>
           )}
         </div>
 
-        {/* Submit Section */}
-        <div className="pt-4">
-          <button
-            type="submit"
-            disabled={loading}
-            className="group relative w-full h-16 md:h-16 lg:h-16 landscape:h-12 bg-accent-gold-shimmer text-slate-950 rounded-2xl md:rounded-[1.8rem] landscape:rounded-xl font-black uppercase tracking-[0.3em] text-sm md:text-base landscape:text-xs shadow-[0_20px_50px_rgba(192,160,96,0.3)] hover:shadow-[#c0a060]/60 transition-all duration-700 disabled:opacity-50 flex items-center justify-center gap-4 overflow-hidden active:scale-[0.98] border-b-4 border-brand-gold-dark active:border-b-0 active:translate-y-1"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-[250%] group-hover:translate-x-[250%] transition-transform duration-1200 ease-in-out opacity-30 pointer-events-none" />
-            {loading ? (
-              <div className="flex items-center gap-4">
-                <div className="w-6 h-6 border-4 border-slate-950/20 border-t-slate-950 rounded-full animate-spin" />
-                <span className="tracking-[0.1em]">Procesando Saldo...</span>
-              </div>
-            ) : (
-              <>
-                <ShieldCheck className="w-6 h-6 md:w-8 md:h-8 landscape:w-5 landscape:h-5" />
-                <span>Confirmar Depósito</span>
-              </>
-            )}
-          </button>
-          <div className="flex items-center justify-center gap-3 mt-8 landscape:mt-4 opacity-40">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#c0a060]" />
-            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#f3edd7]">Transacción Enmascarada y Segura</p>
-            <div className="w-1.5 h-1.5 rounded-full bg-[#c0a060]" />
-          </div>
-        </div>
+        <TextareaField
+          label="Notas (opcional)"
+          labelAside={
+            <span className={`font-mono text-sm tabular-nums ${observations.length > 450 ? 'text-brand-gold-light' : 'text-[#bdb7a6]'}`}>
+              {observations.length}/500
+            </span>
+          }
+          value={observations}
+          maxLength={500}
+          onChange={(e) => {
+            setObservations(e.target.value)
+            validateObs(e.target.value)
+          }}
+          placeholder="Escribe aquí cualquier observación..."
+          error={fieldErrors.observations}
+        />
+
+        <AuthButton type="submit" pending={loading}>
+          {loading ? 'Enviando…' : 'Confirmar depósito'}
+        </AuthButton>
+        <p className="text-center text-base text-[#bdb7a6]">El saldo se acredita cuando revisamos el pago.</p>
       </form>
     </div>
   )

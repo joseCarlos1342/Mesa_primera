@@ -4,13 +4,6 @@ import { TransferModal } from '../TransferModal'
 import { lookupUserByPhone, transferToPlayer } from '@/app/actions/transfer'
 import { getAvatarSvg } from '@/utils/avatars'
 
-jest.mock('framer-motion', () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  motion: {
-    div: ({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-  },
-}))
-
 jest.mock('@/app/actions/transfer', () => ({
   lookupUserByPhone: jest.fn(),
   transferToPlayer: jest.fn(),
@@ -35,6 +28,14 @@ describe('TransferModal', () => {
   it('no renderiza nada cuando isOpen es false', () => {
     const { container } = render(<TransferModal isOpen={false} onClose={jest.fn()} currentBalance={275000} />)
     expect(container.firstChild).toBeNull()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('renderiza la hoja con título y primer paso', () => {
+    render(<TransferModal isOpen={true} onClose={jest.fn()} currentBalance={275000} />)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Transferir saldo' })).toBeInTheDocument()
+    expect(screen.getByText(/paso 1 de 4/i)).toBeInTheDocument()
   })
 
   it('permite buscar destinatario y avanzar a confirmación', async () => {
@@ -46,7 +47,7 @@ describe('TransferModal', () => {
     await waitFor(() => {
       expect(mockLookupUserByPhone).toHaveBeenCalledWith('3001234567')
       expect(screen.getByText('AsDelDestino')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /confirmar/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /^confirmar$/i })).toBeInTheDocument()
     })
   })
 
@@ -82,7 +83,7 @@ describe('TransferModal', () => {
     expect(screen.queryByText(/jugador no encontrado/i)).not.toBeInTheDocument()
   })
 
-  it('muestra error si lookupUserByPhone falla', async () => {
+  it('muestra error en AuthAlert si lookupUserByPhone falla', async () => {
     mockLookupUserByPhone.mockResolvedValue({ error: 'Jugador no encontrado' } as never)
     render(<TransferModal isOpen={true} onClose={jest.fn()} currentBalance={275000} />)
 
@@ -97,7 +98,7 @@ describe('TransferModal', () => {
 
     fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
     fireEvent.click(screen.getByRole('button', { name: /buscar jugador/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /confirmar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /^confirmar$/i }))
 
     const amountInput = screen.getByPlaceholderText('0')
     fireEvent.change(amountInput, { target: { value: '999' } })
@@ -115,7 +116,6 @@ describe('TransferModal', () => {
     fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '1234' } })
     fireEvent.click(screen.getByRole('button', { name: /buscar jugador/i }))
     expect(await screen.findByText('AsDelDestino')).toBeInTheDocument()
-    expect(screen.getByText('1234')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /volver al paso anterior/i }))
     expect(screen.getByText(/buscar destinatario/i)).toBeInTheDocument()
@@ -125,13 +125,13 @@ describe('TransferModal', () => {
     expect(screen.getByText(/buscar destinatario/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /buscar jugador/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /confirmar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /^confirmar$/i }))
     expect(screen.getByText(/ingresar monto/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /volver al paso anterior/i }))
     expect(screen.getByText(/confirmar destinatario/i)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^confirmar$/i }))
     const amountInput = screen.getByPlaceholderText('0')
     fireEvent.change(amountInput, { target: { value: '1000' } })
     fireEvent.keyDown(amountInput, { key: 'Enter' })
@@ -147,16 +147,15 @@ describe('TransferModal', () => {
 
     fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
     fireEvent.click(screen.getByRole('button', { name: /buscar jugador/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /confirmar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /^confirmar$/i }))
 
     fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '1000' } })
     fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^confirmar$/i }))
 
     await waitFor(() => {
       expect(mockTransferToPlayer).toHaveBeenCalledWith('user-2', 100000)
       expect(screen.getByText(/transferencia exitosa/i)).toBeInTheDocument()
-      expect(screen.getByText('$1.500')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: /^cerrar$/i }))
@@ -170,10 +169,10 @@ describe('TransferModal', () => {
 
     fireEvent.change(screen.getByPlaceholderText('3001234567'), { target: { value: '3001234567' } })
     fireEvent.click(screen.getByRole('button', { name: /buscar jugador/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /confirmar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /^confirmar$/i }))
     fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '1000' } })
     fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^confirmar$/i }))
 
     expect(await screen.findByText(/saldo insuficiente/i)).toBeInTheDocument()
 

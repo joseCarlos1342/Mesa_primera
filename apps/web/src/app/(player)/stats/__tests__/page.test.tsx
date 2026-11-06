@@ -49,8 +49,7 @@ describe('StatsPage', () => {
 
     expect(screen.getByTestId('stats-shell')).toBeInTheDocument()
     expect(screen.getByText('Shell Estadísticas')).toBeInTheDocument()
-    expect(document.querySelectorAll('.h-40')).toHaveLength(5)
-    expect(document.querySelectorAll('.h-60')).toHaveLength(1)
+    expect(screen.getByLabelText('Cargando estadísticas')).toBeInTheDocument()
   })
 
   it('StatsData entrega datos server-side al cliente', async () => {
@@ -78,9 +77,10 @@ describe('StatsPage', () => {
   })
 
   it('StatsLoadingSkeleton mantiene la estructura de carga esperada', () => {
-    render(<StatsLoadingSkeleton />)
+    const { container } = render(<StatsLoadingSkeleton />)
 
-    expect(document.querySelectorAll('.h-40')).toHaveLength(5)
-    expect(document.querySelectorAll('.h-60')).toHaveLength(1)
+    expect(screen.getByLabelText('Cargando estadísticas')).toHaveAttribute('aria-busy', 'true')
+    // 4 métricas (2 líneas cada una) + 3 filas => 11 skeletons.
+    expect(container.querySelectorAll('[aria-hidden="true"]').length).toBe(11)
   })
 })

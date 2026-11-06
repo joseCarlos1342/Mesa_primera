@@ -1,8 +1,9 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ProfilePage from '../page'
 import { getMyStats } from '@/app/actions/stats'
 import { useAppLock } from '@/components/providers/AppLockProvider'
 import { clearSessionValidated } from '@/lib/app-lock-session'
+import { logoutOneSignalUser } from '@/components/OneSignalPushOptIn'
 
 const updateMyProfile = jest.fn()
 const push = jest.fn()
@@ -42,15 +43,6 @@ jest.mock('next/navigation', () => ({
   useRouter: () => router,
 }))
 
-jest.mock('framer-motion', () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  motion: {
-    div: ({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => (
-      <div {...props}>{children}</div>
-    ),
-  },
-}))
-
 jest.mock('@/utils/avatars', () => ({
   getAvatarSvg: jest.fn((avatarId?: string | null) => avatarId === 'avatar-ok' ? <svg data-testid="profile-avatar-svg" /> : null),
 }))
@@ -65,6 +57,10 @@ jest.mock('@/components/providers/AppLockProvider', () => ({
 
 jest.mock('@/lib/app-lock-session', () => ({
   clearSessionValidated: jest.fn(),
+}))
+
+jest.mock('@/components/OneSignalPushOptIn', () => ({
+  logoutOneSignalUser: jest.fn(),
 }))
 
 jest.mock('@/components/ui/Toast', () => ({
@@ -93,7 +89,14 @@ async function renderLoadedProfile(overrides: Partial<typeof profile> = {}) {
 
   render(<ProfilePage />)
 
-  expect(await screen.findByRole('heading', { name: 'Mi Perfil' })).toBeInTheDocument()
+  // El encabezado de identidad muestra el alias del jugador.
+  expect(await screen.findByRole('heading', { name: 'chepe' })).toBeInTheDocument()
+}
+
+/** Escribe un código completo en las 6 casillas del CodeInput. */
+function typeOtp(code: string) {
+  const first = screen.getByLabelText('Dígito 1 de 6')
+  fireEvent.change(first, { target: { value: code } })
 }
 
 describe('ProfilePage', () => {
@@ -110,6 +113,7 @@ describe('ProfilePage', () => {
     upload.mockResolvedValue({ error: null })
     getPublicUrl.mockReturnValue({ data: { publicUrl: 'https://cdn.test/avatar.png' } })
     ;(getMyStats as jest.Mock).mockResolvedValue(stats)
+    ;(logoutOneSignalUser as jest.Mock).mockResolvedValue(undefined)
     ;(useAppLock as jest.Mock).mockReturnValue({
       isEnabled: false,
       isSupported: true,
@@ -123,7 +127,7 @@ describe('ProfilePage', () => {
 
     render(<ProfilePage />)
 
-    expect(await screen.findByText('Abriendo Bóveda...')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Cargando tu perfil')).toBeInTheDocument()
     await waitFor(() => expect(push).toHaveBeenCalledWith('/login/player'))
   })
 
@@ -139,7 +143,7 @@ describe('ProfilePage', () => {
     expect(screen.getByText('2')).toBeInTheDocument()
 
     fireEvent.change(screen.getByDisplayValue('chepe'), { target: { value: 'nuevoAlias' } })
-    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     await waitFor(() => expect(updateEq).toHaveBeenCalledWith('id', 'user-1'))
     expect(supabase.from).toHaveBeenCalledWith('profiles')
@@ -151,14 +155,14 @@ describe('ProfilePage', () => {
     await renderLoadedProfile()
 
     fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
-    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     await waitFor(() => expect(updateUser).toHaveBeenCalledWith({ phone: '+573000000001' }))
-    expect(screen.getByText('Verificar Número')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Verificar número' })).toBeInTheDocument()
     expect(screen.getByText('+573000000001')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByPlaceholderText('000000'), { target: { value: '12ab3456' } })
-    expect(screen.getByPlaceholderText('000000')).toHaveValue('123456')
+    typeOtp('123456')
+    expect(screen.getByLabelText('Dígito 6 de 6')).toHaveValue('6')
     fireEvent.click(screen.getByRole('button', { name: /verificar código/i }))
 
     await waitFor(() => expect(verifyOtp).toHaveBeenCalledWith({
@@ -170,12 +174,23 @@ describe('ProfilePage', () => {
     expect(await screen.findByText('¡Perfil actualizado con éxito!')).toBeInTheDocument()
   })
 
+  it('no permite verificar hasta tener 6 dígitos', async () => {
+    await renderLoadedProfile()
+
+    fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await screen.findByRole('heading', { name: 'Verificar número' })
+
+    typeOtp('123')
+    expect(screen.getByRole('button', { name: /verificar código/i })).toBeDisabled()
+  })
+
   it('muestra error cuando falla el envio de codigo por cambio de telefono', async () => {
     updateUser.mockResolvedValueOnce({ error: { message: 'SMS apagado' } })
     await renderLoadedProfile()
 
     fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
-    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     expect(await screen.findByText('No pudimos enviar el código. Verifica el teléfono e intenta de nuevo.')).toBeInTheDocument()
     expect(screen.queryByText(/SMS apagado/)).not.toBeInTheDocument()
@@ -186,12 +201,25 @@ describe('ProfilePage', () => {
     await renderLoadedProfile()
 
     fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
-    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
-    await screen.findByText('Verificar Número')
-    fireEvent.change(screen.getByPlaceholderText('000000'), { target: { value: '111111' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await screen.findByRole('heading', { name: 'Verificar número' })
+    typeOtp('111111')
     fireEvent.click(screen.getByRole('button', { name: /verificar código/i }))
 
     expect(await screen.findByText('Código incorrecto. Intenta de nuevo.')).toBeInTheDocument()
+  })
+
+  it('cierra la hoja de verificación sin verificar al pulsar cerrar', async () => {
+    await renderLoadedProfile()
+
+    fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await screen.findByRole('heading', { name: 'Verificar número' })
+
+    typeOtp('123')
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar verificación' }))
+    expect(screen.queryByRole('heading', { name: 'Verificar número' })).not.toBeInTheDocument()
+    expect(verifyOtp).not.toHaveBeenCalled()
   })
 
   it('valida tipo/tamaño de imagen y actualiza avatar cuando la subida funciona', async () => {
@@ -214,8 +242,10 @@ describe('ProfilePage', () => {
     })
 
     await waitFor(() => expect(upload).toHaveBeenCalledWith(expect.stringMatching(/^user-1\/avatar-/), expect.any(File), { upsert: true }))
-    expect(screen.getByRole('img', { name: 'Avatar' })).toHaveAttribute('src', 'https://cdn.test/avatar.png')
-    expect(await screen.findByText('Imagen cargada correctamente')).toBeInTheDocument()
+    // PlayerAvatar renderiza la foto como <img> con la URL pública.
+    const avatarImg = document.querySelector('img[src="https://cdn.test/avatar.png"]')
+    expect(avatarImg).toBeInTheDocument()
+    expect(await screen.findByText('Imagen cargada. Toca “Guardar cambios” para conservarla.')).toBeInTheDocument()
   })
 
   it('muestra error cuando falla la subida de avatar', async () => {
@@ -237,7 +267,7 @@ describe('ProfilePage', () => {
     ;(useAppLock as jest.Mock).mockReturnValue({ isEnabled: false, isSupported: true, enroll, disable })
     await renderLoadedProfile()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Activar bloqueo biométrico' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Activar bloqueo biométrico' }))
     await waitFor(() => expect(enroll).toHaveBeenCalledTimes(1))
     expect(await screen.findByText('¡Bloqueo biométrico activado!')).toBeInTheDocument()
 
@@ -245,9 +275,16 @@ describe('ProfilePage', () => {
     ;(useAppLock as jest.Mock).mockReturnValue({ isEnabled: true, isSupported: true, enroll, disable })
     await renderLoadedProfile()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Activar bloqueo biométrico' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Activar bloqueo biométrico' }))
     expect(disable).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('Bloqueo biométrico desactivado')).toBeInTheDocument()
+  })
+
+  it('no muestra la sección de seguridad si el bloqueo no es compatible', async () => {
+    ;(useAppLock as jest.Mock).mockReturnValue({ isEnabled: false, isSupported: false, enroll: jest.fn(), disable: jest.fn() })
+    await renderLoadedProfile()
+
+    expect(screen.queryByRole('switch', { name: 'Activar bloqueo biométrico' })).not.toBeInTheDocument()
   })
 
   it('muestra error si la biometria no se puede enrolar', async () => {
@@ -259,7 +296,7 @@ describe('ProfilePage', () => {
     })
     await renderLoadedProfile()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Activar bloqueo biométrico' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Activar bloqueo biométrico' }))
 
     expect(await screen.findByText('No se pudo activar el bloqueo biométrico. Intenta de nuevo.')).toBeInTheDocument()
     expect(screen.queryByText('Sensor bloqueado')).not.toBeInTheDocument()
@@ -270,7 +307,7 @@ describe('ProfilePage', () => {
     await renderLoadedProfile()
 
     fireEvent.change(screen.getByDisplayValue('chepe'), { target: { value: 'aliasFallido' } })
-    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     expect(await screen.findByText('No pudimos actualizar tu perfil. Intenta de nuevo.')).toBeInTheDocument()
     expect(updateEq).not.toHaveBeenCalled()
@@ -281,25 +318,76 @@ describe('ProfilePage', () => {
     await renderLoadedProfile({ avatar_url: 'avatar-ok' })
 
     expect(screen.getByTestId('profile-avatar-svg')).toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: 'Avatar' })).not.toBeInTheDocument()
   })
 
-  it('cierra sesion solo cuando el usuario confirma', async () => {
-    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  it('cierra sesion solo cuando el usuario confirma en la hoja', async () => {
     await renderLoadedProfile()
 
-    fireEvent.click(screen.getByRole('button', { name: /salir/i }))
+    // Abre la hoja de confirmación pero cancela: no cierra sesión.
+    // ("Cancelar" aparece dos veces: el botón de cerrar y el del pie.)
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+    expect(screen.getByRole('heading', { name: '¿Cerrar sesión?' })).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[1])
     expect(signOut).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: /salir/i }))
+    // Confirma: cierra OneSignal, limpia sesión, cierra Supabase y redirige.
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, salir' }))
+
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1))
+    expect(logoutOneSignalUser).toHaveBeenCalledTimes(1)
     expect(clearSessionValidated).toHaveBeenCalledTimes(1)
     expect(push).toHaveBeenCalledWith('/login/player')
-
-    confirmSpy.mockRestore()
   })
 
-  it('abre el selector de avatar, edita el nombre, cierra el modal OTP y descarta el aviso', async () => {
+  it('cierra la hoja de confirmación de salida al tocar el fondo', async () => {
+    await renderLoadedProfile()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+    expect(screen.getByRole('heading', { name: '¿Cerrar sesión?' })).toBeInTheDocument()
+
+    // El fondo de la hoja invoca onClose (que respeta el guard de loggingOut).
+    fireEvent.click(screen.getByTestId('sheet-backdrop'))
+    expect(screen.queryByRole('heading', { name: '¿Cerrar sesión?' })).not.toBeInTheDocument()
+    expect(signOut).not.toHaveBeenCalled()
+  })
+
+  it('usa valores vacíos cuando el perfil no trae datos', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'user-1', email: '' } } })
+    // Perfil con campos nulos: deben caer a cadenas vacías sin romper el render.
+    maybeSingle.mockResolvedValue({ data: { username: null, full_name: null, phone: null, avatar_url: null }, error: null })
+    ;(getMyStats as jest.Mock).mockResolvedValue(null)
+
+    render(<ProfilePage />)
+
+    // Sin alias el encabezado muestra "Jugador"; sin correo el hint lo indica.
+    expect(await screen.findByRole('heading', { name: 'Jugador' })).toBeInTheDocument()
+    expect(screen.getByText('Tu cuenta no tiene correo asociado.')).toBeInTheDocument()
+  })
+
+  it('ignora la subida de avatar cuando no se selecciona archivo', async () => {
+    await renderLoadedProfile()
+    const fileInput = document.querySelector('#avatar-upload') as HTMLInputElement
+
+    await act(async () => {
+      fireEvent.change(fileInput, { target: { files: [] } })
+    })
+
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it('despacha el evento de soporte al tocar "Hablar con soporte"', async () => {
+    const listener = jest.fn()
+    window.addEventListener('open-support-chat', listener)
+    await renderLoadedProfile()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hablar con soporte' }))
+    expect(listener).toHaveBeenCalledTimes(1)
+
+    window.removeEventListener('open-support-chat', listener)
+  })
+
+  it('abre el selector de avatar al tocar el botón de cámara', async () => {
     await renderLoadedProfile()
 
     const fileInput = document.querySelector('#avatar-upload') as HTMLInputElement
@@ -309,18 +397,6 @@ describe('ProfilePage', () => {
 
     fireEvent.change(screen.getByDisplayValue('Jose Test'), { target: { value: 'Jose Carlos' } })
     expect(screen.getByDisplayValue('Jose Carlos')).toBeInTheDocument()
-
-    fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
-    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
-    const otpTitle = await screen.findByText('Verificar Número')
-    fireEvent.change(screen.getByPlaceholderText('000000'), { target: { value: '123' } })
-    fireEvent.click(within(otpTitle.closest('.relative') as HTMLElement).getAllByRole('button')[0])
-    expect(screen.queryByText('Verificar Número')).not.toBeInTheDocument()
-    expect(verifyOtp).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Activar bloqueo biométrico' }))
-    fireEvent.click(await screen.findByRole('button', { name: '¡Bloqueo biométrico activado!' }))
-    expect(screen.queryByText('¡Bloqueo biométrico activado!')).not.toBeInTheDocument()
   })
 
   it('muestra error cuando falla la actualizacion de profiles sin phoneOverride', async () => {
@@ -328,7 +404,7 @@ describe('ProfilePage', () => {
     await renderLoadedProfile()
 
     fireEvent.change(screen.getByDisplayValue('chepe'), { target: { value: 'aliasNuevo' } })
-    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     expect(await screen.findByText('No pudimos actualizar el perfil. Intenta de nuevo.')).toBeInTheDocument()
     expect(refresh).not.toHaveBeenCalled()
@@ -339,9 +415,9 @@ describe('ProfilePage', () => {
     await renderLoadedProfile()
 
     fireEvent.change(screen.getByDisplayValue('+573000000000'), { target: { value: '3000000001' } })
-    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
-    await screen.findByText('Verificar Número')
-    fireEvent.change(screen.getByPlaceholderText('000000'), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await screen.findByRole('heading', { name: 'Verificar número' })
+    typeOtp('123456')
     fireEvent.click(screen.getByRole('button', { name: /verificar código/i }))
 
     expect(await screen.findByText('No pudimos actualizar el teléfono. Intenta de nuevo.')).toBeInTheDocument()

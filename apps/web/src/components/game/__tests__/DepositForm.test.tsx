@@ -4,13 +4,6 @@ import { DepositForm } from '../DepositForm'
 import { createClient } from '@/utils/supabase/client'
 import { createDepositRequest } from '@/app/actions/wallet'
 
-jest.mock('framer-motion', () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  motion: {
-    div: ({ children, initial: _initial, animate: _animate, exit: _exit, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-  },
-}))
-
 jest.mock('@/utils/supabase/client', () => ({
   createClient: jest.fn(),
 }))
@@ -46,26 +39,27 @@ describe('DepositForm', () => {
     window.alert = jest.fn()
   })
 
-  it('renderiza monto inicial y permite copiar el número', () => {
+  it('renderiza monto inicial y permite copiar el número de Nequi', () => {
     render(<DepositForm initialAmount="10000" />)
 
     expect(screen.getByDisplayValue('10000')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /copiar número/i }))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('3125822841')
+    expect(screen.getByText('Copiado')).toBeInTheDocument()
   })
 
-  it('valida monto y archivo requerido antes de enviar', async () => {
+  it('valida monto y archivo requerido antes de enviar', () => {
     render(<DepositForm />)
 
     fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '1000' } })
     fireEvent.blur(screen.getByPlaceholderText('0'))
     fireEvent.submit(screen.getByRole('button', { name: /confirmar depósito/i }).closest('form') as HTMLFormElement)
 
-    expect(screen.getByText(/monto mínimo/i)).toBeInTheDocument()
+    expect(screen.getByText(/mínimo/i)).toBeInTheDocument()
     expect(screen.getByText(/comprobante de pago es obligatorio/i)).toBeInTheDocument()
   })
 
-  it('sube archivo y crea solicitud exitosa', async () => {
+  it('sube archivo y crea solicitud exitosa, muestra confirmación y llama onSuccess al tocar Listo', async () => {
     const onSuccess = jest.fn()
     render(<DepositForm initialAmount="10000" onSuccess={onSuccess} />)
 
@@ -77,11 +71,16 @@ describe('DepositForm', () => {
     await waitFor(() => {
       expect(uploadMock).toHaveBeenCalled()
       expect(mockCreateDepositRequest).toHaveBeenCalledWith(10000, 'user-1/proof.png', 'Pago por Nequi')
-      expect(onSuccess).toHaveBeenCalledTimes(1)
     })
+
+    expect(await screen.findByText('Solicitud enviada')).toBeInTheDocument()
+    expect(onSuccess).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Listo' }))
+    expect(onSuccess).toHaveBeenCalledTimes(1)
   })
 
-  it('muestra error del backend cuando createDepositRequest falla', async () => {
+  it('muestra error del backend en AuthAlert cuando createDepositRequest falla', async () => {
     mockCreateDepositRequest.mockResolvedValue({ error: 'Saldo en revisión' } as never)
     render(<DepositForm initialAmount="10000" />)
 
@@ -99,7 +98,7 @@ describe('DepositForm', () => {
     const invalidFile = new File(['x'], 'documento.pdf', { type: 'application/pdf' })
     fireEvent.change(fileInput, { target: { files: [invalidFile] } })
 
-    expect(screen.getByText(/solo se aceptan imágenes/i)).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(fileInput.value).toBe('')
   })
 
@@ -114,29 +113,33 @@ describe('DepositForm', () => {
     expect(screen.queryByAltText(/vista previa/i)).not.toBeInTheDocument()
   })
 
-  it('muestra alert cuando no hay onSuccess y el depósito es exitoso', async () => {
+  it('muestra la confirmación cuando no hay onSuccess y el depósito es exitoso', async () => {
     render(<DepositForm initialAmount="10000" />)
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(fileInput, { target: { files: [file] } })
     fireEvent.submit(screen.getByRole('button', { name: /confirmar depósito/i }).closest('form') as HTMLFormElement)
 
-    await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Solicitud enviada correctamente. Se acreditará pronto.')
-    })
+    expect(await screen.findByText('Solicitud enviada')).toBeInTheDocument()
+    // Sin onSuccess, "Listo" no rompe nada.
+    fireEvent.click(screen.getByRole('button', { name: 'Listo' }))
+    expect(screen.getByText('Solicitud enviada')).toBeInTheDocument()
+    expect(window.alert).not.toHaveBeenCalled()
   })
 
   it('previene caracteres inválidos en el input de monto', () => {
     render(<DepositForm />)
 
     const input = screen.getByPlaceholderText('0') as HTMLInputElement
-    
-    // Simular que preventDefault fue llamado verificando que el handler existe
     fireEvent.keyDown(input, { key: '.' })
     fireEvent.keyDown(input, { key: 'e' })
     fireEvent.keyDown(input, { key: '5' })
-    
-    // El input debe seguir siendo el mismo (no se rompió)
+
     expect(input).toBeInTheDocument()
+  })
+
+  it('muestra el formato del monto en el hint cuando el valor es válido', () => {
+    render(<DepositForm initialAmount="50000" />)
+    expect(screen.getByText(/vas a cargar/i)).toBeInTheDocument()
   })
 })

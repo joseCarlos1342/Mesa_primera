@@ -5,6 +5,8 @@ import { clearSessionValidated } from "@/lib/app-lock-session"
 import { logoutOneSignalUser } from "@/components/OneSignalPushOptIn"
 import { LogOut } from "lucide-react"
 import { usePathname } from "next/navigation"
+import { useState } from "react"
+import { ConfirmDialog } from "@/components/player/ConfirmDialog"
 
 interface SignOutButtonProps {
   variant?: 'premium' | 'danger' | 'ghost'
@@ -21,17 +23,29 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
     ghost: "text-text-secondary hover:text-text-premium"
   }
 
-  const handleSignOut = async () => {
-    if (!window.confirm('¿Seguro que deseas cerrar sesión?')) return
+  const isAdmin = pathname?.includes('/admin')
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
 
+  const doSignOut = async () => {
+    setBusy(true)
     await logoutOneSignalUser()
     clearSessionValidated()
-    // Si estamos en una ruta de admin o el pathname contiene admin, redirigir al login de admin
-    const isAdmin = pathname?.includes('/admin')
     signOut(isAdmin ? '/login/admin' : '/login/player')
   }
 
+  const handleSignOut = async () => {
+    // El admin conserva su propio mundo visual; el jugador usa la hoja de confirmación.
+    if (isAdmin) {
+      if (!window.confirm('¿Seguro que deseas cerrar sesión?')) return
+      await doSignOut()
+      return
+    }
+    setConfirming(true)
+  }
+
   return (
+    <>
     <button
       onClick={handleSignOut}
       className={`${baseStyles} ${variants[variant]} ${className}`}
@@ -41,5 +55,19 @@ export function SignOutButton({ variant = 'premium', className = '' }: SignOutBu
       <LogOut className="h-4 w-4 shrink-0 transition-transform group-hover:-translate-x-1 md:h-5 md:w-5" />
       <span className="text-xs md:text-sm tracking-widest uppercase hidden sm:inline font-black">Salir</span>
     </button>
+      {!isAdmin && (
+        <ConfirmDialog
+          open={confirming}
+          tone="danger"
+          title="¿Cerrar sesión?"
+          description="Tendrás que entrar de nuevo con tu celular y tu clave."
+          confirmLabel="Sí, salir"
+          busyLabel="Saliendo…"
+          busy={busy}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => { void doSignOut() }}
+        />
+      )}
+    </>
   )
 }

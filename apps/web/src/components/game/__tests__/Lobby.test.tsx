@@ -7,13 +7,6 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }))
 
-jest.mock('framer-motion', () => ({
-  m: {
-    div: ({ children, initial: _initial, animate: _animate, transition: _transition, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-    h1: ({ children, initial: _initial, animate: _animate, transition: _transition, ...props }: React.HTMLAttributes<HTMLHeadingElement> & Record<string, unknown>) => <h1 {...props}>{children}</h1>,
-  },
-}))
-
 const joinOrCreateMock = jest.fn()
 const createMock = jest.fn()
 const joinByIdMock = jest.fn()
@@ -62,7 +55,7 @@ jest.mock('@/components/game/DepositModal', () => ({
 }))
 
 jest.mock('@/components/game/CustomMesaModal', () => ({
-  CustomMesaModal: ({ isOpen, onClose, onCreateMesa, creating }: { isOpen: boolean; onClose: () => void; onCreateMesa: (options: any) => void; creating: boolean }) => (
+  CustomMesaModal: ({ isOpen, onClose, onCreateMesa, creating }: { isOpen: boolean; onClose: () => void; onCreateMesa: (options: Record<string, unknown>) => void; creating: boolean }) => (
     <div data-testid="custom-mesa-modal">
       open:{String(isOpen)} creating:{String(creating)}
       {isOpen && (
@@ -90,6 +83,16 @@ jest.mock('@/components/game/CustomMesaModal', () => ({
 const push = jest.fn()
 const leaveMock = jest.fn()
 const onMessageMock = jest.fn()
+const onLeaveMock = jest.fn()
+
+function makeLobbyRoom() {
+  return {
+    roomId: 'lobby-room',
+    leave: leaveMock,
+    onMessage: onMessageMock,
+    onLeave: onLeaveMock,
+  }
+}
 
 describe('Lobby', () => {
   beforeEach(() => {
@@ -99,14 +102,9 @@ describe('Lobby', () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined)
     jest.spyOn(console, 'log').mockImplementation(() => undefined)
     window.confirm = jest.fn(() => true)
-    window.alert = jest.fn()
     ;(useRouter as unknown as jest.Mock).mockReturnValue({ push })
 
-    joinOrCreateMock.mockResolvedValue({
-      roomId: 'lobby-room',
-      leave: leaveMock,
-      onMessage: onMessageMock,
-    })
+    joinOrCreateMock.mockResolvedValue(makeLobbyRoom())
     createMock.mockResolvedValue({
       roomId: 'created-room',
       reconnectionToken: 'created-token',
@@ -125,23 +123,29 @@ describe('Lobby', () => {
   })
 
   afterEach(() => {
+    jest.useRealTimers()
     jest.restoreAllMocks()
   })
 
-  it('detecta sesión activa y redirige a /play/:roomId', async () => {
+  // Helper para disparar el handler de un mensaje del lobby desde fuera del render.
+  const getHandler = (type: string) => onMessageMock.mock.calls.find(([t]) => t === type)?.[1]
+
+  it('detecta sesión activa y redirige a /play/:roomId con pantalla "Volviendo a tu mesa"', async () => {
     sessionStorage.setItem('reconnectionToken_room-77', 'token-77')
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/play/room-77')
-      expect(screen.getByText(/restaurando tu sesión en la mesa/i)).toBeInTheDocument()
+      expect(screen.getByText(/volviendo a tu mesa/i)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
     expect(sessionStorage.getItem('reconnectionToken_room-77')).toBeNull()
+    // Al cancelar, vuelve a mostrarse el encabezado de mesas.
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Mesas' })).toBeInTheDocument())
   })
 
-  it('renderiza lobby, balance y placeholders de mesas comunes cuando no hay rooms activas', async () => {
+  it('renderiza encabezado, saldo y placeholders de mesas comunes cuando no hay rooms activas', async () => {
     render(
       <Lobby
         lobbyTables={{
@@ -155,18 +159,37 @@ describe('Lobby', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/lobby/i)).toBeInTheDocument()
-      expect(screen.getByText(/selecciona tu mesa de primera/i)).toBeInTheDocument()
-      expect(screen.getByText('65,000')).toBeInTheDocument()
-      expect(screen.getAllByText(/abrir mesa/i).length).toBeGreaterThan(0)
+      expect(screen.getByRole('heading', { name: 'Mesas' })).toBeInTheDocument()
+      expect(screen.getByText(/elige una mesa libre/i)).toBeInTheDocument()
+      expect(screen.getByText('65.000')).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Abrir mesa' })).toHaveLength(2)
     })
   })
 
-  it('abre y cierra la recarga desde el balance del jugador', async () => {
+  it('muestra el estado del servidor en línea con contadores reales', async () => {
+    render(
+      <Lobby
+        lobbyTables={{
+          common: [
+            { id: '1', name: 'Mesa #1', game_type: 'primera_28', max_players: 7, table_category: 'common', lobby_slot: 1, min_entry_cents: 5000000, min_pique_cents: 500000, disabled_chips: [], sort_order: 1 },
+          ],
+          custom: [],
+        }}
+      />,
+    )
+
+    await waitFor(() => {
+      const bar = screen.getByTestId('server-status')
+      expect(bar).toHaveAttribute('data-status', 'online')
+    })
+    expect(screen.getByText(/mesas en línea/i)).toBeInTheDocument()
+  })
+
+  it('abre y cierra la recarga desde el saldo del jugador', async () => {
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
 
-    await screen.findByText('65,000')
-    fireEvent.click(screen.getByRole('button', { name: /recargar/i }))
+    await screen.findByText('65.000')
+    fireEvent.click(screen.getByRole('button', { name: /cargar saldo/i }))
 
     expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:true')
 
@@ -175,15 +198,23 @@ describe('Lobby', () => {
     expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:false')
   })
 
+  it('ofrece enlace a repeticiones', async () => {
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await screen.findByText('65.000')
+    expect(screen.getByRole('link', { name: /repeticiones/i })).toHaveAttribute('href', '/replays')
+  })
+
   it('usa mesas fallback cuando no llegan tablas desde admin', async () => {
     render(<Lobby />)
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'ABRIR MESA' })).toHaveLength(2)
+      expect(screen.getAllByRole('button', { name: 'Abrir mesa' })).toHaveLength(2)
     })
   })
 
-  it('muestra error de conexión si no puede entrar al lobby', async () => {
+  it('pasa a offline y reintenta la conexión si falla entrar al lobby', async () => {
+    jest.useFakeTimers()
     joinOrCreateMock.mockRejectedValueOnce(new Error('server offline'))
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
@@ -191,6 +222,81 @@ describe('Lobby', () => {
     await waitFor(() => {
       expect(console.error).toHaveBeenCalledWith('Lobby Connection Error:', expect.any(Error))
     })
+    await waitFor(() => {
+      expect(screen.getByTestId('server-status')).toHaveAttribute('data-status', 'offline')
+    })
+
+    // El segundo intento sí conecta tras el temporizador de 8s.
+    await act(async () => {
+      jest.advanceTimersByTime(8000)
+    })
+    await waitFor(() => {
+      expect(joinOrCreateMock).toHaveBeenCalledTimes(2)
+    })
+    jest.useRealTimers()
+  })
+
+  it('reintenta manualmente con el botón Reintentar cuando está offline', async () => {
+    jest.useFakeTimers()
+    joinOrCreateMock.mockRejectedValueOnce(new Error('server offline'))
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('server-status')).toHaveAttribute('data-status', 'offline')
+    })
+
+    joinOrCreateMock.mockResolvedValueOnce(makeLobbyRoom())
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /reintentar/i }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('server-status')).toHaveAttribute('data-status', 'online')
+    })
+    jest.useRealTimers()
+  })
+
+  it('pasa a offline con reintento cuando el lobby expulsa al cliente', async () => {
+    jest.useFakeTimers()
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await waitFor(() => expect(onLeaveMock).toHaveBeenCalled())
+    const leaveHandler = onLeaveMock.mock.calls[0][0]
+
+    act(() => {
+      leaveHandler(1006)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('server-status')).toHaveAttribute('data-status', 'offline')
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(8000)
+    })
+    await waitFor(() => expect(joinOrCreateMock).toHaveBeenCalledTimes(2))
+    jest.useRealTimers()
+  })
+
+  it('no reintenta si el cierre del lobby fue normal (código 1000)', async () => {
+    jest.useFakeTimers()
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await waitFor(() => expect(onLeaveMock).toHaveBeenCalled())
+    const leaveHandler = onLeaveMock.mock.calls[0][0]
+
+    act(() => {
+      leaveHandler(1000)
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(8000)
+    })
+    // Sigue en línea y no hubo reconexión.
+    expect(screen.getByTestId('server-status')).toHaveAttribute('data-status', 'online')
+    expect(joinOrCreateMock).toHaveBeenCalledTimes(1)
+    jest.useRealTimers()
   })
 
   it('libera la sala lobby al desmontar', async () => {
@@ -208,11 +314,11 @@ describe('Lobby', () => {
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
 
     await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
-    expect(screen.getByText('Lobby')).toBeInTheDocument()
-    expect(screen.queryByText('65,000')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Mesas' })).toBeInTheDocument()
+    expect(screen.queryByText('65.000')).not.toBeInTheDocument()
   })
 
-  it('usa balance cero cuando el perfil no tiene wallet', async () => {
+  it('usa saldo cero cuando el perfil no tiene wallet', async () => {
     singleMock.mockReset()
     singleMock
       .mockResolvedValueOnce({ data: { id: 'user-1', role: 'player', username: 'Chepe', avatar_url: null } })
@@ -220,7 +326,7 @@ describe('Lobby', () => {
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
 
-    await waitFor(() => expect(screen.getByText('Mi Balance').parentElement).toHaveTextContent('0'))
+    await waitFor(() => expect(screen.getByText(/tu saldo/i)).toHaveTextContent('0'))
   })
 
   it('usa avatar de metadata cuando el perfil no trae avatar_url', async () => {
@@ -241,7 +347,7 @@ describe('Lobby', () => {
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
 
     await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
-    const roomsHandler = onMessageMock.mock.calls.find(([type]) => type === 'rooms')?.[1]
+    const roomsHandler = getHandler('rooms')
 
     act(() => {
       roomsHandler([
@@ -254,10 +360,8 @@ describe('Lobby', () => {
       ])
     })
 
-    expect(screen.getByText('1 MESAS DISPONIBLES')).toBeInTheDocument()
-    expect(screen.getByText('REF: live-roo')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'ENTRAR' }))
+    expect(screen.getByText('Mesa #1')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(push).toHaveBeenCalledWith('/play/live-room-1')
   })
@@ -265,23 +369,22 @@ describe('Lobby', () => {
   it('usa clients y maxClients por defecto para una sala activa incompleta', async () => {
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
     await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
-    const roomsHandler = onMessageMock.mock.calls.find(([type]) => type === 'rooms')?.[1]
+    const roomsHandler = getHandler('rooms')
 
     act(() => {
       roomsHandler([{ roomId: 'partial-room', clients: 2, metadata: { tableName: 'Mesa #1' } }])
     })
 
-    expect(screen.getByText(/REF: partial/)).toBeInTheDocument()
-    expect(screen.getByText('2').parentElement).toHaveTextContent('/7')
-    expect(screen.getByRole('button', { name: 'ENTRAR' })).toBeEnabled()
+    expect(screen.getByText('2/7')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled()
   })
 
   it('actualiza y elimina rooms con mensajes incrementales del lobby', async () => {
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
 
     await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('+', expect.any(Function)))
-    const plusHandler = onMessageMock.mock.calls.find(([type]) => type === '+')?.[1]
-    const minusHandler = onMessageMock.mock.calls.find(([type]) => type === '-')?.[1]
+    const plusHandler = getHandler('+')
+    const minusHandler = getHandler('-')
 
     act(() => {
       plusHandler(['room-1', {
@@ -291,7 +394,7 @@ describe('Lobby', () => {
         metadata: { tableName: 'Mesa Extra', totalReservedSeats: 1 },
       }])
     })
-    expect(screen.getByText('EXTRA')).toBeInTheDocument()
+    expect(screen.getByText('Mesa Extra')).toBeInTheDocument()
 
     act(() => {
       plusHandler(['room-1', {
@@ -301,27 +404,27 @@ describe('Lobby', () => {
         metadata: { tableName: 'Mesa Extra', totalReservedSeats: 2, activePlayers: 2 },
       }])
     })
-    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByText('2/7')).toBeInTheDocument()
 
     act(() => {
       minusHandler('room-1')
     })
-    expect(screen.queryByText('EXTRA')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mesa Extra')).not.toBeInTheDocument()
   })
 
   it('deshabilita entrada cuando la mesa activa está llena', async () => {
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
     await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
-    const roomsHandler = onMessageMock.mock.calls.find(([type]) => type === 'rooms')?.[1]
+    const roomsHandler = getHandler('rooms')
 
     act(() => {
       roomsHandler([{ roomId: 'full-room', clients: 7, maxClients: 7, metadata: { tableName: 'Mesa #1', totalReservedSeats: 7 } }])
     })
 
-    expect(screen.getByRole('button', { name: 'MESA LLENA' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Mesa llena' })).toBeDisabled()
   })
 
-  it('crea una mesa placeholder con config de DB y guarda token de reconexion', async () => {
+  it('crea una mesa placeholder con config de DB y guarda token de reconexión', async () => {
     render(
       <Lobby
         lobbyTables={{
@@ -333,8 +436,8 @@ describe('Lobby', () => {
       />,
     )
 
-    await screen.findByText('65,000')
-    fireEvent.click(screen.getByRole('button', { name: 'ABRIR MESA' }))
+    await screen.findByText('65.000')
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir mesa' }))
 
     await waitFor(() => {
       expect(createMock).toHaveBeenCalledWith('mesa', expect.objectContaining({
@@ -354,12 +457,27 @@ describe('Lobby', () => {
   })
 
   it('no crea mesa si la sesión Supabase ya no está disponible', async () => {
-    authGetUserMock.mockResolvedValueOnce({ data: { user: null } })
-    authGetSessionMock.mockResolvedValueOnce({ data: { session: null } })
+    // Perfil con saldo suficiente, pero la sesión de matchmaking expiró.
+    authGetSessionMock.mockResolvedValue({ data: { session: null } })
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0])
+    await screen.findByText('65.000')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Abrir mesa' })[0])
+
+    await waitFor(() => {
+      expect(createMock).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert')).toHaveTextContent(/sesión expiró/i)
+    })
+  })
+
+  it('trata como sesión expirada si getSession lanza una excepción', async () => {
+    authGetSessionMock.mockRejectedValue(new Error('network down'))
+
+    render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
+
+    await screen.findByText('65.000')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Abrir mesa' })[0])
 
     await waitFor(() => {
       expect(createMock).not.toHaveBeenCalled()
@@ -373,8 +491,8 @@ describe('Lobby', () => {
       resolveCreate = resolve
     }))
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('65,000')
-    const openButton = screen.getAllByRole('button', { name: 'ABRIR MESA' })[0]
+    await screen.findByText('65.000')
+    const openButton = screen.getAllByRole('button', { name: 'Abrir mesa' })[0]
 
     act(() => {
       fireEvent.click(openButton)
@@ -386,7 +504,7 @@ describe('Lobby', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/play/created-room'))
   })
 
-  it('crea mesa normal desde botón admin flotante y genera nickname/device si faltan', async () => {
+  it('crea mesa normal desde botón admin y genera nickname/device si faltan', async () => {
     singleMock.mockReset()
     singleMock
       .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: null, avatar_url: null } })
@@ -395,9 +513,9 @@ describe('Lobby', () => {
     jest.spyOn(Math, 'random').mockReturnValue(0.123456)
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('80,000')
+    await screen.findByText('80.000')
 
-    fireEvent.click(screen.getByTitle('Nueva Mesa Normal'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva mesa normal' }))
 
     await waitFor(() => {
       expect(createMock).toHaveBeenCalledWith('mesa', expect.objectContaining({
@@ -426,8 +544,8 @@ describe('Lobby', () => {
     setAuthSession('admin-1', 'admin-access-token')
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('80,000')
-    const createButton = screen.getByTitle('Nueva Mesa Normal')
+    await screen.findByText('80.000')
+    const createButton = screen.getByRole('button', { name: 'Nueva mesa normal' })
 
     act(() => {
       fireEvent.click(createButton)
@@ -452,9 +570,9 @@ describe('Lobby', () => {
       .mockResolvedValueOnce({ data: { balance_cents: 8000000 } })
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('80,000')
+    await screen.findByText('80.000')
 
-    fireEvent.click(screen.getByTitle('Nueva Mesa Normal'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva mesa normal' }))
 
     await waitFor(() => {
       expect(connectionClose).toHaveBeenCalled()
@@ -470,28 +588,30 @@ describe('Lobby', () => {
       .mockResolvedValueOnce({ data: { balance_cents: 8000000 } })
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('80,000')
+    await screen.findByText('80.000')
 
-    fireEvent.click(screen.getByTitle('Nueva Mesa Normal'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva mesa normal' }))
 
     await waitFor(() => {
       expect(console.error).toHaveBeenCalledWith('Room Creation Error:', expect.any(Error))
+      expect(screen.getByRole('alert')).toHaveTextContent(/error al crear la mesa/i)
     })
   })
 
-  it('abre modal de depósito cuando admin intenta crear mesa normal sin saldo', async () => {
+  it('muestra AuthAlert y abre depósito cuando admin intenta crear mesa normal sin saldo', async () => {
     singleMock.mockReset()
     singleMock
       .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: 'Admin', avatar_url: null } })
       .mockResolvedValueOnce({ data: { balance_cents: 1000000 } })
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('10,000')
+    await screen.findByText('10.000')
 
-    fireEvent.click(screen.getByTitle('Nueva Mesa Normal'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva mesa normal' }))
 
     await waitFor(() => {
       expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:true')
+      expect(screen.getByRole('alert')).toHaveTextContent(/necesitas al menos .* de saldo para entrar a una mesa nueva/i)
       expect(createMock).not.toHaveBeenCalled()
     })
 
@@ -508,13 +628,13 @@ describe('Lobby', () => {
     localStorage.setItem('deviceId', 'device-admin')
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('90,000')
+    await screen.findByText('90.000')
 
-    fireEvent.click(screen.getByTitle('Mesa Personalizada'))
+    fireEvent.click(screen.getByRole('button', { name: 'Mesa personalizada' }))
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar VIP' }))
     expect(screen.getByTestId('custom-mesa-modal')).toHaveTextContent('open:false')
 
-    fireEvent.click(screen.getByTitle('Mesa Personalizada'))
+    fireEvent.click(screen.getByRole('button', { name: 'Mesa personalizada' }))
     fireEvent.click(screen.getByRole('button', { name: 'Crear VIP' }))
 
     await waitFor(() => {
@@ -548,9 +668,9 @@ describe('Lobby', () => {
       .mockResolvedValueOnce({ data: { balance_cents: 9000000 } })
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('90,000')
+    await screen.findByText('90.000')
 
-    fireEvent.click(screen.getByTitle('Mesa Personalizada'))
+    fireEvent.click(screen.getByRole('button', { name: 'Mesa personalizada' }))
     fireEvent.click(screen.getByRole('button', { name: 'Crear VIP' }))
 
     await waitFor(() => {
@@ -571,11 +691,11 @@ describe('Lobby', () => {
       />,
     )
 
-    await screen.findByText('65,000')
-    expect(screen.getByText('PRIVADA')).toBeInTheDocument()
-    expect(screen.getAllByText('MESA RESERVADA').length).toBeGreaterThan(0)
+    await screen.findByText('65.000')
+    expect(screen.getByText('Mesa Privada')).toBeInTheDocument()
+    expect(screen.getByText(/mesa personalizada · 3 fichas habilitadas/i)).toBeInTheDocument()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'ABRIR MESA' }).at(-1)!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Abrir mesa' }).at(-1)!)
 
     await waitFor(() => {
       expect(createMock).toHaveBeenCalledWith('mesa', expect.objectContaining({
@@ -590,19 +710,19 @@ describe('Lobby', () => {
     })
   })
 
-  it('restaura estado si falla crear mesa placeholder', async () => {
+  it('muestra error si falla crear mesa placeholder', async () => {
     createMock.mockRejectedValueOnce(new Error('fixed create failed'))
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('65,000')
+    await screen.findByText('65.000')
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Abrir mesa' })[0])
 
     await waitFor(() => {
-      expect(console.error).toHaveBeenCalledWith('Error creating fixed table:', expect.any(Error))
-      expect(screen.getByRole('alert')).toHaveTextContent(/no se pudo crear la mesa/i)
+      expect(console.error).toHaveBeenCalledWith('Room Creation Error:', expect.any(Error))
+      expect(screen.getByRole('alert')).toHaveTextContent(/no se pudo abrir la mesa/i)
     })
-    expect(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0]).not.toBeDisabled()
+    expect(screen.getAllByRole('button', { name: 'Abrir mesa' })[0]).not.toBeDisabled()
   })
 
   it('ignora errores al cerrar conexión alternativa en mesa placeholder creada', async () => {
@@ -613,33 +733,33 @@ describe('Lobby', () => {
     })
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('65,000')
+    await screen.findByText('65.000')
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'ABRIR MESA' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Abrir mesa' })[0])
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/play/created-room')
     })
   })
 
-  it('muestra error si falla crear mesa personalizada', async () => {
-    createMock.mockRejectedValueOnce(new Error('create failed'))
+  it('muestra el mensaje del servidor cuando el matchmaking deniega el acceso', async () => {
+    createMock.mockRejectedValueOnce(new Error('Acceso denegado: tienes una sanción activa'))
     singleMock.mockReset()
     singleMock
       .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: 'Admin', avatar_url: null } })
       .mockResolvedValueOnce({ data: { balance_cents: 9000000 } })
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
-    await screen.findByText('90,000')
-    fireEvent.click(screen.getByTitle('Mesa Personalizada'))
+    await screen.findByText('90.000')
+    fireEvent.click(screen.getByRole('button', { name: 'Mesa personalizada' }))
     fireEvent.click(screen.getByRole('button', { name: 'Crear VIP' }))
 
     await waitFor(() => {
-      expect(console.error).toHaveBeenCalledWith('Custom mesa creation error:', expect.any(Error))
+      expect(screen.getByRole('alert')).toHaveTextContent(/acceso denegado: tienes una sanción activa/i)
     })
   })
 
-  it('bloquea apertura de placeholder si el balance no alcanza', async () => {
+  it('bloquea apertura de placeholder y abre depósito si el saldo no alcanza', async () => {
     singleMock.mockReset()
     singleMock
       .mockResolvedValueOnce({ data: { id: 'user-1', role: 'player', username: 'Chepe', avatar_url: null } })
@@ -656,11 +776,12 @@ describe('Lobby', () => {
       />,
     )
 
-    await screen.findByText('10,000')
-    fireEvent.click(screen.getByRole('button', { name: 'ABRIR MESA' }))
+    await screen.findByText('10.000')
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir mesa' }))
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Fondos insuficientes'))
+      expect(screen.getByRole('alert')).toHaveTextContent(/necesitas al menos .* de saldo para entrar a mesa cara/i)
+      expect(screen.getByTestId('deposit-modal')).toHaveTextContent('open:true')
       expect(createMock).not.toHaveBeenCalled()
     })
   })
@@ -676,7 +797,7 @@ describe('Lobby', () => {
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
 
     await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
-    const roomsHandler = onMessageMock.mock.calls.find(([type]) => type === 'rooms')?.[1]
+    const roomsHandler = getHandler('rooms')
 
     act(() => {
       roomsHandler([
@@ -689,7 +810,11 @@ describe('Lobby', () => {
       ])
     })
 
-    fireEvent.click(screen.getByTitle('Cerrar Mesa'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar Mesa #1' }))
+
+    // Se abre el diálogo de confirmación propio (no window.confirm).
+    expect(screen.getByText('¿Cerrar Mesa #1?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, cerrar' }))
 
     await waitFor(() => {
       expect(joinByIdMock).toHaveBeenCalledWith('admin-room-1')
@@ -698,7 +823,6 @@ describe('Lobby', () => {
   })
 
   it('no elimina mesa si el admin cancela confirmación', async () => {
-    ;(window.confirm as jest.Mock).mockReturnValueOnce(false)
     singleMock.mockReset()
     singleMock
       .mockResolvedValueOnce({ data: { id: 'admin-1', role: 'admin', username: 'Admin', avatar_url: null } })
@@ -706,13 +830,18 @@ describe('Lobby', () => {
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
     await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
-    const roomsHandler = onMessageMock.mock.calls.find(([type]) => type === 'rooms')?.[1]
+    const roomsHandler = getHandler('rooms')
 
     act(() => {
       roomsHandler([{ roomId: 'admin-room-2', clients: 1, maxClients: 7, metadata: { tableName: 'Mesa #1', totalReservedSeats: 1 } }])
     })
 
-    fireEvent.click(screen.getByTitle('Cerrar Mesa'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar Mesa #1' }))
+    expect(screen.getByText('¿Cerrar Mesa #1?')).toBeInTheDocument()
+
+    const cancelButtons = screen.getAllByRole('button', { name: 'Cancelar' })
+    const footerCancel = cancelButtons.find((b) => b.getAttribute('aria-label') === null) ?? cancelButtons[0]
+    fireEvent.click(footerCancel)
 
     expect(joinByIdMock).not.toHaveBeenCalled()
   })
@@ -726,16 +855,17 @@ describe('Lobby', () => {
 
     render(<Lobby lobbyTables={{ common: [], custom: [] }} />)
     await waitFor(() => expect(onMessageMock).toHaveBeenCalledWith('rooms', expect.any(Function)))
-    const roomsHandler = onMessageMock.mock.calls.find(([type]) => type === 'rooms')?.[1]
+    const roomsHandler = getHandler('rooms')
 
     act(() => {
       roomsHandler([{ roomId: 'admin-room-3', clients: 1, maxClients: 7, metadata: { tableName: 'Mesa #1', totalReservedSeats: 1 } }])
     })
 
-    fireEvent.click(screen.getByTitle('Cerrar Mesa'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar Mesa #1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, cerrar' }))
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('No se pudo eliminar la mesa.')
+      expect(screen.getByRole('alert')).toHaveTextContent(/no se pudo cerrar la mesa/i)
     })
   })
 })

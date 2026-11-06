@@ -149,12 +149,15 @@ describe('ReplayController', () => {
     expect(screen.getByTestId('replay-play')).toHaveAccessibleName('Reproducir');
   });
 
-  it('si matchMedia falla, play sigue funcionando sin solicitar fullscreen', async () => {
+  it('si matchMedia no está disponible, play sigue funcionando sin solicitar fullscreen', async () => {
     const requestFullscreen = jest.fn().mockResolvedValue(undefined);
     const originalProtoRfs = (HTMLElement.prototype as any).requestFullscreen;
     const originalMm = window.matchMedia;
     (HTMLElement.prototype as any).requestFullscreen = requestFullscreen;
-    (window as any).matchMedia = jest.fn(() => { throw new Error('matchMedia unavailable'); });
+    // El controlador consulta matchMedia tanto para el modo horizontal corto
+    // como para detectar móvil. Si el navegador no lo expone, debe degradar
+    // sin romper: ni modo inmersivo ni intento de fullscreen.
+    (window as any).matchMedia = undefined;
 
     try {
       render(<ReplayController frames={FRAMES} intervalMs={1000} />);
@@ -170,9 +173,111 @@ describe('ReplayController', () => {
     }
   });
 
+  it('la barra de progreso salta al frame elegido y pausa la reproducción', () => {
+    render(<ReplayController frames={FRAMES} intervalMs={1000} />);
+    // Arranca la reproducción y luego arrastra el scrubber: debe pausar y saltar.
+    fireEvent.click(screen.getByTestId('replay-play'));
+    expect(screen.getByTestId('replay-play')).toHaveAccessibleName('Pausar');
+
+    fireEvent.change(screen.getByTestId('replay-progress'), { target: { value: '3' } });
+
+    expect(screen.getByTestId('replay-phase')).toHaveTextContent(/showdown/i);
+    expect(screen.getByTestId('replay-counter')).toHaveTextContent('4 / 4');
+    expect(screen.getByTestId('replay-play')).toHaveAccessibleName('Reproducir');
+  });
+
   it('muestra mensaje degradado si no hay frames', () => {
     render(<ReplayController frames={[]} />);
     expect(screen.getByTestId('replay-empty')).toBeInTheDocument();
+    expect(screen.getByText('Sin mesa para reproducir')).toBeInTheDocument();
+  });
+
+  it('entra en modo inmersivo con controles flotantes cuando el teléfono está horizontal y bajo', () => {
+    const originalMm = window.matchMedia;
+    const listeners = new Set<() => void>();
+    // El teléfono horizontal y de poca altura coincide con la media query de
+    // modo inmersivo; los demás matchMedia (p. ej. max-width móvil) no.
+    (window as any).matchMedia = jest.fn().mockImplementation((q: string) => ({
+      matches: q.includes('max-height'),
+      media: q,
+      addEventListener: (_: string, cb: () => void) => listeners.add(cb),
+      removeEventListener: (_: string, cb: () => void) => listeners.delete(cb),
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    }));
+
+    try {
+      render(<ReplayController frames={FRAMES} intervalMs={1000} />);
+      // Sin fullscreen, pero el modo horizontal corto ya activa la vista inmersiva.
+      expect(screen.getByTestId('replay-fullscreen-target')).toHaveAttribute('data-immersive', 'true');
+      expect(screen.getByTestId('replay-floating-controls')).toBeInTheDocument();
+      // La barra regular no se muestra en modo inmersivo.
+      expect(screen.queryByTestId('replay-progress')).not.toBeInTheDocument();
+    } finally {
+      (window as any).matchMedia = originalMm;
+    }
+  });
+
+  it('el botón de salir del modo inmersivo usa history.back cuando no hay fullscreen', () => {
+    const originalMm = window.matchMedia;
+    const backSpy = jest.spyOn(window.history, 'back').mockImplementation(() => {});
+    (window as any).matchMedia = jest.fn().mockImplementation((q: string) => ({
+      matches: q.includes('max-height'),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    }));
+
+    try {
+      render(<ReplayController frames={FRAMES} intervalMs={1000} />);
+      const exit = screen.getByTestId('replay-floating-exit');
+      // Sin fullscreen activo, el botón etiqueta "Volver" y navega hacia atrás.
+      expect(exit).toHaveAccessibleName('Volver');
+      fireEvent.click(exit);
+      expect(backSpy).toHaveBeenCalled();
+    } finally {
+      backSpy.mockRestore();
+      (window as any).matchMedia = originalMm;
+    }
+  });
+
+  it('reacciona al cambio de la media query horizontal para entrar y salir del modo inmersivo', () => {
+    const originalMm = window.matchMedia;
+    let changeHandler: (() => void) | undefined;
+    let matches = false;
+    (window as any).matchMedia = jest.fn().mockImplementation((q: string) => ({
+      get matches() {
+        return q.includes('max-height') ? matches : false;
+      },
+      media: q,
+      addEventListener: (type: string, cb: () => void) => {
+        if (type === 'change' && q.includes('max-height')) changeHandler = cb;
+      },
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    }));
+
+    try {
+      render(<ReplayController frames={FRAMES} intervalMs={1000} />);
+      expect(screen.getByTestId('replay-fullscreen-target')).toHaveAttribute('data-immersive', 'false');
+
+      act(() => {
+        matches = true;
+        changeHandler?.();
+      });
+      expect(screen.getByTestId('replay-fullscreen-target')).toHaveAttribute('data-immersive', 'true');
+    } finally {
+      (window as any).matchMedia = originalMm;
+    }
   });
 
   it('no filtra cartas privadas de frames futuros al frame inicial', () => {

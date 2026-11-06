@@ -3,13 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PlayerDashboard } from '../PlayerDashboard'
 import { getWalletData } from '@/app/actions/wallet'
 
-jest.mock('framer-motion', () => ({
-  m: {
-    section: ({ children, initial: _initial, animate: _animate, transition: _transition, whileHover: _whileHover, whileTap: _whileTap, ...props }: React.HTMLAttributes<HTMLElement> & Record<string, unknown>) => <section {...props}>{children}</section>,
-    div: ({ children, initial: _initial, animate: _animate, transition: _transition, whileHover: _whileHover, whileTap: _whileTap, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-  },
-}))
-
 jest.mock('@/app/actions/wallet', () => ({
   getWalletData: jest.fn(),
 }))
@@ -41,26 +34,46 @@ describe('PlayerDashboard', () => {
     jest.clearAllMocks()
   })
 
-  it('renderiza saldo, accesos rápidos y actividad con datos iniciales', () => {
+  it('renderiza saldo, accesos rápidos y últimos movimientos con datos iniciales', () => {
     render(<PlayerDashboard initialData={initialData} />)
 
-    expect(screen.getByText(/saldo disponible/i)).toBeInTheDocument()
-    expect(screen.getByText('$1.250')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /cargar saldo/i })).toHaveAttribute('href', '/wallet')
-    expect(screen.getByRole('link', { name: /ir al lobby/i })).toHaveAttribute('href', '/lobby')
+    expect(screen.getByText('Tu saldo')).toBeInTheDocument()
+    expect(screen.getByText('1.250')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /jugar ahora/i })).toHaveAttribute('href', '/lobby')
+    expect(screen.getByRole('link', { name: /cargar saldo/i })).toHaveAttribute('href', '/wallet/deposit')
+    expect(screen.getByRole('link', { name: /retirar/i })).toHaveAttribute('href', '/wallet/withdraw')
     expect(screen.getByRole('link', { name: /estadísticas/i })).toHaveAttribute('href', '/stats')
-    expect(screen.getByRole('link', { name: /amigos/i })).toHaveAttribute('href', '/friends')
     expect(screen.getByRole('link', { name: /ver todo/i })).toHaveAttribute('href', '/wallet/history')
-    expect(screen.getByText('Depósito')).toBeInTheDocument()
-    expect(screen.getByText('Ganancia')).toBeInTheDocument()
+    // Solo los 3 movimientos más recientes.
+    expect(screen.getByText('Carga de saldo')).toBeInTheDocument()
+    expect(screen.getByText('Ganancia en mesa')).toBeInTheDocument()
     expect(screen.getByText('Apuesta')).toBeInTheDocument()
-    expect(screen.queryByText(/bóveda vacía/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Reembolso')).not.toBeInTheDocument()
+    expect(screen.queryByText(/aún no tienes movimientos/i)).not.toBeInTheDocument()
   })
 
-  it('abre el modal de transacción al hacer click en una actividad', () => {
+  it('muestra las estadísticas del jugador cuando se entregan', () => {
+    render(
+      <PlayerDashboard
+        initialData={initialData}
+        stats={{ games_played: 12, games_won: 7, current_streak: 3 }}
+      />,
+    )
+    expect(screen.getByText('Partidas')).toBeInTheDocument()
+    expect(screen.getByText('12')).toBeInTheDocument()
+    expect(screen.getByText('7')).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
+  })
+
+  it('muestra invitación a jugar cuando no hay estadísticas', () => {
+    render(<PlayerDashboard initialData={initialData} stats={null} />)
+    expect(screen.getByText(/juega tu primera partida/i)).toBeInTheDocument()
+  })
+
+  it('abre el modal de transacción al hacer click en un movimiento', () => {
     render(<PlayerDashboard initialData={initialData} />)
 
-    fireEvent.click(screen.getByText('Depósito'))
+    fireEvent.click(screen.getByText('Carga de saldo'))
 
     expect(screen.getByTestId('transaction-modal')).toHaveTextContent('open:true')
     expect(screen.getByTestId('transaction-modal')).toHaveTextContent('tx:tx-1')
@@ -72,18 +85,30 @@ describe('PlayerDashboard', () => {
   it('muestra estado vacío cuando no hay transacciones', () => {
     render(<PlayerDashboard initialData={{ wallet: { balance_cents: 0 }, transactions: [] }} />)
 
-    expect(screen.getByText(/bóveda vacía/i)).toBeInTheDocument()
+    expect(screen.getByText(/aún no tienes movimientos/i)).toBeInTheDocument()
+    // Hay dos accesos "Cargar saldo": el del panel y el de la acción vacía.
+    expect(screen.getAllByRole('link', { name: /cargar saldo/i }).length).toBeGreaterThanOrEqual(1)
   })
 
   it('carga datos con getWalletData cuando no recibe initialData y sale del loading', async () => {
     mockGetWalletData.mockResolvedValue(initialData as never)
-    const { container } = render(<PlayerDashboard />)
+    render(<PlayerDashboard />)
 
-    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('dashboard-loading')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(mockGetWalletData).toHaveBeenCalledTimes(1)
-      expect(screen.getByText('Depósito')).toBeInTheDocument()
+      expect(screen.getByText('Carga de saldo')).toBeInTheDocument()
+    })
+  })
+
+  it('usa null si getWalletData devuelve error y muestra estado vacío', async () => {
+    mockGetWalletData.mockResolvedValue({ error: 'fallo' } as never)
+    render(<PlayerDashboard />)
+
+    await waitFor(() => {
+      expect(mockGetWalletData).toHaveBeenCalledTimes(1)
+      expect(screen.getByText(/aún no tienes movimientos/i)).toBeInTheDocument()
     })
   })
 })

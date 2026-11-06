@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { m } from 'framer-motion'
-import { Crown } from 'lucide-react'
+import { PageHeader } from '@/components/player/PlayerUI'
 import { StatsTabs } from './StatsTabs'
 import { StatsTabContext } from './stats-tab-context'
 
@@ -11,41 +10,16 @@ export function StatsShell({ children }: { children: ReactNode }) {
 
   return (
     <StatsTabContext.Provider value={{ activeTab, setActiveTab }}>
-      {/* Header Section — renders instantly (no data dependency) */}
-      <header className="text-center space-y-4">
-        <m.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full"
-        >
-          <Crown className="w-4 h-4 text-brand-gold" />
-          <span className="text-[11px] font-bold text-brand-gold uppercase tracking-[0.1em]">Salón de la Fama</span>
-        </m.div>
-        
-        <div className="space-y-1">
-          <h1 className="text-4xl md:text-6xl font-display font-black italic text-white uppercase tracking-tighter leading-none break-words">
-            Estadísticas
-          </h1>
-          <p className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.12em]">
-            Primera Riverada • Elite Club
-          </p>
-        </div>
-      </header>
-
-      {/* Tab Switcher — renders instantly */}
+      <PageHeader title="Estadísticas" lead="Tus números en las mesas y el ranking de jugadores." />
       <StatsTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      {/* Content Area — streamed via Suspense */}
-      <div className="relative min-h-[400px]">
+      <div id="stats-panel" role="tabpanel" aria-labelledby={`stats-tab-${activeTab}`} className="min-h-[24rem]">
         {children}
       </div>
 
-      {/* Footer */}
-      <footer className="text-center pt-10">
-        <p className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.12em]">
-          Los datos se actualizan en tiempo real al finalizar cada ronda
-        </p>
-      </footer>
+      <p className="mt-12 border-t border-[#8b6b2e]/35 pt-5 text-base text-[#bdb7a6]">
+        Los datos se actualizan al terminar cada ronda.
+      </p>
     </StatsTabContext.Provider>
   )
 }

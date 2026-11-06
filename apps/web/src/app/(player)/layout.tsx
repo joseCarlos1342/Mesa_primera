@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import "./player.css";
-import Link from 'next/link';
 import { SupportTrigger } from "@/components/SupportTrigger";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { SupportChat } from "@/components/SupportChat";
 import { BottomNav } from "@/components/navigation/BottomNav";
@@ -12,8 +10,8 @@ import { PlayerAppLockWrapper } from "@/components/providers/PlayerAppLockWrappe
 import { NotificationSocketProvider } from "@/components/providers/NotificationSocketProvider";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
 import { OrientationPortrait } from "@/components/OrientationPortrait";
+import { PlayerHeader } from "@/components/player/PlayerHeader";
 import { createClient } from "@/utils/supabase/server";
-import { getAvatarSvg } from "@/utils/avatars";
 import { OneSignalPushOptIn } from "@/components/OneSignalPushOptIn";
 
 export const metadata: Metadata = {
@@ -41,65 +39,29 @@ export default async function PlayerLayout({
   return (
     <PlayerAppLockWrapper userId={user?.id ?? ''}>
     <OrientationPortrait />
-    <div className="player-layout min-h-screen bg-slate-950 text-text-premium relative flex flex-col font-sans selection:bg-brand-gold/30">
-      {/* Premium Casino Background Overlay */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--color-bg-poker)_0%,_#0a2a1f_100%)]" />
-        <div className="absolute inset-0 opacity-[0.03]" 
-             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3%3C/filter%3%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3%3C/svg%3")` }} 
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
+    <div className="player-layout relative flex min-h-dvh flex-col bg-[#0a0a0a] font-sans text-text-premium selection:bg-brand-gold/35 selection:text-text-premium">
+      <PlayerHeader
+        username={profile?.username}
+        avatar={profile?.avatar_url}
+        actions={
+          user && (
+            <>
+              <SupportTrigger />
+              <NotificationCenter userId={user.id} />
+              <OneSignalPushOptIn userId={user.id} compact />
+            </>
+          )
+        }
+      />
+
+      <div className="flex-1 lg:pl-28">
+        <main
+          id="contenido-principal"
+          className="mx-auto w-full max-w-[72rem] px-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-7 sm:px-6 lg:px-14 lg:pb-16 lg:pt-10"
+        >
+          {children}
+        </main>
       </div>
-
-      {/* Premium Header */}
-      <header className="sticky top-0 z-50 w-full px-4 py-3 sm:px-6 md:px-8 flex items-center justify-between bg-black/60 backdrop-blur-2xl border-b-2 border-brand-gold/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)]" style={{ paddingTop: `max(0.75rem, env(safe-area-inset-top, 0.75rem))` }}>
-        <div className="flex items-center gap-4">
-          <Link href="/profile" className="flex items-center gap-3 bg-white/5 border border-white/10 pl-2 pr-4 py-1.5 rounded-full hover:bg-white/10 transition-colors active:scale-95 group">
-            <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border border-brand-gold/30 overflow-hidden relative shadow-xl">
-              <div className="absolute inset-0 bg-gradient-to-br from-brand-gold/20 to-brand-gold-dark/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              {profile?.avatar_url ? (
-                getAvatarSvg(profile.avatar_url) ? (
-                  <div className="w-full h-full scale-[1.3]">
-                    {getAvatarSvg(profile.avatar_url)}
-                  </div>
-                ) : (
-                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                )
-              ) : (
-                <span className="text-xs font-bold text-brand-gold">
-                  {profile?.username ? profile.username[0].toUpperCase() : 'M'}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col">
-               <span className="text-sm font-bold uppercase text-text-premium leading-none">
-                {profile?.username || 'Invitado'}
-              </span>
-               <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-brand-gold mt-0.5">
-                Ver Perfil
-              </span>
-            </div>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Support Trigger Button only for logged in users */}
-            {user && <SupportTrigger />}
-
-            {user && <NotificationCenter userId={user.id} />}
-            {user && <OneSignalPushOptIn userId={user.id} compact />}
-            <SignOutButton 
-              variant="danger" 
-              className="h-10 w-10 md:h-12 md:w-auto px-0 sm:px-5 flex items-center justify-center min-w-[2.5rem]" 
-            />
-          </div>
-        </div>
-      </header>
-      
-      <main className="relative flex-1 p-3 md:p-8 pb-24 md:pb-28 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
-        {children}
-      </main>
 
       <BottomNav />
       <PWAInstallPrompt />

@@ -35,27 +35,27 @@ describe('CustomMesaModal', () => {
   it('no renderiza nada cuando esta cerrado', () => {
     render(<CustomMesaModal isOpen={false} onClose={jest.fn()} onCreateMesa={jest.fn()} creating={false} />)
 
-    expect(screen.queryByText('Mesa Personalizada')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mesa personalizada')).not.toBeInTheDocument()
   })
 
   it('bloquea submit sin nombre y muestra estado creating', () => {
     render(<CustomMesaModal isOpen onClose={jest.fn()} onCreateMesa={jest.fn()} creating />)
 
-    expect(screen.getByText('CREANDO...')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Creando…' })).toBeDisabled()
   })
 
   it('crea una mesa con opciones seleccionadas y nombre normalizado', () => {
     const onCreateMesa = jest.fn()
     render(<CustomMesaModal isOpen onClose={jest.fn()} onCreateMesa={onCreateMesa} creating={false} />)
 
-    fireEvent.change(screen.getByPlaceholderText('Ej: VIP Diamante, Mesa Alta...'), {
+    fireEvent.change(screen.getByLabelText(/nombre de la mesa/i), {
       target: { value: '  VIP Diamante  ' },
     })
     fireEvent.click(screen.getByRole('button', { name: '5' }))
-    fireEvent.click(screen.getByRole('button', { name: '$100,000' }))
-    fireEvent.click(screen.getByRole('button', { name: '$20,000' }))
-    fireEvent.click(screen.getByRole('button', { name: '$1k ✓' }))
-    fireEvent.click(screen.getByRole('button', { name: 'CREAR MESA PERSONALIZADA' }))
+    fireEvent.click(screen.getByRole('button', { name: '$100.000' }))
+    fireEvent.click(screen.getByRole('button', { name: '$20.000' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ficha de $1k, habilitada' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear mesa' }))
 
     expect(onCreateMesa).toHaveBeenCalledWith({
       tableName: 'VIP Diamante',
@@ -71,22 +71,22 @@ describe('CustomMesaModal', () => {
     const onCreateMesa = jest.fn()
     render(<CustomMesaModal isOpen onClose={jest.fn()} onCreateMesa={onCreateMesa} creating={false} />)
 
-    fireEvent.change(screen.getByPlaceholderText('Ej: VIP Diamante, Mesa Alta...'), {
+    fireEvent.change(screen.getByLabelText(/nombre de la mesa/i), {
       target: { value: 'Mesa sin fichas' },
     })
-    for (const chipLabel of ['$1k ✓', '$2k ✓', '$5k ✓', '$10k ✓', '$20k ✓', '$50k ✓']) {
-      fireEvent.click(screen.getByRole('button', { name: chipLabel }))
+    for (const label of ['$1k', '$2k', '$5k', '$10k', '$20k', '$50k']) {
+      fireEvent.click(screen.getByRole('button', { name: `Ficha de ${label}, habilitada` }))
     }
 
     expect(screen.getByText('Debe haber al menos 1 ficha habilitada')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'CREAR MESA PERSONALIZADA' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Crear mesa' })).toBeDisabled()
   })
 
   it('cierra al hacer click en el backdrop', () => {
     const onClose = jest.fn()
-    const { container } = render(<CustomMesaModal isOpen onClose={onClose} onCreateMesa={jest.fn()} creating={false} />)
+    render(<CustomMesaModal isOpen onClose={onClose} onCreateMesa={jest.fn()} creating={false} />)
 
-    fireEvent.click(container.firstElementChild!)
+    fireEvent.click(screen.getByTestId('sheet-backdrop'))
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

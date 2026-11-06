@@ -276,20 +276,23 @@ describe('Wallet page contrast compliance', () => {
 // 10. Wallet page — button accessible names
 // ────────────────────────────────────────────────
 describe('Wallet page button accessibility', () => {
-  it('TransactionModal close button has aria-label', () => {
+  it('TransactionModal provee un cierre accesible vía PlayerSheet (closeLabel)', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../components/wallet/TransactionModal.tsx'),
       'utf-8'
     )
-    expect(source).toMatch(/aria-label/)
+    // El cierre accesible ahora lo aporta PlayerSheet a través de closeLabel
+    expect(source).toMatch(/PlayerSheet/)
+    expect(source).toMatch(/closeLabel=/)
   })
 
-  it('TransferModal close button has aria-label', () => {
+  it('TransferModal provee un cierre accesible vía PlayerSheet (closeLabel)', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../components/wallet/TransferModal.tsx'),
       'utf-8'
     )
-    expect(source).toMatch(/aria-label/)
+    expect(source).toMatch(/PlayerSheet/)
+    expect(source).toMatch(/closeLabel=/)
   })
 
   it('TransferModal back button has aria-label', () => {
@@ -297,9 +300,9 @@ describe('Wallet page button accessibility', () => {
       path.resolve(__dirname, '../components/wallet/TransferModal.tsx'),
       'utf-8'
     )
-    // Must have at least 2 aria-labels (back + close)
-    const matches = source.match(/aria-label/g)
-    expect(matches?.length).toBeGreaterThanOrEqual(2)
+    // El botón de volver (headerStart) expone aria-label; el cierre lo da closeLabel
+    expect(source).toMatch(/aria-label/)
+    expect(source).toMatch(/closeLabel=/)
   })
 })
 
@@ -353,8 +356,13 @@ describe('Stats page server-side rendering', () => {
     )
     // Shell should NOT import any data-fetching actions
     expect(source).not.toMatch(/getMyStats|getLeaderboard/)
-    // Shell should contain the h1
-    expect(source).toMatch(/<h1/)
+    // El encabezado lo aporta PageHeader (que renderiza el h1 en PlayerUI.tsx)
+    expect(source).toMatch(/PageHeader/)
+    const playerUi = fs.readFileSync(
+      path.resolve(__dirname, '../components/player/PlayerUI.tsx'),
+      'utf-8'
+    )
+    expect(playerUi).toMatch(/<h1/)
   })
 })
 
@@ -472,7 +480,9 @@ describe('Friends page button accessibility', () => {
       path.resolve(__dirname, '../app/(player)/friends/page.tsx'),
       'utf-8'
     )
-    expect(source).toMatch(/aria-label=["']Cerrar["']/)
+    // El modal de borrado usa PlayerSheet, cuyo cierre accesible viene de closeLabel="Cerrar"
+    expect(source).toMatch(/PlayerSheet/)
+    expect(source).toMatch(/closeLabel=["']Cerrar["']/)
   })
 })
 
@@ -497,27 +507,25 @@ describe('Friends page contrast compliance', () => {
     expect(source).not.toMatch(/className="[^"]*opacity-20[^"]*">\s*<p/)
   })
 
-  it('Empty state container does not have opacity-30 on text parent', () => {
+  it('Empty state container does not dim text with opacity', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../app/(player)/friends/_components/FriendsList.tsx'),
       'utf-8'
     )
-    // The main container wrapping text should not have opacity-30
-    const emptyStateMatch = source.match(/rounded-\[3rem\][^"]*"/)
-    expect(emptyStateMatch?.[0]).not.toMatch(/opacity-30/)
+    // El estado vacío no debe atenuar el texto con opacidades bajas
+    expect(source).not.toMatch(/\bopacity-30\b/)
+    expect(source).not.toMatch(/\bopacity-20\b/)
   })
 
-  it('Empty state uses text-slate-400 or lighter for visible text', () => {
+  it('Empty state usa un color visible para el texto secundario', () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, '../app/(player)/friends/_components/FriendsList.tsx'),
       'utf-8'
     )
-    // "Tu círculo está vacío" text must not use text-slate-700+ on dark bg
-    expect(source).toMatch(/Tu círculo está vacío/)
-    // Ensure the line uses a visible color (slate-400 or brighter)
-    const lines = source.split('\n')
-    const circuloLine = lines.find(l => l.includes('Tu círculo está vacío'))
-    expect(circuloLine).toMatch(/text-slate-[1-4]00/)
+    // El estado vacío ahora dice "Aún no tienes amigos"
+    expect(source).toMatch(/Aún no tienes amigos/)
+    // Y usa el token de texto secundario de alto contraste del tema player
+    expect(source).toMatch(/text-\[#bdb7a6\]/)
   })
 })
 
@@ -545,87 +553,94 @@ describe('Rules page contrast compliance', () => {
 })
 
 // ── Profile page fixes ─────────────────────────────────────────────
+// Tras el rediseño, el perfil se compone con ProfileSections (identidad,
+// stats, bloqueo biométrico) y AuthField para el formulario. Las aserciones
+// verifican el equivalente actual en esos componentes.
 
 const profileSource = fs.readFileSync(
   path.resolve(__dirname, '../app/(player)/profile/page.tsx'),
   'utf-8'
 )
+const profileSectionsSource = fs.readFileSync(
+  path.resolve(__dirname, '../app/(player)/profile/_components/ProfileSections.tsx'),
+  'utf-8'
+)
 
 describe('Profile page button-name compliance', () => {
   it('Avatar upload button has aria-label', () => {
-    // aria-label on the button, Camera icon inside
-    const avatarBtnIdx = profileSource.indexOf('<Camera className="w-6 h-6 md:w-7')
-    const btnContext = profileSource.substring(avatarBtnIdx - 500, avatarBtnIdx)
-    expect(btnContext).toContain('aria-label=')
+    // El botón del avatar vive en ProfileIdentity con aria-label "Cambiar avatar"
+    expect(profileSectionsSource).toMatch(/aria-label="Cambiar avatar"/)
   })
 
   it('Biometric toggle button has aria-label', () => {
-    expect(profileSource).toMatch(/aria-label="[^"]+"\s*\n\s*onClick={async \(\) => {\s*\n\s*if \(lockEnabled\)/)
+    // El interruptor biométrico usa role="switch" con aria-label
+    expect(profileSectionsSource).toMatch(/role="switch"/)
+    expect(profileSectionsSource).toMatch(/aria-label="[^"]+"/)
   })
 })
 
 describe('Profile page heading order', () => {
-  it('Username heading uses h2 instead of h3', () => {
-    expect(profileSource).toMatch(/<h2[^>]*>[\s\S]*?{formData\.username/)
-    expect(profileSource).not.toMatch(/<h3[^>]*>[\s\S]*?{formData\.username/)
+  it('Username heading uses h1 in ProfileIdentity', () => {
+    // El nombre del jugador se muestra en un h1 (ProfileIdentity)
+    expect(profileSectionsSource).toMatch(/<h1[^>]*>[\s\S]*?\{username/)
+    expect(profileSectionsSource).not.toMatch(/<h3[^>]*>[\s\S]*?\{username/)
   })
 })
 
 describe('Profile page contrast compliance', () => {
-  it('Stat labels use text-slate-400 instead of text-slate-600', () => {
-    const mesasContext = profileSource.substring(
-      profileSource.indexOf('Mesas</p>') - 80,
-      profileSource.indexOf('Mesas</p>')
+  it('Stat labels use the player secondary token instead of text-slate-600', () => {
+    const mesasContext = profileSectionsSource.substring(
+      profileSectionsSource.indexOf('StatCell') ,
     )
-    expect(mesasContext).toContain('text-slate-400')
+    // Las etiquetas de StatCell usan el token secundario de alto contraste
+    expect(profileSectionsSource).toMatch(/<dt className="text-base text-\[#bdb7a6\]"/)
     expect(mesasContext).not.toContain('text-slate-600')
   })
 
-  it('Form labels use text-brand-gold without opacity modifier', () => {
-    const aliasContext = profileSource.substring(
-      profileSource.indexOf('Alias de Jugador') - 100,
-      profileSource.indexOf('Alias de Jugador')
-    )
-    expect(aliasContext).not.toMatch(/text-brand-gold\/\d+/)
+  it('Form labels (AuthField) no usan modificador de opacidad', () => {
+    // El formulario usa AuthField con labels explícitas; sin dorado atenuado
+    expect(profileSource).toMatch(/label="Alias de jugador"/)
+    expect(profileSource).not.toMatch(/text-brand-gold\/\d+/)
   })
 
-  it('Email section does not use container-level opacity-40', () => {
-    const emailIdx = profileSource.indexOf('Enlace de Bóveda')
-    const emailContainer = profileSource.substring(emailIdx - 120, emailIdx)
-    expect(emailContainer).not.toContain('opacity-40')
+  it('Email field no usa opacidad a nivel de contenedor', () => {
+    // El correo se renderiza con AuthField (label "Correo") sin atenuar
+    expect(profileSource).toMatch(/label="Correo"/)
+    expect(profileSource).not.toMatch(/opacity-40/)
   })
 
-  it('Email input has aria-label for accessibility', () => {
-    expect(profileSource).toMatch(/type="email"\s*\n\s*aria-label="[^"]+"/)
+  it('Email field es accesible por su label asociada (AuthField)', () => {
+    // AuthField asocia label e input; no hace falta un aria-label suelto
+    expect(profileSource).toMatch(/label="Correo"[\s\S]{0,80}type="email"/)
   })
 
-  it('Biometric description uses text-slate-400 instead of text-white/40', () => {
-    const bioIdx = profileSource.indexOf('Pide verificación al abrir la app')
-    const bioContext = profileSource.substring(bioIdx - 80, bioIdx)
-    expect(bioContext).toContain('text-slate-400')
-    expect(bioContext).not.toContain('text-white/40')
+  it('Biometric description usa el token secundario en vez de text-white/40', () => {
+    expect(profileSectionsSource).toMatch(/text-\[#bdb7a6\]/)
+    expect(profileSectionsSource).not.toContain('text-white/40')
   })
 })
 
 // ── Lobby page fixes ────────────────────────────────────────────────
 
+// Tras el rediseño, el lobby abandonó el pie "Seguridad de Élite" y los tokens
+// `text-slate-*`. El equivalente vigente es que el componente no use tokens de
+// bajo contraste ni atenúe texto con opacidades a nivel de contenedor.
 describe('Lobby page contrast compliance', () => {
   const lobbySource = fs.readFileSync(
     path.resolve(__dirname, '../components/game/Lobby.tsx'),
     'utf-8'
   )
 
-  it('Bottom info section does not use container-level opacity', () => {
-    const infoIdx = lobbySource.indexOf('Seguridad de Élite')
-    const container = lobbySource.substring(infoIdx - 200, infoIdx)
-    expect(container).not.toMatch(/opacity-\d+/)
+  it('no usa los tokens de bajo contraste text-slate-500/600', () => {
+    expect(lobbySource).not.toMatch(/text-slate-500/)
+    expect(lobbySource).not.toMatch(/text-slate-600/)
   })
 
-  it('Bottom info labels use text-slate-400 instead of text-slate-500', () => {
-    const infoIdx = lobbySource.indexOf('Seguridad de Élite')
-    const context = lobbySource.substring(infoIdx - 120, infoIdx)
-    expect(context).toContain('text-slate-400')
-    expect(context).not.toContain('text-slate-500')
+  it('no atenúa texto con modificadores de opacidad de bajo contraste', () => {
+    // Se permite disabled:opacity-60 en botones (estado deshabilitado), pero no
+    // atenuar texto legible con opacity-* sueltas.
+    expect(lobbySource).not.toMatch(/(?<!disabled:)\bopacity-(?:[1-5]0)\b/)
+    expect(lobbySource).not.toMatch(/text-(?:white|text-premium)\/[1-5]\d\b/)
   })
 })
 
@@ -635,39 +650,49 @@ describe('Lobby page contrast compliance', () => {
 // Los chequeos de heading order y contraste de aquel viewer ya no aplican.
 
 // ────────────────────────────────────────────────
-// 20. Wallet modals — mobile overlay & content visibility
+// 20. Wallet modals — ahora usan PlayerSheet (overlay, z-index y safe-area)
 // ────────────────────────────────────────────────
+describe('PlayerSheet overlay invariants (compartido por TransactionModal/TransferModal)', () => {
+  const sheetPath = path.resolve(__dirname, '../components/player/PlayerSheet.tsx')
+  let sheetSource: string
+  beforeAll(() => { sheetSource = fs.readFileSync(sheetPath, 'utf-8') })
+
+  it('se apila sobre BottomNav (z-[100]) usando z-[300]', () => {
+    // BottomNav usa z-[100]; PlayerSheet debe quedar por encima
+    const containerMatch = sheetSource.match(/fixed inset-0 z-\[(\d+)\]/)
+    expect(containerMatch).not.toBeNull()
+    expect(Number(containerMatch![1])).toBeGreaterThan(100)
+    expect(sheetSource).toMatch(/z-\[300\]/)
+  })
+
+  it('respeta la safe-area inferior con env(safe-area-inset-bottom)', () => {
+    expect(sheetSource).toMatch(/env\(safe-area-inset-bottom\)/)
+  })
+
+  it('expone un cierre accesible configurable (closeLabel → aria-label)', () => {
+    expect(sheetSource).toMatch(/closeLabel/)
+    expect(sheetSource).toMatch(/aria-label=\{closeLabel\}/)
+  })
+})
+
 describe('TransactionModal mobile overlay & content visibility', () => {
   const txModalPath = path.resolve(__dirname, '../components/wallet/TransactionModal.tsx')
   let txSource: string
   beforeAll(() => { txSource = fs.readFileSync(txModalPath, 'utf-8') })
 
-  it('uses z-index higher than BottomNav (z-[100])', () => {
-    // BottomNav uses z-[100]; modal must sit above it
-    const containerMatch = txSource.match(/fixed inset-0 z-\[(\d+)\]/)
-    expect(containerMatch).not.toBeNull()
-    expect(Number(containerMatch![1])).toBeGreaterThan(100)
+  it('delega el overlay en PlayerSheet en lugar de un contenedor propio', () => {
+    expect(txSource).toMatch(/PlayerSheet/)
+    expect(txSource).not.toMatch(/fixed inset-0 z-\[\d+\]/)
   })
 
   it('does not use max-h-[90vh] without safe-area consideration', () => {
-    // 90vh ignores the bottom nav and safe-area on mobile
+    // 90vh ignora el bottom nav y la safe-area en móvil
     expect(txSource).not.toMatch(/max-h-\[90vh\]/)
   })
 
   it('does not truncate the transaction ID with slice', () => {
-    // The full UUID should be shown, not abbreviated with slice + "..."
+    // El UUID completo debe mostrarse, no abreviarse con slice + "..."
     expect(txSource).not.toMatch(/\.slice\(.*\)\s*\+\s*['"]\.\.\.['"]/)
-  })
-
-  it('DetailItem does not use truncate class for values', () => {
-    // Values like type, channel and ID must wrap instead of being cut off
-    const detailItemBlock = txSource.substring(txSource.indexOf('function DetailItem'))
-    expect(detailItemBlock).not.toMatch(/\btruncate\b/)
-  })
-
-  it('footer has safe-area bottom padding', () => {
-    // The footer/close-button area must account for safe-area on notched devices
-    expect(txSource).toMatch(/pb-safe/)
   })
 })
 
@@ -676,10 +701,9 @@ describe('TransferModal mobile overlay', () => {
   let transferSource: string
   beforeAll(() => { transferSource = fs.readFileSync(transferModalPath, 'utf-8') })
 
-  it('uses z-index higher than BottomNav (z-[100])', () => {
-    const containerMatch = transferSource.match(/fixed inset-0 z-\[(\d+)\]/)
-    expect(containerMatch).not.toBeNull()
-    expect(Number(containerMatch![1])).toBeGreaterThan(100)
+  it('delega el overlay en PlayerSheet en lugar de un contenedor propio', () => {
+    expect(transferSource).toMatch(/PlayerSheet/)
+    expect(transferSource).not.toMatch(/fixed inset-0 z-\[\d+\]/)
   })
 
   it('does not use max-h-[90vh] without safe-area consideration', () => {

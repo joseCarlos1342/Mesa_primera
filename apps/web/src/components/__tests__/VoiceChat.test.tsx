@@ -139,11 +139,11 @@ describe('VoiceChat', () => {
     })
 
 
-    expect(await screen.findByText('Audio de Jugadores')).toBeInTheDocument()
+    expect(await screen.findByText('Audio de jugadores')).toBeInTheDocument()
     fireEvent.click(screen.getAllByRole('button').at(-1)!)
 
     await waitFor(() => {
-      expect(screen.queryByText('Audio de Jugadores')).not.toBeInTheDocument()
+      expect(screen.queryByText('Audio de jugadores')).not.toBeInTheDocument()
     })
   })
 })
@@ -159,7 +159,7 @@ describe('PlayerAudioModal', () => {
 
     render(<PlayerAudioModal isOpen={false} onClose={jest.fn()} />)
 
-    expect(screen.queryByText('Audio de Jugadores')).not.toBeInTheDocument()
+    expect(screen.queryByText('Audio de jugadores')).not.toBeInTheDocument()
   })
 
   it('muestra estado vacio si no hay participantes remotos', () => {
@@ -167,10 +167,10 @@ describe('PlayerAudioModal', () => {
 
     render(<PlayerAudioModal isOpen onClose={jest.fn()} />)
 
-    expect(screen.getByText('No hay otros jugadores en la sala.')).toBeInTheDocument()
+    expect(screen.getByText('No hay otros jugadores con voz en la mesa.')).toBeInTheDocument()
   })
 
-  it('silencia y restaura el audio remoto adjunto', () => {
+  it('silencia y restaura el audio remoto adjunto (aria-pressed)', () => {
     const audioElement = document.createElement('audio')
     participants = [
       { identity: 'local-user', name: 'Yo' },
@@ -183,11 +183,15 @@ describe('PlayerAudioModal', () => {
 
     render(<PlayerAudioModal isOpen onClose={jest.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Silenciar' }))
+    const toggle = screen.getByRole('button', { name: 'Silenciar a Ana' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(toggle)
     expect(audioElement.muted).toBe(true)
     expect(screen.getByText('Silenciado')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /silenciado/i }))
+    const activate = screen.getByRole('button', { name: 'Activar voz de Ana' })
+    expect(activate).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(activate)
     expect(audioElement.muted).toBe(false)
   })
 
@@ -199,7 +203,7 @@ describe('PlayerAudioModal', () => {
 
     render(<PlayerAudioModal isOpen onClose={jest.fn()} />)
 
-    expect(screen.getByRole('button', { name: 'Silenciar' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Silenciar a Ana' })).toBeDisabled()
   })
 
   it('no hace nada al silenciar si el track existe pero es null', () => {
@@ -210,8 +214,8 @@ describe('PlayerAudioModal', () => {
 
     render(<PlayerAudioModal isOpen onClose={jest.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Silenciar' }))
-    expect(screen.getByRole('button', { name: 'Silenciar' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Silenciar a Ana' }))
+    expect(screen.getByRole('button', { name: 'Silenciar a Ana' })).toBeInTheDocument()
   })
 
   it('silencia via track.enabled cuando no hay elementos adjuntos', () => {
@@ -223,7 +227,7 @@ describe('PlayerAudioModal', () => {
 
     render(<PlayerAudioModal isOpen onClose={jest.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Silenciar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Silenciar a Ana' }))
     expect(mockTrack.enabled).toBe(false)
     expect(screen.getByText('Silenciado')).toBeInTheDocument()
   })
@@ -268,10 +272,9 @@ describe('VoiceChat (branches adicionales)', () => {
     expect(screen.getByText('Conectando canal de voz...')).toBeInTheDocument()
   })
 
-  it('maneja error al togglear microfono', async () => {
+  it('muestra aviso role=alert cuando falla togglear microfono', async () => {
     setMicrophoneEnabled.mockRejectedValue(new Error('hardware error'))
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
-    window.alert = jest.fn()
 
     render(<VoiceChat roomName="mesa-1" username="Jose" />)
 
@@ -281,7 +284,33 @@ describe('VoiceChat (branches adicionales)', () => {
     })
 
     expect(consoleError).toHaveBeenCalledWith('Failed to toggle mic', expect.any(Error))
-    expect(window.alert).toHaveBeenCalledWith('Error al intentar activar el micrófono. Verifica tus permisos o hardware.')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no se pudo activar el micrófono/i)
+  })
+
+  it('oculta el aviso del micrófono después de 6 segundos', async () => {
+    jest.useFakeTimers()
+    setMicrophoneEnabled.mockRejectedValue(new Error('hardware error'))
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(<VoiceChat roomName="mesa-1" username="Jose" />)
+
+    // Avanza timers para resolver el fetch del token.
+    await act(async () => {
+      await Promise.resolve()
+    })
+    const micButton = screen.getByTitle('Activar o desactivar micrófono')
+    await act(async () => {
+      fireEvent.click(micButton)
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/no se pudo activar el micrófono/i)
+
+    await act(async () => {
+      jest.advanceTimersByTime(6000)
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    jest.useRealTimers()
   })
 
   it('muestra icono de microfono activo cuando esta habilitado', async () => {

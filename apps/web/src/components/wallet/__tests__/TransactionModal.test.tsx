@@ -3,13 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TransactionModal } from '../TransactionModal'
 import { createClient } from '@/utils/supabase/client'
 
-jest.mock('framer-motion', () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  motion: {
-    div: ({ children, initial: _initial, animate: _animate, exit: _exit, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-  },
-}))
-
 jest.mock('@/utils/supabase/client', () => ({
   createClient: jest.fn(),
 }))
@@ -36,6 +29,7 @@ const baseTx = {
   direction: 'credit',
   status: 'completed',
   amount_cents: 50000,
+  balance_after_cents: 300000,
   created_at: '2025-01-01T10:00:00.000Z',
   description: 'Recarga por Nequi',
   observations: 'Soporte enviado',
@@ -53,17 +47,23 @@ describe('TransactionModal', () => {
   it('no renderiza nada si transaction es null', () => {
     const { container } = render(<TransactionModal transaction={null} isOpen={true} onClose={jest.fn()} />)
     expect(container.firstChild).toBeNull()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renderiza monto, estado, detalles y usa signed URL cuando existe proof_url', async () => {
     render(<TransactionModal transaction={baseTx} isOpen={true} onClose={jest.fn()} />)
 
-    expect(screen.getByText(/detalles de operación/i)).toBeInTheDocument()
-    expect(screen.getByText((content) => content.includes('$500'))).toBeInTheDocument()
-    expect(screen.getByText(/operación exitosa/i)).toBeInTheDocument()
-    expect(screen.getByText(/depósito de fondos/i)).toBeInTheDocument()
-    expect(screen.getByText(/recarga por nequi/i)).toBeInTheDocument()
-    expect(screen.getByText(/soporte enviado/i)).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Carga de saldo' })).toBeInTheDocument()
+    expect(screen.getByText('Completado')).toBeInTheDocument()
+    const monies = screen.getAllByTestId('money')
+    expect(monies.some((m) => m.textContent === '+$500')).toBe(true)
+    // Canal de depósito
+    expect(screen.getByText('Transferencia Nequi')).toBeInTheDocument()
+    expect(screen.getByText('Saldo después')).toBeInTheDocument()
+    expect(screen.getByText('Recarga por Nequi')).toBeInTheDocument()
+    expect(screen.getByText('Soporte enviado')).toBeInTheDocument()
+    expect(screen.getByText('tx-1')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(mockCreateSignedUrl).toHaveBeenCalledWith('proofs/comprobante.png', 3600)
@@ -93,23 +93,20 @@ describe('TransactionModal', () => {
     })
   })
 
-  it('muestra placeholder de procesamiento cuando no hay URL resuelta aún', async () => {
+  it('muestra placeholder de carga cuando no hay URL resuelta aún', async () => {
     mockCreateSignedUrl.mockImplementation(() => new Promise(() => {}))
 
     render(<TransactionModal transaction={baseTx} isOpen={true} onClose={jest.fn()} />)
 
-    expect(screen.getByText(/procesando imagen/i)).toBeInTheDocument()
+    expect(screen.getByText(/cargando comprobante/i)).toBeInTheDocument()
   })
 
-  it('permite cerrar desde backdrop y botón de cierre', async () => {
+  it('permite cerrar desde el backdrop y el botón de cierre', async () => {
     const onClose = jest.fn()
-    const { container } = render(<TransactionModal transaction={baseTx} isOpen={true} onClose={onClose} />)
+    render(<TransactionModal transaction={baseTx} isOpen={true} onClose={onClose} />)
 
-    const backdrop = Array.from(container.querySelectorAll('div')).find((element) =>
-      element.className.includes('bg-black/80 backdrop-blur-md')
-    ) as Element
-    fireEvent.click(backdrop)
-    fireEvent.click(screen.getByRole('button', { name: /cerrar detalles/i }))
+    fireEvent.click(screen.getByTestId('sheet-backdrop'))
+    fireEvent.click(screen.getByRole('button', { name: /cerrar detalle/i }))
 
     expect(onClose).toHaveBeenCalledTimes(2)
     await waitFor(() => expect(mockCreateSignedUrl).toHaveBeenCalledWith('proofs/comprobante.png', 3600))
@@ -118,7 +115,7 @@ describe('TransactionModal', () => {
   it('no muestra contenido si el modal está cerrado aunque exista transacción', async () => {
     render(<TransactionModal transaction={baseTx} isOpen={false} onClose={jest.fn()} />)
 
-    expect(screen.queryByText(/detalles de operación/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await waitFor(() => expect(mockCreateSignedUrl).toHaveBeenCalledWith('proofs/comprobante.png', 3600))
   })
 
@@ -138,14 +135,15 @@ describe('TransactionModal', () => {
         }}
         isOpen={true}
         onClose={jest.fn()}
-      />
+      />,
     )
 
-    expect(screen.getByText((content) => content.includes('-$1.250'))).toBeInTheDocument()
-    expect(screen.getByText(/en proceso/i)).toBeInTheDocument()
-    expect(screen.getByText(/retiro de saldo/i)).toBeInTheDocument()
-    expect(screen.getByText(/retiro bancario/i)).toBeInTheDocument()
-    expect(screen.queryByText(/comprobante respaldado/i)).not.toBeInTheDocument()
+    const monies = screen.getAllByTestId('money')
+    expect(monies.some((m) => m.textContent === '\u2212$1.250')).toBe(true)
+    expect(screen.getByText('En revisión')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Retiro' })).toBeInTheDocument()
+    expect(screen.getByText('Retiro a cuenta')).toBeInTheDocument()
+    expect(screen.queryByText('Comprobante')).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(mockCreateSignedUrl).not.toHaveBeenCalled()
@@ -153,7 +151,7 @@ describe('TransactionModal', () => {
     })
   })
 
-  it('usa etiquetas seguras para transferencias, ajustes y tipos desconocidos', () => {
+  it('usa canales y etiquetas correctas para transferencias, ajustes y tipos desconocidos', () => {
     const { rerender } = render(
       <TransactionModal
         transaction={{
@@ -163,16 +161,20 @@ describe('TransactionModal', () => {
           direction: undefined,
           status: 'failed',
           proof_url: null,
+          balance_after_cents: null,
         }}
         isOpen={true}
         onClose={jest.fn()}
-      />
+      />,
     )
 
-    expect(screen.getByText((content) => content.includes('-$500'))).toBeInTheDocument()
-    expect(screen.getByText(/fallida/i)).toBeInTheDocument()
-    expect(screen.getByText(/transferencia entre jugadores/i)).toBeInTheDocument()
-    expect(screen.getByText('P2P')).toBeInTheDocument()
+    const monies = screen.getAllByTestId('money')
+    expect(monies.some((m) => m.textContent === '\u2212$500')).toBe(true)
+    expect(screen.getByText('Rechazado')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Transferencia enviada' })).toBeInTheDocument()
+    expect(screen.getByText('Entre jugadores')).toBeInTheDocument()
+    // Sin balance_after_cents no se muestra la fila "Saldo después".
+    expect(screen.queryByText('Saldo después')).not.toBeInTheDocument()
 
     rerender(
       <TransactionModal
@@ -186,11 +188,11 @@ describe('TransactionModal', () => {
         }}
         isOpen={true}
         onClose={jest.fn()}
-      />
+      />,
     )
 
-    expect(screen.getByText(/ajuste de saldo/i)).toBeInTheDocument()
-    expect(screen.getByText(/sistema/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ajuste de saldo' })).toBeInTheDocument()
+    expect(screen.getByText('Sistema')).toBeInTheDocument()
 
     rerender(
       <TransactionModal
@@ -200,12 +202,14 @@ describe('TransactionModal', () => {
           type: 'bonus_manual',
           direction: undefined,
           proof_url: null,
+          description: null,
+          observations: null,
         }}
         isOpen={true}
         onClose={jest.fn()}
-      />
+      />,
     )
 
-    expect(screen.getByText('bonus_manual')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'bonus_manual' })).toBeInTheDocument()
   })
 })

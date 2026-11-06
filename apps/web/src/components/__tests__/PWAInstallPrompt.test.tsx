@@ -136,7 +136,7 @@ describe('PWAInstallPrompt', () => {
     expect(await screen.findByText(/instalar 4 ases/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /ver instrucciones/i }))
 
-    expect(await screen.findByText(/instalar en iphone\/ipad/i)).toBeInTheDocument()
+    expect(await screen.findByText(/instalar en iphone o ipad/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /entendido/i }))
     expect(localStorage.getItem('pwa-install-dismissed')).toBeTruthy()
   })
@@ -153,9 +153,9 @@ describe('PWAInstallPrompt', () => {
     })
 
     fireEvent.click(await screen.findByRole('button', { name: /ver instrucciones/i }))
-    const guide = await screen.findByText(/instalar en iphone\/ipad/i)
-    fireEvent.click(guide.closest('.rounded-2xl') as HTMLElement)
-    expect(screen.getByText(/instalar en iphone\/ipad/i)).toBeInTheDocument()
+    const guide = await screen.findByText(/instalar en iphone o ipad/i)
+    fireEvent.click(guide.closest('[role="dialog"]') as HTMLElement)
+    expect(screen.getByText(/instalar en iphone o ipad/i)).toBeInTheDocument()
 
     fireEvent.click(guide.closest('.fixed') as HTMLElement)
     expect(localStorage.getItem('pwa-install-dismissed')).toBeTruthy()

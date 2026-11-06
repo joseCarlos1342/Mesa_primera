@@ -6,7 +6,8 @@ describe('SupportTrigger', () => {
   it('renderiza el botón base de soporte', () => {
     render(<SupportTrigger />)
 
-    expect(screen.getByRole('button', { name: /soporte con el host/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Soporte' })).toBeInTheDocument()
+    expect(screen.queryByTestId('support-dot')).not.toBeInTheDocument()
   })
 
   it('muestra indicador cuando llega support-notification y lo limpia al abrir el chat', () => {
@@ -14,11 +15,14 @@ describe('SupportTrigger', () => {
     render(<SupportTrigger />)
 
     fireEvent(window, new Event('support-notification'))
-    expect(document.querySelector('.animate-bounce')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /soporte con el host/i }))
+    expect(screen.getByTestId('support-dot')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Soporte, mensaje nuevo' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Soporte, mensaje nuevo' }))
 
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'open-support-chat' }))
-    expect(document.querySelector('.animate-bounce')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('support-dot')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Soporte' })).toBeInTheDocument()
   })
 })

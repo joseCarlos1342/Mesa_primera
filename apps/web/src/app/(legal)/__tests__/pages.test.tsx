@@ -1,6 +1,26 @@
 import { render, screen } from '@testing-library/react'
 import PrivacyPage, { metadata as privacyMetadata } from '../privacy/page'
 import TermsPage, { metadata as termsMetadata } from '../terms/page'
+import LegalLayout from '../layout'
+
+describe('legal layout', () => {
+  it('envuelve el contenido con PageNav, main accesible y LandingFooter', () => {
+    render(
+      <LegalLayout>
+        <p>Contenido legal</p>
+      </LegalLayout>,
+    )
+
+    // PageNav aporta la barra pública (nav "Principal").
+    expect(screen.getByRole('navigation', { name: 'Principal' })).toBeInTheDocument()
+    // El contenido va dentro del landmark principal.
+    const main = screen.getByRole('main')
+    expect(main).toHaveAttribute('id', 'contenido-principal')
+    expect(main).toHaveTextContent('Contenido legal')
+    // LandingFooter cierra la página.
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument()
+  })
+})
 
 describe('legal pages', () => {
   it('renderiza privacidad con metadata canonica y secciones de datos', () => {

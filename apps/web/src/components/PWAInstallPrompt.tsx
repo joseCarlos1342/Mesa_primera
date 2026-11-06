@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, X } from "lucide-react";
+import { Download, Share, X } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -70,102 +70,78 @@ export function PWAInstallPrompt() {
 
   return (
     <>
-      {/* Install banner */}
-      <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-md animate-in slide-in-from-bottom-6 duration-500">
-        <div className="relative rounded-2xl border border-emerald-500/30 bg-gray-900/95 backdrop-blur-xl p-4 shadow-2xl shadow-emerald-500/10">
+      <div
+        role="region"
+        aria-label="Instalar la app"
+        className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-md lg:bottom-8"
+      >
+        <div className="relative rounded-lg border border-[#8b6b2e]/80 bg-[#120806] p-4 shadow-[0_16px_36px_-12px_rgba(0,0,0,0.9)]">
           <button
+            type="button"
             onClick={handleDismiss}
-            className="absolute top-2 right-2 p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+            className="absolute right-1.5 top-1.5 inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#bdb7a6] transition-colors hover:text-text-premium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
             aria-label="Cerrar"
           >
-            <X className="w-4 h-4" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
 
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-              <Download className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">
-                Instalar 4 Ases
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Juega sin barra del navegador a pantalla completa
-              </p>
+          <div className="flex items-center gap-3 pr-10">
+            <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#8b6b2e]/70 bg-[#0a2c20] text-brand-gold-light">
+              <Download className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-semibold text-text-premium">Instalar 4 Ases</p>
+              <p className="text-base text-[#bdb7a6]">Juega a pantalla completa, sin la barra del navegador.</p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={handleInstall}
-            className="mt-3 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
+            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-lg border border-[#8b6b2e]/80 text-lg font-semibold text-text-premium transition-colors hover:border-brand-gold hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
           >
             {isIOS ? "Ver instrucciones" : "Instalar app"}
           </button>
         </div>
       </div>
 
-      {/* iOS share-sheet guide overlay */}
       {showIOSGuide && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-end justify-center p-4 animate-in fade-in duration-300"
-          onClick={handleDismiss}
-        >
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/75 p-4" onClick={handleDismiss}>
           <div
-            className="w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 p-6 mb-4 animate-in slide-in-from-bottom-8 duration-500"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ios-install-title"
+            className="mb-4 w-full max-w-sm rounded-xl border border-[#8b6b2e]/70 bg-[#120806] p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white text-center mb-4">
-              Instalar en iPhone/iPad
+            <h3 id="ios-install-title" className="mb-4 text-center font-display text-[1.5rem] font-bold text-text-premium">
+              Instalar en iPhone o iPad
             </h3>
-            <ol className="space-y-3 text-sm text-gray-300">
+            <ol className="space-y-3 text-lg text-[#d9d3bf]">
               <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
-                  1
-                </span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#c5a059] font-mono text-base text-brand-gold-light">1</span>
                 <span>
-                  Toca el botón{" "}
-                  <strong className="text-white">Compartir</strong>{" "}
-                  <span className="inline-block align-middle">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="inline text-blue-400"
-                    >
-                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                      <polyline points="16 6 12 2 8 6" />
-                      <line x1="12" y1="2" x2="12" y2="15" />
-                    </svg>
-                  </span>{" "}
-                  en Safari
+                  Toca el botón <strong className="font-semibold text-text-premium">Compartir</strong>{" "}
+                  <Share className="inline h-5 w-5 align-text-bottom text-brand-gold-light" aria-hidden="true" /> en Safari
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
-                  2
-                </span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#c5a059] font-mono text-base text-brand-gold-light">2</span>
                 <span>
-                  Desliza y toca{" "}
-                  <strong className="text-white">
-                    Añadir a pantalla de inicio
-                  </strong>
+                  Desliza y toca <strong className="font-semibold text-text-premium">Añadir a pantalla de inicio</strong>
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
-                  3
-                </span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#c5a059] font-mono text-base text-brand-gold-light">3</span>
                 <span>
-                  Toca <strong className="text-white">Agregar</strong>
+                  Toca <strong className="font-semibold text-text-premium">Agregar</strong>
                 </span>
               </li>
             </ol>
             <button
+              type="button"
               onClick={handleDismiss}
-              className="mt-5 w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition-colors"
+              className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-brand-gold text-lg font-bold text-[#0a0a0a] transition-colors hover:bg-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
             >
               Entendido
             </button>

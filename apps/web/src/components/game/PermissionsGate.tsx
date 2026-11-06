@@ -31,44 +31,50 @@ export function PermissionsGate({ children }: PermissionsGateProps) {
     <>
       {children}
 
-      {/* Non-blocking permissions banner */}
+      {/* Aviso no bloqueante de permisos (micrófono y notificaciones). */}
       {showBanner && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="relative bg-[#0a180e]/95 backdrop-blur-3xl border border-[#d4af37]/40 rounded-2xl p-4 shadow-[0_20px_80px_rgba(0,0,0,0.8),_0_0_40px_rgba(212,175,55,0.1)]">
+        <div
+          role="region"
+          aria-label="Permisos de la mesa"
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2"
+        >
+          <div className="relative rounded-lg border border-[#8b6b2e] bg-[#120806]/95 p-4 shadow-[0_16px_36px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(240,170,105,0.28)]">
             <button
+              type="button"
               onClick={() => setDismissed(true)}
-              className="absolute top-2 right-2 p-1 rounded-lg hover:bg-white/10 transition-colors"
+              className="absolute right-1.5 top-1.5 inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#bdb7a6] transition-colors hover:text-text-premium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
               aria-label="Cerrar"
             >
-              <X className="w-4 h-4 text-[#8faa96]" />
+              <X className="h-5 w-5" aria-hidden="true" />
             </button>
 
-            <p className="text-[#fdf0a6] text-xs font-bold uppercase tracking-wider mb-3 pr-6">
-              Permisos opcionales
-            </p>
+            <p className="pr-10 text-lg font-semibold text-text-premium">Activa la voz y los avisos</p>
+            <p className="mt-0.5 pr-10 text-base text-[#bdb7a6]">Son opcionales: sirven para hablar en la mesa y saber cuándo es tu turno.</p>
 
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex items-center gap-2 text-[11px] text-[#a8c2ad]">
+            <ul className="mt-3 flex items-center gap-5 text-base text-[#d9d3bf]">
+              <li className="flex items-center gap-2">
                 {microphone === 'granted'
-                  ? <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  : <Mic className="w-3.5 h-3.5 text-[#d4af37]" />}
-                <span>Micrófono</span>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-[#a8c2ad]">
+                  ? <Check className="h-5 w-5 text-[#5fd38d]" aria-hidden="true" />
+                  : <Mic className="h-5 w-5 text-brand-gold-light" aria-hidden="true" />}
+                Micrófono{microphone === 'granted' ? ' activo' : ''}
+              </li>
+              <li className="flex items-center gap-2">
                 {notifications === 'granted'
-                  ? <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  : <Bell className="w-3.5 h-3.5 text-[#d4af37]" />}
-                <span>Notificaciones</span>
-              </div>
-            </div>
+                  ? <Check className="h-5 w-5 text-[#5fd38d]" aria-hidden="true" />
+                  : <Bell className="h-5 w-5 text-brand-gold-light" aria-hidden="true" />}
+                Notificaciones{notifications === 'granted' ? ' activas' : ''}
+              </li>
+            </ul>
 
             <button
+              type="button"
               onClick={handleRequestClick}
               disabled={isRequesting}
-              className="w-full bg-gradient-to-b from-[#d4af37] to-[#b8860b] text-[#0a180e] font-black text-xs uppercase tracking-[0.15em] py-2.5 px-4 rounded-xl transition-all disabled:opacity-50 shadow-[0_4px_12px_rgba(212,175,55,0.3)] active:scale-[0.98] flex items-center justify-center gap-1.5"
+              aria-busy={isRequesting || undefined}
+              className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-1.5 rounded-lg border border-[#8b6b2e]/80 text-lg font-semibold text-text-premium transition-colors hover:border-brand-gold hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light disabled:opacity-60"
             >
-              {isRequesting ? 'Concediendo...' : 'Conceder'}
-              {!isRequesting && <ChevronRight className="w-4 h-4" />}
+              {isRequesting ? 'Pidiendo permiso…' : 'Permitir'}
+              {!isRequesting && <ChevronRight className="h-5 w-5" aria-hidden="true" />}
             </button>
           </div>
         </div>

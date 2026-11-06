@@ -25,32 +25,33 @@ describe('WalletPage', () => {
     mockGetWalletData.mockResolvedValue({
       wallet: { balance_cents: 50000 },
       transactions: [{ id: 'tx-1' }, { id: 'tx-2' }],
-    })
+    } as never)
 
     render(await WalletPage())
 
     expect(screen.getByTestId('wallet-content')).toHaveTextContent('Wallet: loaded Transactions: 2')
   })
 
-  it('renderiza WalletContent con transacciones vacias cuando transactions es undefined', async () => {
+  it('renderiza WalletContent con transacciones vacías cuando transactions es undefined', async () => {
     mockGetWalletData.mockResolvedValue({
       wallet: { balance_cents: 50000 },
-      transactions: undefined as any,
-    })
+      transactions: undefined,
+    } as never)
 
     render(await WalletPage())
 
     expect(screen.getByTestId('wallet-content')).toHaveTextContent('Wallet: loaded Transactions: 0')
   })
 
-  it('muestra error cuando getWalletData falla', async () => {
+  it('muestra error en una alerta cuando getWalletData falla', async () => {
     mockGetWalletData.mockResolvedValue({
       error: 'No se pudo cargar la wallet',
-    })
+    } as never)
 
     render(await WalletPage())
 
-    expect(screen.getByText('Error de Conexión')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Billetera' })).toBeInTheDocument()
+    expect(screen.getByText(/no pudimos cargar tu billetera/i)).toBeInTheDocument()
     expect(screen.getByText('No se pudo cargar la wallet')).toBeInTheDocument()
     expect(screen.queryByTestId('wallet-content')).not.toBeInTheDocument()
   })

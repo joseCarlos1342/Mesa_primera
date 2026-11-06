@@ -1,7 +1,36 @@
 import { Menu, ShoppingCart, LogOut, HelpCircle, X, Mic, Headphones, Maximize, Minimize, ArrowRightLeft } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useState, useRef, useEffect, type ComponentType, type SVGProps } from 'react'
 import { useFullscreen } from '@/hooks/useFullscreen'
+import { ConfirmDialog } from '@/components/player/ConfirmDialog'
+
+type IconType = ComponentType<SVGProps<SVGSVGElement>>
+
+interface MenuItemProps {
+  readonly icon: IconType
+  readonly label: string
+  readonly onSelect: () => void
+  readonly tone?: 'default' | 'danger'
+}
+
+function MenuItem({ icon: Icon, label, onSelect, tone = 'default' }: MenuItemProps) {
+  const danger = tone === 'danger'
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onSelect}
+      className={`flex min-h-12 w-full items-center gap-3 px-4 text-left text-base font-semibold transition-colors focus-visible:bg-[#1b0d08] focus-visible:outline-none ${
+        danger ? 'text-[#f08a7e] hover:bg-[#2a0f0c]' : 'text-text-premium hover:bg-[#1b0d08] hover:text-brand-gold-light'
+      }`}
+    >
+      <Icon className={`h-5 w-5 shrink-0 ${danger ? 'text-[#f08a7e]' : 'text-[#c5a059]'}`} aria-hidden="true" />
+      {label}
+    </button>
+  )
+}
+
+const iconButton =
+  'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#8b6b2e]/70 bg-[#120806]/85 text-[#fdf0a6] shadow-[0_6px_14px_rgba(0,0,0,0.6)] transition-colors hover:border-brand-gold hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light md:h-12 md:w-12 landscape:h-10 landscape:w-10 md:landscape:h-12 md:landscape:w-12'
 
 export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -9,189 +38,93 @@ export function GameHeader({ onMenuClick }: { onMenuClick?: () => void }) {
   const menuRef = useRef<HTMLDivElement>(null)
   const { isFullscreen, toggle: toggleFullscreen, isSupported: fsSupported } = useFullscreen()
 
-  // Cierra el menú si se hace click fuera
+  // Cierra el menú al tocar fuera o con Escape.
   useEffect(() => {
+    if (!isMenuOpen) return
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false)
-      }
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setIsMenuOpen(false)
     }
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsMenuOpen(false)
     }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKey)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKey)
     }
   }, [isMenuOpen])
 
+  const select = (action: () => void) => () => {
+    setIsMenuOpen(false)
+    action()
+  }
+  const emit = (name: string) => () => window.dispatchEvent(new CustomEvent(name))
+
   return (
     <>
-    <header className="absolute top-0 left-0 w-full flex h-14 md:h-16 items-center justify-between px-3 md:px-6 bg-transparent pointer-events-none z-50 landscape:h-10 md:landscape:h-16 pt-[env(safe-area-inset-top,0px)]">
-      {/* Top Left: Hamburger Menu */}
-      <div className="relative" ref={menuRef}>
-        <button 
-          onClick={() => setIsMenuOpen(!isMenuOpen)} 
-          className="p-2 rounded-lg hover:bg-[#d4af37]/10 transition-colors relative z-50 pointer-events-auto"
-        >
-          {isMenuOpen ? (
-            <X className="w-6 h-6 md:w-8 md:h-8 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
-          ) : (
-            <Menu className="w-6 h-6 md:w-8 md:h-8 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
-          )}
-        </button>
+      <header className="pointer-events-none absolute left-0 top-0 z-50 flex h-14 w-full items-center justify-between px-3 pt-[env(safe-area-inset-top,0px)] md:h-16 md:px-6 landscape:h-12 md:landscape:h-16">
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? 'Cerrar opciones de la mesa' : 'Opciones de la mesa'}
+            aria-haspopup="menu"
+            aria-expanded={isMenuOpen}
+            className={`${iconButton} relative z-50`}
+          >
+            {isMenuOpen ? <X className="h-6 w-6" aria-hidden="true" /> : <Menu className="h-6 w-6" aria-hidden="true" />}
+          </button>
 
-        {/* Dropdown Menu */}
-        <AnimatePresence>
           {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="absolute top-12 left-0 w-56 md:w-64 bg-[#0d211a]/95 backdrop-blur-xl border border-[#c0a060]/30 rounded-xl md:rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(192,160,96,0.15)] overflow-hidden flex flex-col py-1 pointer-events-auto"
+            <div
+              role="menu"
+              aria-label="Opciones de la mesa"
+              className="pointer-events-auto absolute left-0 top-[calc(100%+0.5rem)] flex max-h-[calc(100dvh-5rem)] w-64 flex-col overflow-y-auto rounded-xl border border-[#8b6b2e] bg-[#120806]/97 py-1.5 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(240,170,105,0.28)] motion-safe:animate-[toast-in_180ms_cubic-bezier(0.16,1,0.3,1)]"
             >
-              <div className="px-4 py-2 border-b border-[#c0a060]/15">
-                <p className="text-[#c0a060]/85 text-[11px] font-bold tracking-[0.1em] uppercase">Opciones de Mesa</p>
-              </div>
-              
-              <button 
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  window.dispatchEvent(new CustomEvent('open-player-audio-modal'));
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#1b4d3e]/60 transition-colors text-[#f3edd7]/70 group text-sm"
-              >
-                <Mic className="w-4 h-4 group-hover:text-[#c0a060] transition-colors" />
-                <span className="font-medium group-hover:text-[#f3edd7] transition-colors">Audio de Jugadores</span>
-              </button>
-
-              <button 
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  window.dispatchEvent(new CustomEvent('open-rules-modal'));
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#1b4d3e]/60 transition-colors text-[#f3edd7]/70 group text-sm"
-              >
-                <HelpCircle className="w-4 h-4 group-hover:text-[#c0a060] transition-colors" />
-                <span className="font-medium group-hover:text-[#f3edd7] transition-colors">Reglas del Juego</span>
-              </button>
-
-              <button 
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  window.dispatchEvent(new CustomEvent('open-table-help'));
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#c0a060]/10 transition-colors text-[#c0a060] group text-sm"
-              >
-                <Headphones className="w-4 h-4 group-hover:text-[#e2b044] transition-colors" />
-                <span className="font-bold group-hover:text-[#e2b044] transition-colors">Llamar al Admin</span>
-              </button>
-
-              <button 
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  window.dispatchEvent(new CustomEvent('open-transfer-modal'));
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-cyan-500/10 transition-colors text-cyan-400 group text-sm"
-              >
-                <ArrowRightLeft className="w-4 h-4 group-hover:text-cyan-300 transition-colors" />
-                <span className="font-bold group-hover:text-cyan-300 transition-colors">Transferir Saldo</span>
-              </button>
-
+              <p className="px-4 pb-1.5 pt-1 font-display text-lg font-bold text-text-premium">Opciones de la mesa</p>
+              <div className="border-t border-[#8b6b2e]/45" />
+              <MenuItem icon={Mic} label="Audio de jugadores" onSelect={select(emit('open-player-audio-modal'))} />
+              <MenuItem icon={HelpCircle} label="Reglas del juego" onSelect={select(emit('open-rules-modal'))} />
+              <MenuItem icon={Headphones} label="Llamar al admin" onSelect={select(emit('open-table-help'))} />
+              <MenuItem icon={ArrowRightLeft} label="Transferir saldo" onSelect={select(emit('open-transfer-modal'))} />
+              <MenuItem icon={ShoppingCart} label="Cargar saldo" onSelect={select(emit('open-recharge-modal'))} />
               {fsSupported && (
-                <button 
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    toggleFullscreen();
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#1b4d3e]/60 transition-colors text-[#f3edd7]/70 group text-sm"
-                >
-                  {isFullscreen ? (
-                    <Minimize className="w-4 h-4 group-hover:text-[#c0a060] transition-colors" />
-                  ) : (
-                    <Maximize className="w-4 h-4 group-hover:text-[#c0a060] transition-colors" />
-                  )}
-                  <span className="font-medium group-hover:text-[#f3edd7] transition-colors">
-                    {isFullscreen ? 'Salir Pantalla Completa' : 'Pantalla Completa'}
-                  </span>
-                </button>
+                <MenuItem
+                  icon={isFullscreen ? Minimize : Maximize}
+                  label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                  onSelect={select(() => { void toggleFullscreen() })}
+                />
               )}
-              
-              <div className="my-0.5 border-t border-[#c0a060]/10" />
-
-              <button 
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  setShowExitConfirm(true);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-red-500/10 transition-colors text-red-400 group text-sm"
-              >
-                <LogOut className="w-4 h-4 group-hover:text-red-400 transition-colors" />
-                <span className="font-bold tracking-wide group-hover:text-red-400 transition-colors uppercase">Abandonar Partida</span>
-              </button>
-            </motion.div>
+              <div className="my-1 border-t border-[#8b6b2e]/45" />
+              <MenuItem icon={LogOut} label="Abandonar partida" tone="danger" onSelect={select(() => setShowExitConfirm(true))} />
+            </div>
           )}
-        </AnimatePresence>
-      </div>
+        </div>
 
-      {/* Center: Empty (Title moved to Board felt) */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('open-recharge-modal'))}
+          aria-label="Cargar saldo"
+          title="Cargar saldo"
+          className={iconButton}
+        >
+          <ShoppingCart className="h-6 w-6" aria-hidden="true" />
+        </button>
+      </header>
 
-      {/* Top Right: Shopping Cart */}
-      <button 
-        onClick={() => window.dispatchEvent(new CustomEvent('open-recharge-modal'))}
-        className="p-2 -mr-2 rounded-md hover:bg-[#d4af37]/10 transition-colors pointer-events-auto"
-      >
-        <ShoppingCart className="w-7 h-7 text-[#fdf0a6] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] hover:scale-110 transition-transform" />
-      </button>
-    </header>
-
-      {/* Exit Confirmation Modal */}
-      <AnimatePresence>
-        {showExitConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#0d211a] border-2 border-red-500/20 rounded-[2rem] p-6 md:p-8 landscape:p-4 max-w-sm md:max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(239,68,68,0.1)] text-center relative overflow-y-auto max-h-[95vh] landscape:max-h-[90vh]"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-40" />
-              
-              <div className="w-16 h-16 landscape:w-10 landscape:h-10 landscape:mb-2 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
-                <LogOut className="w-8 h-8 landscape:w-5 landscape:h-5 text-red-400" />
-              </div>
-              
-              <h2 className="text-2xl md:text-3xl landscape:text-xl font-black text-[#f3edd7] mb-2 landscape:mb-1 uppercase tracking-widest font-display">
-                ¿Abandonar Mesa?
-              </h2>
-              
-              <p className="text-[#f3edd7]/40 text-sm md:text-base landscape:text-xs mb-6 landscape:mb-4 leading-relaxed px-2">
-                Si abandonas la partida ahora, <strong className="text-red-400">perderás las fichas que ya apostaste</strong>, se quedarán en la mesa.
-              </p>
-              
-              <div className="flex gap-3 landscape:gap-2">
-                <button
-                  onClick={() => setShowExitConfirm(false)}
-                  className="flex-1 py-3 px-4 landscape:py-2 min-h-[48px] rounded-xl bg-[#1b4d3e]/40 hover:bg-[#1b4d3e]/70 border border-[#c0a060]/15 text-[#f3edd7] font-bold text-sm landscape:text-xs uppercase tracking-widest transition-colors focus:outline-none focus:ring-2 focus:ring-[#c0a060]/30 tactile-button"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => {
-                    setShowExitConfirm(false);
-                    if (onMenuClick) onMenuClick();
-                  }}
-                  className="flex-1 py-3 px-4 landscape:py-2 min-h-[48px] rounded-xl bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 border border-red-500/40 text-white font-bold text-sm landscape:text-xs uppercase tracking-widest transition-all shadow-[0_5px_15px_rgba(220,38,38,0.3)] hover:-translate-y-1 active:translate-y-1 hover:shadow-[0_8px_25px_rgba(220,38,38,0.5)] focus:outline-none focus:ring-2 focus:ring-red-400 tactile-button"
-                >
-                  Sí, Salir
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
+      <ConfirmDialog
+        open={showExitConfirm}
+        tone="danger"
+        title="¿Abandonar la mesa?"
+        description="Si sales ahora, las fichas que ya apostaste se quedan en la mesa."
+        confirmLabel="Sí, salir"
+        onCancel={() => setShowExitConfirm(false)}
+        onConfirm={() => {
+          setShowExitConfirm(false)
+          if (onMenuClick) onMenuClick()
+        }}
+      />
     </>
   )
 }

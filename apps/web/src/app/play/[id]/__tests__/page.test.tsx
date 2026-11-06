@@ -196,7 +196,7 @@ describe('GameRoomPage', () => {
 
   it('entra a la sala, guarda token y muestra lobby sin ghosts', async () => {
     render(<GameRoomPage />)
-    expect(screen.getByText('Conectando a la mesa...')).toBeInTheDocument()
+    expect(screen.getByText('Sentándote a la mesa…')).toBeInTheDocument()
 
     await flushJoinDelay()
     await waitFor(() => expect(mockJoinById).toHaveBeenCalledWith('room-123', expect.objectContaining({
@@ -211,7 +211,7 @@ describe('GameRoomPage', () => {
 
     emitState()
 
-    expect(await screen.findByText('Sala de Espera')).toBeInTheDocument()
+    expect(await screen.findByText('Sala de espera')).toBeInTheDocument()
     expect(screen.getByText('Ana')).toBeInTheDocument()
     expect(screen.getByText('Beto')).toBeInTheDocument()
     expect(screen.queryByText('Ghost')).not.toBeInTheDocument()
@@ -354,7 +354,7 @@ describe('GameRoomPage', () => {
     expect(await screen.findByText(/recuperación fue cancelada/i)).toBeInTheDocument()
     expect(screen.getByText(/revisión manual/i)).toBeInTheDocument()
     expect(mockJoinById).not.toHaveBeenCalled()
-    expect(screen.queryByText('Error de Conexión')).not.toBeInTheDocument()
+    expect(screen.queryByText('No pudimos entrar a la mesa')).not.toBeInTheDocument()
   })
 
   it('abre modales por eventos globales y envia abandono intencional desde header', async () => {
@@ -377,7 +377,7 @@ describe('GameRoomPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /abrir menu/i }))
     expect(send).toHaveBeenCalledWith('abandon')
     expect(leave).toHaveBeenCalledWith(true)
-    expect(push).toHaveBeenCalledWith('/')
+    expect(push).toHaveBeenCalledWith('/lobby')
     expect(sessionStorage.getItem('reconnectionToken_room-123')).toBeNull()
   })
 
@@ -418,7 +418,7 @@ describe('GameRoomPage', () => {
       messageHandlers.get('insufficient-balance')?.({ required: 5000000, current: 1000, message: 'Recarga para seguir' })
     })
     expect(screen.getByText('Recarga para seguir')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /cargar fichas/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cargar saldo' }))
     expect(screen.getByText('Deposito abierto')).toBeInTheDocument()
   })
 
@@ -431,7 +431,7 @@ describe('GameRoomPage', () => {
       messageHandlers.get('ForceLogout')?.({ message: 'Sesion reemplazada' })
     })
 
-    expect(window.alert).toHaveBeenCalledWith('Sesion reemplazada')
+    expect(window.alert).not.toHaveBeenCalled()
     expect(sessionStorage.getItem('reconnectionToken_room-123')).toBeNull()
     expect(leave).toHaveBeenCalledWith(true)
     expect(push).toHaveBeenCalledWith('/login/player?kicked=true')
@@ -463,7 +463,7 @@ describe('GameRoomPage', () => {
     await flushJoinDelay()
     emitState({ players: new Map([['player-1', { id: 'player-1', nickname: 'Ana', connected: true, chips: 6_000_000, isReady: true, cardCount: 0 }]]) })
 
-    expect(await screen.findByText('Gira tu Dispositivo')).toBeInTheDocument()
+    expect(await screen.findByText('Gira tu teléfono')).toBeInTheDocument()
     await waitFor(() => expect(send).toHaveBeenCalledWith('toggleReady', { isReady: false }))
     await screen.findByTestId('voice-chat')
 
@@ -496,9 +496,9 @@ describe('GameRoomPage', () => {
       ]),
     })
 
-    expect(await screen.findByText('Iniciando partida')).toBeInTheDocument()
-    expect(screen.getByText('4')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /anular listo/i }))
+    expect(await screen.findByTestId('waiting-countdown')).toHaveTextContent('La partida empieza en')
+    expect(screen.getByTestId('waiting-countdown')).toHaveTextContent('4')
+    fireEvent.click(screen.getByRole('button', { name: /ya no estoy listo/i }))
     expect(send).toHaveBeenCalledWith('toggleReady', { isReady: false })
   })
 
@@ -514,7 +514,7 @@ describe('GameRoomPage', () => {
       ]),
     })
 
-    expect(await screen.findByText(/esperando listos \(1\/2\)/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Listos 1 de 2/i)).toBeInTheDocument()
   })
 
   it('no muestra espera de listos cuando todos estan listos y no hay countdown', async () => {
@@ -529,9 +529,9 @@ describe('GameRoomPage', () => {
       ]),
     })
 
-    expect(await screen.findByText('Sala de Espera')).toBeInTheDocument()
-    expect(screen.queryByText(/esperando listos/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/iniciando partida/i)).not.toBeInTheDocument()
+    expect(await screen.findByText('Sala de espera')).toBeInTheDocument()
+    expect(screen.queryByText(/Listos \d+ de/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('waiting-countdown')).not.toBeInTheDocument()
   })
 
   it('reproduce un tick por cada segundo nuevo del countdown', async () => {
@@ -611,8 +611,8 @@ describe('GameRoomPage', () => {
       ]),
     })
 
-    expect(screen.getByText('Iniciando partida')).toBeInTheDocument()
-    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByTestId('waiting-countdown')).toHaveTextContent('La partida empieza en')
+    expect(screen.getByTestId('waiting-countdown')).toHaveTextContent('4')
   })
 
   it('reanuda audio suspendido durante el countdown', async () => {
@@ -656,7 +656,7 @@ describe('GameRoomPage', () => {
     await flushJoinDelay()
     emitState({ proposedPique: 2_000_000, proposedPiqueBy: 'player-1', piqueVotesFor: 0, piqueVotesAgainst: 0, piqueVotersTotal: 3 })
 
-    expect(await screen.findByText('Tu propuesta')).toBeInTheDocument()
+    expect(await screen.findByText('Propusiste')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /aceptar/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /rechazar/i })).not.toBeInTheDocument()
   })
@@ -727,13 +727,13 @@ describe('GameRoomPage', () => {
     await flushJoinDelay()
     emitState()
 
-    fireEvent.click(await screen.findByRole('button', { name: /cambiar pique/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /proponer otro pique/i }))
     fireEvent.click(screen.getByRole('button', { name: '$10.000' }))
     expect(send).toHaveBeenCalledWith('propose_pique', { amount: 1_000_000 })
 
-    fireEvent.click(screen.getByRole('button', { name: /cambiar pique/i }))
+    fireEvent.click(screen.getByRole('button', { name: /proponer otro pique/i }))
     fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
-    expect(screen.getByRole('button', { name: /cambiar pique/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /proponer otro pique/i })).toBeInTheDocument()
   })
 
   it('maneja error de Colyseus y vuelve al lobby limpiando token', async () => {
@@ -748,9 +748,9 @@ describe('GameRoomPage', () => {
 
     expect(await screen.findByText('Mesa no disponible')).toBeInTheDocument()
     expect(consoleError).toHaveBeenCalledWith('Colyseus Error [%s]: %s', 4000, 'Mesa no disponible')
-    fireEvent.click(screen.getByRole('button', { name: /vuelve al lobby/i }))
+    fireEvent.click(screen.getByRole('button', { name: /volver a las mesas/i }))
     expect(sessionStorage.getItem('reconnectionToken_room-123')).toBeNull()
-    expect(push).toHaveBeenCalledWith('/')
+    expect(push).toHaveBeenCalledWith('/lobby')
   })
 
   it('dispara animacion de descarte y limpia mensajes de pique aprobados o rechazados', async () => {
@@ -852,7 +852,7 @@ describe('GameRoomPage', () => {
     await flushJoinDelay()
     emitState({ proposedPique: 1_000_000, proposedPiqueBy: 'missing-player' })
 
-    expect(await screen.findByText('Jugador propone:')).toBeInTheDocument()
+    expect(await screen.findByText(/Jugador propone/)).toBeInTheDocument()
   })
 
   it('muestra error si no puede unirse a Colyseus', async () => {
@@ -937,13 +937,13 @@ describe('GameRoomPage', () => {
     await flushJoinDelay()
     emitState()
 
-    expect(screen.queryByText('Gira tu Dispositivo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Gira tu teléfono')).not.toBeInTheDocument()
 
     act(() => {
       orientationHandler?.({ matches: true })
     })
 
-    expect(await screen.findByText('Gira tu Dispositivo')).toBeInTheDocument()
+    expect(await screen.findByText('Gira tu teléfono')).toBeInTheDocument()
   })
 
   it('muestra banda con details nulo y calcula banda de 5000 con pique mínimo alto', async () => {
@@ -951,7 +951,10 @@ describe('GameRoomPage', () => {
     await flushJoinDelay()
     emitState({ minPique: 1_000_000 })
 
-    expect(screen.getByText('Banda: $5,000 por jugador')).toBeInTheDocument()
+    // La sala de espera muestra la banda por jugador: minPique 1.000.000 centavos
+    // → banda 500.000 centavos → $5.000 por jugador (texto repartido en varios nodos).
+    expect(screen.getByTestId('waiting-room').textContent).toContain('$5.000')
+    expect(screen.getByText(/por jugador/)).toBeInTheDocument()
 
     act(() => {
       messageHandlers.get('banda')?.({ winnerNickname: 'Ana', totalBanda: 5000, bandaPerPlayer: 5000 })
@@ -959,5 +962,46 @@ describe('GameRoomPage', () => {
 
     expect(screen.getByText(/Ana \+\$/)).toBeInTheDocument()
     expect(screen.getByText(/0 jugador/i)).toBeInTheDocument()
+  })
+
+  it('despacha eventos de moderación de voz al silenciar y reactivar', async () => {
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent')
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+
+    act(() => {
+      // Mensaje de muteo con razón personalizada.
+      messageHandlers.get('admin:muted')?.({ muted: true, reason: 'Comportamiento' })
+    })
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'admin-voice-muted',
+      detail: expect.objectContaining({ reason: 'Comportamiento' }),
+    }))
+
+    act(() => {
+      // Mensaje de muteo sin `muted:true` → se ignora (rama negativa).
+      messageHandlers.get('admin:muted')?.({ muted: false })
+      // Muteo sin razón → usa el texto por defecto.
+      messageHandlers.get('admin:muted')?.({ muted: true })
+      messageHandlers.get('admin:unmuted')?.({})
+    })
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'admin-voice-muted',
+      detail: expect.objectContaining({ reason: 'Silenciado por admin' }),
+    }))
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'admin-voice-unmuted' }))
+  })
+
+  it('no reprograma recarga cuando la sala se cierra con código normal (1000)', async () => {
+    render(<GameRoomPage />)
+    await flushJoinDelay()
+    emitState()
+
+    act(() => {
+      // Código 1000 → cierre intencional: no debe mostrar overlay de reconexión.
+      _leaveHandler?.(1000)
+    })
+
+    expect(screen.queryByText('Sincronizando tu mesa...')).not.toBeInTheDocument()
   })
 })

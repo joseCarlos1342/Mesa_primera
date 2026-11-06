@@ -14,11 +14,5 @@ export default async function LobbyPage() {
     console.error("[LobbyPage] Error fetching lobby tables:", err);
   }
 
-  return (
-    <div className="min-h-full py-20 px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="max-w-5xl mx-auto space-y-12">
-        <Lobby lobbyTables={lobbyTables} />
-      </div>
-    </div>
-  );
+  return <Lobby lobbyTables={lobbyTables} />;
 }

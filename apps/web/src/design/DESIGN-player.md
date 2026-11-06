@@ -21,6 +21,9 @@ colors:
   text-on-primary: "#0a0a0a"
   border-brass: "#8b6b2e"
   border-gold: "#c5a059"
+  text-muted-warm: "#bdb7a6"
+  text-body-warm: "#d9d3bf"
+  success: "#2ecc71"
   danger: "#e74c3c"
   overlay-black: "#000000"
 typography:
@@ -118,11 +121,6 @@ components:
     rounded: "{rounded.button}"
     padding: 12px 24px
     typography: "{typography.label-lg}"
-  button-gold-shimmer:
-    backgroundColor: "{colors.primary-light}"
-    textColor: "{colors.text-on-primary}"
-    rounded: "{rounded.button}"
-    padding: 14px 32px
   button-danger:
     backgroundColor: "{colors.danger}"
     textColor: "{colors.background}"
@@ -171,44 +169,60 @@ components:
   divider-gold:
     backgroundColor: "{colors.border-gold}"
     height: 1px
-  card:
-    backgroundColor: "{colors.surface-card}"
+  balance-panel:
+    backgroundColor: "{colors.surface-leather}"
     textColor: "{colors.text-primary}"
-    rounded: "{rounded.card}"
-    padding: 24px
-    typography: "{typography.body-md}"
-  card-premium:
-    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.lg}"
+    padding: 28px 24px
+    typography: "{typography.body-lg}"
+  sheet:
+    backgroundColor: "{colors.surface-wood}"
     textColor: "{colors.text-primary}"
-    rounded: "{rounded.card}"
-    padding: 24px
-    typography: "{typography.body-md}"
+    rounded: "{rounded.xl}"
+    padding: 20px
+    typography: "{typography.body-lg}"
+  list-row:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.text-primary}"
+    rounded: "{rounded.md}"
+    padding: 12px 0px
+    typography: "{typography.body-lg}"
   header:
-    backgroundColor: "{colors.overlay-black}"
+    backgroundColor: "{colors.background}"
     textColor: "{colors.text-primary}"
     rounded: "{rounded.none}"
-    padding: 12px 24px
-    typography: "{typography.label-md}"
+    padding: 12px 20px
+    typography: "{typography.body-lg}"
   input:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.surface-wood}"
     textColor: "{colors.text-primary}"
-    rounded: "{rounded.full}"
-    padding: 10px 16px
-    typography: "{typography.body-md}"
+    rounded: "{rounded.md}"
+    padding: 16px
+    typography: "{typography.body-lg}"
   input-focus:
-    backgroundColor: "{colors.surface-card}"
+    backgroundColor: "{colors.surface-wood}"
   avatar:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.primary}"
+    backgroundColor: "{colors.surface-leather}"
+    textColor: "{colors.primary-light}"
     rounded: "{rounded.full}"
-    size: 40px
-    typography: "{typography.label-sm}"
+    size: 44px
+    typography: "{typography.headline-sm}"
   bottom-nav:
-    backgroundColor: "#000000cc"
-    textColor: "{colors.text-primary}"
+    backgroundColor: "{colors.surface-wood}"
+    textColor: "{colors.text-muted-warm}"
     rounded: "{rounded.none}"
-    padding: 12px 16px
-    typography: "{typography.label-sm}"
+    padding: 8px 4px
+    typography: "{typography.body-sm}"
+  bottom-nav-active:
+    textColor: "{colors.primary-light}"
+  sheet-backdrop:
+    backgroundColor: "{colors.overlay-black}"
+  page-lead:
+    textColor: "{colors.text-body-warm}"
+    typography: "{typography.body-lg}"
+  money-credit:
+    textColor: "{colors.success}"
+    typography: "{typography.body-lg}"
 ---
 
 ## Overview
@@ -274,7 +288,7 @@ La profundidad se logra mediante **capas tonales y sombras** en lugar de sombras
 - **Capa de ruido:** Textura SVG de ruido fractal al 3% de opacidad para simular fieltro.
 - **Capa de viñeta:** Degradado radial negro al 40% en los bordes para enmarcar el contenido.
 - **Sombras:** `0 10px 30px rgba(0,0,0,0.6)` para tarjetas premium; `0 10px 30px rgba(0,0,0,0.5)` para header.
-- **Backdrop blur:** `blur(2xl)` (24px) en el header para efecto cristal sobre el fondo dinámico.
+- **Backdrop blur:** no se usa en la app del jugador; la cabecera es negra al 95%.
 
 ## Shapes
 
@@ -289,36 +303,15 @@ El lenguaje de formas combina lo clásico con lo moderno:
 
 ### Buttons
 
-- **Primary:** Fondo dorado (#e2b044), texto negro, padding 12px 24px, radio 8px. Hover: dorado claro (#f0d78c). Active: bronce oscuro (#8b6b2e).
-- **Gold Shimmer:** Degradado lineal 135deg de dorado claro a bronce oscuro. Usado para CTAs principales como "Jugar" o "Depositar".
-- **Secondary:** Fondo transparente, borde dorado, texto dorado. Hover: fondo blanco al 5%.
-- **Danger:** Fondo rojo coral, texto blanco. Usado para "Salir", "Retirarse".
+- **Primary:** Fondo dorado (#e2b044), texto negro, alto mínimo 56px, radio 8px. Hover: dorado claro (#f0d78c). Active: bronce oscuro (#8b6b2e). Uno por pantalla.
+- **Secondary:** Fondo transparente, borde de latón (#8b6b2e), texto crema. Hover: borde y texto dorados.
+- **Danger:** Borde rojo coral con texto rosado para "Cerrar sesión"; la confirmación final ("Sí, salir", "Sí, eliminar") usa relleno rojo coral con texto negro.
+- No se usan degradados con brillo (shimmer), bordes 3D (`inset 0 -8px 0`) ni `active:scale`.
 
 ### Cards
 
-- **Standard:** Fondo azul medianoche (#16213e), radio 24px, padding 24px.
-- **Premium:** Fondo azul oscuro (#1a1a2e), borde dorado/bronce sutil (1-2px), sombra profunda. Usado para perfiles, estadísticas, información VIP.
-
-### Header
-
-- Sticky top-0, z-50.
-- Fondo negro al 60% con backdrop-blur de 24px.
-- Borde inferior dorado/bronce al 20% de opacidad.
-- Altura adaptativa con safe-area-inset-top.
-- Contiene: avatar del jugador (redondo, borde dorado), username, botones de notificación y soporte.
-
-### Bottom Navigation
-
-- Fijo en la parte inferior.
-- Fondo negro al 80%, borde superior dorado sutil.
-- Iconos + labels, estado activo con color dorado.
-- Padding inferior con safe-area-inset-bottom.
-
-### Inputs
-
-- Fondo blanco al 5%, borde blanco al 10%, radio completo (pill).
-- Texto crema (#f3edd7), placeholder en gris secundario.
-- Focus: borde dorado muted (#c5a059).
+- La app del jugador no usa tarjetas de cristal ni azul medianoche: las listas son filas separadas por filetes de latón (ver "App del jugador").
+- `surface` (#1a1a2e) y `surface-card` (#16213e) quedan solo para la mesa de juego y el lobby mientras no se rediseñen.
 
 ### Landing pública ("La baraja abierta")
 
@@ -339,6 +332,35 @@ Extiende "La baraja abierta" al auth (`src/components/auth/`). Sin tarjetas de c
 - **Botones:** primario `button-primary` de 56px (uno por pantalla); secundario con borde de latón para "Entrar con huella", Google y "Ahora no". Las acciones de la barra superior usan la variante discreta para no competir con el dorado del formulario.
 - **Avisos:** error con borde `danger` sobre nogal rojizo; aviso informativo sobre `surface-leather` con borde de latón (`role="status"`).
 
+### App del jugador (después de iniciar sesión)
+
+Extiende "La baraja abierta" a la zona `(player)` (`src/components/player/`). Modo de uso diario: legibilidad y acciones claras antes que efectos. Móvil primero; en escritorio se conserva la misma jerarquía.
+
+- **Marco:** fondo `background` liso, sin degradados radiales ni ruido. `PlayerHeader` fijo sobre negro al 95% con filete de latón inferior: avatar + alias (lleva a Perfil), `Soporte` y `Notificaciones` como botones de 48px con borde de latón; con avisos pendientes pasan a `surface-leather` con borde dorado y contador en Geist Mono. Sin "Salir" en la cabecera.
+- **Navegación (`BottomNav`):** cinco pestañas `Inicio · Mesas · Billetera · Amigos · Perfil` sobre nogal (`landing.wood`) con filete de latón superior, 68px de alto más `safe-area-inset-bottom`. Activa: icono `primary`, texto `primary-light` y una lengüeta dorada de 3px arriba; inactiva: `text-muted-warm`. La pestaña activa se resuelve por prefijo (`/wallet/*` → Billetera, `/stats` → Perfil). Desde `lg` se vuelve un riel lateral de 112px con el logo arriba. Se oculta en `/play/`.
+- **BalancePanel:** la única superficie de mesa de la app: paño (`landing.felt`) con canto de nogal (`landing.rim`), etiqueta "Tu saldo" y monto en Geist Mono (44–64px) con el `$` en `primary-muted`. Debajo, una acción primaria y dos secundarias.
+- **PageHeader:** título Alegreya 34px (44px en `lg`), bajada de 18px en `text-body-warm` y, si aplica, enlace "volver" y una acción a la derecha. Un `h1` por pantalla.
+- **Section:** título Alegreya 24px con filete de latón y enlace dorado subrayado a la derecha ("Ver todo", "Estadísticas"). Sin caja alrededor.
+- **ListRow / TransactionRow:** fila de 72px mínimo, icono en casilla de 44px (`credit` verde sobre cuero, `debit` crema sobre nogal, `danger` coral), título de 18px, dato secundario de 16px en `text-muted-warm`, monto en Geist Mono a la derecha (`+` verde para créditos, `−` crema para débitos). Las filas completadas no llevan etiqueta; `En revisión` y `Rechazado` sí (`StatusTag`).
+- **Cifras:** métricas en Geist Mono de 28–36px con etiqueta encima y filete de latón a la izquierda o separadores verticales; nada de tarjetas de colores por métrica.
+- **PlayerSheet:** toda ventana es una hoja de nogal: en móvil sube desde abajo con asa y esquinas de 16px, en escritorio es un diálogo centrado; la variante `full` (chats, soporte) ocupa la pantalla en móvil y es un panel derecho de 448px en escritorio. `role="dialog"`, foco atrapado, Escape y toque en el fondo cierran, devuelve el foco y respeta las safe areas. Acciones fijas en el pie.
+- **Pestañas:** `SegmentedTabs` (48px, `role="tablist"`, flechas): activa sobre `surface-leather` con anillo dorado. Filtros (`aria-pressed`) como píldoras de 44px.
+- **Formularios:** se reutilizan `AuthField`, `CodeInput`, `AuthButton` y `AuthAlert` del auth; `TextareaField` sigue el mismo lenguaje. Los errores de servidor se muestran en la pantalla, no con `alert()`.
+- **Estados:** carga con esqueletos de nogal (sin girar), vacíos con icono en círculo de latón, título Alegreya y una acción que enseña qué hacer. La presencia de amigos se dice en texto (`En línea`, `En partida`, `Desconectado`) además del punto de color.
+- **Avisos:** `Toast` y `PWAInstallPrompt` sobre nogal con borde de latón (verde o coral según el tono) por encima de la barra; `BroadcastBanner` igual, arriba, con la etiqueta del tipo en color y sin brillo animado.
+- **Movimiento:** solo transiciones de 150–260ms en hojas y estados; con `prefers-reduced-motion` todo queda quieto (incluido el confeti del bono).
+- **Tipografía:** nada funcional por debajo de 14px; cuerpo de 18px; sin `font-black`, cursivas forzadas ni mayúsculas con tracking extremo.
+
+### Mesas, sala de espera y repeticiones
+
+- **Una sola mesa:** la superficie (nogal, canto, paño, filete) y el centro (pozos `Apuesta Principal` / `Apuesta Pique` con el mazo y la carta del fondo) viven en `src/components/game/TableSurface.tsx` (`TableSurface`, `TablePots`). Los usan la partida (`Board`), la repetición (`ReplayBoard`), la sala de espera y las pantallas de carga y error de `/play`. No se dibuja otra mesa.
+- **Lobby:** `PageHeader` "Mesas", barra de estado con punto de 12px (verde `success` en línea, dorado conectando, rojo `danger` sin conexión + `Reintentar`) y contadores en Geist Mono. Cada mesa es una tarjeta de paño con canto (`landing.felt` + `landing.rim`): nombre Alegreya 30px, etiqueta de estado (`Libre`, `Con jugadores`, `Llena`), tres datos en mono (Entrada, Pique, Jugadores), barra de puestos dorada y un único botón de 56px.
+- **Sala de espera:** panel de nogal con canto de latón sobre `TableSurface`; dos columnas en horizontal (pique y acción | jugadores). Estado escrito de cada jugador (`Listo` / `No listo`), `Estoy listo` como único dorado, votación de pique con botones de borde verde/coral. Con alturas ≤ 480px se compactan espacios para caber en 844×390.
+- **Menú de la mesa:** botón cuadrado de 44–48px en nogal translúcido con borde de latón; menú (`role="menu"`) de nogal con filas de 48px, iconos `primary-muted` y "Abandonar partida" en coral al final.
+- **Repeticiones:** listas con `ListRow` (resultado con `Money`), periodo en píldoras y fechas en `<details>`. Reproductor: `ReplayBoard` + barra de controles de nogal (rango arrastrable con `accent-color` dorado, botones de 48px, velocidad segmentada). En teléfonos horizontales (≤ 500px de alto) pasa a modo inmersivo con controles flotantes.
+- **Confirmaciones:** `ConfirmDialog` (sobre `PlayerSheet`) sustituye a `alert`/`confirm`. Acciones destructivas: `Cancelar` secundario con el foco inicial y confirmación `dangerSolid`. Avisos del sistema (micrófono, audio pausado, bloqueo de la app) siguen el mismo nogal, latón y Alegreya.
+- **Legales:** `/terms` y `/privacy` usan `PageNav`, cabecera de paño con título Alegreya (acento en cursiva `primary-light`), columna de lectura de 48rem a 18px y `LandingFooter`. Viñetas como puntos de latón y prohibiciones con icono X coral.
+
 ## Do's and Don'ts
 
 - **Do** usar dorado (#e2b044) solo para acciones primarias y acentos. Un máximo de 2-3 elementos dorados por pantalla.
@@ -348,6 +370,7 @@ Extiende "La baraja abierta" al auth (`src/components/auth/`). Sin tarjetas de c
 - **Don't** usar textos funcionales por debajo de 11px; la navegación y las acciones deben preferir 12px o más.
 - **Don't** usar `font-black` o tracking extremo como sustituto de jerarquía.
 - **Don't** usar esquinas muy afiladas (0px) en elementos interactivos. Mínimo 8px de radio.
-- **Do** usar el verde póker (#1b4d3e) exclusivamente para áreas de juego y mesas.
+- **Do** usar el verde póker (#1b4d3e) exclusivamente para áreas de juego y mesas; en la app del jugador el paño se reserva para el saldo y los estados activos.
+- **Don't** usar cristal (`backdrop-blur`), texto degradado ni botones con brillo en la app del jugador.
 - **Don't** mezclar colores de acento funcionales del admin (indigo, purple, etc.) en la interfaz de jugadores.
 - **Do** respetar las safe areas del dispositivo en elementos fijos (header, bottom nav).

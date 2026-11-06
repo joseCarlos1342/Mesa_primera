@@ -122,10 +122,10 @@ describe('NotificationCenter', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
 
-    expect(await screen.findByText(/tu buzón está vacío/i)).toBeInTheDocument()
+    expect(await screen.findByText(/no tienes notificaciones/i)).toBeInTheDocument()
   })
 
-  it('abre el panel, formatea montos y permite limpiar todo', async () => {
+  it('abre el panel, formatea montos y permite marcar todas como leídas', async () => {
     render(<NotificationCenter userId="user-1" />)
 
     await waitFor(() => {
@@ -136,39 +136,39 @@ describe('NotificationCenter', () => {
 
     expect(await screen.findByText(/nueva solicitud/i)).toBeInTheDocument()
     expect(screen.getByText(/\$\s?50.000/i)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /limpiar todo/i }))
+    fireEvent.click(screen.getByRole('button', { name: /marcar todas como leídas/i }))
 
     await waitFor(() => {
       expect(updateIsMock).toHaveBeenCalled()
     })
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /limpiar todo/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /marcar todas como leídas/i })).not.toBeInTheDocument()
     })
   })
 
-  it('mantiene contador si limpiar todo falla en Supabase', async () => {
+  it('mantiene contador si marcar todas como leídas falla en Supabase', async () => {
     updateIsMock.mockResolvedValueOnce({ error: { message: 'DB offline' } })
 
     render(<NotificationCenter userId="user-1" />)
     await screen.findByText('1')
     fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /limpiar todo/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /marcar todas como leídas/i }))
 
     await waitFor(() => expect(updateIsMock).toHaveBeenCalled())
     expect(screen.getByText('1')).toBeInTheDocument()
   })
 
-  it('aplica feedback hover al botón de limpiar todo', async () => {
+  it('solo muestra marcar todas como leídas cuando hay no leídas', async () => {
     render(<NotificationCenter userId="user-1" />)
     await screen.findByText('1')
     fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
 
-    const clearButton = await screen.findByRole('button', { name: /limpiar todo/i })
-    fireEvent.mouseEnter(clearButton)
-    expect(clearButton).toHaveStyle({ background: 'rgba(212,175,55,0.18)' })
+    const markAll = await screen.findByRole('button', { name: /marcar todas como leídas/i })
+    expect(markAll).toBeInTheDocument()
 
-    fireEvent.mouseLeave(clearButton)
-    expect(clearButton).toHaveStyle({ background: 'rgba(212,175,55,0.06)' })
+    fireEvent.click(markAll)
+    await waitFor(() => expect(updateIsMock).toHaveBeenCalled())
+    await waitFor(() => expect(screen.queryByRole('button', { name: /marcar todas como leídas/i })).not.toBeInTheDocument())
   })
 
   it('agrega notificaciones realtime, incrementa contador y reproduce audio', async () => {
@@ -240,7 +240,7 @@ describe('NotificationCenter', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
 
-    const goButtons = await screen.findAllByRole('button', { name: /ir/i })
+    const goButtons = await screen.findAllByRole('button', { name: /abrir/i })
     fireEvent.click(goButtons[0])
 
     await waitFor(() => {
@@ -264,18 +264,21 @@ describe('NotificationCenter', () => {
     await screen.findByText('1')
     fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
 
-    fireEvent.click((await screen.findAllByRole('button', { name: /ir/i }))[0])
+    fireEvent.click((await screen.findAllByRole('button', { name: /abrir/i }))[0])
 
     await waitFor(() => expect(push).toHaveBeenCalledWith(expectedPath))
   })
 
-  it('cierra panel sin navegar cuando el tipo no tiene destino', async () => {
+  it('no muestra Abrir y permite borrar cuando el tipo no tiene destino', async () => {
     setupSupabase([{ ...notifications[0], id: 'unknown', type: 'system' }])
     render(<NotificationCenter userId="user-1" />)
     await screen.findByText('1')
     fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
 
-    fireEvent.click((await screen.findAllByRole('button', { name: /ir/i }))[0])
+    expect(await screen.findByText(/nueva solicitud/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /abrir/i })).not.toBeInTheDocument()
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /borrar/i }))[0])
 
     await waitFor(() => expect(mockDeleteNotification).toHaveBeenCalledWith('unknown'))
     expect(push).not.toHaveBeenCalled()
@@ -299,22 +302,26 @@ describe('NotificationCenter', () => {
     })
   })
 
-  it('aplica feedback hover en botones de acción', async () => {
+  it('expone acciones accesibles por notificación (Abrir y Borrar con título)', async () => {
     render(<NotificationCenter userId="user-1" />)
     await screen.findByText('1')
     fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
 
-    const goButton = (await screen.findAllByRole('button', { name: /ir/i }))[0]
-    fireEvent.mouseEnter(goButton)
-    expect(goButton).toHaveStyle({ background: 'rgba(212,175,55,0.22)' })
-    fireEvent.mouseLeave(goButton)
-    expect(goButton).toHaveStyle({ background: 'rgba(212,175,55,0.1)' })
+    // El tipo navegable (friend_request) muestra "Abrir"
+    expect((await screen.findAllByRole('button', { name: /abrir/i }))[0]).toBeInTheDocument()
+    // El botón de borrar expone el título de la notificación en su aria-label
+    expect(screen.getByRole('button', { name: 'Borrar notificación: Nueva solicitud' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Borrar notificación: Billetera actualizada' })).toBeInTheDocument()
+  })
 
-    const deleteButton = (await screen.findAllByRole('button', { name: /borrar/i }))[0]
-    fireEvent.mouseEnter(deleteButton)
-    expect(deleteButton).toHaveStyle({ background: 'rgba(239,68,68,0.2)' })
-    fireEvent.mouseLeave(deleteButton)
-    expect(deleteButton).toHaveStyle({ background: 'rgba(239,68,68,0.08)' })
+  it('formatea la fecha como dd/MM HH:mm', async () => {
+    render(<NotificationCenter userId="user-1" />)
+    await screen.findByText('1')
+    fireEvent.click(screen.getByRole('button', { name: /notificaciones/i }))
+
+    const times = await screen.findAllByText(/^\d{2}\/\d{2}\s\d{2}:\d{2}$/)
+    expect(times.length).toBeGreaterThan(0)
+    expect(times[0].tagName.toLowerCase()).toBe('time')
   })
 
   it('no elimina visualmente si deleteNotification falla', async () => {

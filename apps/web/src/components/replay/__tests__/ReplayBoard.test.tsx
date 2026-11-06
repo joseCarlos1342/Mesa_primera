@@ -176,10 +176,22 @@ describe('ReplayBoard', () => {
     expect(aliceCards.querySelectorAll('[data-card-hidden="false"]').length).toBe(0);
   });
 
-  it('oculta visualmente el bote de pique cuando es cero', () => {
+  it('atenúa (sin ocultar) el bote de pique cuando es cero, como en la mesa', () => {
     render(<ReplayBoard frame={makeFrame({ piquePot: 0 })} />);
 
-    expect(screen.getByTestId('replay-pot-pique').closest('div')).toHaveClass('sr-only');
+    const pique = screen.getByTestId('replay-pot-pique');
+    // Ya no se usa sr-only: el pozo de pique sigue visible pero atenuado.
+    expect(pique).toHaveClass('opacity-55');
+    expect(pique).not.toHaveClass('opacity-100');
+    expect(pique.className).not.toMatch(/\bsr-only\b/);
+  });
+
+  it('muestra el bote de pique a plena opacidad cuando es mayor que cero', () => {
+    render(<ReplayBoard frame={makeFrame({ piquePot: 100_000 })} />);
+
+    const pique = screen.getByTestId('replay-pot-pique');
+    expect(pique).toHaveClass('opacity-100');
+    expect(pique).not.toHaveClass('opacity-55');
   });
 
   it('revela cartas privadas en SHOWDOWN', () => {
@@ -200,6 +212,25 @@ describe('ReplayBoard', () => {
     frame.players[1].isFolded = true;
     render(<ReplayBoard frame={frame} />);
     expect(screen.getByTestId('replay-player-p2')).toHaveAttribute('data-folded', 'true');
+  });
+
+  it('no pinta la carta del fondo cuando el frame no trae bottomCard', () => {
+    const frame = makeFrame({ bottomCard: null as unknown as string });
+    render(<ReplayBoard frame={frame} />);
+    // normalizeBottomCard devuelve null → TablePots no renderiza la carta.
+    expect(screen.queryByTestId('bottom-card')).not.toBeInTheDocument();
+  });
+
+  it('tolera jugadores sin privateCards ni revealedCards definidos', () => {
+    const base = makeFrame();
+    const player = { ...base.players[0] } as Record<string, unknown>;
+    delete player.privateCards;
+    delete player.revealedCards;
+    // cardCount>0 pero sin arrays de cartas → se pintan dorsos sin romper.
+    const frame = makeFrame({ players: [player as never, base.players[1]] });
+    render(<ReplayBoard frame={frame} />);
+    const aliceCards = screen.getByTestId('replay-player-p1-cards');
+    expect(aliceCards.querySelectorAll('[data-card-hidden="true"]').length).toBe(4);
   });
 
   it('muestra el chip stack de cada jugador', () => {
@@ -378,13 +409,12 @@ describe('ReplayBoard', () => {
       }
     });
 
-    it('el clúster central queda anclado a la zona inferior (no centrado vertical)', () => {
+    it('el clúster central queda anclado hacia la zona inferior mediante margen inferior', () => {
       render(<ReplayBoard frame={build7PlayerFrame()} />);
       const center = screen.getByTestId('replay-center-cluster');
-      // No debe usar items-center (centrado vertical) que arrastra hacia el medio
-      expect(center.className).not.toMatch(/\bitems-center\b/);
-      // Debe tener algún anclaje inferior explícito (bottom-... o pb-...)
-      expect(center.className).toMatch(/\b(bottom-|pb-)/);
+      // `ReplayBoard` pasa className con margen inferior para empujar el bloque
+      // hacia abajo y dejar sitio a los asientos superiores.
+      expect(center.className).toMatch(/\bmb-\[/);
     });
   });
 });

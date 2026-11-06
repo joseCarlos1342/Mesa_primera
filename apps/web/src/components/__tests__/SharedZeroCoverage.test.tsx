@@ -81,12 +81,12 @@ describe('shared zero coverage components', () => {
     const onUnlock = jest.fn().mockResolvedValue(true)
     const { unmount } = render(<PwaLockScreen onUnlock={onUnlock} />)
 
-    expect(await screen.findByText('Mesa Primera')).toBeInTheDocument()
+    expect(await screen.findByText('Primera Riverada los 4 Ases')).toBeInTheDocument()
     expect(document.body.style.overflow).toBe('hidden')
 
     fireEvent.click(screen.getByRole('button', { name: /desbloquear/i }))
 
-    expect(await screen.findByText('Verificando...')).toBeInTheDocument()
+    expect(await screen.findByText('Verificando…')).toBeInTheDocument()
     await waitFor(() => expect(onUnlock).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(screen.getByRole('button', { name: /desbloquear/i })).toBeEnabled())
 

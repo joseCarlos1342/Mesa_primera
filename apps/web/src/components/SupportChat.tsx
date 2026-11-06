@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Send, X, MessageSquare, Clock, CheckCircle2, ChevronLeft, PlusCircle, Lock, Paperclip, AlertTriangle } from 'lucide-react';
+import { Send, MessageSquare, Clock, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, Lock, Paperclip, AlertTriangle } from 'lucide-react';
+import { PlayerSheet } from '@/components/player/PlayerSheet';
 import { v4 as uuidv4 } from 'uuid';
 import {
   createSupportTicket,
@@ -433,242 +434,363 @@ export function SupportChat({ userId, isAdmin = false, embedded = false, ticketI
     );
   }
 
+  const headerTitle =
+    view === 'list' ? 'Soporte' : view === 'issue' ? 'Reportar un problema' : view === 'issues' ? 'Mis reclamos' : isFinalized ? 'Consulta cerrada' : 'Consulta con soporte';
+  const headerDescription =
+    view === 'list'
+      ? 'Escríbenos o reporta un problema con tu saldo o una mesa.'
+      : view === 'chat'
+        ? isFinalized
+          ? 'Esta consulta quedó archivada.'
+          : 'Te responde el equipo del club.'
+        : undefined;
+
+  const footer =
+    view === 'chat' ? (
+      isFinalized ? (
+        <div className="space-y-3 text-center">
+          <p className="flex items-center justify-center gap-2 text-base font-semibold text-[#7fe0a6]">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+            Consulta finalizada
+          </p>
+          <button type="button" onClick={startNewTicket} className={supportPrimary}>
+            Nueva consulta
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={sendMessage} className="flex items-end gap-2">
+          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden" onChange={handleFileSelect} />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || isFinalized}
+            aria-label="Adjuntar archivo"
+            title="Adjuntar archivo"
+            className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-[#8b6b2e]/70 text-[#d9d3bf] transition-colors hover:border-brand-gold hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light disabled:opacity-50"
+          >
+            <Paperclip className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <label htmlFor="support-message" className="sr-only">
+            Mensaje para soporte
+          </label>
+          <input
+            id="support-message"
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={isFinalized || isSending}
+            placeholder="Escribe tu mensaje…"
+            className="h-14 min-w-0 flex-1 rounded-lg border border-[#8b6b2e]/70 bg-[#0a0a0a] px-4 text-lg text-text-premium caret-brand-gold outline-none transition-colors placeholder:text-[#8a8478] focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/35 disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            aria-label="Enviar mensaje"
+            disabled={!input.trim() || isSending}
+            className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-brand-gold text-[#0a0a0a] transition-colors hover:bg-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light disabled:opacity-50"
+          >
+            <Send className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </form>
+      )
+    ) : undefined;
+
+  const backButton =
+    view !== 'list' ? (
+      <button
+        type="button"
+        onClick={() => (view === 'issues' && selectedIssue ? setSelectedIssue(null) : setView('list'))}
+        aria-label="Volver"
+        className="-ml-2 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-[#d9d3bf] transition-colors hover:bg-[#35180f] hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
+      >
+        <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+      </button>
+    ) : undefined;
+
   return (
-    <div className="fixed inset-0 z-100 pointer-events-none">
-      {isOpen && (
-        <div className="pointer-events-auto fixed md:absolute bottom-0 md:bottom-8 inset-x-0 md:inset-auto md:right-8 w-full md:w-[24rem] h-[85vh] md:h-140 bg-black/80 backdrop-blur-3xl border-2 border-brand-gold/30 rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-[0_40px_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-full md:slide-in-from-bottom-8 duration-500">
-          {/* Header Panel */}
-          <div className="bg-brand-gold/10 border-b-2 border-brand-gold/20 p-6 flex justify-between items-center text-brand-gold shrink-0">
-            <div className="flex items-center gap-3">
-               {view !== 'list' && (
-                 <button onClick={() => setView('list')} className="p-2 hover:bg-brand-gold/10 rounded-xl transition-colors">
-                  <ChevronLeft className="w-5 h-5 text-brand-gold" />
-                </button>
-              )}
-              <div className={`w-3 h-3 rounded-full ${isFinalized ? 'bg-slate-600' : 'bg-brand-gold animate-pulse shadow-[0_0_15px_rgba(202,171,114,0.6)]'}`} />
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] leading-none opacity-60">Primera Riverada</span>
-                <span className="text-[13px] font-display font-black mt-1 uppercase italic tracking-wider">
-                   {view === 'list' ? 'Centro de Ayuda' : view === 'issue' ? 'Reportar un problema' : isFinalized ? 'Consulta Cerrada' : 'Consulta con el Host'}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {view === 'chat' && !isFinalized && !isAdmin && activeTicketId && messages.length > 0 && (
-                <button
-                  onClick={handleCloseTicket}
-                  disabled={isClosingTicket}
-                  className="p-2.5 rounded-full hover:bg-red-500/10 text-brand-gold/60 hover:text-red-400 transition-colors border border-brand-gold/10 hover:border-red-500/20 disabled:opacity-50"
-                  title="Cerrar consulta"
-                >
-                  <Lock className="w-4 h-4" />
-                </button>
-              )}
-              <button 
-                onClick={() => setIsOpen(false)} 
-                className="w-10 h-10 rounded-full hover:bg-brand-gold/10 flex items-center justify-center transition-colors border-2 border-brand-gold/20"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-          
-          {/* Body Content */}
-          <div className="flex-1 overflow-y-auto bg-transparent custom-scrollbar flex flex-col">
-             {view === 'list' ? (
-               <div className="p-6 space-y-6">
-                 {/* New Ticket Button - Tactile Gold Style */}
-                 <button 
-                   onClick={startNewTicket}
-                   className="w-full group relative h-20 overflow-hidden rounded-2xl transition-all active:scale-[0.98] shadow-[0_10px_20px_rgba(202,171,114,0.2)]"
-                 >
-                    <div className="absolute inset-0 bg-linear-to-r from-brand-gold-dark via-brand-gold-light to-brand-gold-dark animate-shimmer" style={{ backgroundSize: '200% 100%' }}></div>
-                    <div className="absolute inset-x-0 top-0 h-px bg-white/40"></div>
-                    <div className="absolute inset-x-0 bottom-0 h-0.5 bg-black/20"></div>
-                    <div className="relative flex items-center justify-center gap-4">
-                       <PlusCircle className="w-6 h-6 text-black" />
-                       <div className="text-left">
-                          <p className="text-sm font-black text-black italic uppercase tracking-tighter">Nueva Consulta</p>
-                          <p className="text-[9px] text-black/60 font-black uppercase tracking-[0.2em]">Inicia un chat en vivo</p>
-                       </div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setView('issue')}
-                    className="w-full rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-left transition-colors hover:bg-amber-400/20"
-                  >
-                    <span className="flex items-center gap-3 text-amber-300">
-                      <AlertTriangle className="h-5 w-5" />
-                      <span>
-                        <span className="block text-xs font-black uppercase tracking-widest">Reportar un problema</span>
-                        <span className="text-[10px] text-amber-100/70">Depósitos, transferencias, retiros o errores de mesa</span>
-                      </span>
-                    </span>
-                  </button>
-                  <button onClick={() => { setSelectedIssue(null); setView('issues'); }} className="w-full rounded-2xl border border-teal-400/30 bg-teal-400/10 p-4 text-left text-teal-200">
-                    <span className="text-xs font-black uppercase tracking-widest">Mis reclamos</span><span className="mt-1 block text-[10px] text-teal-100/70">Consulta el estado y las respuestas del caso</span>
-                  </button>
-
-                 <div className="space-y-4">
-                    <h4 className="text-[10px] font-black text-brand-gold/60 uppercase tracking-[0.3em] px-2 italic">Historial de Tickets</h4>
-                    {tickets.length === 0 ? (
-                      <div className="text-center py-16 opacity-30 italic text-xs text-text-secondary uppercase tracking-widest">No tienes consultas previas</div>
-                    ) : (
-                       tickets.map(ticket => (
-                        <div 
-                          key={ticket.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => {
-                            setActiveTicketId(ticket.id);
-                            setTicketStatus(ticket.status);
-                            setView('chat');
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              setActiveTicketId(ticket.id);
-                              setTicketStatus(ticket.status);
-                              setView('chat');
-                            }
-                          }}
-                          className="p-5 bg-black/40 border-2 border-brand-gold/10 rounded-2xl hover:border-brand-gold/40 cursor-pointer transition-all flex justify-between items-center group shadow-xl"
-                        >
-                           <div className="flex flex-col gap-1 overflow-hidden pr-2">
-                              <p className="text-sm font-black text-text-premium truncate group-hover:text-brand-gold transition-colors">&ldquo;{ticket.title}&rdquo;</p>
-                              <div className="flex items-center gap-2">
-                                <Clock className="w-3 h-3 text-text-secondary" />
-                                <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">{ticket.date}</p>
-                              </div>
-                           </div>
-                           <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${ticket.status === 'finalized' ? 'bg-slate-700' : 'bg-brand-gold shadow-[0_0_10px_rgba(202,171,114,0.4)] animate-pulse'}`} />
-                        </div>
-                      ))
-                    )}
-                 </div>
-              </div>
-            ) : view === 'issue' ? (
-              <form onSubmit={submitIssue} className="space-y-4 p-6">
-                <fieldset>
-                  <legend className="mb-2 block text-[10px] font-black uppercase tracking-widest text-brand-gold">Tipo de problema</legend>
-                  <div className="grid gap-2">
-                    {issueCategoryOptions.map((option, index) => {
-                      const isSelected = issueCategory === option.value;
-                      return <button key={option.value} type="button" onClick={() => setIssueCategory(option.value)} aria-pressed={isSelected} className={`group relative flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${isSelected ? 'border-brand-gold bg-brand-gold/15 shadow-[inset_3px_0_0_#e2b044]' : 'border-brand-gold/15 bg-white/[0.03] hover:border-brand-gold/50 hover:bg-brand-gold/5'}`}>
-                        <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${isSelected ? 'bg-brand-gold text-black' : 'border border-brand-gold/35 text-brand-gold'}`}>{String(index + 1).padStart(2, '0')}</span>
-                        <span className="min-w-0"><span className={`block text-xs font-bold ${isSelected ? 'text-brand-gold-light' : 'text-text-premium'}`}>{option.label}</span><span className="mt-0.5 block text-[10px] leading-snug text-text-secondary">{option.description}</span></span>
-                        {isSelected ? <CheckCircle2 aria-hidden="true" className="ml-auto size-4 shrink-0 text-brand-gold" /> : null}
-                      </button>
-                    })}
-                  </div>
-                </fieldset>
-                {isFinancialIssue ? <div><label htmlFor="issue-reference" className="mb-1 block text-[10px] font-black uppercase tracking-widest text-brand-gold">ID de transacción</label><input id="issue-reference" value={issueReference} onChange={(event) => setIssueReference(event.target.value)} required className="w-full rounded-xl border border-brand-gold/20 bg-black/40 px-3 py-3 text-xs text-white" /></div> : null}
-                {issueCategory === 'table_error' ? <div><label htmlFor="issue-table" className="mb-1 block text-[10px] font-black uppercase tracking-widest text-brand-gold">ID de mesa</label><input id="issue-table" value={issueTableReference} onChange={(event) => setIssueTableReference(event.target.value)} required className="w-full rounded-xl border border-brand-gold/20 bg-black/40 px-3 py-3 text-xs text-white" /></div> : null}
-                <div><label htmlFor="issue-message" className="mb-1 block text-[10px] font-black uppercase tracking-widest text-brand-gold">Observaciones del error</label><textarea id="issue-message" value={issueMessage} onChange={(event) => setIssueMessage(event.target.value)} required maxLength={5000} rows={5} className="w-full resize-none rounded-xl border border-brand-gold/20 bg-black/40 px-3 py-3 text-xs text-white" /></div>
-                {issueError ? <p className="text-xs text-red-300">{issueError}</p> : null}
-                <button type="submit" disabled={isReportingIssue || !issueMessage.trim()} className="w-full rounded-xl bg-brand-gold px-4 py-3 text-xs font-black uppercase tracking-widest text-black disabled:opacity-50">Enviar reporte</button>
-              </form>
-            ) : view === 'issues' ? (
-              <div className="space-y-3 p-6">
-                {selectedIssue ? <>
-                  <button onClick={() => setSelectedIssue(null)} className="text-xs text-teal-300">← Mis reclamos</button>
-                  <p className="text-xs font-black uppercase text-teal-300">{selectedIssue.category.replaceAll('_', ' ')} · {selectedIssue.status}</p>
-                  <p className="rounded-xl bg-white/5 p-3 text-xs text-white">{selectedIssue.description}</p>
-                  <IssueAttachmentList key={`${selectedIssue.id}-${attachmentVersion}`} ticketId={selectedIssue.id} />
-                  {issueMessages.map((message) => <div key={message.id} className={`rounded-xl p-3 text-xs ${message.from_admin ? 'bg-indigo-500/20 text-indigo-100' : 'bg-white/5 text-white'}`}><p className="mb-1 text-[9px] font-black uppercase">{message.from_admin ? 'Administración' : 'Tú'}</p>{message.message}</div>)}
-                  {selectedIssue.status !== 'closed' && selectedIssue.status !== 'resolved' ? <IssueAttachmentComposer ticketId={selectedIssue.id} onUploaded={() => { setAttachmentVersion((version) => version + 1); getPlayerIssueMessages(selectedIssue.id).then((result) => { if (result.data) setIssueMessages(result.data) }) }} /> : null}
-                  {selectedIssue.status !== 'closed' && selectedIssue.status !== 'resolved' ? <button onClick={async () => { const result = await closeIssueTicket(selectedIssue.id); if (!result.error) { setSelectedIssue({ ...selectedIssue, status: 'closed' }); setIssueMessages((current) => [...current, { id: crypto.randomUUID(), ticket_id: selectedIssue.id, from_admin: false, message: 'El caso fue cerrado por el jugador.', created_at: new Date().toISOString() }]); } }} className="rounded-xl border border-red-400/30 px-3 py-2 text-[10px] font-black uppercase text-red-300">Cerrar caso</button> : null}
-                </> : issues.length === 0 ? <p className="text-center text-xs text-text-secondary">No tienes reclamos registrados.</p> : issues.map((issue) => <button key={issue.id} onClick={() => setSelectedIssue(issue)} className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-left"><p className="text-xs font-black text-white">{issue.category.replaceAll('_', ' ')}</p><p className="mt-1 text-[10px] text-teal-300">{issue.status}</p></button>)}
-              </div>
-            ) : (
-              <div className="flex-1 p-6 flex flex-col gap-4 min-h-0">
-                {messages.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-6">
-                    <div className="w-24 h-24 bg-brand-gold/5 rounded-4xl flex items-center justify-center border-2 border-brand-gold/20 shadow-inner">
-                      <MessageSquare className="w-10 h-10 text-brand-gold/40" />
-                    </div>
-                    <div className="space-y-3">
-                      <p className="text-lg font-display font-black text-brand-gold uppercase tracking-tight italic">
-                        ¿Cómo podemos asistirle?
-                      </p>
-                      <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.2em] leading-relaxed max-w-50 mx-auto opacity-60">
-                        NUESTRO EQUIPO DE CONSERJERÍA ESTÁ DISPONIBLE PARA AYUDARLE.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  messages.map((msg) => (
-                    <div key={msg.id} className={`flex flex-col max-w-[85%] ${msg.sender === 'Tú' ? 'self-end items-end' : 'self-start items-start'}`}>
-                      <div className={`flex items-center gap-2 mb-1.5 px-1 ${msg.sender === 'Tú' ? 'flex-row-reverse' : ''}`}>
-                         <span className="text-[9px] font-black text-brand-gold uppercase tracking-widest opacity-60">
-                           {msg.sender === 'Tú' ? 'MEMBRESÍA ELITE' : 'CONSERJERÍA'}
-                         </span>
-                         <span className="text-[9px] font-bold text-text-secondary opacity-40">• {msg.time}</span>
-                      </div>
-                      <div className={`px-5 py-3 rounded-2xl text-[13px] font-medium leading-relaxed shadow-xl border ${
-                        msg.sender === 'Tú' 
-                          ? 'bg-linear-to-br from-brand-gold-dark to-brand-gold text-black rounded-tr-none border-white/20 shadow-[0_10px_30px_rgba(202,171,114,0.15)]' 
-                          : 'bg-black/60 text-text-premium rounded-tl-none border-brand-gold/30 shadow-black'
-                      }`}>
-                        {msg.text}
-                      </div>
-                    </div>
-                  ))
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </div>
-
-          {/* Footer Input Area */}
-          {view === 'chat' && (
-            isFinalized ? (
-              <div className="p-8 border-t-2 border-brand-gold/10 bg-black/40 flex flex-col items-center gap-5 animate-in fade-in slide-in-from-bottom-6 duration-700">
-                <div className="flex items-center gap-3 text-brand-gold">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.3em] italic">Consulta Finalizada</span>
-                </div>
-                <p className="text-[11px] text-text-secondary text-center font-medium opacity-60">Esta sesión ha sido archivada.</p>
-                
-                <button 
-                  onClick={startNewTicket}
-                  className="w-full relative py-4 group overflow-hidden rounded-xl border-2 border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-black transition-all font-black text-[10px] uppercase tracking-[0.3em] active:scale-95"
-                >
-                  Nueva Solicitud
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={sendMessage} className="p-6 border-t-2 border-brand-gold/10 bg-black/20 flex gap-3 pb-8 md:pb-6">
-                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden" onChange={handleFileSelect} />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading || isFinalized}
-                  className="bg-black/60 hover:bg-black/80 border-2 border-brand-gold/20 text-brand-gold/60 hover:text-brand-gold w-14 h-14 rounded-xl transition-all flex items-center justify-center disabled:opacity-50"
-                  title="Adjuntar archivo"
-                >
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                <input 
-                  type="text" 
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={isFinalized || isSending}
-                  placeholder={isFinalized ? "SESIÓN CERRADA" : "Escriba su mensaje aquí..."}
-                  className="flex-1 bg-black/60 border-2 border-brand-gold/20 rounded-xl px-5 py-4 text-sm text-text-premium placeholder:text-text-secondary/40 focus:outline-none focus:border-brand-gold transition-all shadow-inner disabled:opacity-50"
-                />
-                <button 
-                  type="submit" 
-                  disabled={!input.trim() || isSending}
-                  className="bg-brand-gold hover:bg-brand-gold-light text-black w-14 h-14 rounded-xl font-black transition-all flex items-center justify-center shadow-[0_10px_20px_rgba(202,171,114,0.3)] active:scale-90 disabled:opacity-50 disabled:grayscale"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </form>
-            )
-          )}
+    <PlayerSheet
+      open={isOpen}
+      onClose={() => setIsOpen(false)}
+      variant="full"
+      title={headerTitle}
+      description={headerDescription}
+      closeLabel="Cerrar soporte"
+      headerStart={backButton}
+      footer={footer}
+    >
+      {view === 'chat' && !isFinalized && activeTicketId && messages.length > 0 && (
+        <div className="flex justify-end pt-3">
+          <button
+            type="button"
+            onClick={handleCloseTicket}
+            disabled={isClosingTicket}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#8b6b2e]/60 px-3 text-base font-semibold text-[#d9d3bf] transition-colors hover:border-[#e74c3c]/70 hover:text-[#f08a7e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light disabled:opacity-50"
+          >
+            <Lock className="h-4 w-4" aria-hidden="true" />
+            Cerrar consulta
+          </button>
         </div>
       )}
-    </div>
+
+      {view === 'list' ? (
+        <div className="space-y-8 pt-2">
+          <div className="space-y-3">
+            <button type="button" onClick={startNewTicket} className={supportPrimary}>
+              <PlusCircle className="h-5 w-5" aria-hidden="true" />
+              Nueva consulta
+            </button>
+            <button type="button" onClick={() => setView('issue')} className={supportRow}>
+              <AlertTriangle className="h-6 w-6 shrink-0 text-brand-gold-light" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-semibold text-text-premium">Reportar un problema</span>
+                <span className="block text-base text-[#bdb7a6]">Cargas, transferencias, retiros o errores de mesa</span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-[#c5a059]" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedIssue(null);
+                setView('issues');
+              }}
+              className={supportRow}
+            >
+              <Clock className="h-6 w-6 shrink-0 text-brand-gold-light" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-semibold text-text-premium">Mis reclamos</span>
+                <span className="block text-base text-[#bdb7a6]">Consulta el estado y las respuestas del caso</span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-[#c5a059]" aria-hidden="true" />
+            </button>
+          </div>
+
+          <section aria-labelledby="support-history">
+            <h3 id="support-history" className="border-b border-[#8b6b2e]/45 pb-2 font-display text-[1.375rem] font-bold text-text-premium">
+              Tus consultas
+            </h3>
+            {tickets.length === 0 ? (
+              <p className="py-8 text-center text-lg text-[#bdb7a6]">No tienes consultas previas.</p>
+            ) : (
+              <ul className="divide-y divide-[#8b6b2e]/30">
+                {tickets.map((ticket) => (
+                  <li key={ticket.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTicketId(ticket.id);
+                        setTicketStatus(ticket.status);
+                        setView('chat');
+                      }}
+                      className="-mx-2 flex min-h-[4.5rem] w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-[#1b0d08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-lg font-semibold text-text-premium">{ticket.title}</span>
+                        <span className="block text-base tabular-nums text-[#bdb7a6]">{ticket.date}</span>
+                      </span>
+                      <span
+                        className={`shrink-0 rounded-full border px-2.5 py-0.5 text-sm font-semibold ${
+                          ticket.status === 'finalized' ? 'border-[#8b6b2e]/50 text-[#bdb7a6]' : 'border-brand-gold/70 text-brand-gold-light'
+                        }`}
+                      >
+                        {ticket.status === 'finalized' ? 'Cerrada' : 'Abierta'}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      ) : view === 'issue' ? (
+        <form onSubmit={submitIssue} className="space-y-6 pt-2">
+          <fieldset>
+            <legend className="mb-3 text-base font-semibold text-text-premium">Tipo de problema</legend>
+            <div className="space-y-2">
+              {issueCategoryOptions.map((option) => {
+                const isSelected = issueCategory === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setIssueCategory(option.value)}
+                    aria-pressed={isSelected}
+                    className={`flex min-h-16 w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light ${
+                      isSelected ? 'border-brand-gold bg-[#0a2c20]' : 'border-[#8b6b2e]/50 hover:border-[#c5a059]'
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-lg font-semibold ${isSelected ? 'text-brand-gold-light' : 'text-text-premium'}`}>{option.label}</span>
+                      <span className="block text-base leading-snug text-[#bdb7a6]">{option.description}</span>
+                    </span>
+                    {isSelected ? <CheckCircle2 aria-hidden="true" className="h-6 w-6 shrink-0 text-brand-gold" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+          {isFinancialIssue ? (
+            <div className="space-y-2">
+              <label htmlFor="issue-reference" className="block text-base font-semibold text-text-premium">
+                Referencia del movimiento
+              </label>
+              <input id="issue-reference" value={issueReference} onChange={(event) => setIssueReference(event.target.value)} required className={supportField} />
+              <p className="text-base text-[#bdb7a6]">La encuentras en el detalle del movimiento, en tu Billetera.</p>
+            </div>
+          ) : null}
+          {issueCategory === 'table_error' ? (
+            <div className="space-y-2">
+              <label htmlFor="issue-table" className="block text-base font-semibold text-text-premium">
+                Mesa
+              </label>
+              <input id="issue-table" value={issueTableReference} onChange={(event) => setIssueTableReference(event.target.value)} required className={supportField} />
+            </div>
+          ) : null}
+          <div className="space-y-2">
+            <label htmlFor="issue-message" className="block text-base font-semibold text-text-premium">
+              ¿Qué pasó?
+            </label>
+            <textarea
+              id="issue-message"
+              value={issueMessage}
+              onChange={(event) => setIssueMessage(event.target.value)}
+              required
+              maxLength={5000}
+              rows={5}
+              className={`${supportField} h-auto resize-none py-3 leading-relaxed`}
+            />
+          </div>
+          {issueError ? (
+            <p role="alert" className="text-base font-semibold text-[#f08a7e]">
+              {issueError}
+            </p>
+          ) : null}
+          <button type="submit" disabled={isReportingIssue || !issueMessage.trim()} className={supportPrimary}>
+            {isReportingIssue ? 'Enviando…' : 'Enviar reporte'}
+          </button>
+        </form>
+      ) : view === 'issues' ? (
+        <div className="space-y-4 pt-2">
+          {selectedIssue ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-lg font-semibold text-text-premium">{issueCategoryLabel(selectedIssue.category)}</p>
+                <IssueStatusTag status={selectedIssue.status} />
+              </div>
+              <p className="rounded-lg border border-[#8b6b2e]/40 bg-[#0a0a0a] p-4 text-lg leading-relaxed text-[#d9d3bf] [overflow-wrap:anywhere]">{selectedIssue.description}</p>
+              <IssueAttachmentList key={`${selectedIssue.id}-${attachmentVersion}`} ticketId={selectedIssue.id} />
+              <ul className="space-y-3">
+                {issueMessages.map((message) => (
+                  <li
+                    key={message.id}
+                    className={`rounded-lg p-4 ${message.from_admin ? 'bg-[#0a2c20] shadow-[inset_0_0_0_1px_rgba(197,160,89,0.45)]' : 'bg-[#1b0d08] shadow-[inset_0_0_0_1px_rgba(139,107,46,0.4)]'}`}
+                  >
+                    <p className="mb-1 text-sm font-semibold text-[#c5a059]">{message.from_admin ? 'Administración' : 'Tú'}</p>
+                    <p className="text-lg leading-snug text-text-premium [overflow-wrap:anywhere]">{message.message}</p>
+                  </li>
+                ))}
+              </ul>
+              {selectedIssue.status !== 'closed' && selectedIssue.status !== 'resolved' ? (
+                <IssueAttachmentComposer
+                  ticketId={selectedIssue.id}
+                  onUploaded={() => {
+                    setAttachmentVersion((version) => version + 1);
+                    getPlayerIssueMessages(selectedIssue.id).then((result) => {
+                      if (result.data) setIssueMessages(result.data);
+                    });
+                  }}
+                />
+              ) : null}
+              {selectedIssue.status !== 'closed' && selectedIssue.status !== 'resolved' ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const result = await closeIssueTicket(selectedIssue.id);
+                    if (!result.error) {
+                      setSelectedIssue({ ...selectedIssue, status: 'closed' });
+                      setIssueMessages((current) => [
+                        ...current,
+                        { id: crypto.randomUUID(), ticket_id: selectedIssue.id, from_admin: false, message: 'El caso fue cerrado por el jugador.', created_at: new Date().toISOString() },
+                      ]);
+                    }
+                  }}
+                  className="inline-flex min-h-12 items-center rounded-lg border border-[#e74c3c]/60 px-4 text-base font-semibold text-[#f08a7e] transition-colors hover:bg-[#2a0f0c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
+                >
+                  Cerrar caso
+                </button>
+              ) : null}
+            </>
+          ) : issues.length === 0 ? (
+            <p className="py-8 text-center text-lg text-[#bdb7a6]">No tienes reclamos registrados.</p>
+          ) : (
+            <ul className="divide-y divide-[#8b6b2e]/30 border-y border-[#8b6b2e]/30">
+              {issues.map((issue) => (
+                <li key={issue.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIssue(issue)}
+                    className="-mx-2 flex min-h-[4.5rem] w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-[#1b0d08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
+                  >
+                    <span className="min-w-0 flex-1 text-lg font-semibold text-text-premium">{issueCategoryLabel(issue.category)}</span>
+                    <IssueStatusTag status={issue.status} />
+                    <ChevronRight className="h-5 w-5 shrink-0 text-[#c5a059]" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
+        <div className="flex min-h-full flex-col gap-3 py-4" role="log" aria-label="Conversación con soporte">
+          {messages.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+              <MessageSquare className="mb-3 h-9 w-9 text-[#c5a059]" aria-hidden="true" />
+              <p className="font-display text-[1.5rem] font-bold text-text-premium">¿En qué te ayudamos?</p>
+              <p className="mt-2 max-w-[32ch] text-base text-[#bdb7a6]">Escribe tu consulta y el equipo del club te responderá por aquí.</p>
+            </div>
+          ) : (
+            messages.map((msg) => {
+              const mine = msg.sender === 'Tú';
+              return (
+                <div key={msg.id} className={`flex max-w-[85%] flex-col ${mine ? 'items-end self-end' : 'items-start self-start'}`}>
+                  <span className="mb-1 px-1 text-sm text-[#bdb7a6]">
+                    {mine ? 'Tú' : msg.sender} · <span className="tabular-nums">{msg.time}</span>
+                  </span>
+                  <div
+                    className={`rounded-xl px-4 py-2.5 text-lg leading-snug text-text-premium [overflow-wrap:anywhere] ${
+                      mine ? 'rounded-tr-sm bg-[#0a2c20] shadow-[inset_0_0_0_1px_rgba(197,160,89,0.45)]' : 'rounded-tl-sm bg-[#1b0d08] shadow-[inset_0_0_0_1px_rgba(139,107,46,0.4)]'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      )}
+    </PlayerSheet>
   );
+}
+
+const supportPrimary =
+  'inline-flex min-h-14 w-full items-center justify-center gap-2.5 rounded-lg bg-brand-gold px-6 text-lg font-bold text-[#0a0a0a] transition-colors hover:bg-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light disabled:opacity-60';
+const supportRow =
+  'flex min-h-[4.5rem] w-full items-center gap-4 rounded-lg border border-[#8b6b2e]/60 px-4 py-3 text-left transition-colors hover:border-brand-gold hover:bg-[#1b0d08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light';
+const supportField =
+  'h-14 w-full rounded-lg border border-[#8b6b2e]/70 bg-[#0a0a0a] px-4 text-lg text-text-premium caret-brand-gold outline-none transition-colors focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/35';
+
+const ISSUE_STATUS: Record<string, { label: string; className: string }> = {
+  open: { label: 'Abierto', className: 'border-brand-gold/70 text-brand-gold-light' },
+  investigating: { label: 'En revisión', className: 'border-[#c5a059]/60 text-brand-gold-light' },
+  resolved: { label: 'Resuelto', className: 'border-[#2ecc71]/45 text-[#7fe0a6]' },
+  closed: { label: 'Cerrado', className: 'border-[#8b6b2e]/50 text-[#bdb7a6]' },
+};
+
+function IssueStatusTag({ status }: { status: string }) {
+  const look = ISSUE_STATUS[status] ?? { label: status, className: 'border-[#8b6b2e]/50 text-[#bdb7a6]' };
+  return <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-sm font-semibold ${look.className}`}>{look.label}</span>;
+}
+
+function issueCategoryLabel(category: string) {
+  return issueCategoryOptions.find((option) => option.value === category)?.label ?? category.replaceAll('_', ' ');
 }

@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 
+/** Botón de la cabecera del jugador que abre el chat de soporte. */
 export function SupportTrigger() {
   const [hasNewMessage, setHasNewMessage] = useState(false);
 
@@ -17,19 +18,24 @@ export function SupportTrigger() {
   };
 
   return (
-    <button 
+    <button
+      type="button"
       onClick={handleClick}
-      className={`relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl md:rounded-2xl transition-all active:scale-90 shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-2 backdrop-blur-xl ${
-        hasNewMessage 
-          ? 'bg-brand-gold/20 border-brand-gold shadow-brand-gold/20 animate-pulse' 
-          : 'bg-black/40 border-brand-gold/20 text-brand-gold hover:border-brand-gold/50 hover:bg-black/60'
+      title="Soporte"
+      aria-label={hasNewMessage ? 'Soporte, mensaje nuevo' : 'Soporte'}
+      className={`relative inline-flex h-12 w-12 items-center justify-center rounded-lg border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light ${
+        hasNewMessage
+          ? 'border-brand-gold bg-[#0a2c20] text-brand-gold-light'
+          : 'border-[#8b6b2e]/60 text-[#d9d3bf] hover:border-brand-gold hover:text-brand-gold-light'
       }`}
-      title="Soporte con el Host"
-      aria-label="Soporte con el Host"
     >
-      <MessageSquare className={`w-5 h-5 md:w-6 md:h-6 ${hasNewMessage ? 'text-brand-gold' : 'text-text-secondary group-hover:text-brand-gold'}`} />
+      <MessageCircle className="h-6 w-6" aria-hidden="true" />
       {hasNewMessage && (
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-brand-gold-light to-brand-gold-dark rounded-full border-2 border-slate-950 shadow-[0_0_10px_rgba(202,171,114,0.6)] animate-bounce" />
+        <span
+          data-testid="support-dot"
+          aria-hidden="true"
+          className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-brand-gold shadow-[0_0_0_2px_#0a0a0a]"
+        />
       )}
     </button>
   );

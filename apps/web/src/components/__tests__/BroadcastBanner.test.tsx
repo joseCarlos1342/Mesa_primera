@@ -38,10 +38,25 @@ function setupSupabase(data: any[] = []) {
 }
 
 describe('BroadcastBanner', () => {
+  const originalMatchMedia = window.matchMedia
+
   beforeEach(() => {
     jest.useFakeTimers()
     jest.clearAllMocks()
     sessionStorage.clear()
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: jest.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      })),
+    })
   })
 
   afterEach(() => {
@@ -49,6 +64,7 @@ describe('BroadcastBanner', () => {
       jest.runOnlyPendingTimers()
     })
     jest.useRealTimers()
+    Object.defineProperty(window, 'matchMedia', { writable: true, configurable: true, value: originalMatchMedia })
   })
 
   it('renderiza anuncio recuperado desde notifications y permite cerrarlo', async () => {
@@ -112,7 +128,7 @@ describe('BroadcastBanner', () => {
 
     expect(await screen.findByText(/mantenimiento breve/i)).toBeInTheDocument()
     expect(screen.getAllByText(/mantenimiento breve/i)).toHaveLength(1)
-    expect(screen.getByText('MANTENIMIENTO')).toBeInTheDocument()
+    expect(screen.getByText('Mantenimiento')).toBeInTheDocument()
   })
 
   it('respeta broadcasts ya descartados en sessionStorage aunque venga JSON inválido', async () => {
@@ -129,7 +145,7 @@ describe('BroadcastBanner', () => {
 
     render(<BroadcastBanner userId="user-1" />)
     expect(await screen.findByText(/alerta de seguridad/i)).toBeInTheDocument()
-    expect(screen.getByText('SEGURIDAD')).toBeInTheDocument()
+    expect(screen.getByText('Seguridad')).toBeInTheDocument()
 
     sessionStorage.setItem('dismissed-broadcasts', JSON.stringify(['stored-2']))
     setupSupabase([
@@ -162,7 +178,7 @@ describe('BroadcastBanner', () => {
     }))
 
     expect(await screen.findByText(/tipo desconocido/i)).toBeInTheDocument()
-    expect(screen.getByText('ANUNCIO')).toBeInTheDocument()
+    expect(screen.getByText('Anuncio')).toBeInTheDocument()
 
     act(() => {
       jest.advanceTimersByTime(15_000)

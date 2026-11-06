@@ -4,6 +4,7 @@ import { m } from 'framer-motion';
 import { PlayerBadge } from '@/components/game/PlayerBadge';
 import { Card } from '@/components/game/Card';
 import { getArcCardLayout } from '@/components/game/hand-layout';
+import { TablePots, TableSurface } from '@/components/game/TableSurface';
 import { formatCurrency } from '@/utils/format';
 import { parseCard } from '@/types/replay';
 import type { ReplayFrame, ReplayPlayerFrame } from '@/types/replay';
@@ -262,7 +263,10 @@ function PlayerSeat({
               : null}
       </div>
       {player.roundBet > 0 && (
-        <div className="mt-1 px-2 py-0.5 rounded-full bg-black/60 border border-[#d4af37]/40 text-[8px] md:text-[10px] font-black text-[#4ade80] font-mono">
+        <div
+          data-testid={`replay-player-${player.id}-bet`}
+          className="mt-1 rounded-full border border-[#8b6b2e] bg-[#160b08]/95 px-2.5 py-0.5 font-mono text-[11px] font-black text-[#4ade80] shadow-[0_6px_12px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(240,170,105,0.28)] md:text-xs"
+        >
           {formatCurrency(player.roundBet)}
         </div>
       )}
@@ -270,28 +274,34 @@ function PlayerSeat({
   );
 }
 
+/** Normaliza la carta del fondo (`07-O`, `7O`, `7-Oros`) al formato de la mesa (`7-O`). */
+function normalizeBottomCard(card: string | null | undefined): string | null {
+  const parsed = card ? parseCard(card) : null;
+  return parsed ? `${parsed.value}-${parsed.suit.charAt(0)}` : null;
+}
+
+/**
+ * Repetición con la misma mesa que la partida: base de nogal, canto, paño,
+ * pozos y mazo salen de `TableSurface`/`TablePots`, compartidos con `Board`.
+ */
 export function ReplayBoard({ frame, cardFallbackByPlayerId, cardFallbackByUserId, className = '' }: ReplayBoardProps) {
   const seatedPlayers = frame.players.slice(0, 7);
   const seatClasses = seatPositionsFor(seatedPlayers.length);
-  const bottomParsed = parseCard(frame.bottomCard);
 
   return (
     <div
       data-testid="replay-board"
       data-phase={frame.phase}
-      className={`relative w-full h-[70vh] min-h-[520px] bg-[#073926] flex items-center justify-center overflow-hidden font-sans border-t-4 border-[#0a2e1b] rounded-3xl ${className}`}
+      className={`relative w-full h-[70vh] min-h-[520px] bg-surface-wood flex items-center justify-center overflow-hidden font-sans rounded-xl ${className}`}
+      style={{ backgroundColor: '#120806' }}
     >
-      {/* Fieltro y bordes decorativos, idénticos a la mesa real */}
-      <div className="absolute inset-0 bg-[#073b24] opacity-100" />
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-40 mix-blend-multiply pointer-events-none" />
-      <div className="absolute inset-[5%] border-[12px] border-black/10 rounded-[50%] blur-sm pointer-events-none" />
-      <div className="absolute w-[85vw] h-[55vh] border-[1px] border-white/5 rounded-[50%] pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]" />
+      <TableSurface />
 
-      {/* Badge de fase */}
-      <div className="absolute top-3 left-3 z-30 pointer-events-none">
+      {/* Fase actual, con el mismo display de nogal y latón que los pozos. */}
+      <div className="absolute left-3 top-3 z-30 pointer-events-none md:left-5 md:top-5">
         <span
           data-testid="replay-phase"
-          className="text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-black/60 border border-[#d4af37]/40 text-[#fdf0a6] backdrop-blur-md"
+          className="inline-flex items-center rounded-full border border-[#8b6b2e] bg-[#160b08]/95 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.1em] text-[#fdf0a6] shadow-[0_8px_16px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(240,170,105,0.28)] md:text-sm"
         >
           {phaseLabel(frame.phase)}
         </span>
@@ -311,62 +321,13 @@ export function ReplayBoard({ frame, cardFallbackByPlayerId, cardFallbackByUserI
         ))}
       </div>
 
-      {/* Centro: botes + mazo + bottom card. Lo anclamos al tercio inferior
-          de la mesa para liberar la franja superior, donde se concentran las
-          manos de hasta 7 jugadores en móvil. */}
-      <div
-        data-testid="replay-center-cluster"
-        className="absolute inset-x-0 bottom-[14%] md:bottom-[18%] z-20 flex justify-center pointer-events-none"
-      >
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-12 px-4 md:px-10 py-4 md:py-6 rounded-3xl">
-          <div className="flex flex-col gap-1 md:gap-2 shrink-0">
-            <div className="flex flex-col items-center bg-[#0a180e]/95 px-2 md:px-6 py-0.5 md:py-2 rounded-lg md:rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[70px] md:min-w-[160px]">
-              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Apuesta Principal</span>
-              <span
-                data-testid="replay-pot-main"
-                className="text-[#4ade80] font-mono font-black text-[10px] md:text-xl"
-              >
-                {formatCurrency(frame.pot)}
-              </span>
-            </div>
-            <div
-              className={`flex flex-col items-center bg-[#0a180e]/95 px-2 md:px-6 py-0.5 md:py-2 rounded-lg md:rounded-xl border border-[#d4af37]/30 backdrop-blur-md shadow-lg min-w-[70px] md:min-w-[160px] ${
-                frame.piquePot > 0 ? '' : 'sr-only'
-              }`}
-            >
-              <span className="text-[#fdf0a6] text-[5px] md:text-[9px] font-black uppercase tracking-[0.15em] mb-0.5 opacity-60">Apuesta Pique</span>
-              <span
-                data-testid="replay-pot-pique"
-                className="text-[#4ade80] font-mono font-black text-[10px] md:text-xl"
-              >
-                {formatCurrency(frame.piquePot)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center gap-0">
-            <div className="relative shrink-0">
-              <div className="w-6 h-9 md:w-16 md:h-24 bg-[#0a0a0a] rounded-md md:rounded-lg absolute translate-x-0.5 translate-y-0.5 md:translate-x-1.5 md:translate-y-1.5 shadow-[2px_2px_15px_rgba(0,0,0,0.9)]" />
-              <div className="w-6 h-9 md:w-16 md:h-24 bg-[#1a1a1a] rounded-md md:rounded-lg absolute translate-x-[1px] translate-y-[1px] md:translate-x-1 md:translate-y-1" />
-              <div className="w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border-[1.5px] md:border-[2px] border-[#d4af37]/40 bg-[url('/cards/dorso.svg')] bg-cover bg-center relative z-10">
-                <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none rounded-md md:rounded-lg" />
-                <div className="absolute inset-0 border border-white/10 rounded-md md:rounded-lg pointer-events-none" />
-              </div>
-
-              {bottomParsed && (
-                <div className="absolute top-1/2 -translate-y-1/2 left-[70%] z-[5] w-6 h-9 md:w-16 md:h-24 rounded-md md:rounded-lg overflow-hidden border border-[#d4af37]/30 shadow-[0_4px_16px_rgba(0,0,0,0.7)] rotate-[8deg]">
-                  <img
-                    src={`/cards/${String(bottomParsed.value).padStart(2, '0')}-${bottomParsed.suit.toLowerCase()}.webp?v=4`}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.4)] pointer-events-none rounded-lg" />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <TablePots
+        pot={frame.pot}
+        piquePot={frame.piquePot}
+        bottomCard={normalizeBottomCard(frame.bottomCard)}
+        className="mb-[4%] lg:mb-[6%]"
+        testIdPrefix="replay-"
+      />
     </div>
   );
 }
