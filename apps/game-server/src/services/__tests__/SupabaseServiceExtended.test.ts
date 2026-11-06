@@ -772,8 +772,14 @@ describe('SupabaseService — Extended Coverage', () => {
       });
     });
 
-    it('checkTableAccess fails closed on malformed RPC responses', async () => {
+    it('checkTableAccess permite el acceso cuando la RPC no devuelve sanción (null)', async () => {
       mockRpc.mockResolvedValue({ data: null, error: null });
+
+      await expect(SupabaseService.checkTableAccess('user-1')).resolves.toEqual({ blocked: false });
+    });
+
+    it('checkTableAccess fails closed on malformed RPC responses', async () => {
+      mockRpc.mockResolvedValue({ data: { foo: 'bar' }, error: null });
 
       await expect(SupabaseService.checkTableAccess('user-1')).resolves.toEqual({
         blocked: true,

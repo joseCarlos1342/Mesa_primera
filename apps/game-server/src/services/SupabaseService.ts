@@ -733,6 +733,18 @@ export class SupabaseService {
       });
 
       if (replayErr) throw replayErr;
+
+      // Frames v2: tabla cerrada a service_role para que el tablero de la
+      // repetición no dependa del disco del VPS ni de su retención de 7 días.
+      if (frames && frames.length > 0) {
+        const { error: framesErr } = await supabase
+          .from('game_replay_frames')
+          .upsert({ game_id: gameId, version: REPLAY_VERSION, frames });
+        if (framesErr) {
+          console.error(`[SupabaseService] replay frames save failed (non-fatal, fs=${fileSaved}):`, framesErr.message);
+        }
+      }
+
       console.log(`[SupabaseService] Replay saved: game=${gameId}, room=${roomId || 'unknown'}, fs=${fileSaved}`);
     } catch (e: any) {
       console.error(`[SupabaseService] Supabase replay save failed (filesystem ${fileSaved ? 'has backup' : 'ALSO FAILED'}):`, e?.message || e);
@@ -921,7 +933,10 @@ export class SupabaseService {
         p_user_id: userId,
       });
       if (error) throw error;
-      if (!data || typeof data.blocked !== 'boolean') throw new Error('Respuesta inválida de check_table_access');
+      // La RPC es un SELECT ... LIMIT 1: sin sanción activa devuelve `null`.
+      // Un error sigue cerrando el acceso; solo una respuesta exitosa vacía lo permite.
+      if (data === null) return { blocked: false };
+      if (typeof data?.blocked !== 'boolean') throw new Error('Respuesta inválida de check_table_access');
       if (data && data.blocked) {
         return {
           blocked: true,

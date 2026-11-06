@@ -48,6 +48,12 @@ la red privada `mesa-internal` y no publica ningún puerto al host.
 - Validar E2E + smoke en preview antes de promover.
 - Monitorear logs y Web Vitals 30 min post-deploy.
 
+## Repeticiones en produccion
+- Los frames de cada partida se guardan en `public.game_replay_frames` (migracion `20261105170000`), tabla cerrada a `service_role`. La web los lee con `SUPABASE_SERVICE_ROLE_KEY` y los sanitiza por jugador; ya no depende de `GAME_SERVER_URL` + `INTERNAL_API_SECRET` para mostrar el tablero.
+- El disco del VPS (`REPLAY_STORAGE_DIR`, retencion 7 dias) queda como respaldo; si falta la fila en Supabase, la web intenta el API interno del game server.
+- Para que se graben partidas nuevas hay que desplegar el game-server con `SupabaseService.saveReplay` actualizado. Las partidas anteriores al despliegue solo tienen frames si siguen en el disco del VPS.
+- El game server consulta `check_table_access` y `check_account_eligibility` con `service_role` (grant en `20261105160000`). Si se revoca, nadie puede entrar a una mesa.
+
 ## CI - GitHub Actions
 - YAML en `.github/workflows/`.
 - Para workflows nuevos o cambios mayores: cargar `github-actions-docs`.

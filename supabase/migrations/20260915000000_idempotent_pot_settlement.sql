@@ -1,9 +1,15 @@
 -- Liquidación de pozos: evita doble rake y reintentos duplicados.
 -- Los callers siguen pasando el premio neto y el rake calculado por el motor.
+--
+-- El ledger es INSERT-only y ya contiene 10 pares (user_id, reference_id)
+-- repetidos de abril y mayo de 2026 (ver docs/finance/ledger-duplicados-2026-04.md).
+-- No se pueden borrar; el índice protege desde esta migración en adelante y
+-- la función revisa todo el historial antes de insertar.
 
 CREATE UNIQUE INDEX IF NOT EXISTS ledger_user_reference_id_unique
   ON public.ledger (user_id, reference_id)
-  WHERE reference_id IS NOT NULL;
+  WHERE reference_id IS NOT NULL
+    AND created_at >= '2026-09-15 00:00:00+00';
 
 CREATE OR REPLACE FUNCTION public.process_ledger_entry(
   p_user_id       UUID,

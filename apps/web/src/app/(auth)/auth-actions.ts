@@ -137,7 +137,10 @@ async function checkAccountSanction(
       p_user_id: userId,
     })
     if (error) throw error
-    if (!data || typeof data.blocked !== 'boolean') throw new Error('Respuesta inválida de check_account_eligibility')
+    // La RPC es un SELECT ... LIMIT 1: sin sanción activa no devuelve fila (`null`).
+    // Un error sigue cerrando el acceso; solo una respuesta exitosa vacía lo permite.
+    if (data === null) return { blocked: false }
+    if (typeof data?.blocked !== 'boolean') throw new Error('Respuesta inválida de check_account_eligibility')
     if (data && data.blocked) {
       await supabase.auth.signOut()
       const expiresAt = data.expires_at

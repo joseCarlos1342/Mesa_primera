@@ -602,6 +602,25 @@ describe('OTP y PIN auth actions', () => {
     expect(supabase.auth.signOut).toHaveBeenCalled()
   })
 
+  it('loginWithPin trata la ausencia de sanción (RPC sin fila) como cuenta habilitada', async () => {
+    cookieGet.mockReturnValue({ value: 'device-1' })
+    const supabase = buildSupabase({
+      auth: {
+        ...buildSupabase().auth,
+        signInWithPassword: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+      },
+      rpc: jest.fn().mockImplementation((name: string) => {
+        if (name === 'is_device_trusted') return Promise.resolve({ data: true, error: null })
+        return Promise.resolve({ data: null, error: null })
+      }),
+    })
+    ;(createClient as jest.Mock).mockResolvedValue(supabase)
+
+    await expect(loginWithPin(null, formData({ phone: TEST_PHONE_LOCAL, pin: '123456' }))).rejects.toThrow('NEXT_REDIRECT')
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
+    expect(supabase.auth.signOut).not.toHaveBeenCalled()
+  })
+
   it('loginWithPin completa sesión en dispositivo confiable', async () => {
     cookieGet.mockReturnValue({ value: 'device-1' })
     const supabase = buildSupabase({

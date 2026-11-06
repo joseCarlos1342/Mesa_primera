@@ -7,10 +7,11 @@ import {
   getPlayerReplaysForRoom,
 } from '../replays'
 import { sanitizeReplayFrames } from '@/lib/replay-sanitizer'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 
 jest.mock('@/utils/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }))
 
 const user = { id: 'user-123' }
@@ -70,10 +71,29 @@ function mockConsoleError() {
   return jest.spyOn(console, 'error').mockImplementation(() => {})
 }
 
+/**
+ * Cliente admin simulado para `fetchStoredReplayFrames`: responde a
+ * `.from('game_replay_frames').select(...).eq(...).maybeSingle()` con la fila dada
+ * (o null para simular ausencia). Si `error` se provee, simula fallo de consulta.
+ */
+function adminFramesClient(
+  row: { version?: number; frames?: unknown[] } | null,
+  error: unknown = null,
+) {
+  const maybeSingle = jest.fn().mockResolvedValue({ data: row, error })
+  const eq = jest.fn().mockReturnValue({ maybeSingle })
+  const select = jest.fn().mockReturnValue({ eq })
+  const from = jest.fn().mockReturnValue({ select })
+  return { from, select, eq, maybeSingle }
+}
+
 describe('replay actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     ;(createClient as jest.Mock).mockReset()
+    ;(createAdminClient as jest.Mock).mockReset()
+    // Por defecto no hay fila de frames guardada: las acciones caen al game server.
+    ;(createAdminClient as jest.Mock).mockResolvedValue(adminFramesClient(null))
     delete process.env.GAME_SERVER_URL
     delete process.env.NEXT_PUBLIC_GAME_SERVER_URL
     delete process.env.INTERNAL_API_SECRET
@@ -247,6 +267,165 @@ describe('replay actions', () => {
     expect(frame.players[1]).not.toHaveProperty('privateCards')
     expect(frame.players[1].revealedCards).toEqual(['3B'])
     expect(frame.hint).not.toHaveProperty('cards')
+  })
+
+  describe('fetchStoredReplayFrames (game_replay_frames vía createAdminClient)', () => {
+    it('getPlayerReplayDetail usa los frames guardados y sanea las cartas privadas ajenas', async () => {
+      const baseReplay = replayRow({ version: 1, frames: [{ source: 'supabase' }] })
+      ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+        rpc: jest.fn().mockResolvedValue({ data: [baseReplay], error: null }),
+      }))
+      const admin = adminFramesClient({
+        version: 2,
+        frames: [{
+          players: [
+            { id: 'mine', userId: 'user-123', privateCards: ['1O'] },
+            { id: 'other', userId: 'user-456', privateCards: ['7E'], revealedCards: ['3B'] },
+          ],
+          hint: { kind: 'discard', cards: ['7E'] },
+        }],
+      })
+      ;(createAdminClient as jest.Mock).mockResolvedValue(admin)
+      // Aunque el game server esté configurado, no debe consultarse: los frames
+      // guardados tienen prioridad.
+      process.env.GAME_SERVER_URL = 'https://game.example.test'
+      process.env.INTERNAL_API_SECRET = 'internal-secret'
+
+      const detail = await getPlayerReplayDetail('game-1')
+      const frame = detail?.frames?.[0] as {
+        players: Array<Record<string, unknown>>
+        hint: Record<string, unknown>
+      }
+
+      expect(createAdminClient).toHaveBeenCalled()
+      expect(admin.from).toHaveBeenCalledWith('game_replay_frames')
+      expect(admin.select).toHaveBeenCalledWith('version, frames')
+      expect(admin.eq).toHaveBeenCalledWith('game_id', 'game-1')
+      expect(detail).toMatchObject({ id: 'row-1', version: 2 })
+      // Cartas propias conservadas; ajenas eliminadas; pistas de cartas saneadas.
+      expect(frame.players[0].privateCards).toEqual(['1O'])
+      expect(frame.players[1]).not.toHaveProperty('privateCards')
+      expect(frame.players[1].revealedCards).toEqual(['3B'])
+      expect(frame.hint).not.toHaveProperty('cards')
+      // No se llamó al game server porque ya había frames guardados.
+      expect(global.fetch).not.toHaveBeenCalled()
+    })
+
+    it('normaliza la versión guardada: cualquier valor distinto de 1 se trata como 2', async () => {
+      const baseReplay = replayRow()
+      ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+        rpc: jest.fn().mockResolvedValue({ data: [baseReplay], error: null }),
+      }))
+      ;(createAdminClient as jest.Mock).mockResolvedValue(
+        adminFramesClient({ version: 99, frames: [{ players: [] }] }),
+      )
+
+      const detail = await getPlayerReplayDetail('game-1')
+      expect(detail?.version).toBe(2)
+    })
+
+    it('getPlayerReplayDetail cae al game server cuando no hay fila de frames guardada', async () => {
+      const baseReplay = replayRow({ version: 1, frames: [{ source: 'supabase' }] })
+      ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+        rpc: jest.fn().mockResolvedValue({ data: [baseReplay], error: null }),
+      }))
+      // Sin fila guardada (maybeSingle → null) → debe consultar el game server.
+      ;(createAdminClient as jest.Mock).mockResolvedValue(adminFramesClient(null))
+      process.env.GAME_SERVER_URL = 'https://game.example.test'
+      process.env.INTERNAL_API_SECRET = 'internal-secret'
+      ;(global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          ok: true,
+          data: {
+            ...replayRow({ version: 2 }),
+            frames: [{
+              players: [
+                { id: 'mine', userId: 'user-123', privateCards: ['1O'] },
+                { id: 'other', userId: 'user-456', privateCards: ['7E'], revealedCards: ['3B'] },
+              ],
+            }],
+          },
+        }),
+      })
+
+      const detail = await getPlayerReplayDetail('game-1')
+      const frame = detail?.frames?.[0] as { players: Array<Record<string, unknown>> }
+
+      expect(global.fetch).toHaveBeenCalledWith('https://game.example.test/api/replays/game-1', {
+        next: { revalidate: 60 },
+        headers: { 'x-internal-secret': 'internal-secret' },
+      })
+      expect(detail).toMatchObject({ id: 'row-1', version: 2 })
+      // El fallback del game server también sanea cartas ajenas para el jugador.
+      expect(frame.players[0].privateCards).toEqual(['1O'])
+      expect(frame.players[1]).not.toHaveProperty('privateCards')
+    })
+
+    it('ignora frames guardados vacíos o malformados y cae al game server', async () => {
+      const baseReplay = replayRow({ frames: [{ source: 'supabase' }] })
+      ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+        rpc: jest.fn().mockResolvedValue({ data: [baseReplay], error: null }),
+      }))
+      // Fila presente pero con frames vacíos → se descarta y se consulta game server.
+      ;(createAdminClient as jest.Mock).mockResolvedValue(adminFramesClient({ version: 2, frames: [] }))
+      process.env.GAME_SERVER_URL = 'https://game.example.test'
+      process.env.INTERNAL_API_SECRET = 'internal-secret'
+      ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false })
+
+      // Sin frames guardados ni del game server, conserva el detalle de Supabase.
+      await expect(getPlayerReplayDetail('game-1')).resolves.toEqual(baseReplay)
+      expect(global.fetch).toHaveBeenCalled()
+    })
+
+    it('registra y tolera un fallo al leer los frames guardados', async () => {
+      const errorSpy = mockConsoleError()
+      const baseReplay = replayRow()
+      ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+        rpc: jest.fn().mockResolvedValue({ data: [baseReplay], error: null }),
+      }))
+      // La consulta admin falla: maybeSingle lanza → se captura y devuelve null.
+      const throwingAdmin = adminFramesClient(null)
+      throwingAdmin.maybeSingle.mockRejectedValue(new Error('admin down'))
+      ;(createAdminClient as jest.Mock).mockResolvedValue(throwingAdmin)
+
+      await expect(getPlayerReplayDetail('game-1')).resolves.toEqual(baseReplay)
+      expect(errorSpy).toHaveBeenCalledWith('[fetchStoredReplayFrames] Error:', expect.any(Error))
+      errorSpy.mockRestore()
+    })
+
+    it('getAdminReplayDetail usa los frames guardados SIN sanitizar', async () => {
+      const profile = profileRoleQuery('admin')
+      const replay = replayRow({ version: 1, frames: [] })
+      const rpc = jest.fn((name: string) => Promise.resolve(name === 'get_admin_replay_detail'
+        ? { data: [replay], error: null }
+        : { data: [], error: null }))
+      ;(createClient as jest.Mock).mockResolvedValue(queuedSupabase({
+        authUser: admin,
+        rpc,
+        tables: { profiles: [{ select: profile.select }] },
+      }))
+      const storedFrames = [{
+        players: [
+          { id: 'a', userId: 'user-123', privateCards: ['1O'] },
+          { id: 'b', userId: 'user-456', privateCards: ['7E'] },
+        ],
+        hint: { kind: 'discard', cards: ['7E'] },
+      }]
+      ;(createAdminClient as jest.Mock).mockResolvedValue(adminFramesClient({ version: 2, frames: storedFrames }))
+      // El game server no debe consultarse si hay frames guardados.
+      process.env.GAME_SERVER_URL = 'https://game.example.test'
+      process.env.INTERNAL_API_SECRET = 'internal-secret'
+
+      const result = await getAdminReplayDetail('game-1')
+
+      expect(result.replay).toMatchObject({ version: 2 })
+      // Los frames admin conservan TODAS las cartas y pistas, sin sanear.
+      expect(result.replay?.frames).toEqual(storedFrames)
+      expect(result.replay?.frames?.[0].players[1].privateCards).toEqual(['7E'])
+      expect(result.replay?.frames?.[0].hint.cards).toEqual(['7E'])
+      expect(global.fetch).not.toHaveBeenCalled()
+    })
   })
 
   it('devuelve lista vacía si no hay usuario al consultar replays de jugador', async () => {

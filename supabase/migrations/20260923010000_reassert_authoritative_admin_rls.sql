@@ -1,9 +1,13 @@
 -- Reassert admin policies with public.profiles.role as the authority.
 
-DROP POLICY IF EXISTS "Admins can update settings" ON public.site_settings;
-CREATE POLICY "Admins can update settings" ON public.site_settings
-  FOR ALL USING ((SELECT public.is_admin()))
-  WITH CHECK ((SELECT public.is_admin()));
+DO $$
+BEGIN
+  IF to_regclass('public.site_settings') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "Admins can update settings" ON public.site_settings';
+    EXECUTE 'CREATE POLICY "Admins can update settings" ON public.site_settings FOR ALL USING ((SELECT public.is_admin())) WITH CHECK ((SELECT public.is_admin()))';
+  END IF;
+END;
+$$;
 
 DROP POLICY IF EXISTS "Players can view replays of games they participated in" ON public.game_replays;
 CREATE POLICY "Players can view replays of games they participated in" ON public.game_replays

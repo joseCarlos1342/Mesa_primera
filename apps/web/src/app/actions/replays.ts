@@ -180,11 +180,36 @@ export async function getPlayerReplayDetail(gameId: string): Promise<PlayerRepla
     return null;
   }
 
+  // La RPC ya confirmó que el jugador participó; los frames se leen con la
+  // service_role y se sanitizan para no exponer cartas privadas ajenas.
+  const stored = await fetchStoredReplayFrames(gameId);
+  if (stored) {
+    return { ...(detail as PlayerReplayDetail), version: stored.version, frames: sanitizeReplayFrames(stored.frames, user.id) };
+  }
+
   const fsDetail = await fetchReplayFromGameServer(gameId, user.id);
   if (fsDetail?.frames?.length) {
     return { ...(detail as PlayerReplayDetail), version: fsDetail.version, frames: fsDetail.frames };
   }
   return detail as PlayerReplayDetail;
+}
+
+/** Frames v2 guardados en `game_replay_frames` (solo service_role). */
+async function fetchStoredReplayFrames(gameId: string): Promise<{ version: 1 | 2; frames: any[] } | null> {
+  try {
+    const { createAdminClient } = await import("@/utils/supabase/server");
+    const admin = await createAdminClient();
+    const { data, error } = await admin
+      .from("game_replay_frames")
+      .select("version, frames")
+      .eq("game_id", gameId)
+      .maybeSingle();
+    if (error || !data || !Array.isArray(data.frames) || data.frames.length === 0) return null;
+    return { version: data.version === 1 ? 1 : 2, frames: data.frames as any[] };
+  } catch (e) {
+    console.error("[fetchStoredReplayFrames] Error:", e);
+    return null;
+  }
 }
 
 export const getReplayDetail = getPlayerReplayDetail;
@@ -295,8 +320,11 @@ export async function getAdminReplayDetail(gameId: string): Promise<{ replay: Re
   // Hidratar frames/version desde el game server (filesystem VPS)
   let replay: ReplayDetail | null = (Array.isArray(replayRes.data) ? replayRes.data[0] : null) as ReplayDetail | null;
   if (replay) {
-    const fsDetail = await fetchReplayFromGameServer(gameId);
-    if (fsDetail?.frames?.length) {
+    const stored = await fetchStoredReplayFrames(gameId);
+    const fsDetail = stored ? null : await fetchReplayFromGameServer(gameId);
+    if (stored) {
+      replay = { ...replay, version: stored.version, frames: stored.frames };
+    } else if (fsDetail?.frames?.length) {
       replay = { ...replay, version: fsDetail.version, frames: fsDetail.frames };
     }
   }
