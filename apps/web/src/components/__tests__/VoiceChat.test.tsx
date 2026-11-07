@@ -54,11 +54,35 @@ describe('VoiceChat', () => {
 
     render(<VoiceChat roomName="mesa-1" username="Jose" />)
 
-    expect(screen.getByText('Conectando canal de voz...')).toBeInTheDocument()
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Conectando la voz…')
     expect(global.fetch).toHaveBeenCalledWith('/api/livekit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ room: 'mesa-1' }),
+    })
+  })
+
+  it('abre una PlayerSheet informativa cuando la voz aún no conecta y llega el evento global', async () => {
+    global.fetch = jest.fn(() => new Promise(() => {})) as jest.Mock
+
+    render(<VoiceChat roomName="mesa-1" username="Jose" />)
+
+    // Mientras no hay token seguimos en el estado de conexión.
+    expect(screen.getByRole('status')).toHaveTextContent('Conectando la voz…')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await act(async () => {
+      window.dispatchEvent(new Event('open-player-audio-modal'))
+    })
+
+    expect(screen.getByRole('heading', { name: 'Audio de jugadores' })).toBeInTheDocument()
+    expect(screen.getByText('La voz de la mesa todavía se está conectando.')).toBeInTheDocument()
+
+    // Se puede cerrar la hoja desde el botón de cerrar.
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar audio de jugadores' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
@@ -269,7 +293,7 @@ describe('VoiceChat (branches adicionales)', () => {
     await waitFor(() => {
       expect(consoleError).toHaveBeenCalledWith('Failed to fetch LiveKit token', expect.any(Error))
     })
-    expect(screen.getByText('Conectando canal de voz...')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Conectando la voz…')
   })
 
   it('muestra aviso role=alert cuando falla togglear microfono', async () => {

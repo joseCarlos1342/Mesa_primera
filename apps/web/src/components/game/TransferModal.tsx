@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Search, ArrowRightLeft, Check, AlertCircle, Loader2, User, ChevronLeft } from 'lucide-react'
-import { getAvatarSvg } from '@/utils/avatars'
+import { X, Search, ArrowRightLeft, Check, ArrowLeft } from 'lucide-react'
 import { formatAmount } from '@/utils/format'
 import type { Room } from '@colyseus/sdk'
-import { getGameModalOverlayClassName } from './modal-overlay'
+import { AuthAlert, AuthButton, AuthField } from '@/components/auth/AuthForm'
+import { PlayerSheet } from '@/components/player/PlayerSheet'
+import { PlayerAvatar } from '@/components/player/PlayerAvatar'
+import { Money } from '@/components/player/PlayerUI'
 
 interface GameTransferModalProps {
   isOpen: boolean
@@ -100,7 +101,7 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
   }
 
   function handleTransfer() {
-    if (!room || !recipient || amountCents < 10000) return
+    if (!room || !recipient || amountCents < MIN_TRANSFER_CENTS) return
     setLoading(true)
     setError('')
 
@@ -119,263 +120,186 @@ export function GameTransferModal({ isOpen, onClose, room, myChips }: GameTransf
 
   if (!isOpen) return null
 
-  return (
-    <AnimatePresence mode="wait">
-      <div className={getGameModalOverlayClassName()}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 30 }}
-          className="relative bg-gradient-to-br from-[#1a1a0a] via-[#12120a] to-[#0a0a0a] border-2 border-brand-gold/30 w-full h-full sm:h-auto sm:max-h-[85vh] sm:max-w-md sm:rounded-[2.5rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col"
-        >
-          {/* Decorative */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('/textures/noise.png')] mix-blend-overlay" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-40 bg-brand-gold/5 rounded-full blur-[100px] -translate-y-1/2 pointer-events-none" />
+  const stepNumber = STEP_NUMBER[step]
+  const canGoBack = step !== 'search' && step !== 'result'
+  const amountTooLow = amountCents > 0 && amountCents < MIN_TRANSFER_CENTS
+  const amountTooHigh = amountCents > myChips
+  const amountValid = amountCents >= MIN_TRANSFER_CENTS && !amountTooHigh
 
-          {/* Header */}
-          <div className="p-5 pb-3 flex justify-between items-center relative z-10 border-b border-brand-gold/10">
-            <div className="flex items-center gap-3">
-              {step !== 'search' && step !== 'result' && (
-                <button
-                  onClick={() => {
-                    if (step === 'confirm-recipient') setStep('search')
-                    else if (step === 'amount') setStep('confirm-recipient')
-                    else if (step === 'confirm-transfer') setStep('amount')
-                  }}
-                  className="w-9 h-9 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-all border border-white/10"
-                >
-                  <ChevronLeft className="w-5 h-5 text-white/60" />
-                </button>
-              )}
-              <div>
-                <h2 className="text-xl font-display font-black italic text-brand-gold leading-none tracking-tight uppercase">
-                  Transferir
-                </h2>
-                <p className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em] mt-0.5">
-                  {step === 'search' && 'Buscar jugador'}
-                  {step === 'confirm-recipient' && 'Confirmar destinatario'}
-                  {step === 'amount' && 'Ingresar monto'}
-                  {step === 'confirm-transfer' && 'Revisar datos'}
-                  {step === 'result' && 'Resultado'}
-                </p>
+  const goBack = () => {
+    if (step === 'confirm-recipient') setStep('search')
+    else if (step === 'amount') setStep('confirm-recipient')
+    else if (step === 'confirm-transfer') setStep('amount')
+  }
+
+  const footer =
+    step === 'search' ? (
+      <AuthButton onClick={handleSearch} disabled={!phone.trim()} pending={loading} icon={!loading ? <Search className="h-5 w-5" aria-hidden="true" /> : undefined}>
+        {loading ? 'Buscando…' : 'Buscar jugador'}
+      </AuthButton>
+    ) : step === 'confirm-recipient' ? (
+      <div className="grid grid-cols-2 gap-3">
+        <AuthButton variant="secondary" onClick={() => { setRecipient(null); setStep('search'); }}>
+          Buscar otro
+        </AuthButton>
+        <AuthButton onClick={() => setStep('amount')} icon={<Check className="h-5 w-5" aria-hidden="true" />}>
+          Confirmar
+        </AuthButton>
+      </div>
+    ) : step === 'amount' ? (
+      <AuthButton onClick={() => setStep('confirm-transfer')} disabled={!amountValid}>
+        Continuar
+      </AuthButton>
+    ) : step === 'confirm-transfer' ? (
+      <div className="grid grid-cols-2 gap-3">
+        <AuthButton variant="secondary" onClick={() => setStep('amount')} disabled={loading}>
+          Cancelar
+        </AuthButton>
+        <AuthButton onClick={handleTransfer} pending={loading} icon={!loading ? <ArrowRightLeft className="h-5 w-5" aria-hidden="true" /> : undefined}>
+          {loading ? 'Enviando…' : 'Confirmar'}
+        </AuthButton>
+      </div>
+    ) : (
+      <AuthButton variant="secondary" onClick={handleClose}>
+        Volver a la mesa
+      </AuthButton>
+    )
+
+  return (
+    <PlayerSheet
+      open={isOpen}
+      onClose={handleClose}
+      title="Transferir saldo"
+      description={stepNumber ? `Paso ${stepNumber} de 4 · ${STEP_TEXT[step]}` : STEP_TEXT[step]}
+      closeLabel="Cerrar transferencia"
+      footer={footer}
+      headerStart={
+        canGoBack ? (
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="Volver al paso anterior"
+            className="-ml-2 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-[#d9d3bf] transition-colors hover:bg-[#35180f] hover:text-brand-gold-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-light"
+          >
+            <ArrowLeft className="h-6 w-6" aria-hidden="true" />
+          </button>
+        ) : undefined
+      }
+    >
+      <div className="space-y-5 pt-1">
+        {step === 'search' && (
+          <AuthField
+            label="Celular del jugador"
+            hint="10 dígitos, sin +57."
+            type="tel"
+            inputMode="numeric"
+            autoComplete="off"
+            prefix="+57"
+            mono
+            maxLength={10}
+            value={phone}
+            data-autofocus
+            onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="3001234567"
+          />
+        )}
+
+        {step === 'confirm-recipient' && recipient && (
+          <>
+            <p className="text-lg leading-relaxed text-[#d9d3bf]">Verifica que sea el jugador correcto antes de seguir.</p>
+            <div className="flex items-center gap-4 border-y border-[#8b6b2e]/35 py-4">
+              <PlayerAvatar avatar={recipient.avatar_url} name={recipient.username} size={64} />
+              <div className="min-w-0">
+                <p className="truncate font-display text-[1.5rem] font-bold leading-tight text-text-premium">{recipient.username}</p>
+                <p className="font-mono text-base tabular-nums text-[#d9d3bf]">{maskPhone(phone)}</p>
               </div>
             </div>
-            <button
-              onClick={handleClose}
-              className="w-10 h-10 bg-black/40 hover:bg-black/60 rounded-xl flex items-center justify-center transition-all border border-brand-gold/15 hover:border-brand-gold/30 active:scale-90 group"
-            >
-              <X className="w-5 h-5 text-white/50 group-hover:text-white group-hover:rotate-90 transition-all" />
-            </button>
-          </div>
+          </>
+        )}
 
-          {/* Content */}
-          <div className="overflow-y-auto custom-scrollbar flex-1 px-5 pb-8 pt-4 relative z-10 space-y-5">
+        {step === 'amount' && (
+          <>
+            <p className="text-lg text-[#d9d3bf]">
+              Tus fichas: <Money cents={myChips} className="font-semibold" />
+            </p>
+            <AuthField
+              label="Monto a enviar"
+              type="text"
+              inputMode="numeric"
+              prefix="$"
+              mono
+              value={amountInput}
+              data-autofocus
+              onChange={(e) => { setAmountInput(e.target.value.replace(/\D/g, '')); setError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && amountValid && setStep('confirm-transfer')}
+              placeholder="0"
+              error={amountTooLow ? 'Monto mínimo: $1.000' : amountTooHigh ? 'Excede tus fichas disponibles' : null}
+              hint="Mínimo $1.000, en pesos y sin puntos."
+            />
+          </>
+        )}
 
-            {/* ── Step 1: Search ── */}
-            {step === 'search' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                <p className="text-sm text-white/50 text-center">Ingresa el teléfono del jugador (10 dígitos, sin +57).</p>
+        {step === 'confirm-transfer' && recipient && (
+          <>
+            <p className="text-lg leading-relaxed text-[#d9d3bf]">Revisa los datos. Una transferencia enviada no se puede deshacer.</p>
+            <dl className="divide-y divide-[#8b6b2e]/30 border-y border-[#8b6b2e]/30">
+              <div className="flex items-baseline justify-between gap-4 py-3.5">
+                <dt className="text-base text-[#bdb7a6]">Para</dt>
+                <dd className="min-w-0 truncate text-right text-lg font-semibold text-text-premium">{recipient.username}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-3.5">
+                <dt className="text-base text-[#bdb7a6]">Monto</dt>
+                <dd><Money cents={amountCents} className="text-[1.5rem] font-semibold" /></dd>
+              </div>
+            </dl>
+          </>
+        )}
 
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/25" />
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError(''); }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="3001234567"
-                    className="w-full h-14 pl-12 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-base font-medium placeholder:text-white/15 outline-none transition-all"
-                    autoFocus
-                  />
-                </div>
-
-                {error && (
-                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                    <p className="text-xs text-red-400 font-medium">{error}</p>
-                  </div>
+        {step === 'result' && result && (
+          <div className="py-2 text-center" role="status">
+            {result.success ? (
+              <>
+                <span aria-hidden="true" className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#2ecc71]/50 bg-[#0a2c20] text-[#5fd38d]">
+                  <Check className="h-8 w-8" />
+                </span>
+                <p className="font-display text-[1.625rem] font-bold text-text-premium">Transferencia exitosa</p>
+                <p className="mt-2 font-mono text-[2.25rem] font-medium tabular-nums text-text-premium">${formatAmount(result.amountCents || 0)}</p>
+                <p className="mt-1 text-lg text-[#d9d3bf]">
+                  enviados a <strong className="font-semibold text-text-premium">{result.recipientName}</strong>
+                </p>
+                {result.newBalance !== undefined && (
+                  <p className="mt-5 border-t border-[#8b6b2e]/35 pt-4 text-lg text-[#d9d3bf]">
+                    Fichas restantes: <Money cents={result.newBalance} className="font-semibold" />
+                  </p>
                 )}
-
-                <button
-                  onClick={handleSearch}
-                  disabled={loading || !phone.trim()}
-                  className="w-full h-14 bg-brand-gold/20 hover:bg-brand-gold/30 disabled:bg-white/5 disabled:text-white/20 text-brand-gold disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-brand-gold/20 disabled:border-white/5 active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-4 h-4" />}
-                  <span>{loading ? 'Buscando...' : 'Buscar'}</span>
-                </button>
-              </motion.div>
-            )}
-
-            {/* ── Step 2: Confirm Recipient ── */}
-            {step === 'confirm-recipient' && recipient && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                <p className="text-sm text-white/50 text-center">¿Es este jugador?</p>
-
-                <div className="p-5 bg-brand-gold/5 border-2 border-brand-gold/20 rounded-2xl space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-brand-gold/10 border-2 border-brand-gold/20 flex items-center justify-center overflow-hidden shrink-0">
-                      {recipient.avatar_url && getAvatarSvg(recipient.avatar_url) ? (
-                        <div className="w-full h-full p-1">{getAvatarSvg(recipient.avatar_url)}</div>
-                      ) : (
-                        <User className="w-7 h-7 text-brand-gold/60" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-display font-black text-lg text-white italic uppercase truncate">{recipient.username}</p>
-                      <p className="text-xs text-white/40 font-bold">Nivel {recipient.level}</p>
-                      <p className="text-xs text-brand-gold/60 font-mono mt-0.5">{maskPhone(phone)}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button onClick={() => { setRecipient(null); setStep('search'); }} className="flex-1 h-11 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl font-bold uppercase tracking-[0.1em] text-[11px] border border-white/10">
-                      Buscar Otro
-                    </button>
-                    <button onClick={() => setStep('amount')} className="flex-1 h-11 bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold rounded-xl font-bold uppercase tracking-[0.1em] text-[11px] border-2 border-brand-gold/30 active:scale-[0.97]">
-                      Confirmar ✓
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── Step 3: Amount ── */}
-            {step === 'amount' && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                <div className="text-center space-y-1">
-                  <p className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em]">Fichas disponibles</p>
-                  <p className="text-2xl font-display font-black text-brand-gold italic">${formatAmount(myChips)}</p>
-                </div>
-
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/25 font-black text-lg">$</span>
-                  <input
-                    type="number"
-                    value={amountInput}
-                    onChange={(e) => { setAmountInput(e.target.value); setError(''); }}
-                    onKeyDown={(e) => e.key === 'Enter' && amountCents >= 100000 && amountCents <= myChips && setStep('confirm-transfer')}
-                    placeholder="0"
-                    min="1000"
-                    step="1000"
-                    className="w-full h-16 pl-10 pr-4 bg-white/5 border-2 border-white/10 focus:border-brand-gold/50 rounded-2xl text-white text-2xl font-display font-black italic placeholder:text-white/10 outline-none transition-all text-center"
-                    autoFocus
-                  />
-                </div>
-
-                {amountCents > 0 && amountCents < 100000 && (
-                  <p className="text-[11px] text-amber-300 font-medium text-center">Monto mínimo: $1.000</p>
-                )}
-                {amountCents > myChips && (
-                  <p className="text-[11px] text-red-300 font-medium text-center">Excede tus fichas disponibles</p>
-                )}
-
-                {error && (
-                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                    <p className="text-xs text-red-400 font-medium">{error}</p>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => setStep('confirm-transfer')}
-                  disabled={amountCents < 10000 || amountCents > myChips}
-                  className="w-full h-14 bg-brand-gold/20 hover:bg-brand-gold/30 disabled:bg-white/5 disabled:text-white/20 text-brand-gold disabled:cursor-not-allowed rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all border-2 border-brand-gold/20 disabled:border-white/5 active:scale-[0.98]"
-                >
-                  Continuar
-                </button>
-              </motion.div>
-            )}
-
-            {/* ── Step 4: Confirm ── */}
-            {step === 'confirm-transfer' && recipient && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-5">
-                <div className="text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center mx-auto">
-                    <AlertCircle className="w-6 h-6 text-amber-400" />
-                  </div>
-                  <h4 className="text-base font-display font-black uppercase tracking-tight italic text-white">¿Confirmar?</h4>
-                  <p className="text-xs text-white/40">Esta acción es irreversible.</p>
-                </div>
-
-                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em]">Para</span>
-                    <span className="font-display font-black text-white italic">{recipient.username}</span>
-                  </div>
-                  <div className="h-px bg-white/5" />
-                  <div className="flex justify-between">
-                    <span className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em]">Monto</span>
-                    <span className="font-display font-black text-xl text-brand-gold italic">${formatAmount(amountCents)}</span>
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                    <p className="text-xs text-red-400 font-medium">{error}</p>
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <button onClick={() => setStep('amount')} disabled={loading} className="flex-1 h-14 bg-white/5 hover:bg-white/10 text-white/60 rounded-2xl font-bold uppercase tracking-[0.1em] text-[11px] border border-white/10">
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleTransfer}
-                    disabled={loading}
-                    className="flex-1 h-14 bg-brand-gold hover:brightness-110 text-black rounded-2xl font-black uppercase tracking-wider text-xs shadow-[inset_0_-6px_0_#8b6b2e,0_10px_20px_rgba(0,0,0,0.4)] active:translate-y-0.5 active:shadow-[inset_0_-2px_0_#8b6b2e,0_4px_8px_rgba(0,0,0,0.2)] flex items-center justify-center gap-2"
-                  >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
-                    <span>{loading ? 'Enviando...' : 'Confirmar'}</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── Step 5: Result ── */}
-            {step === 'result' && result && (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-5 text-center py-4">
-                {result.success ? (
-                  <>
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-                      className="w-16 h-16 rounded-full bg-emerald-500/15 border-2 border-emerald-500/40 flex items-center justify-center mx-auto"
-                    >
-                      <Check className="w-8 h-8 text-emerald-400" />
-                    </motion.div>
-                    <h4 className="text-base font-display font-black uppercase italic text-emerald-400">Transferencia Exitosa</h4>
-                    <p className="text-3xl font-display font-black italic text-white">${formatAmount(result.amountCents || 0)}</p>
-                    <p className="text-xs text-white/40">enviados a <strong className="text-white">{result.recipientName}</strong></p>
-                    {result.newBalance !== undefined && (
-                      <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                        <p className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em]">Fichas restantes</p>
-                        <p className="text-xl font-display font-black italic text-brand-gold">${formatAmount(result.newBalance)}</p>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 rounded-full bg-red-500/15 border-2 border-red-500/40 flex items-center justify-center mx-auto">
-                      <X className="w-8 h-8 text-red-400" />
-                    </div>
-                    <h4 className="text-base font-display font-black uppercase italic text-red-400">Error</h4>
-                    <p className="text-xs text-white/40">{result.error}</p>
-                  </>
-                )}
-
-                <button onClick={handleClose} className="w-full h-12 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold uppercase tracking-[0.1em] text-[11px] border border-white/10 active:scale-[0.97]">
-                  Cerrar
-                </button>
-              </motion.div>
+              </>
+            ) : (
+              <>
+                <span aria-hidden="true" className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#e74c3c]/60 bg-[#2a0f0c] text-[#f08a7e]">
+                  <X className="h-8 w-8" />
+                </span>
+                <p className="font-display text-[1.625rem] font-bold text-text-premium">No se pudo transferir</p>
+                <p className="mt-2 text-lg text-[#d9d3bf]">{result.error}</p>
+              </>
             )}
           </div>
-        </motion.div>
+        )}
+
+        {error && <AuthAlert>{error}</AuthAlert>}
       </div>
-    </AnimatePresence>
+    </PlayerSheet>
   )
 }
+
+const MIN_TRANSFER_CENTS = 100000
+
+const STEP_TEXT: Record<Step, string> = {
+  search: 'Buscar jugador',
+  'confirm-recipient': 'Confirmar destinatario',
+  amount: 'Ingresar monto',
+  'confirm-transfer': 'Revisar y confirmar',
+  result: 'Resultado',
+}
+
+const STEP_NUMBER: Partial<Record<Step, number>> = { search: 1, 'confirm-recipient': 2, amount: 3, 'confirm-transfer': 4 }

@@ -370,6 +370,8 @@ En la esquina superior derecha existe un botón de carrito que abre la recarga s
 
 ### Audio de jugadores
 
+Todas las opciones del menú (`Audio de jugadores`, `Reglas del juego`, `Llamar al admin`, `Transferir saldo`, `Cargar saldo`) se abren en la misma hoja de la app, ajustada para caber en el teléfono en horizontal. `Reglas del juego` muestra las fases, la jerarquía con las cartas reales y un enlace al reglamento completo; `Llamar al admin` pide el motivo y una descripción opcional; `Transferir saldo` sigue los mismos 4 pasos que la Billetera.
+
 La mesa incorpora chat de voz. Desde `Audio de jugadores` cada jugador puede silenciar a otros solo para sí. Si el micrófono no está disponible, el aviso aparece junto al botón del micrófono (no como alerta del navegador).
 
 ### Abandonar la partida

@@ -69,7 +69,28 @@ export function VoiceChat({ roomName, username, showSpeakers = false }: VoiceCha
   }, [roomName, username]);
 
   if (!token || !url) {
-    return <div className="text-xs text-[var(--text-secondary)]">Conectando canal de voz...</div>;
+    return (
+      <>
+        <p
+          role="status"
+          className="rounded-full border border-[#8b6b2e]/70 bg-[#120806]/90 px-3 py-1 text-sm text-[#d9d3bf] shadow-[0_6px_14px_rgba(0,0,0,0.6)]"
+        >
+          Conectando la voz…
+        </p>
+        {/* Sin canal de voz el menú igual responde: explica el estado en vez de no hacer nada. */}
+        <PlayerSheet
+          open={isAudioModalOpen}
+          onClose={() => setIsAudioModalOpen(false)}
+          title="Audio de jugadores"
+          description="La voz de la mesa todavía se está conectando."
+          closeLabel="Cerrar audio de jugadores"
+        >
+          <p className="py-4 text-lg leading-relaxed text-[#d9d3bf]">
+            Cuando el canal de voz esté listo podrás silenciar aquí a cualquier jugador, solo para ti. Si no conecta, revisa tu internet y el permiso del micrófono.
+          </p>
+        </PlayerSheet>
+      </>
+    );
   }
 
   return (

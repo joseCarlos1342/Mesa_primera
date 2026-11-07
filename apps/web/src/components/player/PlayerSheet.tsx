@@ -123,15 +123,15 @@ export function PlayerSheet({
           </div>
         )}
         <header
-          className={`flex shrink-0 items-start gap-3 px-5 pb-4 sm:px-7 ${full ? 'border-b border-[#8b6b2e]/45 pt-[max(1rem,env(safe-area-inset-top))]' : 'pt-3 sm:pt-6'}`}
+          className={`flex shrink-0 items-start gap-3 px-5 pb-4 sm:px-7 ${full ? 'border-b border-[#8b6b2e]/45 pt-[max(1rem,env(safe-area-inset-top))]' : 'pt-3 sm:pt-6'} [@media(max-height:480px)]:pb-2 [@media(max-height:480px)]:pt-3`}
         >
           {headerStart}
           <div className="min-w-0 flex-1 pt-1.5">
-            <h2 id={titleId} className="text-balance font-display text-[1.625rem] font-bold leading-tight text-text-premium">
+            <h2 id={titleId} className="text-balance font-display text-[1.625rem] font-bold leading-tight text-text-premium [@media(max-height:480px)]:text-[1.375rem]">
               {title}
             </h2>
             {description && (
-              <p id={descId} className="mt-1.5 text-base leading-relaxed text-[#bdb7a6]">
+              <p id={descId} className="mt-1.5 text-base leading-relaxed text-[#bdb7a6] [@media(max-height:480px)]:mt-0.5 [@media(max-height:480px)]:text-sm">
                 {description}
               </p>
             )}
@@ -147,7 +147,7 @@ export function PlayerSheet({
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 sm:px-7">{children}</div>
         {footer && (
-          <div className="shrink-0 border-t border-[#8b6b2e]/45 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-7 sm:pb-6">
+          <div className="shrink-0 border-t border-[#8b6b2e]/45 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-7 sm:pb-6 [@media(max-height:480px)]:py-2 [@media(max-height:480px)]:[&_button]:min-h-11 [@media(max-height:480px)]:[&_a]:min-h-11">
             {footer}
           </div>
         )}
